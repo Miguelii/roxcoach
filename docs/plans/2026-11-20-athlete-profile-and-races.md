@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16 (`cacheComponents`), Effect v4, tRPC 11, Supabase (schema `roxcoach`, RLS), zod 4, react-hook-form, Vitest via `vp test`.
 
-**Spec:** `docs/tech-specs/specs/athlete-races.md` (binding), plus `docs/tech-specs/specs/database.md` (the three tables and their checks), `docs/tech-specs/specs/ux-design.md`, `docs/tech-specs/specs/architecture.md`. The specs win over this plan; Task 7 updates the spec text for the decisions below.
+**Spec:** `docs/specs/athlete-races.md` (binding), plus `docs/specs/database.md` (the three tables and their checks), `docs/specs/ux-design.md`, `docs/specs/architecture.md`. The specs win over this plan; Task 7 updates the spec text for the decisions below.
 
 This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly report, plan and cron.
 
@@ -101,7 +101,7 @@ This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly repo
 **Files:**
 
 - Create: `src/modules/settings/use-profile-form.ts`, `profile-form.tsx`, `profile-tab.tsx`, `availability-editor-view.tsx`, `availability-tab.tsx`, `use-availability-editor.ts`, `settings-tabs.tsx`
-- Modify: `src/modules/settings/settings-view.tsx`, `src/app/(app)/settings/page.tsx` if needed, `docs/tech-specs/specs/ux-design.md`
+- Modify: `src/modules/settings/settings-view.tsx`, `src/app/(app)/settings/page.tsx` if needed, `docs/specs/ux-design.md`
 - Test: tests beside each new file
 
 **Interfaces:**
@@ -121,7 +121,7 @@ This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly repo
 **Files:**
 
 - Create: `src/modules/races/race-card-view.tsx`, `race-form-dialog.tsx`, `use-race-form.ts`, `complete-race-dialog.tsx`, `races-list.tsx`, `races-view.tsx`, `src/_bff/core/helpers/race-pace.helper.ts`
-- Modify: `src/app/(app)/races/page.tsx` (replace `ComingSoon`), `docs/tech-specs/specs/ux-design.md`
+- Modify: `src/app/(app)/races/page.tsx` (replace `ComingSoon`), `docs/specs/ux-design.md`
 - Test: tests beside each new file
 
 **Interfaces:**
@@ -141,7 +141,7 @@ This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly repo
 **Files:**
 
 - Create: `src/modules/dashboard/next-race.tsx`
-- Modify: `src/_bff/modules/training/types/index.ts` (`CalendarItem` becomes a union), `src/_bff/modules/training/services/get-calendar.service.ts`, `src/modules/calendar/calendar-chip.tsx`, `day-panel.tsx`, `month-view.tsx`, `week-view.tsx`, `item-key.ts`, `week-stats.ts` (activities only: it must ignore race items), `src/modules/dashboard/dashboard-content.tsx`, `docs/tech-specs/specs/ux-design.md`
+- Modify: `src/_bff/modules/training/types/index.ts` (`CalendarItem` becomes a union), `src/_bff/modules/training/services/get-calendar.service.ts`, `src/modules/calendar/calendar-chip.tsx`, `day-panel.tsx`, `month-view.tsx`, `week-view.tsx`, `item-key.ts`, `week-stats.ts` (activities only: it must ignore race items), `src/modules/dashboard/dashboard-content.tsx`, `docs/specs/ux-design.md`
 - Test: updated and new tests under the touched modules
 
 **Interfaces:**
@@ -159,10 +159,10 @@ This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly repo
 
 **Files:**
 
-- Modify: `docs/tech-specs/specs/athlete-races.md`, `docs/tech-specs/specs/database.md` (note on availability save), `docs/tech-specs/specs/ux-design.md`, `docs/tech-specs/specs/architecture.md` (athlete and races modules as built), `README.md` (a short "Profile, availability and races" note: what the Sunday coach reads)
+- Modify: `docs/specs/athlete-races.md`, `docs/specs/database.md` (note on availability save), `docs/specs/ux-design.md`, `docs/specs/architecture.md` (athlete and races modules as built), `README.md` (a short "Profile, availability and races" note: what the Sunday coach reads)
 - Test: none (docs); a link and claim check by reading the code
 
-- [ ] **Step 1: Update `docs/tech-specs/specs/athlete-races.md`** to the final behavior as built: the validation ranges, the profile defaults, the availability save strategy (upsert then delete, no transaction), the race states (`cancelled`, completion, delete rules), the `other` type, the controller and service file names that exist, the calendar and dashboard integration. Every statement must be checked against the code on disk; remove statements about things not built.
+- [ ] **Step 1: Update `docs/specs/athlete-races.md`** to the final behavior as built: the validation ranges, the profile defaults, the availability save strategy (upsert then delete, no transaction), the race states (`cancelled`, completion, delete rules), the `other` type, the controller and service file names that exist, the calendar and dashboard integration. Every statement must be checked against the code on disk; remove statements about things not built.
 - [ ] **Step 2: Update the other specs and the README** accordingly. No em-dashes.
 - [ ] **Step 3: Run** `pnpm test && pnpm check && pnpm knip`.
 - [ ] **Step 4: Commit** `docs: athlete profile, availability and races specs`.

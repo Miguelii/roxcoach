@@ -2,7 +2,7 @@
 
 Roxcoach's schema lives in `db/migrations/` as numbered SQL files. Everything is created in the
 `roxcoach` schema because the Supabase project is shared with another app (see
-`docs/tech-specs/specs/database.md`, "Shared project rules"). Nothing is created in `public`.
+`docs/specs/database.md`, "Shared project rules"). Nothing is created in `public`.
 
 ## Applying the migrations to the shared project
 
