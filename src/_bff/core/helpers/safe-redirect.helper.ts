@@ -1,4 +1,11 @@
+import { z } from 'zod'
 import { DEFAULT_POST_AUTH_PATH } from '@/_bff/core/constants/auth.constants'
+
+// Shape of a Next search param value, the usual source of a return path.
+type ReturnToInput = string | string[] | null | undefined
+
+// Only a non-empty string can be a return path.
+const ReturnToSchema = z.string().min(1)
 
 // Enough rounds for any legitimate value; a value still changing after this is rejected.
 const MAX_DECODE_ROUNDS = 5
@@ -37,24 +44,29 @@ const decodeFully = (value: string): string | null => {
 const isSameSitePath = (value: string): boolean => {
     if (!value.startsWith('/') || value.startsWith('//')) return false
     if (value.includes('\\') || hasControlChar(value)) return false
-    return new URL(value, PROBE_ORIGIN).origin === PROBE_ORIGIN
+    const resolved = new URL(value, PROBE_ORIGIN)
+    // Dot segments can collapse into a protocol-relative path: `/.//evil.com` resolves to `//evil.com`.
+    return resolved.origin === PROBE_ORIGIN && !resolved.pathname.startsWith('//')
 }
 
 /**
  * Returns `returnTo` when it is a same-site absolute path, otherwise `fallback`.
  * Both the raw value and its fully decoded form must pass, which rejects protocol-relative,
  * backslash, absolute and `javascript:` forms, including percent-encoded and double-encoded ones.
- * @param returnTo - The untrusted return path, usually from a query parameter.
+ * @param returnTo - The untrusted return path, usually from a query parameter. Non-strings give `fallback`.
  * @param fallback - Path used when `returnTo` is missing or unsafe.
  */
 export const safeReturnTo = (
-    returnTo: string | null | undefined,
+    returnTo: ReturnToInput,
     fallback: string = DEFAULT_POST_AUTH_PATH
 ): string => {
-    if (!returnTo) return fallback
+    // Next search params can be `string[]`, and untyped callers may pass anything else.
+    const parsed = ReturnToSchema.safeParse(returnTo)
+    if (!parsed.success) return fallback
+    const raw = parsed.data
 
-    const decoded = decodeFully(returnTo)
+    const decoded = decodeFully(raw)
     if (decoded === null) return fallback
 
-    return isSameSitePath(returnTo) && isSameSitePath(decoded) ? returnTo : fallback
+    return isSameSitePath(raw) && isSameSitePath(decoded) ? raw : fallback
 }

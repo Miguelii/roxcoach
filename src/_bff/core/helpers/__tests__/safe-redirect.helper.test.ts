@@ -12,6 +12,8 @@ describe('safeReturnTo', () => {
     it.each([
         ['protocol-relative', '//evil.com'],
         ['triple slash', '///evil.com'],
+        ['dot segment collapsing to protocol-relative', '/.//evil.com'],
+        ['parent segment collapsing to protocol-relative', '/x/..//evil.com'],
         ['backslash', '/\\evil.com'],
         ['leading backslash', '\\\\evil.com'],
         ['absolute https', 'https://evil.com'],
@@ -37,6 +39,15 @@ describe('safeReturnTo', () => {
         ['undefined', undefined],
     ])('falls back for %s', (_label, returnTo) => {
         expect(safeReturnTo(returnTo)).toBe('/dashboard')
+    })
+
+    it('falls back for an array search param', () => {
+        expect(safeReturnTo(['/plan', '/races'])).toBe('/dashboard')
+    })
+
+    it('falls back for a number from an untyped caller', () => {
+        // JSON.parse is untyped, like a value coming from outside TypeScript.
+        expect(safeReturnTo(JSON.parse('42'))).toBe('/dashboard')
     })
 
     it('uses the given fallback', () => {

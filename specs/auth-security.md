@@ -31,6 +31,10 @@ Being signed in is not enough. Three layers check the flag:
 | `protectedProcedure` | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`           |
 | Database             | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                         |
 
+The proxy reads the flag from the JWT claims, so revoking `app_metadata.roxcoach` only takes effect
+there when the access token expires (about 1 hour by default). `protectedProcedure` and RLS are the
+authoritative checks for data.
+
 `sb-login` calls `signInWithPassword`, then checks the returned user's `app_metadata.roxcoach`. When
 it is missing it signs out at once and returns the same generic failure as a wrong password, so the
 page never reveals that the account exists in the other app.
@@ -57,8 +61,10 @@ The login form follows BrewStock's form pattern and visual style (see
 1. `sbProxy(request)` (in `src/lib/utils.server.ts`): creates a per-request Supabase client with
    cookie handlers, calls `supabase.auth.getClaims()` to refresh the session, and syncs cookies
    between request and response. Nothing may run between creating the client and `getClaims()`.
-2. `setCSP(response)`: sets the Content-Security-Policy and Cache-Control headers
-   (`src/lib/set-csp.ts`, already in place).
+2. `setCSP(response)` (`src/lib/set-csp.ts`): sets the Content-Security-Policy header. It keeps any
+   Cache-Control already on the response (Supabase's `private, no-cache, no-store` when the session was
+   refreshed) and otherwise sets `private, no-cache, no-store, must-revalidate`, because every page
+   except `/login` is per-user and there are no public pages. A response is never marked `public`.
 
 Redirect rules in `sbProxy`:
 
@@ -72,7 +78,8 @@ Redirect rules in `sbProxy`:
 The decision is the pure function `decideAuthRedirect` in
 `src/_bff/core/helpers/auth-redirect.helper.ts`. A protected prefix only matches on a path-segment
 boundary (`/plan` and `/plan/1` match, `/plans-extra` does not). Redirects carry the refreshed
-session cookies and Supabase's no-cache headers, like the pass-through response.
+session cookies and Supabase's no-cache headers, like the pass-through response, and `setCSP` keeps
+those headers, so a response that sets a session cookie is never cacheable.
 
 Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client code):
 `AUTH_PAGE_PATH = '/login'`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
@@ -86,8 +93,9 @@ added.
 `src/_bff/core/helpers/safe-redirect.helper.ts` replaces BrewStock's `safeRedirectUrl`, so any return
 parameter cannot redirect off-origin. It fully decodes the value first and accepts it only when both
 the raw and decoded forms are same-site absolute paths: protocol-relative, backslash, absolute,
-`javascript:` and control-character forms (including percent-encoded and double-encoded variants)
-give the fallback.
+`javascript:` and control-character forms (including percent-encoded and double-encoded variants),
+dot segments that resolve to a protocol-relative path (`/.//evil.com`) and non-string values (a
+`string[]` search param) give the fallback.
 
 ## Supabase clients
 
