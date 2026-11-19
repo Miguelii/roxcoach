@@ -25,7 +25,7 @@ type JobOptions<Payload> = {
     retry?: RetryOptions
     concurrency?: { total?: number }
     run: (payload: Payload) => Promise<object>
-    catchError?: (params: { error: unknown }) => CatchErrorResult
+    catchError?: (params: { error: unknown; retryDelayInMs?: number }) => CatchErrorResult
     onSuccess?: (params: { payload: Payload }) => Promise<void>
     onFailure?: (params: { payload: Payload; error: unknown }) => Promise<void>
 }
@@ -160,8 +160,16 @@ describe('sync-strava-activity', () => {
         vi.useFakeTimers({ toFake: ['Date'] })
         vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
 
-        expect(syncActivityJob.catchError?.({ error: thrown })).toEqual({
+        expect(syncActivityJob.catchError?.({ error: thrown, retryDelayInMs: 1000 })).toEqual({
             retryAt: new Date(retryAt),
+        })
+    })
+
+    it('stops on a rate limit once the attempts are exhausted, so onFailure runs', async () => {
+        const thrown = await thrownBy(syncActivityJob, rateLimited(120))
+
+        expect(syncActivityJob.catchError?.({ error: thrown, retryDelayInMs: undefined })).toEqual({
+            skipRetrying: true,
         })
     })
 
@@ -266,20 +274,6 @@ describe('verify-strava-deauthorization', () => {
             ['event-2', 'failed', `StravaRateLimitedError:${ErrorCode.STRAVA_API_RATE_LIMITED}`],
         ])
     })
-
-    it('applies the same retry rulings as the activity sync', async () => {
-        vi.useFakeTimers({ toFake: ['Date'] })
-        vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
-        verifyStravaDeauthorizationMock.mockReturnValue(Effect.fail(rateLimited(null)))
-        const thrown = await verifyJob.run({ userId: USER_ID, eventId: null }).then(
-            () => null,
-            (error: Error) => error
-        )
-
-        expect(verifyJob.catchError?.({ error: thrown })).toEqual({
-            retryAt: new Date('2026-01-01T00:15:00Z'),
-        })
-    })
 })
 
 describe('backfill-strava', () => {
@@ -315,7 +309,7 @@ describe('backfill-strava', () => {
             (error: Error) => error
         )
 
-        expect(backfillJob.catchError?.({ error: thrown })).toEqual({
+        expect(backfillJob.catchError?.({ error: thrown, retryDelayInMs: 1000 })).toEqual({
             retryAt: new Date('2026-01-01T00:15:00Z'),
         })
     })

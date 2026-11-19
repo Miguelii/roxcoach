@@ -208,8 +208,15 @@ from a concurrent insert is resolved by looking the row up again and updating it
   failure marks it `failed` with a fixed message (`<error tag>:<error hash>`), never a cause.
 - Enqueue (`enqueue-strava-jobs.service.ts`) never throws and never calls the SDK without
   `TRIGGER_SECRET_KEY` (it fails with `EnqueueStravaJobError`). Idempotency keys debounce forged
-  unsigned events: `<userId>:<stravaActivityId>` and `<userId>:verify` for 5 minutes,
+  unsigned events: `<userId>:<stravaActivityId>` for 60 seconds (an edit a minute after the upload
+  still syncs), `<userId>:verify` for 5 minutes,
   `<userId>:backfill` for an hour, a per-minute key for sync-missing.
+- A `429` is retried while attempts remain; after the last attempt the run fails (and the event is
+  marked `failed`) instead of waiting again.
+- The bulk sync skips activities that are already stored and live for the user (one existence query
+  per list page), so a run retried after a rate limit continues where it stopped and a large history
+  converges. A soft-deleted activity is not skipped (it is re-synced and reappears). An already
+  stored activity is not refreshed by the bulk sync: edits arrive through the webhook.
 
 ## Compliance note
 

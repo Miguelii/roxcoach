@@ -43,6 +43,18 @@ describe('settleStravaEvent', () => {
     })
 })
 
+describe('settleStravaEvent with a broken client factory', () => {
+    it('never rejects when the client factory throws', async () => {
+        createDBAdminClientMock.mockImplementation(() => {
+            throw new Error('missing service role key')
+        })
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await expect(settleStravaEvent('event-1', 'failed', 'x')).resolves.toBeUndefined()
+        expect(error).toHaveBeenCalled()
+    })
+})
+
 describe('resolveSyncMissingWindow', () => {
     it('starts at the last successful sync', async () => {
         const db = makeFakeAdminDb((call) =>

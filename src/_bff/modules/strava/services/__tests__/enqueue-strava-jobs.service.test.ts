@@ -31,7 +31,7 @@ afterEach(() => {
 })
 
 describe('enqueueSyncActivity', () => {
-    it('triggers the job with the ids and a debounce key with a short TTL', async () => {
+    it('triggers the job with the ids and a debounce key with a 60 second TTL', async () => {
         const payload = { userId: USER_ID, stravaActivityId: 42, eventId: 'event-1' }
 
         const exit = await Effect.runPromiseExit(enqueueSyncActivity(payload))
@@ -39,7 +39,7 @@ describe('enqueueSyncActivity', () => {
         expect(successValue(exit)).toBeUndefined()
         expect(triggerMock).toHaveBeenCalledExactlyOnceWith('sync-strava-activity', payload, {
             idempotencyKey: `${USER_ID}:42`,
-            idempotencyKeyTTL: '5m',
+            idempotencyKeyTTL: '60s',
         })
     })
 

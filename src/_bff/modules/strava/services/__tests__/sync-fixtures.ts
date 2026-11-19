@@ -75,7 +75,8 @@ export const syncHandler =
                 last_synced_at: null,
             })
         if (call.table === 'athlete_profiles') return ok(timezone === null ? null : { timezone })
-        if (call.table === 'activities' && call.op === 'select') return ok(null)
+        if (call.table === 'activities' && call.op === 'select')
+            return call.filters.some(([column]) => column === 'strava_id:in') ? ok([]) : ok(null)
         if (call.table === 'activities' && call.op === 'insert') return ok({ id: ACTIVITY_ID })
         return ok()
     }

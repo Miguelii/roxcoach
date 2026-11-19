@@ -21,4 +21,7 @@ export default defineConfig({
         },
     },
     dirs: ['./src/_bff/modules/strava/jobs'],
+    // The services the jobs import start with `import 'server-only'`, which throws unless the
+    // `react-server` condition is active. Trigger's esbuild does not add it by default.
+    build: { conditions: ['react-server'] },
 })

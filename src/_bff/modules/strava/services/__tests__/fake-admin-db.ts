@@ -63,6 +63,10 @@ export const makeFakeAdminDb = (handler: (call: Call) => QueryResult | Error) =>
             upsert: writer('upsert'),
             delete: writer('delete'),
             eq: filter,
+            in: vi.fn((column: string, values: Json) => {
+                call.filters.push([`${column}:in`, values])
+                return chain
+            }),
             is: filter,
             maybeSingle: vi.fn(() => chain),
             single: vi.fn(() => chain),

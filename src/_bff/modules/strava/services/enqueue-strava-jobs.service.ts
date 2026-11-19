@@ -21,8 +21,10 @@ type TriggerOptions = { idempotencyKey: string; idempotencyKeyTTL: string }
 // The webhook is unsigned, so forged events with fresh `event_time` values pass the event table's
 // dedupe. The idempotency keys collapse them: the same athlete and activity (or the same
 // verification) is queued once per TTL, which keeps forged traffic from using up the app-wide
-// Strava rate limit.
-const DEBOUNCE_TTL = '5m'
+// Strava rate limit. An activity sync uses a short window, so a real edit a minute after the
+// upload still syncs; a verification is cheap and idempotent, so it uses a longer one.
+const SYNC_ACTIVITY_TTL = '60s'
+const VERIFY_TTL = '5m'
 const BACKFILL_TTL = '1h'
 const SYNC_MISSING_TTL = '2m'
 
@@ -69,7 +71,7 @@ export const enqueueSyncActivity = (payload: SyncActivityPayload) =>
             ),
         {
             idempotencyKey: `${payload.userId}:${payload.stravaActivityId}`,
-            idempotencyKeyTTL: DEBOUNCE_TTL,
+            idempotencyKeyTTL: SYNC_ACTIVITY_TTL,
         }
     )
 
@@ -81,7 +83,7 @@ export const enqueueVerifyDeauthorization = (payload: VerifyPayload) =>
                 payload,
                 options
             ),
-        { idempotencyKey: `${payload.userId}:verify`, idempotencyKeyTTL: DEBOUNCE_TTL }
+        { idempotencyKey: `${payload.userId}:verify`, idempotencyKeyTTL: VERIFY_TTL }
     )
 
 export const enqueueBackfill = (userId: string) =>

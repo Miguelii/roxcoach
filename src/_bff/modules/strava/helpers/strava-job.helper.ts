@@ -60,12 +60,21 @@ export const runStravaJob = async <Success>(effect: Effect.Effect<Success, Servi
 }
 
 // The `catchError` hook shared by every Strava job. A rate limit waits for Retry-After, and at
-// least 15 minutes when Strava omits it (its limits are per 15-minute window). Everything else
+// least 15 minutes when Strava omits it (its limits are per 15-minute window). Trigger passes
+// `retryDelayInMs` only while attempts remain: an explicit `retryAt` would bypass `maxAttempts`,
+// so once they are exhausted the run is stopped instead, and `onFailure` runs. Everything else
 // (5xx, network, unexpected) falls back to the job's exponential backoff.
-export const stravaCatchError = ({ error }: { error: unknown }): CatchErrorResult => {
+export const stravaCatchError = ({
+    error,
+    retryDelayInMs,
+}: {
+    error: unknown
+    retryDelayInMs?: number
+}): CatchErrorResult => {
     if (!(error instanceof StravaJobFailure)) return undefined
     if (NON_RETRYABLE_TAGS.has(error.tag)) return { skipRetrying: true }
     if (error.tag === 'StravaRateLimitedError') {
+        if (retryDelayInMs === undefined) return { skipRetrying: true }
         const delayS = error.retryAfterS ?? RATE_LIMIT_RETRY_FLOOR_S
         return { retryAt: new Date(Date.now() + delayS * 1000) }
     }

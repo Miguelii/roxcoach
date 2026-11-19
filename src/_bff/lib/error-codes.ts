@@ -69,6 +69,9 @@ export enum ErrorCode {
     TRAINING_ACTIVITY_BY_ID_PARSE = 'wojlgflc',
     TRAINING_ACTIVITY_COUNT = 'ej3f0wkv',
     TRAINING_ACTIVITY_COUNT_ERR = 'g9gc1t2u',
+    TRAINING_ACTIVITY_EXISTING_IDS = 'm5t8y2qe',
+    TRAINING_ACTIVITY_EXISTING_IDS_ERR = 'b3x6n9ld',
+    TRAINING_ACTIVITY_EXISTING_IDS_PARSE = 'h7c1v4sp',
 
     // Training - Activity laps repository
     TRAINING_LAPS_DELETE = 'rmnen1n8',

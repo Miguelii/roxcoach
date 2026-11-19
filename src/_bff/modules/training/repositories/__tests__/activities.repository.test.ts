@@ -4,6 +4,7 @@ import { failureTag } from '@/_bff/lib/tests-utils'
 import { ACTIVITY_ID } from '@/_bff/modules/training/repositories/__tests__/activity-fixtures'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 import {
+    selectExistingStravaIds,
     softDeleteByStravaId,
     upsertStravaActivity,
 } from '@/_bff/modules/training/repositories/activities.repository'
@@ -171,5 +172,44 @@ describe('softDeleteByStravaId', () => {
                 await Effect.runPromiseExit(softDeleteByStravaId(returned.supabase, USER_ID, 1))
             )
         ).toBe('ActivityWriteError')
+    })
+})
+
+describe('selectExistingStravaIds', () => {
+    it('returns the live stored ids among the listed ones, filtered by user', async () => {
+        const { chains, from, supabase } = makeFakeDb([ok([{ strava_id: 2 }, { strava_id: 3 }])])
+
+        const ids = await Effect.runPromise(selectExistingStravaIds(supabase, USER_ID, [1, 2, 3]))
+
+        expect(ids).toEqual(new Set([2, 3]))
+        expect(from).toHaveBeenCalledWith('activities')
+        const chain = chains[0]
+        expect(chain?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(chain?.in).toHaveBeenCalledWith('strava_id', [1, 2, 3])
+        // A soft-deleted activity does not count as stored, so it is synced again.
+        expect(chain?.is).toHaveBeenCalledWith('deleted_at', null)
+    })
+
+    it('does not query for an empty list', async () => {
+        const { from, supabase } = makeFakeDb([ok([])])
+
+        const ids = await Effect.runPromise(selectExistingStravaIds(supabase, USER_ID, []))
+
+        expect(ids.size).toBe(0)
+        expect(from).not.toHaveBeenCalled()
+    })
+
+    it('maps thrown, returned and malformed results to ActivityQueryError', async () => {
+        const thrown = makeFakeDb([new Error('boom')])
+        const returned = makeFakeDb([{ data: null, error: failed }])
+        const malformed = makeFakeDb([ok([{ strava_id: 'x' }])])
+
+        const exits = await Promise.all(
+            [thrown, returned, malformed].map(({ supabase }) =>
+                Effect.runPromiseExit(selectExistingStravaIds(supabase, USER_ID, [1]))
+            )
+        )
+
+        expect(exits.map((exit) => failureTag(exit))).toEqual(exits.map(() => 'ActivityQueryError'))
     })
 })

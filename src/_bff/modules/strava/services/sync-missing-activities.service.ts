@@ -8,6 +8,7 @@ import { ProfileQueryError, StravaPayloadError } from '@/_bff/lib/errors'
 import { ACTIVITIES_PER_PAGE, SYNC_ITEM_DELAY_MS } from '@/_bff/modules/strava/constants'
 import { stravaApiGet } from '@/_bff/modules/strava/helpers/strava-api.client'
 import { touchLastSyncedAt } from '@/_bff/modules/strava/repositories/strava-connections.repository'
+import { getExistingStravaIds } from '@/_bff/modules/training/services/get-existing-strava-ids.service'
 import {
     loadSyncContext,
     syncActivityWithContext,
@@ -28,7 +29,8 @@ const logSkipped = (error: StravaPayloadError, activityId: number | null) =>
         metadata: { errorName: error._tag, errorHash: error.error_hash, activityId },
     })
 
-// Lists the athlete's activities page by page and syncs each one (2 Strava requests each). A rate
+// Lists the athlete's activities page by page and syncs each one that is not stored yet (2 Strava
+// requests each). A rate
 // limit or 5xx stops the run and propagates: what was already synced is kept, and
 // `last_synced_at` is only touched, with the start time of the run, when the whole run succeeds.
 // A malformed activity is logged
@@ -66,9 +68,15 @@ export const syncMissingActivities = Effect.fn('syncMissingActivities')(function
         const items = yield* stravaApiGet('/athlete/activities', accessToken, pageSchema, query)
         if (items.length === 0) break
 
-        for (const item of items) {
-            const parsed = listItemSchema.safeParse(item)
-            if (!parsed.success) {
+        const entries = items.map((item) => listItemSchema.safeParse(item))
+        const listedIds = entries.flatMap((entry) => (entry.success ? [entry.data.id] : []))
+
+        // Already stored activities are skipped (the list page costs one request, a sync two), so
+        // a run retried after a rate limit continues where the previous one stopped.
+        const stored = yield* getExistingStravaIds(supabase, userId, listedIds)
+
+        for (const entry of entries) {
+            if (!entry.success) {
                 yield* Effect.sync(() =>
                     logSkipped(
                         new StravaPayloadError({
@@ -81,13 +89,16 @@ export const syncMissingActivities = Effect.fn('syncMissingActivities')(function
                 continue
             }
 
+            const activityId = entry.data.id
+            if (stored.has(activityId)) continue
+
             if (attempted > 0) yield* Effect.sleep(SYNC_ITEM_DELAY_MS)
             attempted += 1
 
-            const outcome = yield* syncActivityWithContext(context, parsed.data.id).pipe(
+            const outcome = yield* syncActivityWithContext(context, activityId).pipe(
                 Effect.catchTag('StravaPayloadError', (error) =>
                     Effect.sync(() => {
-                        logSkipped(error, parsed.data.id)
+                        logSkipped(error, activityId)
                         return { skipped: true as const }
                     })
                 )

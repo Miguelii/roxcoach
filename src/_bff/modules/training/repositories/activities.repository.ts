@@ -258,6 +258,44 @@ export const selectActivityById = Effect.fn('selectActivityById')(function* (
     return toDTO(parsed.data)
 })
 
+const existingIdsSchema = z.array(z.object({ strava_id: z.number() }))
+
+// Which of the given Strava ids are already stored and live for this user. A soft-deleted row does
+// not count: an activity that comes back from Strava is re-synced (the update clears deleted_at).
+export const selectExistingStravaIds = Effect.fn('selectExistingStravaIds')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    stravaIds: number[]
+) {
+    if (stravaIds.length === 0) return new Set<number>()
+
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('strava_id')
+                .eq('user_id', userId)
+                .in('strava_id', stravaIds)
+                .is('deleted_at', null),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ACTIVITY_EXISTING_IDS,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_ACTIVITY_EXISTING_IDS_ERR)
+
+    const parsed = existingIdsSchema.safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(
+            parsed.error.issues,
+            ErrorCode.TRAINING_ACTIVITY_EXISTING_IDS_PARSE
+        )
+
+    return new Set(parsed.data.map((row) => row.strava_id))
+})
+
 export const countStravaActivities = Effect.fn('countStravaActivities')(function* (
     supabase: TrainingClient,
     userId: string
