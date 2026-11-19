@@ -105,6 +105,21 @@ describe('syncMissingActivities', () => {
         expect(touch?.filters).toEqual([['user_id', USER_ID]])
     })
 
+    it('does not touch last_synced_at when the pass is not the final one', async () => {
+        const db = makeSyncDb()
+        createDBAdminClientMock.mockReturnValue(db.supabase)
+        stubStrava({ pages: { 1: () => json([{ id: 1 }]) } })
+
+        const pending = Effect.runPromiseExit(
+            syncMissingActivities(USER_ID, { afterEpochS: null, markSynced: false })
+        )
+        await vi.runAllTimersAsync()
+        const exit = await pending
+
+        expect(successValue(exit)).toEqual({ synced: 1 })
+        expect(connectionWrites(db)).toEqual([])
+    })
+
     it('sends after when given and omits it otherwise', async () => {
         createDBAdminClientMock.mockReturnValue(makeSyncDb().supabase)
         const withAfter = stubStrava({ pages: {} })

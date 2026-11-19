@@ -1,6 +1,6 @@
 import { task } from '@trigger.dev/sdk'
 import { Effect } from 'effect'
-import { STRAVA_JOB_IDS } from '@/_bff/modules/strava/constants'
+import { BULK_JOB_MAX_ATTEMPTS, STRAVA_JOB_IDS } from '@/_bff/modules/strava/constants'
 import { runStravaJob, stravaCatchError } from '@/_bff/modules/strava/helpers/strava-job.helper'
 import { resolveSyncMissingWindow } from '@/_bff/modules/strava/services/resolve-sync-missing-window.service'
 import { syncMissingActivities } from '@/_bff/modules/strava/services/sync-missing-activities.service'
@@ -13,7 +13,7 @@ export const syncMissingStravaJob = task({
     id: STRAVA_JOB_IDS.syncMissing,
     maxDuration: 3600,
     retry: {
-        maxAttempts: 4,
+        maxAttempts: BULK_JOB_MAX_ATTEMPTS,
         factor: 2,
         minTimeoutInMs: 5000,
         maxTimeoutInMs: 300_000,

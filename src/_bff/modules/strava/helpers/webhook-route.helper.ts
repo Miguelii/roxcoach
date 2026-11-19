@@ -19,7 +19,7 @@ type Deps = {
     enqueueSync: (payload: SyncPayload) => Effect.Effect<unknown, unknown>
     enqueueVerify: (payload: VerifyPayload) => Effect.Effect<unknown, unknown>
     // Marks the event row failed with a fixed safe message, never the cause.
-    markFailed: (eventId: string) => Effect.Effect<unknown, unknown>
+    markFailed: (userId: string, eventId: string) => Effect.Effect<unknown, unknown>
 }
 
 const PREFIX = 'stravaWebhook'
@@ -55,13 +55,13 @@ const dispatch = (deps: Deps, decision: WebhookDecision) => {
         const { userId, stravaActivityId, eventId } = decision
         return deps
             .enqueueSync({ userId, stravaActivityId, eventId })
-            .pipe(Effect.tapError(() => deps.markFailed(eventId).pipe(Effect.ignore)))
+            .pipe(Effect.tapError(() => deps.markFailed(userId, eventId).pipe(Effect.ignore)))
     }
     if (decision.action === 'verify_deauthorization') {
         const { userId, eventId } = decision
         return deps
             .enqueueVerify({ userId, eventId })
-            .pipe(Effect.tapError(() => deps.markFailed(eventId).pipe(Effect.ignore)))
+            .pipe(Effect.tapError(() => deps.markFailed(userId, eventId).pipe(Effect.ignore)))
     }
     return Effect.void
 }

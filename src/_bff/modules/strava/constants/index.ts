@@ -26,5 +26,11 @@ export const STRAVA_JOB_IDS = {
 } as const
 // The backfill and a never-synced manual sync look back this far (12 months).
 export const BACKFILL_WINDOW_S = 365 * 24 * 60 * 60
+// The first backfill pass covers this recent window (35 days), so the dashboard has data before
+// the older history finishes.
+export const BACKFILL_RECENT_WINDOW_S = 35 * 24 * 60 * 60
+// Bulk jobs (backfill, sync missing) are resumable: every rate limit costs an attempt and a wait of
+// 15 minutes, so a large history needs many attempts.
+export const BULK_JOB_MAX_ATTEMPTS = 20
 // Strava limits are per 15-minute window: a rate-limited job without a Retry-After waits this long.
 export const RATE_LIMIT_RETRY_FLOOR_S = 15 * 60

@@ -52,8 +52,7 @@ export const handleStravaWebhookEvent = Effect.fn('handleStravaWebhookEvent')(fu
             new WebhookEventError({ cause, error_hash: ErrorCode.STRAVA_WEBHOOK_EVENT_TIME }),
     })
 
-    const recorded = yield* insertEventIfNew(supabase, {
-        user_id: owner.user_id,
+    const recorded = yield* insertEventIfNew(supabase, owner.user_id, {
         owner_id: event.owner_id,
         object_type: event.object_type,
         object_id: event.object_id,
@@ -80,14 +79,14 @@ export const handleStravaWebhookEvent = Effect.fn('handleStravaWebhookEvent')(fu
             return { action: 'verify_deauthorization', userId, eventId } as const
         }
 
-        yield* markEventStatus(supabase, eventId, 'ignored')
+        yield* markEventStatus(supabase, userId, eventId, 'ignored')
         return IGNORE
     })
 
     // A failure is recorded on the event row with the error tag only, then propagates.
     return yield* decide.pipe(
         Effect.tapError((error) =>
-            markEventStatus(supabase, eventId, 'failed', error._tag).pipe(
+            markEventStatus(supabase, userId, eventId, 'failed', error._tag).pipe(
                 Effect.catch(() => Effect.void)
             )
         )

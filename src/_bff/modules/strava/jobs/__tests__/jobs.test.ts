@@ -9,8 +9,6 @@ import {
     StravaRateLimitedError,
     StravaUnauthorizedError,
 } from '@/_bff/lib/errors'
-import { backfillStravaJob } from '@/_bff/modules/strava/jobs/backfill-strava.job'
-import { syncMissingStravaJob } from '@/_bff/modules/strava/jobs/sync-missing-strava.job'
 import { syncStravaActivityJob } from '@/_bff/modules/strava/jobs/sync-strava-activity.job'
 import { verifyStravaDeauthorizationJob } from '@/_bff/modules/strava/jobs/verify-strava-deauthorization.job'
 
@@ -32,20 +30,17 @@ type JobOptions<Payload> = {
 
 type ActivityPayload = { userId: string; stravaActivityId: number; eventId: string | null }
 type VerifyPayload = { userId: string; eventId: string | null }
-type UserPayload = { userId: string }
 
 const {
     syncStravaActivityMock,
-    syncMissingActivitiesMock,
     verifyStravaDeauthorizationMock,
-    resolveSyncMissingWindowMock,
     settleStravaEventMock,
+    settleStravaActivityEventsMock,
 } = vi.hoisted(() => ({
     syncStravaActivityMock: vi.fn(),
-    syncMissingActivitiesMock: vi.fn(),
     verifyStravaDeauthorizationMock: vi.fn(),
-    resolveSyncMissingWindowMock: vi.fn(),
     settleStravaEventMock: vi.fn(),
+    settleStravaActivityEventsMock: vi.fn(),
 }))
 
 vi.mock('@trigger.dev/sdk', () => ({
@@ -55,17 +50,12 @@ vi.mock('@trigger.dev/sdk', () => ({
 vi.mock('@/_bff/modules/strava/services/sync-strava-activity.service', () => ({
     syncStravaActivity: syncStravaActivityMock,
 }))
-vi.mock('@/_bff/modules/strava/services/sync-missing-activities.service', () => ({
-    syncMissingActivities: syncMissingActivitiesMock,
-}))
 vi.mock('@/_bff/modules/strava/services/verify-strava-deauthorization.service', () => ({
     verifyStravaDeauthorization: verifyStravaDeauthorizationMock,
 }))
-vi.mock('@/_bff/modules/strava/services/resolve-sync-missing-window.service', () => ({
-    resolveSyncMissingWindow: resolveSyncMissingWindowMock,
-}))
 vi.mock('@/_bff/modules/strava/services/settle-strava-event.service', () => ({
     settleStravaEvent: settleStravaEventMock,
+    settleStravaActivityEvents: settleStravaActivityEventsMock,
 }))
 
 // SAFETY: the mocked `task` returns the options object it receives, so the job is that object.
@@ -73,8 +63,6 @@ const asJob = <Payload>(job: { id: string }) => job as JobOptions<Payload>
 
 const syncActivityJob = asJob<ActivityPayload>(syncStravaActivityJob)
 const verifyJob = asJob<VerifyPayload>(verifyStravaDeauthorizationJob)
-const backfillJob = asJob<UserPayload>(backfillStravaJob)
-const syncMissingJob = asJob<UserPayload>(syncMissingStravaJob)
 
 const USER_ID = 'user-1'
 const ACTIVITY_PAYLOAD: ActivityPayload = {
@@ -186,10 +174,26 @@ describe('sync-strava-activity', () => {
     it('marks the event processed on success', async () => {
         await syncActivityJob.onSuccess?.({ payload: ACTIVITY_PAYLOAD })
 
-        expect(settleStravaEventMock).toHaveBeenCalledExactlyOnceWith('event-1', 'processed')
+        expect(settleStravaEventMock).toHaveBeenCalledExactlyOnceWith(
+            USER_ID,
+            'event-1',
+            'processed'
+        )
     })
 
-    it('does not touch events when the payload has no event id', async () => {
+    it('also settles the other events collapsed into the debounced run', async () => {
+        await syncActivityJob.onSuccess?.({ payload: ACTIVITY_PAYLOAD })
+
+        expect(settleStravaActivityEventsMock).toHaveBeenCalledExactlyOnceWith(USER_ID, 42)
+    })
+
+    it('settles collapsed events even when the last event is not tracked', async () => {
+        await syncActivityJob.onSuccess?.({ payload: { ...ACTIVITY_PAYLOAD, eventId: null } })
+
+        expect(settleStravaActivityEventsMock).toHaveBeenCalledExactlyOnceWith(USER_ID, 42)
+    })
+
+    it('does not touch the tracked event when the payload has no event id', async () => {
         const payload = { ...ACTIVITY_PAYLOAD, eventId: null }
 
         await syncActivityJob.onSuccess?.({ payload })
@@ -204,6 +208,7 @@ describe('sync-strava-activity', () => {
         await syncActivityJob.onFailure?.({ payload: ACTIVITY_PAYLOAD, error: thrown })
 
         expect(settleStravaEventMock).toHaveBeenCalledExactlyOnceWith(
+            USER_ID,
             'event-1',
             'failed',
             `StravaUnauthorizedError:${ErrorCode.STRAVA_API_UNAUTHORIZED}`
@@ -218,6 +223,7 @@ describe('sync-strava-activity', () => {
         })
 
         expect(settleStravaEventMock).toHaveBeenCalledExactlyOnceWith(
+            USER_ID,
             'event-1',
             'failed',
             'UnexpectedError'
@@ -270,75 +276,13 @@ describe('verify-strava-deauthorization', () => {
         await verifyJob.onFailure?.({ payload, error: thrown })
 
         expect(settleStravaEventMock.mock.calls).toEqual([
-            ['event-2', 'processed'],
-            ['event-2', 'failed', `StravaRateLimitedError:${ErrorCode.STRAVA_API_RATE_LIMITED}`],
+            [USER_ID, 'event-2', 'processed'],
+            [
+                USER_ID,
+                'event-2',
+                'failed',
+                `StravaRateLimitedError:${ErrorCode.STRAVA_API_RATE_LIMITED}`,
+            ],
         ])
-    })
-})
-
-describe('backfill-strava', () => {
-    it('syncs the last 12 months', async () => {
-        vi.useFakeTimers({ toFake: ['Date'] })
-        vi.setSystemTime(new Date('2026-06-01T00:00:00Z'))
-        syncMissingActivitiesMock.mockReturnValue(Effect.succeed({ synced: 3 }))
-
-        await backfillJob.run({ userId: USER_ID })
-
-        const now = Math.floor(new Date('2026-06-01T00:00:00Z').getTime() / 1000)
-        expect(backfillJob.id).toBe('backfill-strava')
-        expect(syncMissingActivitiesMock).toHaveBeenCalledExactlyOnceWith(USER_ID, {
-            afterEpochS: now - 365 * 24 * 60 * 60,
-        })
-    })
-
-    it('allows a long run and rethrows failures', async () => {
-        syncMissingActivitiesMock.mockReturnValue(Effect.fail(serverError()))
-
-        expect(backfillJob.maxDuration).toBeGreaterThanOrEqual(3600)
-        await expect(backfillJob.run({ userId: USER_ID })).rejects.toMatchObject({
-            tag: 'StravaApiError',
-        })
-    })
-
-    it('waits out a rate limit before retrying', async () => {
-        vi.useFakeTimers({ toFake: ['Date'] })
-        vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
-        syncMissingActivitiesMock.mockReturnValue(Effect.fail(rateLimited(null)))
-        const thrown = await backfillJob.run({ userId: USER_ID }).then(
-            () => null,
-            (error: Error) => error
-        )
-
-        expect(backfillJob.catchError?.({ error: thrown, retryDelayInMs: 1000 })).toEqual({
-            retryAt: new Date('2026-01-01T00:15:00Z'),
-        })
-    })
-})
-
-describe('sync-missing-strava', () => {
-    it('syncs since the resolved last sync time', async () => {
-        resolveSyncMissingWindowMock.mockReturnValue(Effect.succeed(1_700_000_000))
-        syncMissingActivitiesMock.mockReturnValue(Effect.succeed({ synced: 1 }))
-
-        await syncMissingJob.run({ userId: USER_ID })
-
-        expect(syncMissingJob.id).toBe('sync-missing-strava')
-        expect(resolveSyncMissingWindowMock).toHaveBeenCalledExactlyOnceWith(USER_ID)
-        expect(syncMissingActivitiesMock).toHaveBeenCalledExactlyOnceWith(USER_ID, {
-            afterEpochS: 1_700_000_000,
-        })
-    })
-
-    it('rethrows a service failure', async () => {
-        resolveSyncMissingWindowMock.mockReturnValue(Effect.succeed(1_700_000_000))
-        syncMissingActivitiesMock.mockReturnValue(Effect.fail(unauthorized()))
-
-        const thrown = await syncMissingJob.run({ userId: USER_ID }).then(
-            () => null,
-            (error: Error) => error
-        )
-
-        expect(thrown).toMatchObject({ tag: 'StravaUnauthorizedError' })
-        expect(syncMissingJob.catchError?.({ error: thrown })).toEqual({ skipRetrying: true })
     })
 })

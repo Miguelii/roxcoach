@@ -14,7 +14,11 @@ import {
     syncActivityWithContext,
 } from '@/_bff/modules/strava/services/sync-strava-activity.service'
 
-type Options = { afterEpochS: number | null }
+type Options = {
+    afterEpochS: number | null
+    // False for a pass that is not the last of its run: `last_synced_at` is then left alone.
+    markSynced?: boolean
+}
 
 const listItemSchema = z.object({ id: z.number() })
 
@@ -109,7 +113,7 @@ export const syncMissingActivities = Effect.fn('syncMissingActivities')(function
         page += 1
     }
 
-    yield* touchLastSyncedAt(supabase, userId, startedAt)
+    if (options.markSynced !== false) yield* touchLastSyncedAt(supabase, userId, startedAt)
 
     return { synced }
 })

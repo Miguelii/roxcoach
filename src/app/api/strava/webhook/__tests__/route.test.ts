@@ -54,7 +54,7 @@ const setup = (options: Options = {}) => {
     const enqueueVerify = vi.fn((_payload: Payload) =>
         enqueueFails ? Effect.fail('enqueue failed with secret-cause') : Effect.void
     )
-    const markFailed = vi.fn((_eventId: string) =>
+    const markFailed = vi.fn((_userId: string, _eventId: string) =>
         markFails ? Effect.fail('mark failed') : Effect.void
     )
     const handlers = createStravaWebhookHandlers({
@@ -183,7 +183,7 @@ describe('POST /api/strava/webhook', () => {
 
         await expectEmptyOk(response)
         expect(markFailed).toHaveBeenCalledTimes(1)
-        expect(markFailed).toHaveBeenCalledWith('event-1')
+        expect(markFailed).toHaveBeenCalledWith('secret-user-id', 'event-1')
     })
 
     it('returns 200 when marking the event failed also fails', async () => {

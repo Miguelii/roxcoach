@@ -10,7 +10,6 @@ import { WebhookEventError } from '@/_bff/lib/errors'
 type AdminClient = ReturnType<typeof createDBAdminClient>
 
 type EventInput = {
-    user_id: string | null
     owner_id: number
     object_type: string
     object_id: number
@@ -30,6 +29,7 @@ const insertedRowsSchema = z.array(z.object({ id: z.string() }))
 // row for a conflict, so an empty result means the event was already recorded.
 export const insertEventIfNew = Effect.fn('insertEventIfNew')(function* (
     supabase: AdminClient,
+    userId: string,
     input: EventInput
 ) {
     const { data, error } = yield* Effect.tryPromise({
@@ -37,7 +37,7 @@ export const insertEventIfNew = Effect.fn('insertEventIfNew')(function* (
             supabase
                 .from(TABLE)
                 .upsert(
-                    { ...input, status: 'received' },
+                    { ...input, user_id: userId, status: 'received' },
                     { onConflict: CONFLICT_COLUMNS, ignoreDuplicates: true }
                 )
                 .select('id'),
@@ -68,6 +68,7 @@ export const insertEventIfNew = Effect.fn('insertEventIfNew')(function* (
 // `error` is a short safe message (an error tag), never a payload, token or response body.
 export const markEventStatus = Effect.fn('markEventStatus')(function* (
     supabase: AdminClient,
+    userId: string,
     id: string,
     status: EventStatus,
     error?: string
@@ -77,7 +78,8 @@ export const markEventStatus = Effect.fn('markEventStatus')(function* (
             supabase
                 .from(TABLE)
                 .update({ status, error: error ?? null })
-                .eq('id', id),
+                .eq('id', id)
+                .eq('user_id', userId),
         catch: (cause) =>
             new WebhookEventError({
                 cause: String(cause),
@@ -91,3 +93,32 @@ export const markEventStatus = Effect.fn('markEventStatus')(function* (
             error_hash: ErrorCode.STRAVA_EVENT_STATUS_ERR,
         })
 })
+
+// A debounced activity sync carries only the last event id: the earlier events of the same
+// activity that are still `received` were covered by that run (it fetched the final state), so
+// they are settled with it. Failures are not swept, they stay on the tracked event only.
+export const markReceivedActivityEventsProcessed = Effect.fn('markReceivedActivityEventsProcessed')(
+    function* (supabase: AdminClient, userId: string, stravaActivityId: number) {
+        const { error: returned } = yield* Effect.tryPromise({
+            try: () =>
+                supabase
+                    .from(TABLE)
+                    .update({ status: 'processed', error: null })
+                    .eq('user_id', userId)
+                    .eq('object_type', 'activity')
+                    .eq('object_id', stravaActivityId)
+                    .eq('status', 'received'),
+            catch: (cause) =>
+                new WebhookEventError({
+                    cause: String(cause),
+                    error_hash: ErrorCode.STRAVA_EVENT_STATUS,
+                }),
+        })
+
+        if (returned)
+            return yield* new WebhookEventError({
+                cause: `${returned.code}: ${returned.message}`,
+                error_hash: ErrorCode.STRAVA_EVENT_STATUS_ERR,
+            })
+    }
+)

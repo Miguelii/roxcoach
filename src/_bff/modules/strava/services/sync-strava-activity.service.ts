@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { createDBAdminClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError, StravaNotConnectedError, StravaPayloadError } from '@/_bff/lib/errors'
-import { selectTimezone } from '@/_bff/modules/athlete/repositories/athlete-profiles.repository'
+import { getAthleteTimezoneWithClient } from '@/_bff/modules/athlete/services/get-athlete-timezone-with-client.service'
 import { detectHyroxStations } from '@/_bff/modules/strava/helpers/detect-hyrox-stations.helper'
 import {
     mapStravaActivity,
@@ -158,7 +158,7 @@ export const loadSyncContext = Effect.fn('loadSyncContext')(function* (
             cause: 'strava connection removed during sync setup',
             error_hash: ErrorCode.STRAVA_SYNC_NOT_CONNECTED,
         })
-    const timezone = yield* selectTimezone(supabase, userId)
+    const timezone = yield* getAthleteTimezoneWithClient(supabase, userId)
 
     return {
         supabase,

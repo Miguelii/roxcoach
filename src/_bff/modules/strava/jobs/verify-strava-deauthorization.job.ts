@@ -26,11 +26,17 @@ export const verifyStravaDeauthorizationJob = task({
     },
     catchError: stravaCatchError,
     onSuccess: async ({ payload }: { payload: Payload }) => {
-        if (payload.eventId !== null) await settleStravaEvent(payload.eventId, 'processed')
+        if (payload.eventId !== null)
+            await settleStravaEvent(payload.userId, payload.eventId, 'processed')
     },
     onFailure: async ({ payload, error }: { payload: Payload; error: unknown }) => {
         if (payload.eventId !== null)
-            await settleStravaEvent(payload.eventId, 'failed', failureEventMessage(error))
+            await settleStravaEvent(
+                payload.userId,
+                payload.eventId,
+                'failed',
+                failureEventMessage(error)
+            )
     },
     run: (payload: Payload) => runStravaJob(verifyStravaDeauthorization(payload.userId)),
 })

@@ -31,16 +31,33 @@ afterEach(() => {
 })
 
 describe('enqueueSyncActivity', () => {
-    it('triggers the job with the ids and a debounce key with a 60 second TTL', async () => {
+    it('triggers the job with a trailing debounce per athlete and activity, and one request attempt', async () => {
         const payload = { userId: USER_ID, stravaActivityId: 42, eventId: 'event-1' }
 
         const exit = await Effect.runPromiseExit(enqueueSyncActivity(payload))
 
         expect(successValue(exit)).toBeUndefined()
-        expect(triggerMock).toHaveBeenCalledExactlyOnceWith('sync-strava-activity', payload, {
-            idempotencyKey: `${USER_ID}:42`,
-            idempotencyKeyTTL: '60s',
-        })
+        expect(triggerMock).toHaveBeenCalledExactlyOnceWith(
+            'sync-strava-activity',
+            payload,
+            {
+                debounce: {
+                    key: `${USER_ID}:42`,
+                    delay: '30s',
+                    maxDelay: '5m',
+                    mode: 'trailing',
+                },
+            },
+            { retry: { maxAttempts: 1 } }
+        )
+    })
+
+    it('does not use an idempotency key, so a later edit is not dropped', async () => {
+        await Effect.runPromiseExit(
+            enqueueSyncActivity({ userId: USER_ID, stravaActivityId: 42, eventId: null })
+        )
+
+        expect(JSON.stringify(triggerMock.mock.calls)).not.toContain('idempotencyKey')
     })
 
     it('does not call the SDK without a trigger secret', async () => {
@@ -80,7 +97,7 @@ describe('enqueueSyncActivity', () => {
 })
 
 describe('enqueueVerifyDeauthorization', () => {
-    it('triggers the job with a per-user debounce key', async () => {
+    it('triggers the job with a per-user idempotency key and one request attempt', async () => {
         const payload = { userId: USER_ID, eventId: 'event-2' }
 
         const exit = await Effect.runPromiseExit(enqueueVerifyDeauthorization(payload))
@@ -89,7 +106,8 @@ describe('enqueueVerifyDeauthorization', () => {
         expect(triggerMock).toHaveBeenCalledExactlyOnceWith(
             'verify-strava-deauthorization',
             payload,
-            { idempotencyKey: `${USER_ID}:verify`, idempotencyKeyTTL: '5m' }
+            { idempotencyKey: `${USER_ID}:verify`, idempotencyKeyTTL: '5m' },
+            { retry: { maxAttempts: 1 } }
         )
     })
 
