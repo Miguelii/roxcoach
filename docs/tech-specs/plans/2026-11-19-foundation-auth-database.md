@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16 App Router, TypeScript, Effect v4, tRPC 11, Supabase (`@supabase/ssr`), zod 4, react-hook-form, Vitest via `vp test`, PGlite for SQL tests.
 
-**Spec:** `specs/architecture.md`, `specs/auth-security.md`, `specs/database.md` (and `specs/README.md` for decisions). The specs win over this plan.
+**Spec:** `docs/tech-specs/specs/architecture.md`, `docs/tech-specs/specs/auth-security.md`, `docs/tech-specs/specs/database.md` (and `docs/tech-specs/specs/README.md` for decisions). The specs win over this plan.
 
 This is plan 1 of 6. Later plans, each producing working software on its own: 2 athlete profile, availability and races with real data; 3 Strava (OAuth, webhook, sync); 4 training data, manual logging and the real calendar; 5 coach weekly report, memory, plan and cron; 6 remove the mock data layer.
 
@@ -55,7 +55,7 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 - [ ] **Step 3: Install** `@supabase/ssr @supabase/supabase-js @t3-oss/env-nextjs @trpc/server @trpc/client @trpc/react-query @tanstack/react-query server-only` with pnpm.
 - [ ] **Step 4: Implement** `normalizeWebsiteUrl` (strip one trailing slash, default `http://localhost:3000`), the two env modules with `@t3-oss/env-nextjs` and zod (copy BrewStock's shape: `createEnv`, `runtimeEnv`; client value passes through `normalizeWebsiteUrl`), and `.env.example` listing every variable with empty values and a one-line comment each.
 - [ ] **Step 5: Configure tests.** In `vite.config.ts` add alias `server-only` to `src/lib/__mocks__/server-only.ts` (`export {}`) and `test.env` with dummy values for the three required server variables so imports of `ServerEnv` work in tests.
-- [ ] **Step 6: Write `CLAUDE.md`** (under 120 lines) porting the rules in Global Constraints plus: `PageProps<'/route'>` and `LayoutProps` helpers only, forms in `use-<name>.ts` hooks, `@/_bff/core` placement rule for code shared by frontend and `_bff`, and "read `specs/<module>.md` before touching a module and update it in the same change".
+- [ ] **Step 6: Write `CLAUDE.md`** (under 120 lines) porting the rules in Global Constraints plus: `PageProps<'/route'>` and `LayoutProps` helpers only, forms in `use-<name>.ts` hooks, `@/_bff/core` placement rule for code shared by frontend and `_bff`, and "read `docs/tech-specs/specs/<module>.md` before touching a module and update it in the same change".
 - [ ] **Step 7: Confirm** `.gitignore` ignores `.env*` except `.env.example` (adjust it if not).
 - [ ] **Step 8: Run** `pnpm test && pnpm check && pnpm knip`; expected all pass.
 - [ ] **Step 9: Commit** `chore: env, dependencies and project conventions`.
@@ -91,7 +91,7 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 
 - [ ] **Step 1: Write failing tests.** `hasRoxcoachAccess`: true for `{ app_metadata: { roxcoach: true } }`; false for `null`, `undefined`, `{}`, `{ app_metadata: {} }`, `{ app_metadata: { roxcoach: 'true' } }`, `{ app_metadata: { roxcoach: 1 } }`, `{ app_metadata: { roxcoach: false } }`. `sbLogin` (fake client as in BrewStock's `sb-login.service.test.ts`): success returns `{ status: 200 }` and calls `signInWithPassword({ email, password })`; auth error fails with `SignInWithPasswordError`; a successful sign-in whose user lacks the flag calls `auth.signOut()` and fails with `AccessDeniedError`; client creation failure fails with `CreateSbClientError`. `sbLogout`: calls `signOut`, maps a returned error to `LogoutError`. `getSession`: returns the user, returns `null` on an auth error from `getUser`, fails with `GetUserError` when the call throws. `getCachedClaims`: valid claims map to `SessionClaims`, malformed `email` or `user_metadata` read as `null`, missing `sub` returns `null`, `hasAccess` is true only with `app_metadata.roxcoach === true`.
 - [ ] **Step 2: Run** and confirm failure.
-- [ ] **Step 3: Implement** the error and code files per `specs/architecture.md` layer rules, then the services following BrewStock's equivalents in `src/_bff/modules/auth/services/`. `getCachedClaims` validates the claims with zod (missing or malformed fields read as `null`) and derives `hasAccess` from `app_metadata` through `hasRoxcoachAccess`.
+- [ ] **Step 3: Implement** the error and code files per `docs/tech-specs/specs/architecture.md` layer rules, then the services following BrewStock's equivalents in `src/_bff/modules/auth/services/`. `getCachedClaims` validates the claims with zod (missing or malformed fields read as `null`) and derives `hasAccess` from `app_metadata` through `hasRoxcoachAccess`.
 - [ ] **Step 4: Run** `pnpm test && pnpm check && pnpm knip`.
 - [ ] **Step 5: Commit** `feat: auth errors, services and roxcoach access flag`.
 
@@ -119,7 +119,7 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 **Files:**
 
 - Create: `src/_bff/core/constants/auth.constants.ts`, `src/_bff/core/helpers/auth-redirect.helper.ts`, `src/_bff/core/helpers/safe-redirect.helper.ts`, `src/lib/utils.server.ts`
-- Modify: `src/proxy.ts`, `specs/auth-security.md` (add `/coach` to the protected paths line)
+- Modify: `src/proxy.ts`, `docs/tech-specs/specs/auth-security.md` (add `/coach` to the protected paths line)
 - Test: `src/_bff/core/helpers/__tests__/auth-redirect.helper.test.ts`, `safe-redirect.helper.test.ts`, `src/lib/__tests__/utils.server.test.ts`
 
 **Interfaces:**
@@ -163,11 +163,11 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 
 **Interfaces:**
 
-- Produces: the schema defined in `specs/database.md` (every table, enum, unique constraint, index and composite foreign key listed there, all inside schema `roxcoach`, schema-qualified); `createTestDb(): Promise<{ db: PGlite; asUser(userId: string, options?: { access?: boolean }): Promise<void>; asService(): Promise<void>; close(): Promise<void> }>` which boots PGlite, creates stubs for what Supabase provides (`auth.users(id uuid primary key, raw_app_meta_data jsonb)`, `auth.uid()` and `auth.jwt()` reading `request.jwt.claims`, roles `anon`, `authenticated`, `service_role`), applies every file in `db/migrations/` in order, and switches role and claims for `asUser` and `asService`.
+- Produces: the schema defined in `docs/tech-specs/specs/database.md` (every table, enum, unique constraint, index and composite foreign key listed there, all inside schema `roxcoach`, schema-qualified); `createTestDb(): Promise<{ db: PGlite; asUser(userId: string, options?: { access?: boolean }): Promise<void>; asService(): Promise<void>; close(): Promise<void> }>` which boots PGlite, creates stubs for what Supabase provides (`auth.users(id uuid primary key, raw_app_meta_data jsonb)`, `auth.uid()` and `auth.jwt()` reading `request.jwt.claims`, roles `anon`, `authenticated`, `service_role`), applies every file in `db/migrations/` in order, and switches role and claims for `asUser` and `asService`.
 
-- [ ] **Step 1: Write failing tests** `schema.test.ts` using `createTestDb`: all tables listed in `specs/database.md` exist in schema `roxcoach` and none exist in `public`; inserting an `activity_laps` row whose `user_id` differs from its activity's `user_id` fails (composite foreign key), done as the service role; the same for `station_results`, `strength_sets` and `planned_sessions` (report, race and matched activity); deleting a race sets `planned_sessions.race_id` to null without touching `user_id`; unique constraints reject a duplicate `(user_id, weekday, session_kind)`, `(user_id, week_start)`, `(user_id, strava_id)` and a duplicate webhook event key; the same values for a different user are accepted; deleting a row from `auth.users` cascades to every table.
+- [ ] **Step 1: Write failing tests** `schema.test.ts` using `createTestDb`: all tables listed in `docs/tech-specs/specs/database.md` exist in schema `roxcoach` and none exist in `public`; inserting an `activity_laps` row whose `user_id` differs from its activity's `user_id` fails (composite foreign key), done as the service role; the same for `station_results`, `strength_sets` and `planned_sessions` (report, race and matched activity); deleting a race sets `planned_sessions.race_id` to null without touching `user_id`; unique constraints reject a duplicate `(user_id, weekday, session_kind)`, `(user_id, week_start)`, `(user_id, strava_id)` and a duplicate webhook event key; the same values for a different user are accepted; deleting a row from `auth.users` cascades to every table.
 - [ ] **Step 2: Run** `pnpm test db/tests` and confirm failure.
-- [ ] **Step 3: Implement** the migrations exactly as `specs/database.md` describes (columns, types, enums, defaults including `user_id default auth.uid()`, checks, indexes, `unique (id, user_id)` on parents, `on delete set null (<column>)` links, `set_updated_at()` trigger). `0001` also creates the schema and the grants described in "Shared project rules". RLS is deliberately not in these files (Task 8). `db/README.md` explains how to apply the files to the shared project with the SQL editor, in order, and how to confirm nothing landed in `public`.
+- [ ] **Step 3: Implement** the migrations exactly as `docs/tech-specs/specs/database.md` describes (columns, types, enums, defaults including `user_id default auth.uid()`, checks, indexes, `unique (id, user_id)` on parents, `on delete set null (<column>)` links, `set_updated_at()` trigger). `0001` also creates the schema and the grants described in "Shared project rules". RLS is deliberately not in these files (Task 8). `db/README.md` explains how to apply the files to the shared project with the SQL editor, in order, and how to confirm nothing landed in `public`.
 - [ ] **Step 4: Run** `pnpm test && pnpm check && pnpm knip`. If PGlite cannot run a required feature, stop and report which one and the smallest alternative; do not silently drop tests.
 - [ ] **Step 5: Commit** `feat: roxcoach schema migrations with composite tenant keys`.
 
@@ -182,10 +182,10 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 **Interfaces:**
 
 - Consumes: Task 7 `createTestDb`.
-- Produces: `roxcoach.has_access()` (stable SQL function returning `coalesce((auth.jwt() -> 'app_metadata' ->> 'roxcoach')::boolean, false)`); RLS enabled on every table; one policy per operation on every table except `strava_connections` and `strava_webhook_events` (RLS on, no policies); `db/seed/grant-access.sql` containing the `update auth.users ... '{"roxcoach": true}'` statement from `specs/auth-security.md` with the email as a clearly marked placeholder and the `athlete_profiles` insert.
+- Produces: `roxcoach.has_access()` (stable SQL function returning `coalesce((auth.jwt() -> 'app_metadata' ->> 'roxcoach')::boolean, false)`); RLS enabled on every table; one policy per operation on every table except `strava_connections` and `strava_webhook_events` (RLS on, no policies); `db/seed/grant-access.sql` containing the `update auth.users ... '{"roxcoach": true}'` statement from `docs/tech-specs/specs/auth-security.md` with the email as a clearly marked placeholder and the `athlete_profiles` insert.
 
 - [ ] **Step 1: Write failing tests** with users A (flag) and B (flag) and C (no flag), each with rows in every user-owned table inserted by the service role: A selects only A's rows from every table; A cannot update or delete B's rows (zero rows affected); A cannot insert a row with `user_id = B` (policy violation); A cannot insert a lap for B's activity; C selects zero rows and cannot insert in any table; `anon` selects nothing; `authenticated` selecting `strava_connections` or `strava_webhook_events` returns zero rows or a permission error (assert whichever the migration produces, but never data); `asService` reads all rows; deleting user A removes A's rows and leaves B's.
 - [ ] **Step 2: Run** and confirm failure.
-- [ ] **Step 3: Implement** `0006_rls.sql` per `specs/database.md` "Row Level Security" and the seed file. Also add the migration listed as `0007_tenant_tests.sql` in the spec? No: the PGlite tests replace it, so edit `specs/database.md` migrations table to drop `0007` and mention the tests in `db/tests`.
+- [ ] **Step 3: Implement** `0006_rls.sql` per `docs/tech-specs/specs/database.md` "Row Level Security" and the seed file. Also add the migration listed as `0007_tenant_tests.sql` in the spec? No: the PGlite tests replace it, so edit `docs/tech-specs/specs/database.md` migrations table to drop `0007` and mention the tests in `db/tests`.
 - [ ] **Step 4: Run** `pnpm test && pnpm check && pnpm knip`.
 - [ ] **Step 5: Commit** `feat: rls policies, access function and tenant isolation tests`.

@@ -2,8 +2,8 @@
 
 # Project Conventions
 
-Roxcoach is a training coach for Hyrox and running. Specs in `specs/` are binding. Before touching a module, read
-`specs/<module>.md` (start from `specs/README.md` and `specs/architecture.md`), and update that spec
+Roxcoach is a training coach for Hyrox and running. Specs in `docs/tech-specs/specs/` are binding. Before touching a module, read
+`docs/tech-specs/specs/<module>.md` (start from `docs/tech-specs/specs/README.md` and `docs/tech-specs/specs/architecture.md`), and update that spec
 in the same change when behavior, data or contracts change.
 
 ## General Rules
@@ -43,7 +43,7 @@ Ownership follows usage.
 
 ## Backend (`src/_bff`)
 
-Controller to service to (repository | processor | helper). Full layout in `specs/architecture.md`.
+Controller to service to (repository | processor | helper). Full layout in `docs/tech-specs/specs/architecture.md`.
 
 - **Controller** (`controllers/<name>.controller.ts`): thin tRPC binding with a zod input, `runEffect(...)` and an exhaustive `Match.tag` error map. One file per route exporting exactly one constant `<NAME>_PROTECTED_CONTROLLER` or `<NAME>_PUBLIC_CONTROLLER`. No business logic, no Supabase access.
 - **Service** (`services/<name>.service.ts`): exported `Effect.fn('name')` function on Effect v4. Creates the Supabase client (publishable or service-role key) and passes it to repositories.
@@ -61,11 +61,11 @@ Controller to service to (repository | processor | helper). Full layout in `spec
 - Access flag is exactly `app_metadata.roxcoach === true` (strict boolean).
 - Login failure shows one generic message for a wrong password and for an account without the flag: "Invalid email or password".
 - Secrets, tokens and passwords never reach logs or error payloads.
-- Read `specs/database.md` and `specs/auth-security.md` before touching schema, RLS or auth.
+- Read `docs/tech-specs/specs/database.md` and `docs/tech-specs/specs/auth-security.md` before touching schema, RLS or auth.
 
 ## Env
 
-Variables are declared and validated in `src/env/server.ts` and `src/env/client.ts` with `@t3-oss/env-nextjs`. Never read `process.env` elsewhere. Add every new variable to `.env.example` and to the table in `specs/architecture.md`.
+Variables are declared and validated in `src/env/server.ts` and `src/env/client.ts` with `@t3-oss/env-nextjs`. Never read `process.env` elsewhere. Add every new variable to `.env.example` and to the table in `docs/tech-specs/specs/architecture.md`.
 
 ## Frontend
 

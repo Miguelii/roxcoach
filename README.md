@@ -39,7 +39,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 1. Register an app at <https://www.strava.com/settings/api>. Set the authorization callback domain
    to the app's domain (use `localhost` for development).
-2. Set these variables in the app environment (see `specs/architecture.md` for the full table):
+2. Set these variables in the app environment (see `docs/tech-specs/specs/architecture.md` for the full table):
    `NEXT_STRAVA_CLIENT_ID`, `NEXT_STRAVA_CLIENT_SECRET`, `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN` (any long
    random string you choose) and `NEXT_PUBLIC_WEBSITE_URL` (the public https URL of the app, used
    for the OAuth redirect and the webhook callback).

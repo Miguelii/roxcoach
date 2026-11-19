@@ -14,7 +14,7 @@
 -- Running it again is harmless: the flag is merged into the existing app_metadata (other keys are
 -- kept) and an existing profile is left as it is.
 --
--- The update is the statement from specs/auth-security.md ("Account provisioning"), wrapped so the
+-- The update is the statement from docs/tech-specs/specs/auth-security.md ("Account provisioning"), wrapped so the
 -- profile insert uses the id it returns and the email is written only once.
 with granted as (
     update auth.users
