@@ -56,56 +56,57 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 - [ ] **Step 4: Implement** `normalizeWebsiteUrl` (strip one trailing slash, default `http://localhost:3000`), the two env modules with `@t3-oss/env-nextjs` and zod (copy BrewStock's shape: `createEnv`, `runtimeEnv`; client value passes through `normalizeWebsiteUrl`), and `.env.example` listing every variable with empty values and a one-line comment each.
 - [ ] **Step 5: Configure tests.** In `vite.config.ts` add alias `server-only` to `src/lib/__mocks__/server-only.ts` (`export {}`) and `test.env` with dummy values for the three required server variables so imports of `ServerEnv` work in tests.
 - [ ] **Step 6: Write `CLAUDE.md`** (under 120 lines) porting the rules in Global Constraints plus: `PageProps<'/route'>` and `LayoutProps` helpers only, forms in `use-<name>.ts` hooks, `@/_bff/core` placement rule for code shared by frontend and `_bff`, and "read `specs/<module>.md` before touching a module and update it in the same change".
-- [ ] **Step 7: Run** `pnpm test && pnpm check && pnpm knip`; expected all pass.
-- [ ] **Step 8: Commit** `chore: env, dependencies and project conventions`.
+- [ ] **Step 7: Confirm** `.gitignore` ignores `.env*` except `.env.example` (adjust it if not).
+- [ ] **Step 8: Run** `pnpm test && pnpm check && pnpm knip`; expected all pass.
+- [ ] **Step 9: Commit** `chore: env, dependencies and project conventions`.
 
-### Task 2: Supabase clients, errors, logger
+### Task 2: Supabase clients and redacting logger
 
 **Files:**
 
-- Create: `src/_bff/core/constants/db.constants.ts`, `src/_bff/core/db/index.ts`, `src/_bff/lib/errors.ts`, `src/_bff/lib/error-codes.ts`, `src/_bff/lib/server-logger.ts`, `src/_bff/lib/tests-utils.ts`
+- Create: `src/_bff/core/constants/db.constants.ts`, `src/_bff/core/db/index.ts`, `src/_bff/lib/server-logger.ts`
 - Test: `src/_bff/core/db/__tests__/db.test.ts`, `src/_bff/lib/__tests__/server-logger.test.ts`
 
 **Interfaces:**
 
-- Produces: `DB_SCHEMA = 'roxcoach'`; `createDBAdminClient(): SupabaseClient` (service-role, no cookies); `createDBServerClient(useSecretKey?: boolean, hooks?: { onGetAll?: GetAllCookies; onSetAll?: SetAllCookies }): Promise<SupabaseClient>` (cookie session, publishable key unless `useSecretKey`); error classes `CreateSbClientError`, `GetUserError`, `SignInWithPasswordError`, `AccessDeniedError`, `LogoutError`, each `ServiceErrorFields = { cause: unknown; error_hash: ErrorCode }`; `enum ErrorCode` with members `AUTH_SESSION_SB_CLIENT`, `AUTH_SESSION_GET_USER`, `AUTH_LOGIN_SB_CLIENT`, `AUTH_LOGIN_SIGN_IN`, `AUTH_LOGIN_SIGN_IN_ERR`, `AUTH_LOGIN_NO_ACCESS`, `AUTH_LOGOUT_SB_CLIENT`, `AUTH_LOGOUT_SIGN_OUT` (distinct 8-character lowercase alphanumeric values); `Logger(props: { level: 'log' | 'warn' | 'error' | 'info'; prefix: string; error?: unknown; message?: string; metadata?: Record<string, unknown>; userId?: string }): void` (console only); `failureTag(exit): string | null` and `asClient(from)` test helpers (same as BrewStock's `tests-utils.ts`).
+- Produces: `DB_SCHEMA = 'roxcoach'`; `createDBAdminClient(): SupabaseClient` (service-role, no cookies); `createDBServerClient(useSecretKey?: boolean, hooks?: { onGetAll?: GetAllCookies; onSetAll?: SetAllCookies }): Promise<SupabaseClient>` (cookie session, publishable key unless `useSecretKey`); `Logger(props: { level: 'log' | 'warn' | 'error' | 'info'; prefix: string; error?: unknown; message?: string; metadata?: Record<string, unknown>; userId?: string }): void` (console only).
 
 - [ ] **Step 1: Write failing tests.** `db.test.ts` (mock `@supabase/ssr`, `@supabase/supabase-js` and `next/headers`): `createDBServerClient()` calls `createServerClient` with the publishable key and `db.schema === 'roxcoach'`; `createDBServerClient(true)` uses the service-role key; `createDBAdminClient()` calls `createClient` with the service-role key and `db.schema === 'roxcoach'`. `server-logger.test.ts`: logging an error whose `cause` contains keys `password`, `access_token`, `refresh_token`, `token`, `secret` prints those values as `[redacted]` (checked at any nesting depth) and never prints the original values.
 - [ ] **Step 2: Run** both tests and confirm they fail.
-- [ ] **Step 3: Implement** the files above. Port `createDBServerClient` and `createDBAdminClient` from BrewStock (`/Users/miguel/Desktop/work/brewstockai/src/_bff/core/db/index.ts`), adding the schema option. The logger serializes errors to JSON-safe values and redacts by key name, case-insensitive. Error and code files follow `specs/architecture.md` layer rules.
+- [ ] **Step 3: Implement** the files above. Port `createDBServerClient` and `createDBAdminClient` from BrewStock (`/Users/miguel/Desktop/work/brewstockai/src/_bff/core/db/index.ts`), adding the schema option. The logger serializes errors to JSON-safe values and redacts by key name, case-insensitive.
 - [ ] **Step 4: Run** `pnpm test && pnpm check && pnpm knip`.
-- [ ] **Step 5: Commit** `feat: supabase clients with roxcoach schema, errors and redacting logger`.
+- [ ] **Step 5: Commit** `feat: supabase clients with roxcoach schema and redacting logger`.
 
 ### Task 3: Auth services and access check
 
 **Files:**
 
-- Create: `src/_bff/core/helpers/access.helper.ts`, `src/_bff/modules/auth/services/get-session.service.ts`, `get-cached-claims.service.ts`, `sb-login.service.ts`, `sb-logout.service.ts`
-- Test: `src/_bff/core/helpers/__tests__/access.helper.test.ts`, `src/_bff/modules/auth/services/__tests__/sb-login.service.test.ts`, `sb-logout.service.test.ts`, `get-session.service.test.ts`
+- Create: `src/_bff/lib/errors.ts`, `src/_bff/lib/error-codes.ts`, `src/_bff/lib/tests-utils.ts`, `src/_bff/core/helpers/access.helper.ts`, `src/_bff/modules/auth/services/get-session.service.ts`, `get-cached-claims.service.ts`, `sb-login.service.ts`, `sb-logout.service.ts`
+- Test: `src/_bff/core/helpers/__tests__/access.helper.test.ts`, `src/_bff/modules/auth/services/__tests__/sb-login.service.test.ts`, `sb-logout.service.test.ts`, `get-session.service.test.ts`, `get-cached-claims.service.test.ts`
 
 **Interfaces:**
 
-- Consumes: Task 2 clients, errors, codes, `failureTag`.
-- Produces: `hasRoxcoachAccess(subject: { app_metadata?: unknown } | null | undefined): boolean`; `getSession(): Effect<User | null, CreateSbClientError | GetUserError>` (request-cached with React `cache`, returns `null` when signed out); `getCachedClaims(): Promise<SessionClaims | null>` with `SessionClaims = { userId: string; email: string | null; fullName: string | null; hasAccess: boolean }`; `sbLogin(email: string, password: string): Effect<{ status: 200 }, CreateSbClientError | SignInWithPasswordError | AccessDeniedError>`; `sbLogout(): Effect<{ status: 200 }, CreateSbClientError | LogoutError>`.
+- Consumes: Task 2 `createDBServerClient`.
+- Produces: error classes `CreateSbClientError`, `GetUserError`, `SignInWithPasswordError`, `AccessDeniedError`, `LogoutError`, each with fields `ServiceErrorFields = { cause: unknown; error_hash: ErrorCode }`; `enum ErrorCode` with members `AUTH_SESSION_SB_CLIENT`, `AUTH_SESSION_GET_USER`, `AUTH_LOGIN_SB_CLIENT`, `AUTH_LOGIN_SIGN_IN`, `AUTH_LOGIN_SIGN_IN_ERR`, `AUTH_LOGIN_NO_ACCESS`, `AUTH_LOGOUT_SB_CLIENT`, `AUTH_LOGOUT_SIGN_OUT` (distinct 8-character lowercase alphanumeric values); `failureTag(exit): string | null` test helper copied from BrewStock's `tests-utils.ts` (only `failureTag`, nothing unused); `hasRoxcoachAccess(subject: { app_metadata?: unknown } | null | undefined): boolean`; `getSession(): Effect<User | null, CreateSbClientError | GetUserError>` (request-cached with React `cache`, returns `null` when signed out); `getCachedClaims(): Promise<SessionClaims | null>` with `SessionClaims = { userId: string; email: string | null; fullName: string | null; hasAccess: boolean }`; `sbLogin(email: string, password: string): Effect<{ status: 200 }, CreateSbClientError | SignInWithPasswordError | AccessDeniedError>`; `sbLogout(): Effect<{ status: 200 }, CreateSbClientError | LogoutError>`.
 
-- [ ] **Step 1: Write failing tests.** `hasRoxcoachAccess`: true for `{ app_metadata: { roxcoach: true } }`; false for `null`, `undefined`, `{}`, `{ app_metadata: {} }`, `{ app_metadata: { roxcoach: 'true' } }`, `{ app_metadata: { roxcoach: 1 } }`, `{ app_metadata: { roxcoach: false } }`. `sbLogin` (fake client as in BrewStock's `sb-login.service.test.ts`): success returns `{ status: 200 }` and calls `signInWithPassword({ email, password })`; auth error fails with `SignInWithPasswordError`; a successful sign-in whose user lacks the flag calls `auth.signOut()` and fails with `AccessDeniedError`; client creation failure fails with `CreateSbClientError`. `sbLogout`: calls `signOut`, maps a returned error to `LogoutError`. `getSession`: returns the user, returns `null` on an auth error from `getUser`, fails with `GetUserError` when the call throws.
+- [ ] **Step 1: Write failing tests.** `hasRoxcoachAccess`: true for `{ app_metadata: { roxcoach: true } }`; false for `null`, `undefined`, `{}`, `{ app_metadata: {} }`, `{ app_metadata: { roxcoach: 'true' } }`, `{ app_metadata: { roxcoach: 1 } }`, `{ app_metadata: { roxcoach: false } }`. `sbLogin` (fake client as in BrewStock's `sb-login.service.test.ts`): success returns `{ status: 200 }` and calls `signInWithPassword({ email, password })`; auth error fails with `SignInWithPasswordError`; a successful sign-in whose user lacks the flag calls `auth.signOut()` and fails with `AccessDeniedError`; client creation failure fails with `CreateSbClientError`. `sbLogout`: calls `signOut`, maps a returned error to `LogoutError`. `getSession`: returns the user, returns `null` on an auth error from `getUser`, fails with `GetUserError` when the call throws. `getCachedClaims`: valid claims map to `SessionClaims`, malformed `email` or `user_metadata` read as `null`, missing `sub` returns `null`, `hasAccess` is true only with `app_metadata.roxcoach === true`.
 - [ ] **Step 2: Run** and confirm failure.
-- [ ] **Step 3: Implement** the services following BrewStock's equivalents in `src/_bff/modules/auth/services/`. `getCachedClaims` validates the claims with zod (missing or malformed fields read as `null`) and derives `hasAccess` from `app_metadata` through `hasRoxcoachAccess`.
+- [ ] **Step 3: Implement** the error and code files per `specs/architecture.md` layer rules, then the services following BrewStock's equivalents in `src/_bff/modules/auth/services/`. `getCachedClaims` validates the claims with zod (missing or malformed fields read as `null`) and derives `hasAccess` from `app_metadata` through `hasRoxcoachAccess`.
 - [ ] **Step 4: Run** `pnpm test && pnpm check && pnpm knip`.
-- [ ] **Step 5: Commit** `feat: auth services with roxcoach access flag`.
+- [ ] **Step 5: Commit** `feat: auth errors, services and roxcoach access flag`.
 
 ### Task 4: tRPC layer and auth router
 
 **Files:**
 
-- Create: `src/_bff/trpc/{context,server,utils,router,caller}.ts`, `src/_bff/modules/auth/controllers/sb-login.controller.ts`, `sb-logout.controller.ts`, `src/_bff/modules/auth/auth.router.ts`, `src/app/api/trpc/[trpc]/route.ts`, `src/lib/trpc.ts`, `src/providers/trpc-provider.tsx`
+- Create: `src/_bff/trpc/{context,server,utils,router}.ts`, `src/_bff/modules/auth/controllers/sb-login.controller.ts`, `sb-logout.controller.ts`, `src/_bff/modules/auth/auth.router.ts`, `src/app/api/trpc/[trpc]/route.ts`, `src/lib/trpc.ts`, `src/providers/trpc-provider.tsx`
 - Modify: `src/app/layout.tsx` (wrap children in `TrpcContextProvider`)
 - Test: `src/_bff/trpc/__tests__/utils.test.ts`, `src/_bff/trpc/__tests__/server.test.ts`, `src/_bff/modules/auth/controllers/__tests__/sb-login.controller.test.ts`
 
 **Interfaces:**
 
 - Consumes: Task 3 services and `getCachedClaims`.
-- Produces: `router`, `publicProcedure`, `protectedProcedure` (ctx gains `user: User`; no session fails `UNAUTHORIZED`, a session without `hasRoxcoachAccess` fails `FORBIDDEN`, an infrastructure failure fails `INTERNAL_SERVER_ERROR`); `runEffect<A, E extends { _tag: string; error_hash: string }>(effect, context: string, mapCode: (error: E) => TRPCError['code']): Promise<A>` (logs through `Logger`, failure message is the `error_hash`, a defect becomes `INTERNAL_SERVER_ERROR` with message `unexpected_defect`); `SB_LOGIN_PUBLIC_CONTROLLER` (input `{ email: z.email(), password: z.string().min(1) }`, mutation), `SB_LOGOUT_PUBLIC_CONTROLLER`; `AUTH_ROUTER = router({ login, logout })`; `appRouter` with `auth: AUTH_ROUTER`; `type AppRouter`; `createCaller(): Promise<...>`; `trpcClient` (`createTRPCReact<AppRouter>()`); `TrpcContextProvider`.
+- Produces: `router`, `publicProcedure`, `protectedProcedure` (ctx gains `user: User`; no session fails `UNAUTHORIZED`, a session without `hasRoxcoachAccess` fails `FORBIDDEN`, an infrastructure failure fails `INTERNAL_SERVER_ERROR`); `runEffect<A, E extends { _tag: string; error_hash: string }>(effect, context: string, mapCode: (error: E) => TRPCError['code']): Promise<A>` (logs through `Logger`, failure message is the `error_hash`, a defect becomes `INTERNAL_SERVER_ERROR` with message `unexpected_defect`); `SB_LOGIN_PUBLIC_CONTROLLER` (input `{ email: z.email(), password: z.string().min(1) }`, mutation), `SB_LOGOUT_PUBLIC_CONTROLLER`; `AUTH_ROUTER = router({ login, logout })`; `appRouter` with `auth: AUTH_ROUTER`; `type AppRouter`; `trpcClient` (`createTRPCReact<AppRouter>()`); `TrpcContextProvider`.
 
 - [ ] **Step 1: Write failing tests.** `utils.test.ts`: a failing effect with tag `X` maps through `mapCode` and the thrown `TRPCError` has that code and `message === error_hash`; a defect throws `INTERNAL_SERVER_ERROR` with message `unexpected_defect`; success returns the value; the logger is never called with the raw `cause` of a `SignInWithPasswordError` containing a password. `server.test.ts` (tiny router built with `protectedProcedure`, `getSession` mocked): no user gives `UNAUTHORIZED`, user without flag gives `FORBIDDEN`, user with flag reaches the resolver with `ctx.user`, a `getSession` failure gives `INTERNAL_SERVER_ERROR`. `sb-login.controller.test.ts`: `SignInWithPasswordError` and `AccessDeniedError` both map to `UNAUTHORIZED` with the same message shape, `CreateSbClientError` maps to `INTERNAL_SERVER_ERROR`, invalid email input is rejected by zod.
 - [ ] **Step 2: Run** and confirm failure.
