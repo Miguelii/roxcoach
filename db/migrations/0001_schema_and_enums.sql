@@ -14,11 +14,12 @@ grant select, insert, update, delete on all tables in schema roxcoach to authent
 grant all on all tables in schema roxcoach to service_role;
 
 -- The application tables are created by later migrations, so "on all tables" above only reaches
--- the tables that exist now. Default privileges make every table created later in this schema (by
--- the role that runs these migrations) inherit the same grants.
-alter default privileges in schema roxcoach
+-- the tables that exist now. Default privileges make every table that postgres (the role of the
+-- Supabase SQL editor, which runs these migrations) creates later in this schema inherit the same
+-- grants. 0006 revokes them again on the service-only tables.
+alter default privileges for role postgres in schema roxcoach
     grant select, insert, update, delete on tables to authenticated;
-alter default privileges in schema roxcoach
+alter default privileges for role postgres in schema roxcoach
     grant all on tables to service_role;
 
 -- Only the migration runner writes the tracking table.

@@ -7,7 +7,7 @@ import {
     insertRace,
     insertReport,
     insertWebhookEvent,
-    seedEveryTable,
+    seedUserGraph,
 } from '@db/tests/helpers/fixtures'
 import { createTestDb, type TestDb } from '@db/tests/helpers/pglite'
 
@@ -30,6 +30,13 @@ const ROXCOACH_TABLES = [
 ]
 
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
+
+// Tables only the service role may touch: 0006 revokes every privilege on them from authenticated.
+const SERVICE_ONLY_TABLES = new Set([
+    'schema_migrations',
+    'strava_connections',
+    'strava_webhook_events',
+])
 
 const UNIQUE_ERROR = /unique/u
 
@@ -77,10 +84,11 @@ describe('schema layout', () => {
             '0003_strava.sql',
             '0004_training.sql',
             '0005_coach_and_plan.sql',
+            '0006_rls.sql',
         ])
     })
 
-    it('grants table access to authenticated and service_role, never to anon', async () => {
+    it('grants client tables to authenticated, every table to service_role, nothing to anon', async () => {
         await testDb.asSuperuser()
         const result = await testDb.db.query<GrantRow>(
             `select
@@ -95,7 +103,7 @@ describe('schema layout', () => {
             ROXCOACH_TABLES.map((table) => ({
                 table_name: table,
                 anon: false,
-                authenticated: true,
+                authenticated: !SERVICE_ONLY_TABLES.has(table),
                 service: true,
             }))
         )
@@ -188,8 +196,8 @@ describe('deleting a user', () => {
     it('cascades to every table and leaves other users untouched', async () => {
         const doomed = await createUser(testDb)
         const survivor = await createUser(testDb)
-        await seedEveryTable(testDb, doomed, 555)
-        await seedEveryTable(testDb, survivor, 556)
+        await seedUserGraph(testDb, doomed, 555)
+        await seedUserGraph(testDb, survivor, 556)
         const seeded = Object.fromEntries(USER_TABLES.map((table) => [table, 1]))
         const emptied = Object.fromEntries(USER_TABLES.map((table) => [table, 0]))
 

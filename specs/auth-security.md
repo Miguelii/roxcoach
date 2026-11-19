@@ -10,8 +10,9 @@ to change.
 
 - The user already exists in `auth.users` if they use the other app, or is created by hand in the
   Supabase dashboard (Authentication, Users, email + password, auto-confirmed).
-- **Access is an explicit flag.** A one-time SQL snippet in `db/seed/` grants it:
-  `update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"roxcoach": true}' where email = '<email>';`
+- **Access is an explicit flag.** A one-time SQL snippet, `db/seed/grant-access.sql` (run as
+  `postgres` in the SQL editor, steps in `db/README.md`), grants it:
+  `update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"roxcoach": true}'::jsonb where email = '<email>';`
   The flag appears in the JWT as `app_metadata.roxcoach` after the next sign-in. Only the service role
   can write `app_metadata`, so a user cannot grant it to themselves.
 - Then insert the matching `athlete_profiles` row (same seed snippet).

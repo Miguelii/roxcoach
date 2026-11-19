@@ -1,9 +1,18 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
 
+// JWT claims as Supabase puts them in request.jwt.claims. roxcoach is deliberately loose so tests
+// can check that only the boolean true grants access.
+export type Claims = {
+    sub?: string
+    app_metadata?: { roxcoach?: boolean | string | number }
+}
+
 export type TestDb = {
     db: PGlite
     asUser(userId: string, options?: { access?: boolean }): Promise<void>
+    asClaims(claims: Claims | null): Promise<void>
+    asAnon(): Promise<void>
     asService(): Promise<void>
     asSuperuser(): Promise<void>
     close(): Promise<void>
@@ -20,10 +29,10 @@ const SUPABASE_STUBS = `
     create schema auth;
     grant usage on schema auth to anon, authenticated, service_role;
 
-    create table auth.users (id uuid primary key, raw_app_meta_data jsonb);
+    create table auth.users (id uuid primary key, email text unique, raw_app_meta_data jsonb);
 
     create function auth.jwt() returns jsonb language sql stable as $$
-        select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+        select nullif(current_setting('request.jwt.claims', true), '')::jsonb
     $$;
 
     create function auth.uid() returns uuid language sql stable as $$
@@ -49,16 +58,25 @@ export async function createTestDb(): Promise<TestDb> {
     await db.exec(SUPABASE_STUBS)
     await applyMigrations(db)
 
+    async function asClaims(claims: Claims | null): Promise<void> {
+        await db.exec('reset role')
+        await setClaims(db, claims === null ? '' : JSON.stringify(claims))
+        await db.exec('set role authenticated')
+    }
+
     return {
         db,
         async asUser(userId, options) {
             const access = options?.access ?? true
-            const claims = access
-                ? { sub: userId, app_metadata: { roxcoach: true } }
-                : { sub: userId }
+            await asClaims(
+                access ? { sub: userId, app_metadata: { roxcoach: true } } : { sub: userId }
+            )
+        },
+        asClaims,
+        async asAnon() {
             await db.exec('reset role')
-            await setClaims(db, JSON.stringify(claims))
-            await db.exec('set role authenticated')
+            await setClaims(db, '')
+            await db.exec('set role anon')
         },
         async asService() {
             await db.exec('reset role')

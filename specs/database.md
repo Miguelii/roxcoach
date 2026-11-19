@@ -16,8 +16,11 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
     - `grant usage on schema roxcoach to authenticated, service_role;`
     - `grant select, insert, update, delete on all tables in schema roxcoach to authenticated;`
     - `grant all on all tables in schema roxcoach to service_role;`
-    - the same with `alter default privileges in schema roxcoach ...` so later tables follow.
+    - the same with `alter default privileges for role postgres in schema roxcoach ...` so later
+      tables created by `postgres` (the SQL editor role that runs the migrations) follow.
     - nothing is granted to `anon`.
+    - `0006` revokes every privilege on the service-only tables (`strava_connections`,
+      `strava_webhook_events`, `schema_migrations`) from `authenticated` and `anon`.
 3. **Clients select the schema.** Every Supabase client is created with `db: { schema: 'roxcoach' }`
    (see [auth-security.md](auth-security.md)). Auth calls are unaffected.
 4. **`auth.users` is shared.** Users of the other app are also rows in `auth.users`. Roxcoach
@@ -30,7 +33,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
    templates, providers) or its policies. Roxcoach migrations are independent and can be rolled
    back by dropping the `roxcoach` schema.
 7. **Migration tracking.** Roxcoach keeps its own `db/migrations/` and records applied files in
-   `roxcoach.schema_migrations`, so it never mixes with the other app's migration history.
+   `roxcoach.schema_migrations`, so it never mixes with the other app's migration history. The
+   table has RLS enabled with no policies and no client privileges: service role only.
 
 ## Conventions
 
@@ -215,7 +219,7 @@ Every child table below has its own `user_id` and a composite foreign key
 | `avg_speed_mps`  | numeric null                                   |                                                     |
 | `station`        | `hyrox_station` null                           | set when a lap is recognised or tagged as a station |
 
-Unique on `(activity_id, lap_index)`.
+Unique on `(user_id, activity_id, lap_index)`.
 
 ### `station_results`
 
@@ -288,18 +292,26 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
 
 ## Row Level Security
 
-- Every table: `enable row level security`.
+- Every table: `enable row level security`, `schema_migrations` included. Not `force row level
+  security`: forcing only affects the table owner (`postgres`), which runs the migrations, the seed
+  and the `auth.users` cascades. Clients never connect as the owner and `service_role` bypasses RLS
+  through `BYPASSRLS` either way.
 - Every table with a client-facing use (all except `strava_connections` and
   `strava_webhook_events`): one policy per operation, `select`, `insert`, `update` and `delete`,
-  with `using (user_id = auth.uid() and roxcoach.has_access())` and, for writes,
-  `with check (user_id = auth.uid() and roxcoach.has_access())`. The policy is identical on every
-  table because every table, children included, carries `user_id`.
-- `roxcoach.has_access()` is a stable SQL function returning
-  `coalesce((auth.jwt() -> 'app_metadata' ->> 'roxcoach')::boolean, false)`. `app_metadata` can only
-  be written with the service role, never by the user, so a user of the other app cannot grant
-  themselves access and cannot create rows in Roxcoach tables.
-- `strava_connections` and `strava_webhook_events`: RLS on, **no policies**. Only the service-role
-  client touches them, from server code and jobs. Tokens are never exposed to a client session.
+  `to authenticated`, with `using (user_id = auth.uid() and roxcoach.has_access())` and, for
+  writes, `with check (user_id = auth.uid() and roxcoach.has_access())`. The policy is identical on
+  every table because every table, children included, carries `user_id`.
+- `roxcoach.has_access()` is a stable SQL function, `security invoker` with `search_path = ''`,
+  returning `coalesce(auth.jwt() -> 'app_metadata' -> 'roxcoach' = 'true'::jsonb, false)`. The
+  flag is compared as jsonb because `(... ->> 'roxcoach')::boolean` also accepts the strings
+  `"true"`, `"t"`, `"yes"`, `"on"` and `"1"` and raises an error for other strings: access is the
+  JSON boolean `true` only. Execute is granted to `authenticated` and `service_role`, revoked from
+  `public`. `app_metadata` can only be written with the service role, never by the user, so a user
+  of the other app cannot grant themselves access and cannot create rows in Roxcoach tables.
+- `strava_connections`, `strava_webhook_events` and `schema_migrations`: RLS on, **no policies**,
+  and no privileges for `authenticated` or `anon` (a client query fails with a permission error).
+  Only the service-role client touches them, from server code and jobs. Tokens are never exposed
+  to a client session, even if a policy were added by mistake.
 - tRPC services use the session-bound client (publishable key), so RLS is a second layer under the
   `user_id` filters in the repositories.
 - Jobs, the webhook handler and the report generator use the service-role client. RLS does not
@@ -307,7 +319,9 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
 
 ### Tenant isolation tests
 
-A database test suite (run against a local Supabase) must prove, with two users A and B:
+The PGlite suites in `db/tests/` (`rls.test.ts`, `tenant-isolation.test.ts`, run by `pnpm test`,
+no real database) prove, with users A and B (flag) and C (no flag), for every table found in the
+schema:
 
 - A cannot select, update or delete any of B's rows in any table.
 - A cannot insert a row with B's `user_id`.
@@ -316,19 +330,21 @@ A database test suite (run against a local Supabase) must prove, with two users 
 - A client session cannot read `strava_connections` or `strava_webhook_events` at all.
 - A signed-in user **without** `app_metadata.roxcoach` (a user of the other app) cannot select or
   insert in any Roxcoach table.
+- A cannot move one of its own rows to B by update (`with check`).
+- `roxcoach.has_access()` is true only for the JSON boolean `true` (not the string `"true"`).
 - Deleting user A removes all of A's rows and none of B's.
 
 ## Migrations
 
-| File                            | Content                                                            |
-| ------------------------------- | ------------------------------------------------------------------ |
-| `0001_extensions_and_enums.sql` | enums, `set_updated_at()`                                          |
-| `0002_athlete_and_races.sql`    | `athlete_profiles`, `availability_slots`, `races`                  |
-| `0003_strava.sql`               | `strava_connections`, `strava_webhook_events`                      |
-| `0004_training.sql`             | `activities`, `activity_laps`, `station_results`, `strength_sets`  |
-| `0005_coach_and_plan.sql`       | `weekly_reports`, `planned_sessions`                               |
-| `0006_rls.sql`                  | RLS enable and policies for every table                            |
-| `0007_tenant_tests.sql`         | seed helper and isolation tests for two users (test database only) |
+| File                         | Content                                                            |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `0001_schema_and_enums.sql`  | schema, `schema_migrations`, grants, enums, `set_updated_at()`     |
+| `0002_athlete_and_races.sql` | `athlete_profiles`, `availability_slots`, `races`                  |
+| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events`                      |
+| `0004_training.sql`          | `activities`, `activity_laps`, `station_results`, `strength_sets`  |
+| `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions`                               |
+| `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes |
 
-The access flag and the initial `athlete_profiles` row are created by hand (see
+Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
+the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see
 [auth-security.md](auth-security.md)).

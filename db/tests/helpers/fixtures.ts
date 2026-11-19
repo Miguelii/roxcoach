@@ -2,6 +2,125 @@ import type { TestDb } from '@db/tests/helpers/pglite'
 
 type IdRow = { id: string }
 type CountRow = { count: number }
+type RowBuilder = (graph: UserGraph) => Statement
+
+// The ids of one user's seeded rows, used to aim inserts at that user's parents.
+export type UserGraph = {
+    userId: string
+    stravaAthleteId: number
+    activityId: string
+    raceId: string
+    reportId: string
+}
+
+export type Statement = { sql: string; params: unknown[] }
+
+// One insert per user-owned table, aimed at the graph's user and parents. Tests run these as other
+// roles to prove who may write where. Week, weekday and lap index differ from the seeded rows so a
+// statement that is allowed does not collide with them.
+const ROW_BUILDERS = new Map<string, RowBuilder>([
+    [
+        'activities',
+        (graph) => ({
+            sql: `insert into roxcoach.activities (user_id, source, category, name, started_at, local_date)
+                  values ($1, 'manual', 'run', 'Recovery run', now(), current_date)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'races',
+        (graph) => ({
+            sql: `insert into roxcoach.races (user_id, name, race_type, race_date, distance_m, target_time_s)
+                  values ($1, '5k', 'running', current_date + 60, 5000, 1500)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'weekly_reports',
+        (graph) => ({
+            sql: `insert into roxcoach.weekly_reports (user_id, week_start, status, model, prompt_version)
+                  values ($1, '2026-11-23', 'generating', 'test-model', 'v1')`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'athlete_profiles',
+        (graph) => ({
+            sql: `insert into roxcoach.athlete_profiles (user_id, display_name) values ($1, 'Athlete')`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'availability_slots',
+        (graph) => ({
+            sql: `insert into roxcoach.availability_slots (user_id, weekday, session_kind, is_fixed)
+                  values ($1, 2, 'hyrox', true)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'strava_connections',
+        (graph) => ({
+            sql: `insert into roxcoach.strava_connections
+                    (user_id, strava_athlete_id, access_token, refresh_token, expires_at, scope)
+                  values ($1, $2, 'access', 'refresh', now(), 'activity:read_all')`,
+            params: [graph.userId, graph.stravaAthleteId],
+        }),
+    ],
+    [
+        'strava_webhook_events',
+        (graph) => ({
+            sql: `insert into roxcoach.strava_webhook_events
+                    (user_id, object_type, object_id, aspect_type, owner_id, event_time, status)
+                  values ($1, 'activity', 42, 'create', $2, '2026-11-19T10:00:00Z', 'received')`,
+            params: [graph.userId, graph.stravaAthleteId],
+        }),
+    ],
+    [
+        'activity_laps',
+        (graph) => ({
+            sql: `insert into roxcoach.activity_laps (user_id, activity_id, lap_index) values ($1, $2, 0)`,
+            params: [graph.userId, graph.activityId],
+        }),
+    ],
+    [
+        'station_results',
+        (graph) => ({
+            sql: `insert into roxcoach.station_results (user_id, activity_id, station)
+                  values ($1, $2, 'ski_erg')`,
+            params: [graph.userId, graph.activityId],
+        }),
+    ],
+    [
+        'strength_sets',
+        (graph) => ({
+            sql: `insert into roxcoach.strength_sets (user_id, activity_id, exercise, set_index)
+                  values ($1, $2, 'Back squat', 1)`,
+            params: [graph.userId, graph.activityId],
+        }),
+    ],
+    [
+        'planned_sessions',
+        (graph) => ({
+            sql: `insert into roxcoach.planned_sessions
+                    (user_id, report_id, race_id, matched_activity_id, planned_date, session_kind, title, description)
+                  values ($1, $2, $3, $4, current_date, 'run', 'Tempo', 'Run 20 minutes at tempo')`,
+            params: [graph.userId, graph.reportId, graph.raceId, graph.activityId],
+        }),
+    ],
+])
+
+// Seeded after the parents, in this order (planned_sessions needs the report, race and activity).
+const GRAPH_CHILD_TABLES = [
+    'athlete_profiles',
+    'availability_slots',
+    'strava_connections',
+    'strava_webhook_events',
+    'activity_laps',
+    'station_results',
+    'strength_sets',
+    'planned_sessions',
+]
 
 // Inserts an auth user as the superuser, then hands control back to the service role.
 export async function createUser(testDb: TestDb): Promise<string> {
@@ -84,46 +203,37 @@ export async function insertWebhookEvent(
     )
 }
 
-// One row in every user-owned table for the given user. The Strava athlete id is global, so each
-// seeded user needs its own.
-export async function seedEveryTable(
+// Inserts the parents (activity, race, report), then one row in every other user-owned table, so
+// the user owns exactly one row per table. The Strava athlete id is global, so each seeded user
+// needs its own.
+export async function seedUserGraph(
     testDb: TestDb,
     userId: string,
     stravaAthleteId: number
-): Promise<void> {
-    const activityId = await insertActivity(testDb, userId, 1001)
-    const raceId = await insertRace(testDb, userId)
-    const reportId = await insertReport(testDb, userId)
-    await testDb.db.query(
-        `insert into roxcoach.athlete_profiles (user_id, display_name) values ($1, 'Athlete')`,
-        [userId]
-    )
-    await testDb.db.query(
-        `insert into roxcoach.availability_slots (user_id, weekday, session_kind, is_fixed)
-         values ($1, 2, 'hyrox', true)`,
-        [userId]
-    )
-    await testDb.db.query(
-        `insert into roxcoach.strava_connections
-            (user_id, strava_athlete_id, access_token, refresh_token, expires_at, scope)
-         values ($1, $2, 'access', 'refresh', now(), 'activity:read_all')`,
-        [userId, stravaAthleteId]
-    )
-    await insertWebhookEvent(testDb, userId, stravaAthleteId)
-    await testDb.db.query(
-        `insert into roxcoach.activity_laps (user_id, activity_id, lap_index) values ($1, $2, 0)`,
-        [userId, activityId]
-    )
-    await testDb.db.query(
-        `insert into roxcoach.station_results (user_id, activity_id, station) values ($1, $2, 'ski_erg')`,
-        [userId, activityId]
-    )
-    await testDb.db.query(
-        `insert into roxcoach.strength_sets (user_id, activity_id, exercise, set_index)
-         values ($1, $2, 'Back squat', 1)`,
-        [userId, activityId]
-    )
-    await insertPlannedSession(testDb, userId, reportId, raceId, activityId)
+): Promise<UserGraph> {
+    const graph: UserGraph = {
+        userId,
+        stravaAthleteId,
+        activityId: await insertActivity(testDb, userId, 1001),
+        raceId: await insertRace(testDb, userId),
+        reportId: await insertReport(testDb, userId),
+    }
+    for (const table of GRAPH_CHILD_TABLES) {
+        const statement = rowInsert(table, graph)
+        // oxlint-disable-next-line no-await-in-loop -- inserts must run in order on one connection
+        await testDb.db.query(statement.sql, statement.params)
+    }
+    return graph
+}
+
+// Throws for a table with no builder, so a table added to the schema without a fixture fails the
+// suites that iterate over every table.
+export function rowInsert(table: string, graph: UserGraph): Statement {
+    const build = ROW_BUILDERS.get(table)
+    if (build === undefined) {
+        throw new Error(`No fixture insert for roxcoach.${table}`)
+    }
+    return build(graph)
 }
 
 export async function countRows(testDb: TestDb, table: string, userId: string): Promise<number> {
