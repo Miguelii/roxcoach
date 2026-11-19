@@ -83,4 +83,27 @@ export enum ErrorCode {
     TRAINING_SB_CLIENT = 'hct8vnt6',
     TRAINING_RANGE_INVALID = 't3vf1ezs',
     TRAINING_RANGE_TOO_LONG = 'jqc9i19q',
+
+    // Athlete - Profiles repository
+    ATHLETE_PROFILE_SELECT = '9l42kdu7',
+    ATHLETE_PROFILE_SELECT_ERR = 'v141ij6l',
+    ATHLETE_PROFILE_SELECT_PARSE = 'm6dy8w79',
+
+    // Strava - Webhook events repository
+    STRAVA_EVENT_INSERT = 'ki61c74c',
+    STRAVA_EVENT_INSERT_ERR = 'ncalfdlp',
+    STRAVA_EVENT_STATUS = 'jgk44lgz',
+    STRAVA_EVENT_STATUS_ERR = 'p24swdq9',
+
+    // Strava - Sync services
+    STRAVA_SYNC_SB_CLIENT = 'ux59iit2',
+    STRAVA_SYNC_ACTIVITY_PAYLOAD = 'gb991ewe',
+    STRAVA_SYNC_LAPS_PAYLOAD = '8eeud38e',
+    STRAVA_SYNC_MAPPING = 'gjkfa24l',
+    STRAVA_SYNC_LIST_PAYLOAD = 'l7ays98u',
+    STRAVA_SYNC_MISSING_SB_CLIENT = 'i31u3x03',
+
+    // Strava - Webhook event handling
+    STRAVA_WEBHOOK_SB_CLIENT = 'pskuolsh',
+    STRAVA_WEBHOOK_EVENT_TIME = 'el6aljqx',
 }

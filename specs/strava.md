@@ -119,6 +119,26 @@ Missing values are stored as `NULL`.
 
 The mapper is a pure helper (`helpers/map-strava-activity.helper.ts`) with unit tests.
 
+## Sync services behaviour
+
+- Services run in jobs and in the webhook route without a user session, so each creates its own
+  service-role client.
+- Station detection runs only for `Workout`, `HighIntensityIntervalTraining` and `Crossfit`
+  activities: positional 16-lap detection cannot see distances, so other sport types never get
+  station tags. After detection the category is recomputed with `hasStations`.
+- A `404` on the activity or its laps soft-deletes the local activity. A `401` or `403` propagates
+  and never removes the connection (a refresh race can produce a spurious one); only the webhook
+  `athlete` update with `authorized: "false"` deletes it. Rate limits and 5xx propagate so the job
+  retries.
+- Payloads are validated per activity. In a bulk sync a malformed activity (or a mapper error such
+  as an invalid profile timezone) is skipped and logged with its id and error tag, and is not
+  counted as synced. A single sync fails with `StravaPayloadError` instead.
+- The bulk sync waits 250 ms between activities and touches `last_synced_at` only when the whole
+  run succeeds.
+- The webhook handler ignores unknown object or aspect types, unknown `owner_id` values (no row is
+  written, so nothing reveals whether an athlete exists) and redelivered events. `event_time` is
+  epoch seconds and is stored as an ISO timestamp.
+
 ## Hyrox lap detection
 
 Strava has no concept of Hyrox stations, so detection is by lap structure plus naming:
@@ -147,13 +167,13 @@ recovery path when the subscription breaks.
 
 ## Backend files
 
-| File                                                                                                                                     | Purpose               |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `controllers/get-connect-url.controller.ts`, `get-connection-status.controller.ts`, `disconnect.controller.ts`, `sync-now.controller.ts` | protected tRPC routes |
-| `services/connect-strava.service.ts`, `get-valid-access-token.service.ts`, `sync-activity.service.ts`, `handle-webhook-event.service.ts` | business logic        |
-| `repositories/strava-connections.repository.ts`, `strava-webhook-events.repository.ts`                                                   | data access           |
-| `helpers/map-strava-activity.helper.ts`, `detect-hyrox-stations.helper.ts`                                                               | pure logic            |
-| `jobs/sync-strava-activity.job.ts`, `jobs/backfill-strava.job.ts`                                                                        | Trigger.dev tasks     |
+| File                                                                                                                                                                                         | Purpose               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `controllers/get-connect-url.controller.ts`, `get-connection-status.controller.ts`, `disconnect.controller.ts`, `sync-now.controller.ts`                                                     | protected tRPC routes |
+| `services/connect-strava.service.ts`, `get-valid-access-token.service.ts`, `sync-strava-activity.service.ts`, `sync-missing-activities.service.ts`, `handle-strava-webhook-event.service.ts` | business logic        |
+| `repositories/strava-connections.repository.ts`, `strava-webhook-events.repository.ts`                                                                                                       | data access           |
+| `helpers/map-strava-activity.helper.ts`, `detect-hyrox-stations.helper.ts`                                                                                                                   | pure logic            |
+| `jobs/sync-strava-activity.job.ts`, `jobs/backfill-strava.job.ts`                                                                                                                            | Trigger.dev tasks     |
 
 The training tables (`activities`, `activity_laps`) are written through the `training` module's
 service (`upsertActivityFromStrava`), not directly from `strava` repositories.

@@ -38,6 +38,13 @@ export class StravaNotConnectedError extends Data.TaggedError(
 export class StravaConnectionError extends Data.TaggedError(
     'StravaConnectionError'
 )<ServiceErrorFields> {}
+export class StravaPayloadError extends Data.TaggedError(
+    'StravaPayloadError'
+)<ServiceErrorFields> {}
+export class WebhookEventError extends Data.TaggedError('WebhookEventError')<ServiceErrorFields> {}
+
+// Athlete
+export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}
 
 // Training
 export class ActivityQueryError extends Data.TaggedError(
