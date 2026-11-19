@@ -71,8 +71,10 @@ The endpoint is unsigned, so anyone who knows an athlete id and an activity id c
 The handler therefore never does anything destructive inline: delete and deauthorization events are
 confirmed with Strava by a job (`sync-strava-activity` for a delete, `verifyStravaDeauthorization`
 for a deauthorization) before anything is removed. `verifyStravaDeauthorization` deletes the
-connection only when the token refresh is rejected by Strava (400, 401 or 403, read twice) or
-`GET /athlete` answers 401; success keeps it and 429, 5xx or network errors propagate for a retry.
+connection only when the token refresh is rejected with `400` (an invalid grant, read twice) or
+`GET /athlete` answers exactly `401`. A refresh `401` or `403` (a wrong client secret answers `401`)
+and a `GET /athlete` `403` do not confirm anything: they keep the connection and propagate. Success
+keeps it too, and 429, 5xx or network errors propagate for a retry.
 
 The webhook never does heavy work inline. A subscription is created once with
 `POST https://www.strava.com/api/v3/push_subscriptions` (client id, client secret, callback URL,
@@ -134,10 +136,11 @@ The mapper is a pure helper (`helpers/map-strava-activity.helper.ts`) with unit 
   activities: positional 16-lap detection cannot see distances, so other sport types never get
   station tags. After detection the category is recomputed with `hasStations`.
 - A `404` on the activity soft-deletes the local activity (a `404` on the laps alone means an empty
-  lap list). An activity whose athlete id differs from the connection's is refused. A `401` or `403` propagates
-  and never removes the connection (a refresh race can produce a spurious one); only the webhook
-  `athlete` update with `authorized: "false"` deletes it. Rate limits and 5xx propagate so the job
-  retries.
+  lap list). An activity whose athlete id differs from the connection's is refused (an activity with no
+  `athlete` field is accepted: the fetch uses the owner's own token). A `401` or `403` propagates
+  and never removes the connection (a refresh race can produce a spurious one); only the
+  verification job deletes it, and only after Strava confirms (a `GET /athlete` `401`, or a refresh
+  rejected with `400`). Rate limits and 5xx propagate so the job retries.
 - Payloads are validated per activity. In a bulk sync a malformed activity (or a mapper error such
   as an invalid profile timezone) is skipped and logged with its id and error tag, and is not
   counted as synced. A single sync fails with `StravaPayloadError` instead.

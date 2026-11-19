@@ -61,6 +61,7 @@ describe('stravaApiGet', () => {
         const exit = await Effect.runPromiseExit(stravaApiGet('/x', TOKEN, schema))
 
         expect(failureTag(exit)).toBe('StravaUnauthorizedError')
+        expect(failureOf(exit).status).toBe(status)
     })
 
     it('maps 404 to StravaNotFoundError', async () => {
@@ -179,6 +180,7 @@ describe('stravaOAuthPost', () => {
         const exit = await Effect.runPromiseExit(stravaOAuthPost(url, {}, schema))
 
         expect(failureTag(exit)).toBe('StravaUnauthorizedError')
+        expect(failureOf(exit).status).toBe(status)
     })
 
     it('maps 429 to StravaRateLimitedError with retryAfterS', async () => {

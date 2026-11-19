@@ -31,21 +31,23 @@ vi.mock('@/_bff/modules/strava/services/get-valid-access-token.service', () => (
 
 const REFRESH_SECRET = 'secret-refresh-token-def'
 
-const refreshRejected = (status: 400 | 401) =>
-    status === 401
-        ? Effect.fail(
-              new StravaUnauthorizedError({
-                  cause: 'HTTP 401',
-                  error_hash: ErrorCode.STRAVA_OAUTH_UNAUTHORIZED,
-              })
-          )
-        : Effect.fail(
-              new StravaApiError({
-                  cause: 'HTTP 400',
-                  error_hash: ErrorCode.STRAVA_OAUTH_HTTP,
-                  status: 400,
-              })
-          )
+const refreshInvalidGrant = () =>
+    Effect.fail(
+        new StravaApiError({
+            cause: 'HTTP 400',
+            error_hash: ErrorCode.STRAVA_OAUTH_HTTP,
+            status: 400,
+        })
+    )
+
+const refreshUnauthorized = (status: 401 | 403) =>
+    Effect.fail(
+        new StravaUnauthorizedError({
+            cause: `HTTP ${status}`,
+            error_hash: ErrorCode.STRAVA_OAUTH_UNAUTHORIZED,
+            status,
+        })
+    )
 
 const useDb = () => {
     const db = makeFakeAdminDb(() => ok())
@@ -97,26 +99,49 @@ describe('verifyStravaDeauthorization', () => {
         expect(deletes(db)[0]?.filters).toEqual([['user_id', USER_ID]])
     })
 
-    it.each([400, 401] as const)(
-        'deletes the connection when the refresh is rejected with %i (read twice)',
+    it('deletes the connection when the refresh is rejected with 400 (read twice)', async () => {
+        const db = useDb()
+        getValidAccessTokenMock.mockReturnValue(refreshInvalidGrant())
+        const fetchStub = stubAthlete(() => json({}))
+
+        const exit = await run()
+
+        expect(successValue(exit)).toEqual({ disconnected: true })
+        expect(deletes(db)).toHaveLength(1)
+        expect(getValidAccessTokenMock).toHaveBeenCalledTimes(2)
+        expect(fetchStub).not.toHaveBeenCalled()
+    })
+
+    it.each([401, 403] as const)(
+        'keeps the connection and propagates a refresh rejected with %i',
         async (status) => {
             const db = useDb()
-            getValidAccessTokenMock.mockReturnValue(refreshRejected(status))
+            getValidAccessTokenMock.mockReturnValue(refreshUnauthorized(status))
             const fetchStub = stubAthlete(() => json({}))
 
             const exit = await run()
 
-            expect(successValue(exit)).toEqual({ disconnected: true })
-            expect(deletes(db)).toHaveLength(1)
-            expect(getValidAccessTokenMock).toHaveBeenCalledTimes(2)
+            expect(failureTag(exit)).toBe('StravaUnauthorizedError')
+            expect(deletes(db)).toHaveLength(0)
+            expect(getValidAccessTokenMock).toHaveBeenCalledTimes(1)
             expect(fetchStub).not.toHaveBeenCalled()
         }
     )
 
+    it('keeps the connection and propagates a 403 from GET /athlete', async () => {
+        const db = useDb()
+        stubAthlete(() => json({ message: 'Forbidden' }, 403))
+
+        const exit = await run()
+
+        expect(failureTag(exit)).toBe('StravaUnauthorizedError')
+        expect(deletes(db)).toHaveLength(0)
+    })
+
     it('keeps the connection when the second token read succeeds (refresh race loser)', async () => {
         const db = useDb()
         getValidAccessTokenMock
-            .mockReturnValueOnce(refreshRejected(400))
+            .mockReturnValueOnce(refreshInvalidGrant())
             .mockReturnValueOnce(Effect.succeed(ACCESS_TOKEN))
         stubAthlete(() => json({ id: 12345 }))
 

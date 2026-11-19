@@ -85,6 +85,7 @@ const request = <T>({ url, init, schema, codes, secrets }: RequestOptions<T>) =>
             return yield* new StravaUnauthorizedError({
                 cause: `HTTP ${status}`,
                 error_hash: codes.unauthorized,
+                status,
             })
 
         if (status === 404 && codes.notFound !== null)

@@ -74,6 +74,8 @@ const fetchPayloads = Effect.fn('fetchPayloads')(function* (
             error_hash: ErrorCode.STRAVA_SYNC_ACTIVITY_PAYLOAD,
         })
 
+    // No athlete field means no claim to check: accepted (fail open), the fetch used the owner's
+    // own token.
     const owner = activity.data.athlete?.id
     if (owner !== undefined && owner !== stravaAthleteId)
         return yield* new StravaPayloadError({

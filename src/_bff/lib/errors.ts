@@ -17,9 +17,10 @@ export class AccessDeniedError extends Data.TaggedError('AccessDeniedError')<Ser
 export class LogoutError extends Data.TaggedError('LogoutError')<ServiceErrorFields> {}
 
 // Strava
-export class StravaUnauthorizedError extends Data.TaggedError(
-    'StravaUnauthorizedError'
-)<ServiceErrorFields> {}
+// `status` is the HTTP status (401 or 403): a caller that must tell them apart reads it.
+export class StravaUnauthorizedError extends Data.TaggedError('StravaUnauthorizedError')<
+    ServiceErrorFields & { status: number }
+> {}
 export class StravaNotFoundError extends Data.TaggedError(
     'StravaNotFoundError'
 )<ServiceErrorFields> {}

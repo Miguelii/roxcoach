@@ -209,6 +209,15 @@ describe('syncStravaActivity edge cases and failures', () => {
         expect(result).toEqual({ activityId: ACTIVITY_ID })
     })
 
+    it('accepts an activity with no athlete field (fail open)', async () => {
+        useDb(makeSyncDb())
+        stubStrava(() => json(stravaActivity()))
+
+        const result = await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
+
+        expect(result).toEqual({ activityId: ACTIVITY_ID })
+    })
+
     it('requests no laps when the activity payload is malformed', async () => {
         useDb(makeSyncDb())
         const fetchStub = stubStrava(() => json({ id: 'not-a-number' }))
