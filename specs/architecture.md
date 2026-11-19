@@ -93,24 +93,29 @@ services or processors of their own module. Cross-module imports only through `s
 
 ## Non-tRPC entry points
 
-| Route                                      | Purpose                                               |
-| ------------------------------------------ | ----------------------------------------------------- |
-| `src/app/api/strava/webhook/route.ts`      | Strava webhook: GET verification, POST event intake   |
-| `src/app/api/strava/callback/route.ts`     | Strava OAuth redirect handler                         |
-| `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user |
+| Route                                      | Purpose                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `src/app/api/strava/webhook/route.ts`      | Strava webhook: GET verification, POST event intake                            |
+| `src/app/api/strava/callback/route.ts`     | Strava OAuth redirect handler                                                  |
+| `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet) |
 
 These are plain route handlers because Strava calls them, not the browser app. They delegate to
 `strava` services immediately and keep no logic of their own.
 
 ## Trigger.dev jobs
 
-| Job                      | Module   | Trigger                                                                                |
-| ------------------------ | -------- | -------------------------------------------------------------------------------------- |
-| `sync-strava-activity`   | `strava` | webhook event or manual sync                                                           |
-| `backfill-strava`        | `strava` | first connection                                                                       |
-| `generate-weekly-report` | `coach`  | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
+| Job                             | Module   | Trigger                                                                                |
+| ------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `sync-strava-activity`          | `strava` | webhook activity event                                                                 |
+| `verify-strava-deauthorization` | `strava` | webhook athlete event with `authorized: "false"`                                       |
+| `backfill-strava`               | `strava` | first connection                                                                       |
+| `sync-missing-strava`           | `strava` | "Sync now" in Settings                                                                 |
+| `generate-weekly-report`        | `coach`  | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
 
-Every `jobs/` directory is listed in `trigger.config.ts` `dirs`. Jobs are idempotent: running a
+Every `jobs/` directory is listed in `trigger.config.ts` `dirs` (today only the `strava` one). The
+Trigger.dev project ref is set directly in `trigger.config.ts`, not read from an environment
+variable, and `build.conditions: ['react-server']` lets the jobs import services that start with
+`import 'server-only'`. Jobs are idempotent: running a
 job twice for the same activity or report week must not duplicate rows.
 
 ## Environment variables
@@ -127,6 +132,13 @@ job twice for the same activity or report week must not duplicate rows.
 | `NEXT_CRON_SECRET`                 | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
 | `TRIGGER_SECRET_KEY`               | server | Trigger.dev, triggers jobs from the app                    |
 | `NEXT_PUBLIC_WEBSITE_URL`          | client | absolute URLs, OAuth redirect                              |
+
+In `src/env/server.ts` only the three Supabase variables are required. The Anthropic, Strava, cron
+and Trigger.dev variables are optional at startup (the features that need them fail with a tagged
+error when they are missing), and an empty value reads as unset (`emptyStringAsUndefined`).
+`NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
+`http://localhost:3000` when unset or empty. `.env.example` currently lists only
+`NEXT_ANTHROPIC_AI_KEY` and `NEXT_CRON_SECRET`.
 
 ## Code placement
 

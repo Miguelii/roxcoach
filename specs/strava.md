@@ -76,8 +76,10 @@ Route: `src/app/api/strava/webhook/route.ts`.
 
 1. Parse the body: `object_type`, `object_id`, `aspect_type`, `owner_id`, `event_time`, `updates`.
 2. Ignore events whose `owner_id` is not the connected `strava_athlete_id`.
-3. Insert into `strava_webhook_events` (unique key makes redelivery a no-op), then trigger the
-   `sync-strava-activity` job and return.
+3. Insert into `strava_webhook_events` (unique key makes redelivery a no-op), then the route
+   enqueues the `sync-strava-activity` job (or `verify-strava-deauthorization`) and returns. If
+   the enqueue fails, the event is marked `failed` with the fixed message `enqueue_failed`, and the
+   response is still `200`.
 4. Event handling by type:
 
 | Event                                           | Action                                                                              |
@@ -98,28 +100,41 @@ keeps it too, and 429, 5xx or network errors propagate for a retry.
 
 The webhook never does heavy work inline. A subscription is created once with
 `POST https://www.strava.com/api/v3/push_subscriptions` (client id, client secret, callback URL,
-verify token), run by the one-time script `tools/strava-subscription.ts`
-(`pnpm dlx tsx tools/strava-subscription.ts <create|view|delete> [id]`), and the returned subscription id is
-noted in the project README.
+verify token), run by the one-time script `tools/strava-subscription.ts`. The script reads
+`NEXT_STRAVA_CLIENT_ID`, `NEXT_STRAVA_CLIENT_SECRET`, `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN` and
+`NEXT_PUBLIC_WEBSITE_URL` from the environment (for example `set -a; source .env.local; set +a`),
+the callback URL is `<site>/api/strava/webhook`, and the app must already be deployed and
+reachable because Strava calls the GET validation during creation:
+
+```
+pnpm dlx tsx tools/strava-subscription.ts create        # creates it, prints the subscription id
+pnpm dlx tsx tools/strava-subscription.ts view          # prints the current subscription id
+pnpm dlx tsx tools/strava-subscription.ts delete <id>   # deletes that subscription
+```
+
+The script never prints the client secret, the verify token or a Strava response body. Strava
+allows one subscription per app, so `view` first when `create` is refused.
 
 ## Sync pipeline (`sync-strava-activity` job)
 
 1. Load the connection and a valid access token.
 2. `GET /api/v3/activities/{id}` for the summary.
 3. `GET /api/v3/activities/{id}/laps` for laps.
-4. Map and upsert into `activities` (keyed by `strava_id`) and replace `activity_laps` for it.
+4. Map and upsert into `activities` (keyed by `strava_id`) and replace `activity_laps` for it
+   (delete the old laps, then insert the new ones).
 5. Detect Hyrox stations in the laps (see below).
 6. Match the activity to a planned session (see [plan.md](plan.md)).
 7. Mark the webhook event `processed` (or `failed` with a safe error message). The activity is
    picked up by the next weekly report.
 
-The job is idempotent: upsert by `(user_id, strava_id)`, laps replaced in one transaction. It
-retries on network errors and Strava 5xx responses, and treats `404` (deleted or private activity)
-and `401` after a refresh attempt as non-retryable.
+The job is idempotent: upsert by `(user_id, strava_id)`, laps replaced by delete then insert. That
+is not atomic: if the insert fails the activity is left without laps and the failed sync is
+retried, which rewrites them. The job retries on network errors and Strava 5xx responses, and
+treats a `404` (the activity was deleted) as a soft delete and a `401` or `403` as non-retryable.
 
 Backfill job: on first connect, page through `GET /api/v3/athlete/activities` for the last 12
-months at 100 per page (`per_page=100`) and enqueue one sync per activity, throttled to stay under
-the rate limit.
+months at 100 per page (`per_page=100`) and sync each activity that is not stored yet in the same
+run, waiting 250 ms between activities to stay under the rate limit.
 
 ## Mapping
 
@@ -129,7 +144,7 @@ the rate limit.
 | `name`                                                                                                   | `name`                                               |
 | `sport_type`                                                                                             | `sport_type`, and `category` through the table below |
 | `start_date`                                                                                             | `started_at`                                         |
-| `start_date_local` plus the profile timezone                                                             | `local_date`                                         |
+| `start_date` converted to the profile timezone                                                           | `local_date`                                         |
 | `distance`                                                                                               | `distance_m`                                         |
 | `moving_time`, `elapsed_time`                                                                            | `moving_time_s`, `elapsed_time_s`                    |
 | `total_elevation_gain`                                                                                   | `elevation_gain_m`                                   |
@@ -193,20 +208,41 @@ between activities) and stops with a retry-later when a `429` is returned, honou
 
 ## Manual sync
 
-A "Sync now" button in Settings (`strava.syncNow`, protected mutation) enqueues a job that lists
-activities since `last_synced_at` and syncs the missing ones. Without a connection it fails with
-`PRECONDITION_FAILED`. It covers missed webhooks and is the
-recovery path when the subscription breaks.
+A "Sync now" button in Settings (`strava.syncNow`, protected mutation) enqueues the
+`sync-missing-strava` job, which lists activities since `last_synced_at` (the 12 month window when
+the connection never synced) and syncs the missing ones. Without a connection it fails with
+`PRECONDITION_FAILED`. It covers missed webhooks and is the recovery path when the subscription
+breaks.
+
+## Settings card
+
+`/settings` renders only the Strava card for now (profile and availability return with a later
+plan). Files: `src/modules/settings/strava-card.tsx` (thin wrapper over the tRPC procedures),
+`strava-card-view.tsx` (presentational, data and actions through props), `settings-view.tsx`
+(reads `searchParams` inside a `Suspense` boundary) and `strava-result.ts`.
+
+- Disconnected: only "Connect Strava", which calls `strava.getConnectUrl` and then
+  `window.location.assign(url)`.
+- Connected: last sync ("Not synced yet" when there is none), the activity count, "Sync now" and
+  "Disconnect". Disconnect asks for a second confirmation click first and says imported activities
+  stay.
+- The `?strava=` value from the callback is validated against `connected`, `denied`, `scope` and
+  `error`; anything else is ignored and query text is never rendered. The messages are "Strava
+  connected", "You did not allow access", "Roxcoach needs permission to read all your activities"
+  and "Something went wrong, try again".
+- A failed mutation shows a toast with fixed copy (never the server error) and keeps the buttons
+  usable. A failed status load shows an error with a retry button.
+- The card always shows "Compatible with Strava". It never receives or renders a token.
 
 ## Backend files
 
-| File                                                                                                                                                                                                                                                                                                                            | Purpose                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `controllers/get-connect-url.controller.ts`, `get-status.controller.ts`, `disconnect.controller.ts`, `sync-now.controller.ts`                                                                                                                                                                                                   | protected tRPC routes (`strava.router.ts`) |
-| `services/start-strava-connect.service.ts`, `complete-strava-connect.service.ts`, `disconnect-strava.service.ts`, `get-strava-status.service.ts`, `sync-now.service.ts`, `get-valid-access-token.service.ts`, `sync-strava-activity.service.ts`, `sync-missing-activities.service.ts`, `handle-strava-webhook-event.service.ts` | business logic                             |
-| `repositories/strava-connections.repository.ts`, `strava-webhook-events.repository.ts`                                                                                                                                                                                                                                          | data access                                |
-| `helpers/map-strava-activity.helper.ts`, `detect-hyrox-stations.helper.ts`, `strava-oauth-state.helper.ts`                                                                                                                                                                                                                      | pure logic                                 |
-| `jobs/sync-strava-activity.job.ts`, `jobs/verify-strava-deauthorization.job.ts`, `jobs/backfill-strava.job.ts`, `jobs/sync-missing-strava.job.ts`                                                                                                                                                                               | Trigger.dev tasks                          |
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Purpose                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `controllers/get-connect-url.controller.ts`, `get-status.controller.ts`, `disconnect.controller.ts`, `sync-now.controller.ts`                                                                                                                                                                                                                                                                                                                                                             | protected tRPC routes (`strava.router.ts`) |
+| `services/start-strava-connect.service.ts`, `complete-strava-connect.service.ts`, `disconnect-strava.service.ts`, `get-strava-status.service.ts`, `sync-now.service.ts`, `get-valid-access-token.service.ts`, `sync-strava-activity.service.ts`, `sync-missing-activities.service.ts`, `handle-strava-webhook-event.service.ts`, `verify-strava-deauthorization.service.ts`, `enqueue-strava-jobs.service.ts`, `resolve-sync-missing-window.service.ts`, `settle-strava-event.service.ts` | business logic                             |
+| `repositories/strava-connections.repository.ts`, `strava-webhook-events.repository.ts`                                                                                                                                                                                                                                                                                                                                                                                                    | data access                                |
+| `helpers/map-strava-activity.helper.ts`, `detect-hyrox-stations.helper.ts`, `strava-oauth-state.helper.ts`                                                                                                                                                                                                                                                                                                                                                                                | pure logic                                 |
+| `jobs/sync-strava-activity.job.ts`, `jobs/verify-strava-deauthorization.job.ts`, `jobs/backfill-strava.job.ts`, `jobs/sync-missing-strava.job.ts`                                                                                                                                                                                                                                                                                                                                         | Trigger.dev tasks                          |
 
 The training tables (`activities`, `activity_laps`) are written through the `training` module's
 service (`upsertActivityFromStrava`), not directly from `strava` repositories.
@@ -239,6 +275,13 @@ from a concurrent insert is resolved by looking the row up again and updating it
   per list page), so a run retried after a rate limit continues where it stopped and a large history
   converges. A soft-deleted activity is not skipped (it is re-synced and reappears). An already
   stored activity is not refreshed by the bulk sync: edits arrive through the webhook.
+
+## Routes
+
+| Route                                  | Purpose                                            |
+| -------------------------------------- | -------------------------------------------------- |
+| `src/app/api/strava/callback/route.ts` | OAuth redirect handler (checks its own session)    |
+| `src/app/api/strava/webhook/route.ts`  | `GET` subscription validation, `POST` event intake |
 
 ## Compliance note
 

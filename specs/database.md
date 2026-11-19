@@ -227,7 +227,9 @@ Every child table below has its own `user_id` and a composite foreign key
 | `avg_speed_mps`  | numeric null                                   |                                                     |
 | `station`        | `hyrox_station` null                           | set when a lap is recognised or tagged as a station |
 
-Unique on `(user_id, activity_id, lap_index)`.
+Unique on `(user_id, activity_id, lap_index)`. A Strava sync replaces an activity's laps by deleting
+the old rows and then inserting the new ones (not atomic: a failed insert leaves no laps until the
+retried sync rewrites them).
 
 ### `station_results`
 

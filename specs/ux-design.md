@@ -156,8 +156,14 @@ result with the delta in plain text.
 
 ### Settings
 
-Three sections: Profile, Weekly availability (7-column editor), Strava (connection status,
+Target: three sections: Profile, Weekly availability (7-column editor), Strava (connection status,
 connect or disconnect, last sync time, "Sync now", attribution).
+
+Current state (plan 2): only the Strava card is built. Disconnected it offers "Connect Strava";
+connected it shows the last sync ("Not synced yet" when none), the activity count, "Sync now" and
+"Disconnect" (with a confirmation step). The callback result (`?strava=`) shows as a message above
+the card, and the "Compatible with Strava" attribution is always visible. See
+[strava.md](strava.md#settings-card).
 
 ## Components
 
