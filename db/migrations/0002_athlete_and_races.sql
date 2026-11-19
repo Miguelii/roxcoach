@@ -1,3 +1,5 @@
+begin;
+
 create table roxcoach.athlete_profiles (
     user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
     display_name text not null,
@@ -57,3 +59,4 @@ create trigger set_updated_at before update on roxcoach.races
     for each row execute function roxcoach.set_updated_at();
 
 insert into roxcoach.schema_migrations (filename) values ('0002_athlete_and_races.sql');
+commit;

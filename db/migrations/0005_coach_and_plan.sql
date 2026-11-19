@@ -1,3 +1,5 @@
+begin;
+
 create table roxcoach.weekly_reports (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -62,3 +64,4 @@ create trigger set_updated_at before update on roxcoach.planned_sessions
     for each row execute function roxcoach.set_updated_at();
 
 insert into roxcoach.schema_migrations (filename) values ('0005_coach_and_plan.sql');
+commit;
