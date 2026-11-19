@@ -22,6 +22,13 @@ export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<Ser
 export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<
     ServiceErrorFields & { field: string }
 > {}
+// `reason` is a stable code for the rule that failed (never free text).
+export class AvailabilityQueryError extends Data.TaggedError(
+    'AvailabilityQueryError'
+)<ServiceErrorFields> {}
+export class AvailabilityValidationError extends Data.TaggedError('AvailabilityValidationError')<
+    ServiceErrorFields & { reason: string }
+> {}
 
 // Training
 export class ActivityQueryError extends Data.TaggedError(

@@ -1,3 +1,4 @@
+import type { SessionKind } from '@/_bff/core/constants/availability.constants'
 import type { HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
 
 export type ProfileDTO = {
@@ -11,3 +12,11 @@ export type ProfileDTO = {
 }
 
 export type ProfileInput = ProfileDTO
+
+export type AvailabilitySlotDTO = {
+    weekday: number
+    sessionKind: SessionKind
+    isFixed: boolean
+    maxMinutes: number | null
+    notes: string | null
+}
