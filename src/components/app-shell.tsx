@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
     IconBrandStrava,
     IconCalendar,
@@ -21,6 +21,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { trpcClient } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
@@ -43,7 +44,21 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppShell({ children }: Props) {
     const pathname = usePathname()
+    const router = useRouter()
+    const logout = trpcClient.auth.logout.useMutation()
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+
+    const onLogout = async () => {
+        const request: Promise<{ status: 200 }> = logout.mutateAsync()
+        try {
+            await request
+        } catch {
+            toast.error('Could not log out. Please try again.')
+            return
+        }
+        router.replace('/login')
+        router.refresh()
+    }
 
     return (
         <div className="min-h-screen pb-20 md:pb-0">
@@ -95,7 +110,9 @@ export function AppShell({ children }: Props) {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                    onClick={() => toast('Mockup: logout is not wired yet')}
+                                    data-testid="logout-button"
+                                    disabled={logout.isPending}
+                                    onClick={onLogout}
                                 >
                                     <IconLogout /> Log out
                                 </DropdownMenuItem>
