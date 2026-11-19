@@ -1,5 +1,20 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "tags": ["-lintignore"],
-    "ignore": ["src/components/ui/**", "tools/oxlint/anti-slop/**"]
+    "ignore": [
+        "src/components/ui/**",
+        "tools/oxlint/anti-slop/**",
+        "src/env/server.ts",
+        "src/env/client.ts"
+    ],
+    "ignoreDependencies": [
+        "@supabase/ssr",
+        "@supabase/supabase-js",
+        "@t3-oss/env-nextjs",
+        "@tanstack/react-query",
+        "@trpc/client",
+        "@trpc/react-query",
+        "@trpc/server",
+        "server-only"
+    ]
 }
