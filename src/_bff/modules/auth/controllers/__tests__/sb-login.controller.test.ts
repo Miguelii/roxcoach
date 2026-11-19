@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
 import { router } from '@/_bff/trpc/server'
@@ -33,6 +33,10 @@ describe('SB_LOGIN_PUBLIC_CONTROLLER', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
     it('returns the service result on success', async () => {
         sbLoginMock.mockReturnValue(Effect.succeed({ status: 200 as const }))
 
@@ -63,10 +67,36 @@ describe('SB_LOGIN_PUBLIC_CONTROLLER', () => {
 
         expect(wrongPassword.code).toBe('UNAUTHORIZED')
         expect(noAccess.code).toBe('UNAUTHORIZED')
+        expect(noAccess.message).toBe(wrongPassword.message)
         expect(wrongPassword.message).toMatch(ERROR_HASH_PATTERN)
-        expect(noAccess.message).toMatch(ERROR_HASH_PATTERN)
         expect(wrongPassword.cause).toBeUndefined()
         expect(noAccess.cause).toBeUndefined()
+    })
+
+    it('gives a thrown sign-in failure the same message as a wrong password', async () => {
+        sbLoginMock.mockReturnValueOnce(
+            Effect.fail(
+                new SignInWithPasswordError({
+                    cause: 'bad password',
+                    error_hash: ErrorCode.AUTH_LOGIN_SIGN_IN_ERR,
+                })
+            )
+        )
+        const wrongPassword = await caught(caller.login(credentials))
+
+        sbLoginMock.mockReturnValueOnce(
+            Effect.fail(
+                new SignInWithPasswordError({
+                    cause: new Error('network'),
+                    error_hash: ErrorCode.AUTH_LOGIN_SIGN_IN,
+                })
+            )
+        )
+        const thrown = await caught(caller.login(credentials))
+
+        expect(thrown.code).toBe('UNAUTHORIZED')
+        expect(thrown.message).toBe(wrongPassword.message)
+        expect(thrown.message).toBe(ErrorCode.AUTH_LOGIN_SIGN_IN_ERR)
     })
 
     it('maps CreateSbClientError to INTERNAL_SERVER_ERROR', async () => {
@@ -82,6 +112,7 @@ describe('SB_LOGIN_PUBLIC_CONTROLLER', () => {
         const error = await caught(caller.login(credentials))
 
         expect(error.code).toBe('INTERNAL_SERVER_ERROR')
+        expect(error.message).toBe(ErrorCode.AUTH_LOGIN_SB_CLIENT)
     })
 
     it('rejects an invalid email before reaching the service', async () => {

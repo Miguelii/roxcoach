@@ -5,13 +5,14 @@ import { getCachedClaims } from '@/_bff/modules/auth/services/get-cached-claims.
 
 /**
  * Runs an Effect at the controller boundary. Failures are logged (the Logger redacts secrets) and
- * rethrown as a TRPCError whose message is the `error_hash`. The error `cause` is never forwarded
- * to the client.
+ * rethrown as a TRPCError whose message is `clientMessage(error)` (the `error_hash` by default).
+ * Logs always carry the real error. The error `cause` is never forwarded to the client.
  */
 export async function runEffect<A, E extends { _tag: string; error_hash: string }>(
     effect: Effect.Effect<A, E>,
     context: string,
-    mapCode: (error: E) => TRPCError['code']
+    mapCode: (error: E) => TRPCError['code'],
+    clientMessage: (error: E) => string = (error) => error.error_hash
 ): Promise<A> {
     const exit = await Effect.runPromiseExit(effect)
 
@@ -31,5 +32,5 @@ export async function runEffect<A, E extends { _tag: string; error_hash: string 
 
     Logger({ level: 'error', prefix: context, error, userId })
 
-    throw new TRPCError({ code: mapCode(error), message: error.error_hash })
+    throw new TRPCError({ code: mapCode(error), message: clientMessage(error) })
 }

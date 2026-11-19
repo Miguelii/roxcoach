@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
 import { runEffect } from '@/_bff/trpc/utils'
@@ -24,15 +24,15 @@ const caught = async (promise: Promise<unknown>): Promise<TRPCError> => {
 }
 
 describe('runEffect', () => {
-    const errorSpy = vi.spyOn(console, 'error')
+    let errorSpy: MockInstance<typeof console.error>
 
     beforeEach(() => {
         getCachedClaimsMock.mockReset().mockResolvedValue({ userId: 'user-1' })
-        errorSpy.mockReset().mockImplementation(() => {})
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
     afterEach(() => {
-        errorSpy.mockClear()
+        vi.restoreAllMocks()
     })
 
     it('returns the value of a successful effect', async () => {
@@ -50,6 +50,24 @@ describe('runEffect', () => {
 
         expect(error.code).toBe('UNAUTHORIZED')
         expect(error.message).toBe(ErrorCode.AUTH_LOGIN_NO_ACCESS)
+    })
+
+    it('lets clientMessage override the client message while logs keep the real error', async () => {
+        const effect = Effect.fail(
+            new AccessDeniedError({ cause: 'no flag', error_hash: ErrorCode.AUTH_LOGIN_NO_ACCESS })
+        )
+
+        const error = await caught(
+            runEffect(
+                effect,
+                'test',
+                () => 'UNAUTHORIZED',
+                () => 'generic'
+            )
+        )
+
+        expect(error.message).toBe('generic')
+        expect(JSON.stringify(errorSpy.mock.calls)).toContain(ErrorCode.AUTH_LOGIN_NO_ACCESS)
     })
 
     it('turns a defect into INTERNAL_SERVER_ERROR with unexpected_defect', async () => {

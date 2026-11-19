@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
 import { protectedProcedure, router } from '@/_bff/trpc/server'
@@ -31,6 +31,10 @@ describe('protectedProcedure', () => {
     beforeEach(() => {
         getSessionMock.mockReset()
         vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        vi.restoreAllMocks()
     })
 
     it('fails UNAUTHORIZED when there is no session user', async () => {

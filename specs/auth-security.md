@@ -96,14 +96,14 @@ repositories.
 
 ## Auth module (`src/_bff/modules/auth/`)
 
-| File                                    | Purpose                                               |
-| --------------------------------------- | ----------------------------------------------------- |
-| `controllers/sb-login.controller.ts`    | public procedure, input `{ email, password }`         |
-| `controllers/sb-logout.controller.ts`   | protected procedure                                   |
-| `services/sb-login.service.ts`          | `signInWithPassword`, tagged errors                   |
-| `services/sb-logout.service.ts`         | `signOut`                                             |
-| `services/get-session.service.ts`       | `getUser()` once per request via React `cache()`      |
-| `services/get-cached-claims.service.ts` | `getClaims()` for rendering UI without a network call |
+| File                                    | Purpose                                                           |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| `controllers/sb-login.controller.ts`    | public procedure, input `{ email, password }`                     |
+| `controllers/sb-logout.controller.ts`   | public procedure (must work with an expired or unflagged session) |
+| `services/sb-login.service.ts`          | `signInWithPassword`, tagged errors                               |
+| `services/sb-logout.service.ts`         | `signOut`                                                         |
+| `services/get-session.service.ts`       | `getUser()` once per request via React `cache()`                  |
+| `services/get-cached-claims.service.ts` | `getClaims()` for rendering UI without a network call             |
 
 Copied from BrewStock, minus the OTP services and the OAuth callback route. `protectedProcedure`
 in `src/_bff/trpc/server.ts` is identical: it runs `getSession()`, returns 401 without a user and
