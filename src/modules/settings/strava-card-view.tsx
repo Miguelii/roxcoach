@@ -62,11 +62,21 @@ export function StravaCardView({
 }: Props) {
     const [busy, setBusy] = useState<Action | null>(null)
     const [confirming, setConfirming] = useState(false)
+    const [syncStarted, setSyncStarted] = useState(false)
+    // A refetched status (a new last sync or count) replaces the notice.
+    const statusKey = `${status?.lastSyncedAt}|${status?.activityCount}`
+    const [seenKey, setSeenKey] = useState(statusKey)
+    if (seenKey !== statusKey) {
+        setSeenKey(statusKey)
+        setSyncStarted(false)
+    }
 
     const run = async (action: Action, task: () => Promise<void>) => {
         setBusy(action)
+        setSyncStarted(false)
         try {
             await task()
+            if (action === 'sync') setSyncStarted(true)
         } catch {
             // The cause stays out of the UI: it can carry server details.
             onError(ERROR_COPY[action])
@@ -171,6 +181,15 @@ export function StravaCardView({
                                 </Button>
                             )}
                         </div>
+                        {syncStarted ? (
+                            <p
+                                data-testid="strava-sync-started"
+                                role="status"
+                                className="text-sm text-muted-foreground"
+                            >
+                                Sync started
+                            </p>
+                        ) : null}
                         {confirming ? (
                             <p className="text-sm text-muted-foreground">
                                 Your imported activities stay in Roxcoach.

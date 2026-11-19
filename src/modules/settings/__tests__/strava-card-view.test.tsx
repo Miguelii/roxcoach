@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StravaCardView } from '@/modules/settings/strava-card-view'
-import { parseStravaResult } from '@/modules/settings/strava-result'
+import { isStravaUrl, parseStravaResult } from '@/modules/settings/strava-result'
 
 type Overrides = Partial<Parameters<typeof StravaCardView>[0]>
 
@@ -64,6 +64,34 @@ describe('StravaCardView', () => {
         const props = setup({ status: connectedStatus })
         fireEvent.click(screen.getByTestId('strava-sync-now'))
         await waitFor(() => expect(props.onSync).toHaveBeenCalledTimes(1))
+    })
+
+    it('shows Sync started after a successful sync and not after a failed one', async () => {
+        const onSync = vi.fn().mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('x'))
+        const props = setup({ status: connectedStatus, onSync })
+        expect(screen.queryByTestId('strava-sync-started')).not.toBeInTheDocument()
+        fireEvent.click(screen.getByTestId('strava-sync-now'))
+        await waitFor(() =>
+            expect(screen.getByTestId('strava-sync-started')).toHaveTextContent('Sync started')
+        )
+        fireEvent.click(screen.getByTestId('strava-sync-now'))
+        await waitFor(() => expect(props.onError).toHaveBeenCalledTimes(1))
+        expect(screen.queryByTestId('strava-sync-started')).not.toBeInTheDocument()
+    })
+
+    it('clears Sync started when the status refetches', async () => {
+        const props = {
+            onConnect: vi.fn(),
+            onSync: vi.fn().mockResolvedValue({}),
+            onDisconnect: vi.fn(),
+            onError: vi.fn(),
+            onRetry: vi.fn(),
+        }
+        const { rerender } = render(<StravaCardView {...props} status={connectedStatus} />)
+        fireEvent.click(screen.getByTestId('strava-sync-now'))
+        await waitFor(() => expect(screen.getByTestId('strava-sync-started')).toBeInTheDocument())
+        rerender(<StravaCardView {...props} status={{ ...connectedStatus, activityCount: 50 }} />)
+        expect(screen.queryByTestId('strava-sync-started')).not.toBeInTheDocument()
     })
 
     it('asks for confirmation before disconnecting', async () => {
@@ -155,5 +183,21 @@ describe('parseStravaResult', () => {
         expect(parseStravaResult('<script>')).toBeUndefined()
         expect(parseStravaResult(['connected'])).toBeUndefined()
         expect(parseStravaResult('')).toBeUndefined()
+    })
+})
+
+describe('isStravaUrl', () => {
+    it('accepts the Strava authorize url', () => {
+        expect(isStravaUrl('https://www.strava.com/oauth/authorize?client_id=1&state=abc')).toBe(
+            true
+        )
+    })
+
+    it('rejects another origin, a relative url and garbage', () => {
+        expect(isStravaUrl('https://evil.example/oauth/authorize')).toBe(false)
+        expect(isStravaUrl('https://www.strava.com.evil.example/x')).toBe(false)
+        expect(isStravaUrl('http://www.strava.com/oauth/authorize')).toBe(false)
+        expect(isStravaUrl('/oauth/authorize')).toBe(false)
+        expect(isStravaUrl('not a url')).toBe(false)
     })
 })

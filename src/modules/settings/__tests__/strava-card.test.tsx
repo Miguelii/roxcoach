@@ -55,6 +55,16 @@ describe('StravaCard', () => {
         )
     })
 
+    it('refuses a connect url on another origin: toast and no navigation', async () => {
+        mocks.getConnectUrl.mockResolvedValue({ url: 'https://evil.example/phish' })
+        render(<StravaCard />)
+
+        fireEvent.click(screen.getByTestId('strava-connect'))
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
+        expect(assign).not.toHaveBeenCalled()
+    })
+
     it('shows a toast when getConnectUrl fails and does not navigate', async () => {
         mocks.getConnectUrl.mockRejectedValue(new Error('nope'))
         render(<StravaCard />)

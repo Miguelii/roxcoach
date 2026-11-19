@@ -264,6 +264,8 @@ from a concurrent insert is resolved by looking the row up again and updating it
   sync).
 - Outcomes: when the payload has an `eventId`, success marks the webhook event `processed` and a final
   failure marks it `failed` with a fixed message (`<error tag>:<error hash>`), never a cause.
+- Job environment: jobs run in Trigger.dev's cloud with their own variables (see
+  [architecture.md](architecture.md#trigger-dev-jobs)); a missing one fails the run at runtime.
 - Enqueue (`enqueue-strava-jobs.service.ts`) never throws and never calls the SDK without
   `TRIGGER_SECRET_KEY` (it fails with `EnqueueStravaJobError`). Idempotency keys debounce forged
   unsigned events: `<userId>:<stravaActivityId>` for 60 seconds (an edit a minute after the upload

@@ -3,7 +3,7 @@
 import { toast } from 'sonner'
 import { trpcClient } from '@/lib/trpc'
 import { StravaCardView } from '@/modules/settings/strava-card-view'
-import type { StravaResult } from '@/modules/settings/strava-result'
+import { isStravaUrl, type StravaResult } from '@/modules/settings/strava-result'
 
 type Props = {
     result?: StravaResult
@@ -26,6 +26,7 @@ export function StravaCard({ result }: Props) {
             result={result}
             onConnect={async () => {
                 const { url } = await getConnectUrl.mutateAsync()
+                if (!isStravaUrl(url)) throw new Error('Unexpected connect url')
                 window.location.assign(url)
             }}
             onSync={async () => {

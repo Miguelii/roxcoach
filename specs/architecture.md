@@ -112,6 +112,13 @@ These are plain route handlers because Strava calls them, not the browser app. T
 | `sync-missing-strava`           | `strava` | "Sync now" in Settings                                                                 |
 | `generate-weekly-report`        | `coach`  | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
 
+Jobs run in Trigger.dev's cloud, so they need their own environment variables, set in the
+Trigger.dev dashboard for each environment (dev and prod): `NEXT_SUPABASE_URL`,
+`NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY` (required by `@/env/server` at
+import time through `core/db`), and `NEXT_STRAVA_CLIENT_ID` and `NEXT_STRAVA_CLIENT_SECRET` (read by
+the Strava credentials helper). The jobs do not read `NEXT_PUBLIC_WEBSITE_URL`. The app's
+`TRIGGER_SECRET_KEY` is different for the dev and prod Trigger.dev environments.
+
 Every `jobs/` directory is listed in `trigger.config.ts` `dirs` (today only the `strava` one). The
 Trigger.dev project ref is set directly in `trigger.config.ts`, not read from an environment
 variable, and `build.conditions: ['react-server']` lets the jobs import services that start with
