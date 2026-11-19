@@ -90,7 +90,15 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 ### Dashboard
 
-Top to bottom:
+Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
+(time, sessions, run km and load ratio from the last 35 days of Strava activities, zeros and
+"No history yet" without activities) and the calendar with completed activities only. The
+planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
+return with the plans that own them. `/plan`, `/races`, `/coach` and `/settings` render a
+"coming soon" page until their backend ships (settings gets the Strava card first). "Today" comes
+from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
+
+Target design, top to bottom:
 
 1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
    ratio with a plain-language label (for example "Balanced", "Ramping fast").

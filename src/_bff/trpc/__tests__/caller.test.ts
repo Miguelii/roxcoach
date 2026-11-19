@@ -15,6 +15,7 @@ describe('createCaller', () => {
         expect(createContextMock).toHaveBeenCalledTimes(1)
         expect(caller.training.getCalendar).toBeDefined()
         expect(caller.training.getActivity).toBeDefined()
+        expect(caller.athlete.getTimezone).toBeDefined()
         expect(caller.auth.login).toBeDefined()
     })
 })

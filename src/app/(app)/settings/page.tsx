@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
-import { SettingsView } from '@/modules/settings/settings-view'
+import { ComingSoon } from '@/components/coming-soon'
 
 export const metadata: Metadata = { title: 'Settings' }
 
 export default function SettingsPage() {
     return (
-        <main className="main-container-lg">
-            <h1 className="display display-section">Settings</h1>
-            <SettingsView />
+        <main className="main-container">
+            <ComingSoon
+                title="Settings"
+                description="Profile and Strava settings will live here. They are not available yet."
+            />
         </main>
     )
 }

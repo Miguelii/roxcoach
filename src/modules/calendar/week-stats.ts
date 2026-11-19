@@ -1,11 +1,10 @@
+import type { CalendarItem } from '@/_bff/modules/training/types'
+import { activityDurationS } from '@/modules/calendar/activity-time'
 import { addDays } from '@/modules/calendar/date-utils'
-import type { CalendarItem } from '@/modules/mock/types'
 
 type WeekTotals = {
     doneMinutes: number
-    plannedMinutes: number
     doneSessions: number
-    totalSessions: number
     runKm: number
 }
 
@@ -14,33 +13,18 @@ type LoadLabel = 'Light' | 'Balanced' | 'Ramping fast' | 'Too high'
 const inRange = (item: CalendarItem, from: string, to: string) =>
     item.date >= from && item.date <= to
 
-/** Totals for the days `from` to `to` (inclusive): what was done, and what the week was meant to hold. */
+const minutesOf = (item: CalendarItem) => (activityDurationS(item.activity) ?? 0) / 60
+
+/** Totals of the activities from `from` to `to` (inclusive). */
 export const computeTotals = (items: CalendarItem[], from: string, to: string): WeekTotals => {
-    const totals: WeekTotals = {
-        doneMinutes: 0,
-        plannedMinutes: 0,
-        doneSessions: 0,
-        totalSessions: 0,
-        runKm: 0,
-    }
+    const totals: WeekTotals = { doneMinutes: 0, doneSessions: 0, runKm: 0 }
 
     for (const item of items) {
         if (!inRange(item, from, to)) continue
 
-        if (item.type === 'activity') {
-            const minutes = item.activity.durationS / 60
-            totals.doneMinutes += minutes
-            totals.plannedMinutes += minutes
-            totals.doneSessions += 1
-            totals.totalSessions += 1
-            if (item.activity.category === 'run')
-                totals.runKm += (item.activity.distanceM ?? 0) / 1000
-        }
-
-        if (item.type === 'planned' && item.session.status === 'planned') {
-            totals.plannedMinutes += item.session.targetMinutes
-            totals.totalSessions += 1
-        }
+        totals.doneMinutes += minutesOf(item)
+        totals.doneSessions += 1
+        if (item.activity.category === 'run') totals.runKm += (item.activity.distanceM ?? 0) / 1000
     }
 
     return totals
@@ -49,13 +33,7 @@ export const computeTotals = (items: CalendarItem[], from: string, to: string): 
 /** Acute (last 7 days) to chronic (weekly average of the 28 days before) load ratio, or null without history. */
 export const computeLoadRatio = (items: CalendarItem[], today: string) => {
     const minutesIn = (from: string, to: string) =>
-        items.reduce(
-            (sum, item) =>
-                item.type === 'activity' && inRange(item, from, to)
-                    ? sum + item.activity.durationS / 60
-                    : sum,
-            0
-        )
+        items.reduce((sum, item) => (inRange(item, from, to) ? sum + minutesOf(item) : sum), 0)
 
     const acute = minutesIn(addDays(today, -6), today)
     const chronic = minutesIn(addDays(today, -34), addDays(today, -7)) / 4

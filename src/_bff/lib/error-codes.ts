@@ -93,6 +93,9 @@ export enum ErrorCode {
     ATHLETE_PROFILE_SELECT_PARSE = 'm6dy8w79',
     ATHLETE_PROFILE_TIMEZONE_INVALID = 'w0w6fcsj',
 
+    // Athlete - Queries
+    ATHLETE_SB_CLIENT = 'xq3k7m2d',
+
     // Strava - Webhook events repository
     STRAVA_EVENT_INSERT = 'ki61c74c',
     STRAVA_EVENT_INSERT_ERR = 'ncalfdlp',

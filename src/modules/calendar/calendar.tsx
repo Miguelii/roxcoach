@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-react'
+import { keepPreviousData } from '@tanstack/react-query'
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import type { ActivityDTO } from '@/_bff/modules/training/types'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { trpcClient } from '@/lib/trpc'
+import { CalendarBody } from '@/modules/calendar/calendar-body'
 import { DayPanel } from '@/modules/calendar/day-panel'
 import {
     addDays,
@@ -15,29 +19,41 @@ import {
     weekDays,
 } from '@/modules/calendar/date-utils'
 import { CATEGORIES, KINDS } from '@/modules/calendar/kinds'
-import { LogSessionDialog } from '@/modules/calendar/log-session-dialog'
-import { MonthView } from '@/modules/calendar/month-view'
-import { WeekView } from '@/modules/calendar/week-view'
-import { CALENDAR_ITEMS, TODAY } from '@/modules/mock/data'
-import type { Category } from '@/modules/mock/types'
 import { cn } from '@/lib/utils'
+
+type Props = {
+    today: string
+}
 
 type View = 'month' | 'week'
 
-export function Calendar() {
+type Category = ActivityDTO['category']
+
+/** First and last day shown for the cursor, in the same grid the view renders. */
+const visibleRange = (view: View, cursor: string) => {
+    if (view === 'week') {
+        const days = weekDays(cursor)
+        return { from: days[0] ?? cursor, to: days[6] ?? cursor }
+    }
+
+    const weeks = monthGrid(cursor)
+    return { from: weeks[0]?.[0] ?? cursor, to: weeks.at(-1)?.[6] ?? cursor }
+}
+
+export function Calendar({ today }: Props) {
     const isMobile = useIsMobile()
-    const [cursor, setCursor] = useState(TODAY)
+    const [cursor, setCursor] = useState(today)
     const [view, setView] = useState<View>('month')
     const [hidden, setHidden] = useState<Set<Category>>(new Set())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
-    const [logDate, setLogDate] = useState<string | null>(null)
 
     const effectiveView: View = isMobile ? 'week' : view
-    const items = CALENDAR_ITEMS.filter(
-        (item) =>
-            item.type === 'race' ||
-            !hidden.has(item.type === 'activity' ? item.activity.category : item.session.kind)
-    )
+    const query = trpcClient.training.getCalendar.useQuery(visibleRange(effectiveView, cursor), {
+        placeholderData: keepPreviousData,
+    })
+
+    const items = (query.data ?? []).filter((item) => !hidden.has(item.activity.category))
+    const selectedItems = items.filter((item) => item.date === selectedDate)
 
     const days = weekDays(cursor)
     const title =
@@ -61,7 +77,7 @@ export function Calendar() {
         })
 
     return (
-        <section aria-label="Training calendar" className="space-y-4">
+        <section aria-label="Training calendar" data-testid="calendar" className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
                 <h2 className="display text-4xl">{title}</h2>
                 <div className="ml-auto flex items-center gap-2">
@@ -73,7 +89,7 @@ export function Calendar() {
                     >
                         <IconChevronLeft />
                     </Button>
-                    <Button variant="outline" onClick={() => setCursor(TODAY)}>
+                    <Button variant="outline" onClick={() => setCursor(today)}>
                         Today
                     </Button>
                     <Button variant="outline" size="icon" aria-label="Next" onClick={() => move(1)}>
@@ -89,9 +105,6 @@ export function Calendar() {
                             <TabsTrigger value="week">Week</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button variant="ink" onClick={() => setLogDate(TODAY)}>
-                        <IconPlus /> <span className="hidden sm:inline">Log session</span>
-                    </Button>
                 </div>
             </div>
 
@@ -119,40 +132,24 @@ export function Calendar() {
                         </button>
                     )
                 })}
-                <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                        <span className="size-2.5 rounded-sm bg-blue-soft" /> Done
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <span className="size-2.5 rounded-sm border border-dashed border-blue" />{' '}
-                        Planned
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <span className="size-2.5 rounded-sm bg-amber" /> Race
-                    </span>
-                </span>
             </div>
 
-            {effectiveView === 'month' ? (
-                <MonthView
-                    weeks={monthGrid(cursor)}
-                    month={cursor}
-                    items={items}
-                    onSelectDay={setSelectedDate}
-                />
-            ) : (
-                <WeekView days={days} items={items} onSelectDay={setSelectedDate} />
-            )}
+            <CalendarBody
+                view={effectiveView}
+                cursor={cursor}
+                today={today}
+                items={items}
+                isLoading={query.isPending}
+                isError={query.isError}
+                onRetry={() => void query.refetch()}
+                onSelectDay={setSelectedDate}
+            />
 
             <DayPanel
                 date={selectedDate}
+                items={selectedItems}
                 onClose={() => setSelectedDate(null)}
-                onLogSession={(date) => {
-                    setSelectedDate(null)
-                    setLogDate(date)
-                }}
             />
-            <LogSessionDialog date={logDate} onClose={() => setLogDate(null)} />
         </section>
     )
 }

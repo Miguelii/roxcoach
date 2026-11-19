@@ -1,29 +1,27 @@
 import { formatDuration } from '@/_bff/core/utils/formatters.utils'
+import type { CalendarItem } from '@/_bff/modules/training/types'
 import { getItemKey } from '@/modules/calendar/item-key'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
 import { dayOfMonth, isoWeekNumber, WEEKDAY_LABELS } from '@/modules/calendar/date-utils'
 import { computeTotals } from '@/modules/calendar/week-stats'
-import { TODAY } from '@/modules/mock/data'
-import type { CalendarItem } from '@/modules/mock/types'
 import { cn } from '@/lib/utils'
 
 type Props = {
     weeks: string[][]
     month: string
+    today: string
     items: CalendarItem[]
     onSelectDay: (date: string) => void
 }
 
 const MAX_CHIPS = 3
 
-const sortItems = (items: CalendarItem[]) => {
-    const order = { race: 0, activity: 1, planned: 2 }
-    return items.toSorted((a, b) => order[a.type] - order[b.type])
-}
-
-export function MonthView({ weeks, month, items, onSelectDay }: Props) {
+export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
     return (
-        <div className="overflow-hidden rounded-[var(--radius-surface)] border border-ink/10 bg-card">
+        <div
+            data-testid="month-view"
+            className="overflow-hidden rounded-[var(--radius-surface)] border border-ink/10 bg-card"
+        >
             <div className="grid grid-cols-7 border-b border-hairline lg:grid-cols-[repeat(7,minmax(0,1fr))_150px]">
                 {WEEKDAY_LABELS.map((label) => (
                     <div key={label} className="eyebrow px-2 py-2 text-muted-foreground">
@@ -35,9 +33,6 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
 
             {weeks.map((week) => {
                 const totals = computeTotals(items, week[0] ?? '', week[6] ?? '')
-                const progress = totals.plannedMinutes
-                    ? Math.min(100, (totals.doneMinutes / totals.plannedMinutes) * 100)
-                    : 0
 
                 return (
                     <div
@@ -45,13 +40,15 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                         className="grid grid-cols-7 border-b border-hairline last:border-b-0 lg:grid-cols-[repeat(7,minmax(0,1fr))_150px]"
                     >
                         {week.map((date) => {
-                            const dayItems = sortItems(items.filter((item) => item.date === date))
+                            const dayItems = items.filter((item) => item.date === date)
                             const outside = date.slice(0, 7) !== month.slice(0, 7)
 
                             return (
                                 // The day button below is the keyboard path; the cell click is a pointer shortcut
                                 <div
                                     key={date}
+                                    data-testid={`month-day-${date}`}
+                                    data-today={date === today}
                                     onClick={() => onSelectDay(date)}
                                     className={cn(
                                         'min-h-28 cursor-pointer space-y-1 border-r border-hairline p-1.5 transition-colors hover:bg-muted/60',
@@ -60,6 +57,7 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                                 >
                                     <button
                                         type="button"
+                                        data-testid={`month-day-${date}-open`}
                                         onClick={(event) => {
                                             event.stopPropagation()
                                             onSelectDay(date)
@@ -67,7 +65,7 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                                         aria-label={`Open ${date}`}
                                         className={cn(
                                             'flex size-6 items-center justify-center rounded-full font-mono text-xs',
-                                            date === TODAY
+                                            date === today
                                                 ? 'bg-ink text-primary-foreground'
                                                 : outside
                                                   ? 'text-muted-foreground/60'
@@ -77,14 +75,13 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                                         {dayOfMonth(date)}
                                     </button>
                                     {dayItems.slice(0, MAX_CHIPS).map((item) => (
-                                        <CalendarChip
-                                            key={getItemKey(item)}
-                                            item={item}
-                                            onSelect={() => onSelectDay(date)}
-                                        />
+                                        <CalendarChip key={getItemKey(item)} item={item} />
                                     ))}
                                     {dayItems.length > MAX_CHIPS && (
-                                        <p className="px-1 font-mono text-[11px] text-muted-foreground">
+                                        <p
+                                            data-testid={`month-day-${date}-more`}
+                                            className="px-1 font-mono text-[11px] text-muted-foreground"
+                                        >
                                             +{dayItems.length - MAX_CHIPS} more
                                         </p>
                                     )}
@@ -92,32 +89,21 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                             )
                         })}
 
-                        <div className="hidden space-y-1.5 bg-muted/30 p-3 lg:block">
+                        <div
+                            data-testid={`week-summary-${week[0]}`}
+                            className="hidden space-y-1.5 bg-muted/30 p-3 lg:block"
+                        >
                             <p className="font-mono text-[11px] text-muted-foreground">
                                 W{isoWeekNumber(week[0] ?? '')}
                             </p>
-                            {totals.totalSessions > 0 ? (
+                            {totals.doneSessions > 0 ? (
                                 <>
                                     <p className="text-sm font-semibold">
                                         {formatDuration(totals.doneMinutes * 60)}
-                                        <span className="font-normal text-muted-foreground">
-                                            {' '}
-                                            / {formatDuration(totals.plannedMinutes * 60)}
-                                        </span>
                                     </p>
-                                    <div
-                                        role="progressbar"
-                                        aria-label="Week volume done"
-                                        aria-valuenow={Math.round(progress)}
-                                        className="h-1.5 overflow-hidden rounded-full bg-ink/10"
-                                    >
-                                        <div
-                                            className="h-full rounded-full bg-green"
-                                            style={{ width: `${progress}%` }}
-                                        />
-                                    </div>
                                     <p className="font-mono text-[11px] text-muted-foreground">
-                                        {totals.doneSessions}/{totals.totalSessions} sessions
+                                        {totals.doneSessions}{' '}
+                                        {totals.doneSessions === 1 ? 'session' : 'sessions'}
                                         {totals.runKm > 0 && `  ·  ${totals.runKm.toFixed(1)} km`}
                                     </p>
                                 </>
@@ -128,6 +114,15 @@ export function MonthView({ weeks, month, items, onSelectDay }: Props) {
                     </div>
                 )
             })}
+
+            {items.length === 0 && (
+                <p
+                    data-testid="month-empty"
+                    className="border-t border-hairline p-4 text-sm text-muted-foreground"
+                >
+                    No activities in this period. Synced Strava activities appear here.
+                </p>
+            )}
         </div>
     )
 }
