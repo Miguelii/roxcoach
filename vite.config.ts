@@ -71,6 +71,8 @@ export default defineConfig({
             'react-perf/jsx-no-jsx-as-prop': 'off',
             'import/no-unassigned-import': 'off',
             'eslint/eqeqeq': 'off',
+            'eslint/max-classes-per-file': ['warn', { max: 100 }],
+            'unicorn/prefer-top-level-await': 'off',
             'import/max-dependencies': ['warn', { max: 20 }],
             'eslint/no-underscore-dangle': 'off',
             'eslint/max-lines-per-function': ['warn', { max: 250 }],
