@@ -5,11 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 import { DB_SCHEMA } from '@/_bff/core/constants/db.constants'
 import { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 
-// oxlint-disable-next-line anti-slop/no-module-mocking -- third-party clients have no injection seam
 vi.mock('@supabase/ssr', () => ({ createServerClient: vi.fn(() => ({ kind: 'server' })) }))
-// oxlint-disable-next-line anti-slop/no-module-mocking -- third-party clients have no injection seam
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ kind: 'admin' })) }))
-// oxlint-disable-next-line anti-slop/no-module-mocking -- next/headers needs a request scope
 vi.mock('next/headers', () => ({
     cookies: vi.fn(async () => ({ getAll: () => [], set: vi.fn() })),
 }))
