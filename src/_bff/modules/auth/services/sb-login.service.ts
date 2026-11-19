@@ -5,6 +5,7 @@ import { createDBServerClient } from '@/_bff/core/db'
 import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
 import { AccessDeniedError, CreateSbClientError, SignInWithPasswordError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
+import { Logger } from '@/_bff/lib/server-logger'
 
 export const sbLogin = Effect.fn('sbLogin')(function* (email: string, password: string) {
     const supabase = yield* Effect.tryPromise({
@@ -26,9 +27,16 @@ export const sbLogin = Effect.fn('sbLogin')(function* (email: string, password: 
         })
 
     // The project is shared with another app: a valid account without the flag must not stay
-    // signed in. A failed cleanup sign-out is ignored, the access error is what matters.
+    // signed in. The local scope removes the cookie session even when the server revoke fails.
+    // A failed cleanup is logged (thrown or returned error) but the access error is what matters.
     if (!hasRoxcoachAccess(data.user)) {
-        yield* Effect.tryPromise(() => supabase.auth.signOut()).pipe(Effect.ignore)
+        const { error: signOutError } = yield* Effect.tryPromise({
+            try: () => supabase.auth.signOut({ scope: 'local' }),
+            catch: (cause) => cause,
+        }).pipe(Effect.catch((cause) => Effect.succeed({ error: cause })))
+
+        if (signOutError)
+            Logger({ level: 'error', prefix: 'sbLogin.cleanupSignOut', error: signOutError })
 
         return yield* new AccessDeniedError({
             cause: 'missing app_metadata.roxcoach flag',

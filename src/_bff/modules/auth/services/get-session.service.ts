@@ -42,6 +42,10 @@ const resolveUser = cache(async (): Promise<SessionResult> => {
     }
 })
 
+/**
+ * The result is cached per request: a sign-in or sign-out later in the same request is not
+ * reflected by a subsequent `getSession()` call.
+ */
 export const getSession = Effect.fn('getSession')(function* () {
     const result = yield* Effect.promise(() => resolveUser())
 
