@@ -11,10 +11,10 @@ export type ActivityRow = {
     name: string
     started_at: string
     local_date: string
-    distance_m: number
-    moving_time_s: number
-    elapsed_time_s: number
-    elevation_gain_m: number
+    distance_m: number | null
+    moving_time_s: number | null
+    elapsed_time_s: number | null
+    elevation_gain_m: number | null
     avg_hr: number | null
     max_hr: number | null
     avg_speed_mps: number | null
@@ -54,6 +54,14 @@ export const mapStravaCategory = (sportType: string, hasStations: boolean): Acti
     return FIXED_CATEGORIES.get(sportType) ?? 'other'
 }
 
+// Strava reports 0 for heart rate and calories when the device recorded nothing: that is no data.
+const zeroToNull = (value: number | null | undefined): number | null =>
+    value === null || value === undefined || value === 0 ? null : value
+
+// The int columns get whole seconds: rounding keeps the activity instead of rejecting a fraction.
+const roundOrNull = (value: number | null | undefined): number | null =>
+    value === null || value === undefined ? null : Math.round(value)
+
 // The calendar day of the instant in the athlete's timezone, as YYYY-MM-DD (en-CA order).
 const toLocalDate = (isoInstant: string, timezone: string): string =>
     new Intl.DateTimeFormat('en-CA', {
@@ -72,14 +80,14 @@ export const mapStravaActivity = (activity: StravaActivity, timezone: string): A
     name: activity.name,
     started_at: new Date(activity.start_date).toISOString(),
     local_date: toLocalDate(activity.start_date, timezone),
-    distance_m: activity.distance,
-    moving_time_s: activity.moving_time,
-    elapsed_time_s: activity.elapsed_time,
-    elevation_gain_m: activity.total_elevation_gain,
-    avg_hr: activity.average_heartrate ?? null,
-    max_hr: activity.max_heartrate ?? null,
+    distance_m: activity.distance ?? null,
+    moving_time_s: roundOrNull(activity.moving_time),
+    elapsed_time_s: roundOrNull(activity.elapsed_time),
+    elevation_gain_m: activity.total_elevation_gain ?? null,
+    avg_hr: zeroToNull(activity.average_heartrate),
+    max_hr: zeroToNull(activity.max_heartrate),
     avg_speed_mps: activity.average_speed ?? null,
-    calories: activity.calories ?? null,
+    calories: zeroToNull(activity.calories),
 })
 
 export const mapStravaLaps = (laps: StravaLap[], stations: Array<HyroxStation | null>): LapRow[] =>
@@ -87,9 +95,9 @@ export const mapStravaLaps = (laps: StravaLap[], stations: Array<HyroxStation | 
         lap_index: lap.lap_index,
         name: lap.name ?? null,
         distance_m: lap.distance,
-        elapsed_time_s: lap.elapsed_time,
-        moving_time_s: lap.moving_time,
-        avg_hr: lap.average_heartrate ?? null,
+        elapsed_time_s: Math.round(lap.elapsed_time),
+        moving_time_s: Math.round(lap.moving_time),
+        avg_hr: zeroToNull(lap.average_heartrate),
         avg_speed_mps: lap.average_speed ?? null,
         station: stations[index] ?? null,
     }))

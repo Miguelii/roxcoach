@@ -121,6 +121,67 @@ describe('mapStravaActivity', () => {
         expect(row.calories).toBeNull()
     })
 
+    it('maps an activity with every numeric field missing to nulls', () => {
+        const parsed = stravaActivitySchema.parse({
+            id: 5,
+            name: 'Manual entry',
+            sport_type: 'Workout',
+            start_date: '2026-06-14T12:00:00Z',
+        })
+
+        const row = mapStravaActivity(parsed, 'Europe/Lisbon')
+
+        expect(row.distance_m).toBeNull()
+        expect(row.moving_time_s).toBeNull()
+        expect(row.elapsed_time_s).toBeNull()
+        expect(row.elevation_gain_m).toBeNull()
+    })
+
+    it('maps explicit null numeric fields to null', () => {
+        const parsed = stravaActivitySchema.parse({
+            ...minimalActivity,
+            distance: null,
+            moving_time: null,
+            elapsed_time: null,
+            total_elevation_gain: null,
+        })
+
+        const row = mapStravaActivity(parsed, 'Europe/Lisbon')
+
+        expect(row.distance_m).toBeNull()
+        expect(row.moving_time_s).toBeNull()
+        expect(row.elapsed_time_s).toBeNull()
+        expect(row.elevation_gain_m).toBeNull()
+    })
+
+    it('rounds fractional seconds to whole seconds for the int columns', () => {
+        const row = mapStravaActivity(
+            { ...fullActivity, moving_time: 3010.4, elapsed_time: 3100.5 },
+            'Europe/Lisbon'
+        )
+
+        expect(row.moving_time_s).toBe(3010)
+        expect(row.elapsed_time_s).toBe(3101)
+    })
+
+    it('maps a 0 heart rate and 0 calories to null, but keeps a 0 speed', () => {
+        const row = mapStravaActivity(
+            {
+                ...fullActivity,
+                average_heartrate: 0,
+                max_heartrate: 0,
+                calories: 0,
+                average_speed: 0,
+            },
+            'Europe/Lisbon'
+        )
+
+        expect(row.avg_hr).toBeNull()
+        expect(row.max_hr).toBeNull()
+        expect(row.calories).toBeNull()
+        expect(row.avg_speed_mps).toBe(0)
+    })
+
     it('computes the category with no stations (the sync recomputes it after detection)', () => {
         const row = mapStravaActivity({ ...fullActivity, sport_type: 'Workout' }, 'Europe/Lisbon')
 
@@ -139,6 +200,18 @@ describe('mapStravaActivity', () => {
         const row = mapStravaActivity(withStart('2026-12-31T23:30:00Z'), 'Europe/Lisbon')
 
         expect(row.local_date).toBe('2026-12-31')
+    })
+
+    it('keeps the day when Lisbon moves to summer time (2026-03-29 01:00 UTC)', () => {
+        const row = mapStravaActivity(withStart('2026-03-29T00:30:00Z'), 'Europe/Lisbon')
+
+        expect(row.local_date).toBe('2026-03-29')
+    })
+
+    it('uses the next day when Lisbon is still on summer time (2026-10-25 01:00 UTC)', () => {
+        const row = mapStravaActivity(withStart('2026-10-24T23:30:00Z'), 'Europe/Lisbon')
+
+        expect(row.local_date).toBe('2026-10-25')
     })
 
     it('uses the previous local day for a negative-offset timezone', () => {
@@ -188,6 +261,27 @@ describe('mapStravaLaps', () => {
         ]
 
         expect(mapStravaLaps(laps, stations)).toEqual(expected)
+    })
+
+    it('rounds fractional lap seconds and maps a 0 lap heart rate to null', () => {
+        const [lap] = mapStravaLaps(
+            [
+                {
+                    lap_index: 3,
+                    distance: 1000,
+                    elapsed_time: 270.6,
+                    moving_time: 268.4,
+                    average_heartrate: 0,
+                    average_speed: 0,
+                },
+            ],
+            [null]
+        )
+
+        expect(lap?.elapsed_time_s).toBe(271)
+        expect(lap?.moving_time_s).toBe(268)
+        expect(lap?.avg_hr).toBeNull()
+        expect(lap?.avg_speed_mps).toBe(0)
     })
 
     it('uses null for a lap with no matching station entry', () => {

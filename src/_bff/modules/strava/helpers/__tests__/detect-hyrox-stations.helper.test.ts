@@ -78,6 +78,30 @@ describe('detectHyroxStations', () => {
         ])
     })
 
+    it('accepts hyphens and underscores as separators', () => {
+        const result = detectHyroxStations(
+            named([
+                'Ski-Erg',
+                'Sled_Push',
+                'Wall-Ball',
+                'Sled-Pull',
+                'sled_pull',
+                'ski_erg',
+                'Wall_Balls',
+            ])
+        )
+
+        expect(result).toEqual([
+            'ski_erg',
+            'sled_push',
+            'wall_balls',
+            'sled_pull',
+            'sled_pull',
+            'ski_erg',
+            'wall_balls',
+        ])
+    })
+
     it('does not tag substrings of unrelated words as rowing', () => {
         const result = detectHyroxStations(named(['Barrow hill', 'Tomorrow', 'Arrow']))
 

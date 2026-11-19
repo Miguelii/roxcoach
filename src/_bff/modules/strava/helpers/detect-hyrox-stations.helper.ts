@@ -6,14 +6,14 @@ const HYROX_LAP_COUNT = 16
 
 // Word boundaries keep "row" from matching "arrow" or "tomorrow".
 const NAME_PATTERNS: StationPattern[] = [
-    { station: 'ski_erg', pattern: /\bski\s?erg\b/iu },
-    { station: 'sled_push', pattern: /\bsled\s+push/iu },
-    { station: 'sled_pull', pattern: /\bsled\s+pull/iu },
+    { station: 'ski_erg', pattern: /\bski[\s_-]?erg\b/iu },
+    { station: 'sled_push', pattern: /\bsled[\s_-]+push/iu },
+    { station: 'sled_pull', pattern: /\bsled[\s_-]+pull/iu },
     { station: 'burpee_broad_jump', pattern: /\bburpee/iu },
     { station: 'rowing', pattern: /\brow(ing)?\b/iu },
     { station: 'farmers_carry', pattern: /\bfarmer'?s?\b/iu },
     { station: 'sandbag_lunges', pattern: /\blunge/iu },
-    { station: 'wall_balls', pattern: /\bwall\s?balls?\b/iu },
+    { station: 'wall_balls', pattern: /\bwall[\s_-]?balls?\b/iu },
 ]
 
 // A name that matches two stations is ambiguous, so it stays untagged.
