@@ -184,7 +184,7 @@ recovery path when the subscription breaks.
 | `services/connect-strava.service.ts`, `get-valid-access-token.service.ts`, `sync-strava-activity.service.ts`, `sync-missing-activities.service.ts`, `handle-strava-webhook-event.service.ts` | business logic        |
 | `repositories/strava-connections.repository.ts`, `strava-webhook-events.repository.ts`                                                                                                       | data access           |
 | `helpers/map-strava-activity.helper.ts`, `detect-hyrox-stations.helper.ts`                                                                                                                   | pure logic            |
-| `jobs/sync-strava-activity.job.ts`, `jobs/backfill-strava.job.ts`                                                                                                                            | Trigger.dev tasks     |
+| `jobs/sync-strava-activity.job.ts`, `jobs/verify-strava-deauthorization.job.ts`, `jobs/backfill-strava.job.ts`, `jobs/sync-missing-strava.job.ts`                                            | Trigger.dev tasks     |
 
 The training tables (`activities`, `activity_laps`) are written through the `training` module's
 service (`upsertActivityFromStrava`), not directly from `strava` repositories.
@@ -194,6 +194,22 @@ The upsert is a lookup by `(user_id, strava_id)` followed by an update or an ins
 null`), which `ON CONFLICT (user_id, strava_id)` cannot infer through PostgREST. A unique violation
 from a concurrent insert is resolved by looking the row up again and updating it. The update clears
 `deleted_at`, so a re-created activity reappears.
+
+## Jobs and enqueueing
+
+- Jobs: `sync-strava-activity` (`{ userId, stravaActivityId, eventId }`), `verify-strava-deauthorization`
+  (`{ userId, eventId }`, concurrency limit 1 so two verifications never race on a token refresh),
+  `backfill-strava` and `sync-missing-strava` (`{ userId }`). Payloads carry ids only, never tokens.
+- Retries: a `401`/`403`, a missing connection and a malformed payload are not retried. A `429`
+  retries at `Retry-After`, and at least 15 minutes later when the header is missing (the limits are
+  per 15-minute window). 5xx and network errors use exponential backoff (5 attempts for an activity
+  sync).
+- Outcomes: when the payload has an `eventId`, success marks the webhook event `processed` and a final
+  failure marks it `failed` with a fixed message (`<error tag>:<error hash>`), never a cause.
+- Enqueue (`enqueue-strava-jobs.service.ts`) never throws and never calls the SDK without
+  `TRIGGER_SECRET_KEY` (it fails with `EnqueueStravaJobError`). Idempotency keys debounce forged
+  unsigned events: `<userId>:<stravaActivityId>` and `<userId>:verify` for 5 minutes,
+  `<userId>:backfill` for an hour, a per-minute key for sync-missing.
 
 ## Compliance note
 

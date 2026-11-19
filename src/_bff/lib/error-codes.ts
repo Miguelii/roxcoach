@@ -110,4 +110,12 @@ export enum ErrorCode {
     // Strava - Webhook event handling
     STRAVA_WEBHOOK_SB_CLIENT = 'pskuolsh',
     STRAVA_WEBHOOK_EVENT_TIME = 'el6aljqx',
+
+    // Strava - Job enqueue
+    STRAVA_ENQUEUE_NOT_CONFIGURED = 'u4s7w2ke',
+    STRAVA_ENQUEUE_TRIGGER = 'r9n3c6vh',
+
+    // Strava - Jobs
+    STRAVA_JOB_EVENT_SB_CLIENT = 'k2d8f5ys',
+    STRAVA_JOB_WINDOW_SB_CLIENT = 'w6m1p9ta',
 }
