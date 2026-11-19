@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { setCSP } from '@/lib/set-csp'
+import { sbProxy } from '@/lib/utils.server'
 
-export function proxy() {
-    return setCSP(NextResponse.next())
+export async function proxy(request: NextRequest) {
+    return setCSP(await sbProxy(request))
 }
 
 export const config = {

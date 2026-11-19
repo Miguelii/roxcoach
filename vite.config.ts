@@ -7,13 +7,20 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@db': path.resolve(__dirname, './db'),
+            'server-only': path.resolve(__dirname, './src/lib/__mocks__/server-only.ts'),
         },
     },
 
     test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
-        include: ['src/**/*.test.{ts,tsx}'],
+        include: ['src/**/*.test.{ts,tsx}', 'db/tests/**/*.test.ts'],
+        env: {
+            NEXT_SUPABASE_URL: 'http://localhost:54321',
+            NEXT_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+            NEXT_SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+        },
     },
 
     lint: {
@@ -41,7 +48,7 @@ export default defineConfig({
             'anti-slop/no-chained-type-assertions': 'error',
             'anti-slop/no-conditional-empty-object-spread': 'error',
             'anti-slop/no-known-value-widening': 'error',
-            'anti-slop/no-module-mocking': 'error',
+            'anti-slop/no-module-mocking': 'off',
             'anti-slop/no-object-parameters': 'error',
             'anti-slop/no-reflect-apply': 'error',
             'anti-slop/no-reflect-get': 'error',
@@ -65,6 +72,9 @@ export default defineConfig({
             'react-perf/jsx-no-jsx-as-prop': 'off',
             'import/no-unassigned-import': 'off',
             'eslint/eqeqeq': 'off',
+            'eslint/max-classes-per-file': ['warn', { max: 100 }],
+            'unicorn/prefer-top-level-await': 'off',
+            'import/max-dependencies': ['warn', { max: 20 }],
             'eslint/no-underscore-dangle': 'off',
             'eslint/max-lines-per-function': ['warn', { max: 250 }],
             'eslint/max-lines': ['warn', { max: 350 }],

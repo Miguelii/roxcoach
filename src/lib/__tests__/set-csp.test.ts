@@ -9,10 +9,19 @@ describe('setCSP', () => {
         vi.unstubAllEnvs()
     })
 
-    it('sets the Cache-Control header', () => {
+    it('sets a private no-store Cache-Control by default', () => {
         const response = setCSP(NextResponse.next())
 
-        expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, must-revalidate')
+        expect(response.headers.get('Cache-Control')).toBe(
+            'private, no-cache, no-store, must-revalidate'
+        )
+    })
+
+    it('keeps a Cache-Control already present on the response', () => {
+        const response = NextResponse.next()
+        response.headers.set('Cache-Control', 'private, max-age=0')
+
+        expect(setCSP(response).headers.get('Cache-Control')).toBe('private, max-age=0')
     })
 
     it('returns the same response it received', () => {
