@@ -18,6 +18,10 @@ export class LogoutError extends Data.TaggedError('LogoutError')<ServiceErrorFie
 
 // Athlete
 export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}
+// `field` names the profile field that failed validation.
+export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<
+    ServiceErrorFields & { field: string }
+> {}
 
 // Training
 export class ActivityQueryError extends Data.TaggedError(
