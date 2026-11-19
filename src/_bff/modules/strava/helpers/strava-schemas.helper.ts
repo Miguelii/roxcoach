@@ -26,5 +26,14 @@ export const stravaLapSchema = z.object({
     average_speed: z.number().nullish(),
 })
 
+// `expires_at` is epoch seconds. `athlete` is only sent on the authorization code exchange.
+export const stravaTokenResponseSchema = z.object({
+    access_token: z.string().min(1),
+    refresh_token: z.string().min(1),
+    expires_at: z.number(),
+    athlete: z.object({ id: z.number() }).optional(),
+})
+
 export type StravaActivity = z.infer<typeof stravaActivitySchema>
 export type StravaLap = z.infer<typeof stravaLapSchema>
+export type StravaTokenResponse = z.infer<typeof stravaTokenResponseSchema>

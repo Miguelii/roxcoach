@@ -49,7 +49,7 @@ const OAUTH_CODES: ErrorCodes = {
 
 // Masks every secret in a message. Only the message text is ever kept as a cause, never the
 // original error object, because that could carry request headers or bodies.
-const redact = (text: string, secrets: readonly string[]): string => {
+export const redact = (text: string, secrets: readonly string[]): string => {
     let masked = text
     for (const secret of secrets) if (secret) masked = masked.split(secret).join('[redacted]')
     return masked

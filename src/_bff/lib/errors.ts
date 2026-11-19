@@ -29,3 +29,12 @@ export class StravaRateLimitedError extends Data.TaggedError('StravaRateLimitedE
 export class StravaApiError extends Data.TaggedError('StravaApiError')<
     ServiceErrorFields & { status: number | null }
 > {}
+export class StravaNotConfiguredError extends Data.TaggedError(
+    'StravaNotConfiguredError'
+)<ServiceErrorFields> {}
+export class StravaNotConnectedError extends Data.TaggedError(
+    'StravaNotConnectedError'
+)<ServiceErrorFields> {}
+export class StravaConnectionError extends Data.TaggedError(
+    'StravaConnectionError'
+)<ServiceErrorFields> {}
