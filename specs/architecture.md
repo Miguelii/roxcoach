@@ -24,8 +24,8 @@ repositories on top of Supabase.
 src/
   _bff/
     core/        constants, helpers, utils importable by frontend and _bff; db/ (server only)
-    lib/         errors.ts, error-codes.ts
-    trpc/        server.ts, utils.ts, context.ts, router.ts, caller.ts
+    lib/         errors.ts, error-codes.ts, server-logger.ts, tests-utils.ts
+    trpc/        server.ts, utils.ts, context.ts, router.ts
     modules/<module>/
       <module>.router.ts
       controllers/<name>.controller.ts
@@ -87,7 +87,8 @@ services or processors of their own module. Cross-module imports only through `s
 ## tRPC namespaces
 
 `auth`, `athlete`, `races`, `strava`, `training`, `plan`, `coach`. Example client call:
-`trpcClient.races.create.useMutation()`. Server Components use `createCaller()`.
+`trpcClient.races.create.useMutation()`. A server-side caller (`trpc/caller.ts`, for Server
+Components) does not exist yet: it is added with the first Server Component that needs it.
 
 ## Non-tRPC entry points
 
@@ -123,7 +124,7 @@ job twice for the same activity or report week must not duplicate rows.
 | `NEXT_STRAVA_CLIENT_SECRET`        | server | OAuth and token refresh                                    |
 | `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN` | server | webhook GET verification                                   |
 | `NEXT_CRON_SECRET`                 | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
-| `TRIGGER_SECRET_KEY`               | server | Trigger.dev                                                |
+| `TRIGGER_SECRET_KEY`               | server | Trigger.dev (not in `ServerEnv` yet, added with its plan)  |
 | `NEXT_PUBLIC_WEBSITE_URL`          | client | absolute URLs, OAuth redirect                              |
 
 ## Code placement
