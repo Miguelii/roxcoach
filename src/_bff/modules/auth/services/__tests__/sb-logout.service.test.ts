@@ -22,11 +22,11 @@ describe('sbLogout', () => {
         revalidatePathMock.mockReset()
     })
 
-    it('signs out and revalidates the home layout', async () => {
+    it('signs out with local scope (shared project) and revalidates the home layout', async () => {
         const result = await Effect.runPromise(sbLogout())
 
         expect(result).toEqual({ status: 200 })
-        expect(signOut).toHaveBeenCalled()
+        expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
         expect(revalidatePathMock).toHaveBeenCalledWith('/', 'layout')
     })
 

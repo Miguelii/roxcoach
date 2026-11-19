@@ -99,6 +99,7 @@ export function AppShell({ children }: Props) {
                                         variant="outline"
                                         size="icon"
                                         aria-label="Account menu"
+                                        data-testid="account-menu-trigger"
                                     />
                                 }
                             >
