@@ -3,6 +3,7 @@ import { Anton, Geist, Geist_Mono } from 'next/font/google'
 import '@/styles/globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
+import { TrpcContextProvider } from '@/providers/trpc-provider'
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -47,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             )}
         >
             <body className="min-h-full bg-background font-sans text-foreground">
-                {children}
+                <TrpcContextProvider>{children}</TrpcContextProvider>
                 <Toaster />
             </body>
         </html>
