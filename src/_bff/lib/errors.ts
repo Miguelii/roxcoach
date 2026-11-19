@@ -15,3 +15,17 @@ export class SignInWithPasswordError extends Data.TaggedError(
 )<ServiceErrorFields> {}
 export class AccessDeniedError extends Data.TaggedError('AccessDeniedError')<ServiceErrorFields> {}
 export class LogoutError extends Data.TaggedError('LogoutError')<ServiceErrorFields> {}
+
+// Strava
+export class StravaUnauthorizedError extends Data.TaggedError(
+    'StravaUnauthorizedError'
+)<ServiceErrorFields> {}
+export class StravaNotFoundError extends Data.TaggedError(
+    'StravaNotFoundError'
+)<ServiceErrorFields> {}
+export class StravaRateLimitedError extends Data.TaggedError('StravaRateLimitedError')<
+    ServiceErrorFields & { retryAfterS: number | null }
+> {}
+export class StravaApiError extends Data.TaggedError('StravaApiError')<
+    ServiceErrorFields & { status: number | null }
+> {}

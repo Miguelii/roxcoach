@@ -124,7 +124,8 @@ job twice for the same activity or report week must not duplicate rows.
 | `NEXT_STRAVA_CLIENT_SECRET`        | server | OAuth and token refresh                                    |
 | `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN` | server | webhook GET verification                                   |
 | `NEXT_CRON_SECRET`                 | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
-| `TRIGGER_SECRET_KEY`               | server | Trigger.dev (not in `ServerEnv` yet, added with its plan)  |
+| `TRIGGER_SECRET_KEY`               | server | Trigger.dev, triggers jobs from the app                    |
+| `TRIGGER_PROJECT_REF`              | server | `trigger.config.ts` project ref (CLI dev and deploy)       |
 | `NEXT_PUBLIC_WEBSITE_URL`          | client | absolute URLs, OAuth redirect                              |
 
 ## Code placement
