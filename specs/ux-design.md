@@ -94,8 +94,9 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 (time, sessions, run km and load ratio from the last 35 days of Strava activities, zeros and
 "No history yet" without activities) and the calendar with completed activities only. The
 planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
-return with the plans that own them. `/plan`, `/races`, `/coach` and `/settings` render a
-"coming soon" page until their backend ships (settings gets the Strava card first). "Today" comes
+return with the plans that own them. `/plan`, `/races` and `/coach` render a "coming soon" page
+until their backend ships; `/settings` renders the Strava card (profile and availability return
+with a later plan). "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 Target design, top to bottom:
@@ -115,9 +116,10 @@ Target design, top to bottom:
 4. **Latest report** card under the calendar: the headline of the last weekly report, its week, a
    link to `/coach` and when the next one arrives (Sunday 20:00).
 
-The calendar is fed by `training.getCalendar({ from, to })`, a single query returning activities,
-planned sessions and races for the visible range. The feed is typed as a discriminated union on
-`type` (`activity`, `planned`, `race`).
+The calendar is fed by `training.getCalendar({ from, to })`, a single query. Target state: it
+returns activities, planned sessions and races for the visible range, typed as a discriminated
+union on `type` (`activity`, `planned`, `race`). Today `CalendarItem` has the `activity` member
+only; the `planned` member arrives with plan 5 and the `race` member with plan 3.
 
 ### Activity detail
 
@@ -195,6 +197,7 @@ omitted, never as "N/A" text from the database.
 
 ## Smoke tests
 
-Every element tested is located by `data-testid` with page objects in `e2e/pos/*.po.ts`. Initial
-flows: login success and failure, calendar renders mocked activities, create a race, save weekly
-availability.
+Every element tested is located by `data-testid`. Target state: end-to-end smoke tests with page
+objects in `e2e/pos/*.po.ts` (there is no `e2e` directory yet; today only unit and component tests
+exist, and the mock data is gone). Initial flows: login success and failure, the calendar renders
+activities from seeded data, create a race, save weekly availability.

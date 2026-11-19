@@ -50,7 +50,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
 - Primary keys are `uuid default gen_random_uuid()` unless noted.
 - **Every table has a `user_id`** (see "Multi-user from day one" below), declared
   `user_id uuid not null default auth.uid() references auth.users(id) on delete cascade`. The one
-  exception is `strava_webhook_events`, where it is nullable (the owner may be unknown).
+  exception is `strava_webhook_events`, where it stays nullable for audit rows if ever needed: the
+  webhook no longer writes events of an unknown owner, so today every row has a user.
 - `created_at timestamptz not null default now()` everywhere, `updated_at` where rows are edited
   (maintained by a shared `set_updated_at()` trigger).
 - Times are stored in seconds (`*_s`), distances in meters (`*_m`), speeds in meters per second

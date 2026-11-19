@@ -99,8 +99,11 @@ services or processors of their own module. Cross-module imports only through `s
 | `src/app/api/strava/callback/route.ts`     | Strava OAuth redirect handler                                                  |
 | `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet) |
 
-These are plain route handlers because Strava calls them, not the browser app. They delegate to
-`strava` services immediately and keep no logic of their own.
+These are plain route handlers because Strava calls them, not the browser app. The webhook route only
+wires `createStravaWebhookHandlers` (helper) to `strava` services (event handling, enqueue and
+`settleStravaEvent`) and holds no logic or data access of its own. The callback route checks the
+session and the access flag itself (the proxy matcher excludes `api/`), then delegates the OAuth
+exchange to `completeStravaConnect`.
 
 ## Trigger.dev jobs
 
@@ -145,7 +148,8 @@ and Trigger.dev variables are optional at startup (the features that need them f
 error when they are missing), and an empty value reads as unset (`emptyStringAsUndefined`).
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
 `http://localhost:3000` when unset or empty. `.env.example` currently lists only
-`NEXT_ANTHROPIC_AI_KEY` and `NEXT_CRON_SECRET`.
+`NEXT_ANTHROPIC_AI_KEY` and `NEXT_CRON_SECRET`. The repo rule is that `.env.example` lists every
+variable, and the current file does not: the maintainer must reconcile it with the table above.
 
 ## Code placement
 
