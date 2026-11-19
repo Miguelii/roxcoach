@@ -25,7 +25,7 @@ src/
   _bff/
     core/        constants, helpers, utils importable by frontend and _bff; db/ (server only)
     lib/         errors.ts, error-codes.ts, server-logger.ts, tests-utils.ts
-    trpc/        server.ts, utils.ts, context.ts, router.ts
+    trpc/        server.ts, utils.ts, context.ts, router.ts, caller.ts
     modules/<module>/
       <module>.router.ts
       controllers/<name>.controller.ts
@@ -87,8 +87,9 @@ services or processors of their own module. Cross-module imports only through `s
 ## tRPC namespaces
 
 `auth`, `athlete`, `races`, `strava`, `training`, `plan`, `coach`. Example client call:
-`trpcClient.races.create.useMutation()`. A server-side caller (`trpc/caller.ts`, for Server
-Components) does not exist yet: it is added with the first Server Component that needs it.
+`trpcClient.races.create.useMutation()`. Server Components use the server-side caller
+(`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
+`appRouter.createCaller`.
 
 ## Non-tRPC entry points
 

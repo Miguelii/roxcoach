@@ -1,0 +1,41 @@
+export const ACTIVITY_ID = '7a1f0f4e-3b0e-4c53-9a0a-6a3a3d2f9c11'
+
+export const DB_ROW = {
+    id: ACTIVITY_ID,
+    source: 'strava',
+    strava_id: 987654321,
+    category: 'run',
+    name: 'Morning run',
+    started_at: '2026-11-18T07:30:00+00:00',
+    local_date: '2026-11-18',
+    distance_m: 10000,
+    moving_time_s: 3000,
+    elapsed_time_s: 3100,
+    elevation_gain_m: 45.5,
+    avg_hr: 150,
+    max_hr: null,
+    avg_speed_mps: 3.33,
+    calories: null,
+    perceived_effort: null,
+    notes: null,
+}
+
+export const DTO = {
+    id: ACTIVITY_ID,
+    source: 'strava',
+    stravaId: 987654321,
+    category: 'run',
+    name: 'Morning run',
+    startedAt: '2026-11-18T07:30:00+00:00',
+    localDate: '2026-11-18',
+    distanceM: 10000,
+    movingTimeS: 3000,
+    elapsedTimeS: 3100,
+    elevationGainM: 45.5,
+    avgHr: 150,
+    maxHr: null,
+    avgSpeedMps: 3.33,
+    calories: null,
+    perceivedEffort: null,
+    notes: null,
+}

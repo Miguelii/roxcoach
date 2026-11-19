@@ -38,3 +38,14 @@ export class StravaNotConnectedError extends Data.TaggedError(
 export class StravaConnectionError extends Data.TaggedError(
     'StravaConnectionError'
 )<ServiceErrorFields> {}
+
+// Training
+export class ActivityQueryError extends Data.TaggedError(
+    'ActivityQueryError'
+)<ServiceErrorFields> {}
+export class ActivityWriteError extends Data.TaggedError(
+    'ActivityWriteError'
+)<ServiceErrorFields> {}
+export class InvalidDateRangeError extends Data.TaggedError(
+    'InvalidDateRangeError'
+)<ServiceErrorFields> {}

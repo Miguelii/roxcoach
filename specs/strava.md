@@ -158,6 +158,12 @@ recovery path when the subscription breaks.
 The training tables (`activities`, `activity_laps`) are written through the `training` module's
 service (`upsertActivityFromStrava`), not directly from `strava` repositories.
 
+The upsert is a lookup by `(user_id, strava_id)` followed by an update or an insert, not a PostgREST
+`onConflict`: `activities_user_id_strava_id_key` is a partial unique index (`where strava_id is not
+null`), which `ON CONFLICT (user_id, strava_id)` cannot infer through PostgREST. A unique violation
+from a concurrent insert is resolved by looking the row up again and updating it. The update clears
+`deleted_at`, so a re-created activity reappears.
+
 ## Compliance note
 
 Strava's API Agreement restricts how API data may be used with AI and shown to others. Roxcoach is
