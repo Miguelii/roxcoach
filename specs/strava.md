@@ -98,7 +98,8 @@ keeps it too, and 429, 5xx or network errors propagate for a retry.
 
 The webhook never does heavy work inline. A subscription is created once with
 `POST https://www.strava.com/api/v3/push_subscriptions` (client id, client secret, callback URL,
-verify token), run by a documented one-time script in `tools/`, and the returned subscription id is
+verify token), run by the one-time script `tools/strava-subscription.ts`
+(`pnpm dlx tsx tools/strava-subscription.ts <create|view|delete> [id]`), and the returned subscription id is
 noted in the project README.
 
 ## Sync pipeline (`sync-strava-activity` job)

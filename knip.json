@@ -1,6 +1,10 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
-    "entry": ["trigger.config.ts", "src/_bff/modules/*/jobs/*.job.ts"],
+    "entry": [
+        "trigger.config.ts",
+        "src/_bff/modules/*/jobs/*.job.ts",
+        "tools/strava-subscription.ts"
+    ],
     "tags": ["-lintignore"],
     "ignore": ["src/components/ui/**", "tools/oxlint/anti-slop/**"]
 }

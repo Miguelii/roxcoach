@@ -15,7 +15,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
-        include: ['src/**/*.test.{ts,tsx}', 'db/tests/**/*.test.ts'],
+        include: ['src/**/*.test.{ts,tsx}', 'tools/__tests__/*.test.ts', 'db/tests/**/*.test.ts'],
         env: {
             NEXT_SUPABASE_URL: 'http://localhost:54321',
             NEXT_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
