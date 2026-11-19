@@ -1,12 +1,7 @@
 import { defineConfig } from '@trigger.dev/sdk'
 
-// Read at deploy time by the Trigger.dev CLI, outside the Next.js runtime, so ServerEnv
-// is not available here.
-const project = process.env.TRIGGER_PROJECT_REF
-if (!project) throw new Error('TRIGGER_PROJECT_REF is required to run the Trigger.dev CLI')
-
 export default defineConfig({
-    project,
+    project: 'proj_owwdlmiwmyjoanyavhwh',
     runtime: 'node-24',
     logLevel: 'log',
     maxDuration: 3600,
