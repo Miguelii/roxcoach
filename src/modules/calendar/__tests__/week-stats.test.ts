@@ -1,66 +1,58 @@
 import { describe, expect, it } from 'vitest'
 import { computeLoadRatio, computeTotals, loadLabel } from '@/modules/calendar/week-stats'
-import type { CalendarItem, MockActivity, MockPlannedSession } from '@/modules/mock/types'
+import { makeItem } from '@/modules/calendar/__tests__/fixtures'
 
-const activity = (date: string, minutes: number, distanceM: number | null): CalendarItem => {
-    const value: MockActivity = {
+const run = (date: string, minutes: number, distanceM: number | null) =>
+    makeItem({
         id: `a-${date}`,
-        date,
-        category: 'run',
-        name: 'Run',
-        durationS: minutes * 60,
+        localDate: date,
+        movingTimeS: minutes * 60,
         distanceM,
-        avgHr: null,
-        rpe: null,
-        source: 'strava',
-    }
-    return { type: 'activity', date, activity: value }
-}
-
-const planned = (date: string, minutes: number): CalendarItem => {
-    const session: MockPlannedSession = {
-        id: `p-${date}`,
-        date,
-        kind: 'run',
-        title: 'Run',
-        description: '',
-        targetMinutes: minutes,
-        status: 'planned',
-        matchedActivityId: null,
-        raceId: null,
-    }
-    return { type: 'planned', date, session }
-}
+    })
 
 describe('computeTotals', () => {
-    it('adds done activities and remaining planned sessions', () => {
+    it('adds the activities inside the range', () => {
         const items = [
-            activity('2026-11-16', 45, 8000),
-            planned('2026-11-20', 60),
-            activity('2026-11-30', 30, 5000),
+            run('2026-11-16', 45, 8000),
+            run('2026-11-20', 60, 10_000),
+            run('2026-11-30', 30, 5000),
         ]
 
         expect(computeTotals(items, '2026-11-16', '2026-11-22')).toEqual({
-            doneMinutes: 45,
-            plannedMinutes: 105,
+            doneMinutes: 105,
+            doneSessions: 2,
+            runKm: 18,
+        })
+    })
+
+    it('counts run distance for runs only and falls back to elapsed time', () => {
+        const items = [
+            makeItem({ category: 'hyrox', distanceM: 8000, movingTimeS: null, elapsedTimeS: 3600 }),
+        ]
+
+        expect(computeTotals(items, '2026-11-16', '2026-11-22')).toEqual({
+            doneMinutes: 60,
             doneSessions: 1,
-            totalSessions: 2,
-            runKm: 8,
+            runKm: 0,
         })
     })
 
     it('returns zeros for an empty range', () => {
-        expect(computeTotals([], '2026-11-16', '2026-11-22').totalSessions).toBe(0)
+        expect(computeTotals([], '2026-11-16', '2026-11-22')).toEqual({
+            doneMinutes: 0,
+            doneSessions: 0,
+            runKm: 0,
+        })
     })
 })
 
 describe('computeLoadRatio', () => {
     it('returns null when there is no chronic history', () => {
-        expect(computeLoadRatio([activity('2026-11-18', 60, null)], '2026-11-19')).toBeNull()
+        expect(computeLoadRatio([run('2026-11-18', 60, null)], '2026-11-19')).toBeNull()
     })
 
     it('divides the last 7 days by the weekly average of the 28 before', () => {
-        const items = [activity('2026-11-18', 120, null), activity('2026-11-01', 240, null)]
+        const items = [run('2026-11-18', 120, null), run('2026-11-01', 240, null)]
 
         expect(computeLoadRatio(items, '2026-11-19')).toBe(2)
     })

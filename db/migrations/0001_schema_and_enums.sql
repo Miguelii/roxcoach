@@ -1,3 +1,5 @@
+begin;
+
 -- Roxcoach lives in its own schema because the Supabase project is shared with another app.
 -- Nothing is created in public. Rolling back Roxcoach means dropping this schema.
 create schema if not exists roxcoach;
@@ -58,3 +60,4 @@ end;
 $$;
 
 insert into roxcoach.schema_migrations (filename) values ('0001_schema_and_enums.sql');
+commit;

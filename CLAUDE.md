@@ -2,7 +2,7 @@
 
 # Project Conventions
 
-Roxcoach is a Hyrox training coach. Specs in `specs/` are binding. Before touching a module, read
+Roxcoach is a training coach for Hyrox and running. Specs in `specs/` are binding. Before touching a module, read
 `specs/<module>.md` (start from `specs/README.md` and `specs/architecture.md`), and update that spec
 in the same change when behavior, data or contracts change.
 

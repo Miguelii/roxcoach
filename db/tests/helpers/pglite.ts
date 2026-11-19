@@ -1,11 +1,16 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
 
-// JWT claims as Supabase puts them in request.jwt.claims. roxcoach is deliberately loose so tests
-// can check that only the boolean true grants access.
+// Any value a roxcoach claim could carry. Deliberately loose so tests can check that only the
+// boolean true in app_metadata grants access.
+type FlagValue = boolean | string | number | null | Record<string, never>
+
+// JWT claims as Supabase puts them in request.jwt.claims. user_metadata is writable by the user
+// themselves (auth.updateUser), so it must never grant anything.
 export type Claims = {
     sub?: string
-    app_metadata?: { roxcoach?: boolean | string | number }
+    app_metadata?: { roxcoach?: FlagValue }
+    user_metadata?: { roxcoach?: FlagValue }
 }
 
 export type TestDb = {

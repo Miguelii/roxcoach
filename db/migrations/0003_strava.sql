@@ -1,3 +1,5 @@
+begin;
+
 -- Sensitive: only the service-role client reads or writes this table.
 create table roxcoach.strava_connections (
     user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
@@ -38,3 +40,4 @@ create trigger set_updated_at before update on roxcoach.strava_webhook_events
     for each row execute function roxcoach.set_updated_at();
 
 insert into roxcoach.schema_migrations (filename) values ('0003_strava.sql');
+commit;

@@ -24,17 +24,22 @@ to change.
 
 ## Access gate
 
-Being signed in is not enough. Three layers check the flag:
+Being signed in is not enough. Every entry point checks the flag:
 
-| Layer                | Check                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Proxy (`sbProxy`)    | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login` |
-| `protectedProcedure` | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`           |
-| Database             | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                         |
+| Layer                 | Check                                                                                                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Proxy (`sbProxy`)     | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login`                                                                                                               |
+| `protectedProcedure`  | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`                                                                                                                         |
+| Database              | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                                                                                                                                       |
+| Strava OAuth callback | `src/app/api/strava/callback/route.ts` is outside the proxy matcher, so it calls `getSession()` (`getUser()`, not claims) and `hasRoxcoachAccess` itself: without both it redirects to `/login` and exchanges nothing (see [strava.md](strava.md)) |
 
-The proxy reads the flag from the JWT claims, so revoking `app_metadata.roxcoach` only takes effect
-there when the access token expires (about 1 hour by default). `protectedProcedure` and RLS are the
-authoritative checks for data.
+The proxy and `roxcoach.has_access()` (RLS) both read the flag from the JWT claims, so revoking
+`app_metadata.roxcoach` only takes effect in them when the access token is reissued (it expires
+after about 1 hour by default). Only `protectedProcedure` is immediate: `getSession()` calls
+`getUser()`, which asks Supabase Auth for the current user, so a revoked flag gives `FORBIDDEN` at
+once there. Granting the flag works the other way round: the user must sign in again, because the
+flag reaches the JWT only with a new access token. `user_metadata` is never read, since users can
+write it themselves through `auth.updateUser`.
 
 `sb-login` calls `signInWithPassword`, then checks the returned user's `app_metadata.roxcoach`. When
 it is missing it signs out at once and returns the same generic failure as a wrong password, so the
@@ -50,7 +55,7 @@ page never reveals that the account exists in the other app.
 | Success           | redirect to `/dashboard`                                                             |
 | Failure           | one generic message ("Invalid email or password"), never reveal which part was wrong |
 | Already signed in | the proxy redirects `/login` to `/dashboard`                                         |
-| Logout            | action in the app shell calling `auth.logout`, then redirect to `/login`             |
+| Logout            | app shell action calling `auth.logout` (local scope), then redirect to `/login`      |
 
 The login form follows BrewStock's form pattern and visual style (see
 [ux-design.md](ux-design.md)). There is no marketing content on the page.
@@ -105,8 +110,14 @@ dot segments that resolve to a protocol-relative path (`/.//evil.com`) and non-s
 | Function                     | Key                              | Used for                                                 |
 | ---------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `createDBServerClient()`     | publishable key, cookie session  | tRPC services acting as the logged-in user (RLS applies) |
-| `createDBServerClient(true)` | service-role key, cookie session | rare server-side admin needs                             |
+| `createDBServerClient(true)` | service-role key, cookie session | not an admin client, see below                           |
 | `createDBAdminClient()`      | service-role key, no cookies     | Trigger.dev jobs, webhook handler, Strava token storage  |
+
+`createDBServerClient(true)` is not a reliable way to act as the service role. When a cookie
+session exists, supabase-js sends the user's access token instead of the key, so PostgREST runs as
+`authenticated` under RLS, with that user's policies and flag. It acts as the
+service role only when nobody is signed in. Use `createDBAdminClient()` for Strava tokens, jobs
+and webhooks.
 
 Every client is created with `db: { schema: 'roxcoach' }` so table names resolve inside the
 Roxcoach schema and never in `public`. A new client is created on every request. Services pick the key and pass the client into
@@ -119,13 +130,18 @@ repositories.
 | `controllers/sb-login.controller.ts`    | public procedure, input `{ email, password }`                     |
 | `controllers/sb-logout.controller.ts`   | public procedure (must work with an expired or unflagged session) |
 | `services/sb-login.service.ts`          | `signInWithPassword`, tagged errors                               |
-| `services/sb-logout.service.ts`         | `signOut`                                                         |
+| `services/sb-logout.service.ts`         | `signOut({ scope: 'local' })`                                     |
 | `services/get-session.service.ts`       | `getUser()` once per request via React `cache()`                  |
 | `services/get-cached-claims.service.ts` | `getClaims()` for rendering UI without a network call             |
 
 Copied from BrewStock, minus the OTP services and the OAuth callback route. `protectedProcedure`
-in `src/_bff/trpc/server.ts` is identical: it runs `getSession()`, returns 401 without a user and
-500 on infrastructure failure.
+in `src/_bff/trpc/server.ts` matches BrewStock's (it runs `getSession()`, returns 401 without a
+user and 500 on infrastructure failure) and adds one check: it returns 403 (`FORBIDDEN`) when the
+signed-in user lacks `app_metadata.roxcoach === true`.
+
+Logout uses the local scope (`signOut({ scope: 'local' })`). The default global scope would revoke
+every refresh token of the shared `auth.users` row, signing the same account out of the other app
+and of every other device. Local scope ends only this browser's session.
 
 ## Authorization
 
@@ -154,7 +170,8 @@ browsing-topics denied.
 ## Secrets
 
 - All secrets in env vars (see [architecture.md](architecture.md)), validated at startup by
-  `@t3-oss/env-nextjs`.
+  `@t3-oss/env-nextjs`. `TRIGGER_SECRET_KEY` is not in `ServerEnv` yet: it is added with the
+  Trigger.dev plan.
 - Strava `access_token` and `refresh_token` sit in `strava_connections`, behind RLS with no
   policies. They are never logged. Error objects stored in `strava_webhook_events.error` must not
   contain tokens.

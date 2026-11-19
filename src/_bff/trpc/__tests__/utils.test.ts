@@ -107,4 +107,37 @@ describe('runEffect', () => {
         expect(errorSpy).toHaveBeenCalled()
         expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(PASSWORD)
     })
+
+    it('still throws the mapped TRPCError when logging fails on a hostile cause', async () => {
+        const hostile = new Proxy(
+            { password: PASSWORD },
+            {
+                ownKeys: () => {
+                    throw new Error('trap')
+                },
+            }
+        )
+        const effect = Effect.fail(
+            new AccessDeniedError({ cause: hostile, error_hash: ErrorCode.AUTH_LOGIN_NO_ACCESS })
+        )
+
+        const error = await caught(runEffect(effect, 'test', () => 'UNAUTHORIZED'))
+
+        expect(error.code).toBe('UNAUTHORIZED')
+        expect(error.message).toBe(ErrorCode.AUTH_LOGIN_NO_ACCESS)
+        expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(PASSWORD)
+    })
+
+    it('still throws the mapped TRPCError when the console itself throws', async () => {
+        errorSpy.mockImplementation(() => {
+            throw new Error('console broken')
+        })
+        const effect = Effect.fail(
+            new AccessDeniedError({ cause: 'no flag', error_hash: ErrorCode.AUTH_LOGIN_NO_ACCESS })
+        )
+
+        const error = await caught(runEffect(effect, 'test', () => 'UNAUTHORIZED'))
+
+        expect(error.code).toBe('UNAUTHORIZED')
+    })
 })

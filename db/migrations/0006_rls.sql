@@ -1,3 +1,5 @@
+begin;
+
 -- Row Level Security for every Roxcoach table. The Supabase project is shared with another app, so
 -- being signed in is not enough: every policy also requires the explicit Roxcoach access flag.
 
@@ -152,3 +154,4 @@ create policy delete_own on roxcoach.planned_sessions for delete to authenticate
     using (user_id = auth.uid() and roxcoach.has_access());
 
 insert into roxcoach.schema_migrations (filename) values ('0006_rls.sql');
+commit;

@@ -14,7 +14,9 @@ export const sbLogout = Effect.fn('sbLogout')(function* () {
     })
 
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.auth.signOut(),
+        // Local scope: the project is shared, so a global sign-out would revoke the refresh tokens
+        // of the same account in the other app and on every other device.
+        try: () => supabase.auth.signOut({ scope: 'local' }),
         catch: (cause) => new LogoutError({ cause, error_hash: ErrorCode.AUTH_LOGOUT_SIGN_OUT }),
     })
 

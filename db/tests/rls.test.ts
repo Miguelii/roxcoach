@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createUser, seedUserGraph } from '@db/tests/helpers/fixtures'
 import { createTestDb, type Claims, type TestDb } from '@db/tests/helpers/pglite'
 
 type NameRow = { name: string }
@@ -14,6 +15,7 @@ type PolicyRow = {
 type PrivilegeRow = { name: string; any_privilege: boolean }
 type FunctionRow = { security_definer: boolean; volatility: string; config: string[] | null }
 type AccessRow = { has_access: boolean }
+type CountRow = { count: number }
 
 // RLS on, no policies: only the service role touches them.
 const SERVICE_ONLY_TABLES = new Set([
@@ -141,7 +143,29 @@ describe('roxcoach.has_access()', () => {
         ['the number 1', { sub: USER_ID, app_metadata: { roxcoach: 1 } }, false],
         ['a non-boolean string', { sub: USER_ID, app_metadata: { roxcoach: 'yes' } }, false],
         ['boolean false', { sub: USER_ID, app_metadata: { roxcoach: false } }, false],
+        ['a null flag', { sub: USER_ID, app_metadata: { roxcoach: null } }, false],
+        ['an object flag', { sub: USER_ID, app_metadata: { roxcoach: {} } }, false],
+        [
+            'user_metadata true and no app_metadata flag',
+            { sub: USER_ID, user_metadata: { roxcoach: true } },
+            false,
+        ],
+        [
+            'user_metadata true and an empty app_metadata',
+            { sub: USER_ID, app_metadata: {}, user_metadata: { roxcoach: true } },
+            false,
+        ],
+        [
+            'user_metadata true and app_metadata false',
+            { sub: USER_ID, app_metadata: { roxcoach: false }, user_metadata: { roxcoach: true } },
+            false,
+        ],
         ['boolean true', { sub: USER_ID, app_metadata: { roxcoach: true } }, true],
+        [
+            'boolean true in app_metadata next to a false user_metadata',
+            { sub: USER_ID, app_metadata: { roxcoach: true }, user_metadata: { roxcoach: false } },
+            true,
+        ],
     ] satisfies [string, Claims | null, boolean][])('with %s', async (_label, claims, expected) => {
         await testDb.asClaims(claims)
         const result = await testDb.db.query<AccessRow>(
@@ -149,5 +173,47 @@ describe('roxcoach.has_access()', () => {
         )
 
         expect(result.rows).toEqual([{ has_access: expected }])
+    })
+})
+
+// Users can write their own user_metadata through auth.updateUser, so on a shared project that is
+// the most realistic self-grant attempt. None of these sessions may see the user's own rows.
+describe('self-grant attempts', () => {
+    let ownerId: string
+    let clientTables: string[]
+
+    beforeAll(async () => {
+        ownerId = await createUser(testDb)
+        await seedUserGraph(testDb, ownerId, 201)
+        clientTables = allTables.filter((table) => !SERVICE_ONLY_TABLES.has(table))
+    })
+
+    async function visibleRows(claims: Claims): Promise<number> {
+        await testDb.asClaims(claims)
+        const counts = await Promise.all(
+            clientTables.map((table) =>
+                testDb.db.query<CountRow>(`select count(*)::int as count from roxcoach.${table}`)
+            )
+        )
+        return counts.reduce((sum, result) => sum + (result.rows[0]?.count ?? 0), 0)
+    }
+
+    it('sees the own rows with the real flag (control)', async () => {
+        expect(
+            await visibleRows({ sub: ownerId, app_metadata: { roxcoach: true } })
+        ).toBeGreaterThan(0)
+    })
+
+    it.each([
+        ['user_metadata.roxcoach = true only', { user_metadata: { roxcoach: true } }],
+        [
+            'user_metadata.roxcoach = true with an empty app_metadata',
+            { app_metadata: {}, user_metadata: { roxcoach: true } },
+        ],
+        ['app_metadata.roxcoach = null', { app_metadata: { roxcoach: null } }],
+        ['app_metadata.roxcoach = {}', { app_metadata: { roxcoach: {} } }],
+        ["app_metadata.roxcoach = 'true'", { app_metadata: { roxcoach: 'true' } }],
+    ] satisfies [string, Claims][])('sees zero rows with %s', async (_label, extra) => {
+        expect(await visibleRows({ sub: ownerId, ...extra })).toBe(0)
     })
 })

@@ -86,14 +86,15 @@ Behaviour:
 
 Module `athlete`:
 
-| File                                                                              | Purpose                                                       |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `controllers/get-profile.controller.ts`                                           | protected query                                               |
-| `controllers/update-profile.controller.ts`                                        | protected mutation                                            |
-| `controllers/get-availability.controller.ts`                                      | protected query                                               |
-| `controllers/save-availability.controller.ts`                                     | protected mutation, replaces the full week in one transaction |
-| `services/*.service.ts`                                                           | business logic and validation                                 |
-| `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                   |
+| File                                                                              | Purpose                                                                                           |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `controllers/get-profile.controller.ts`                                           | protected query                                                                                   |
+| `controllers/get-timezone.controller.ts`                                          | protected query, the timezone string (default Europe/Lisbon); the dashboard derives today from it |
+| `controllers/update-profile.controller.ts`                                        | protected mutation                                                                                |
+| `controllers/get-availability.controller.ts`                                      | protected query                                                                                   |
+| `controllers/save-availability.controller.ts`                                     | protected mutation, replaces the full week in one transaction                                     |
+| `services/*.service.ts`                                                           | business logic and validation                                                                     |
+| `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                                                       |
 
 Module `races`:
 

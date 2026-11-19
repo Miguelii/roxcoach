@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-    IconBrandStrava,
     IconCalendar,
     IconClipboardText,
     IconFlag,
@@ -88,10 +87,6 @@ export function AppShell({ children }: Props) {
                     </nav>
 
                     <div className="ml-auto flex items-center gap-3">
-                        <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-                            <IconBrandStrava className="size-3.5 text-tangerine" />
-                            Synced 12 min ago
-                        </span>
                         <DropdownMenu>
                             <DropdownMenuTrigger
                                 render={
@@ -99,6 +94,7 @@ export function AppShell({ children }: Props) {
                                         variant="outline"
                                         size="icon"
                                         aria-label="Account menu"
+                                        data-testid="account-menu-trigger"
                                     />
                                 }
                             >

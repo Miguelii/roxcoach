@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
-import { PlanView } from '@/modules/plan/plan-view'
+import { ComingSoon } from '@/components/coming-soon'
 
 export const metadata: Metadata = { title: 'Plan' }
 
 export default function PlanPage() {
     return (
         <main className="main-container">
-            <h1 className="display display-section">Plan</h1>
-            <PlanView />
+            <ComingSoon
+                title="Plan"
+                description="Your training plan and the outlook toward each race will live here. It is not available yet."
+            />
         </main>
     )
 }

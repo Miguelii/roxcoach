@@ -11,8 +11,7 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
 1. **Own schema.** Every table, enum, function and policy lives in the `roxcoach` schema. Nothing is
    created in `public`, so table names such as `activities` or `races` cannot collide with the
    other app. Migrations are written schema-qualified (`create table roxcoach.activities ...`).
-2. **Expose the schema to the API.** In Supabase, Project Settings, API, add `roxcoach` to
-   "Exposed schemas". Then grant access explicitly in `0001`:
+2. **Grant explicitly, expose last.** `0001` grants access explicitly:
     - `grant usage on schema roxcoach to authenticated, service_role;`
     - `grant select, insert, update, delete on all tables in schema roxcoach to authenticated;`
     - `grant all on all tables in schema roxcoach to service_role;`
@@ -21,6 +20,15 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
     - nothing is granted to `anon`.
     - `0006` revokes every privilege on the service-only tables (`strava_connections`,
       `strava_webhook_events`, `schema_migrations`) from `authenticated` and `anon`.
+
+    The schema is added to the API only after `0006` has been applied and verified: in Supabase,
+    Project Settings, API, append `roxcoach` to "Exposed schemas" (never replace the list, the other
+    app depends on it). Between `0002` and `0006` the tables carry the `authenticated` grants with
+    RLS off, and sign-ups are open on the shared project, so exposing the schema earlier would let
+    anyone insert rows in that window. Each migration file is wrapped in `begin; ... commit;` so it
+    applies atomically. The files are not idempotent: see `db/README.md` for the rollout checklist
+    and what to check when one fails.
+
 3. **Clients select the schema.** Every Supabase client is created with `db: { schema: 'roxcoach' }`
    (see [auth-security.md](auth-security.md)). Auth calls are unaffected.
 4. **`auth.users` is shared.** Users of the other app are also rows in `auth.users`. Roxcoach
@@ -42,7 +50,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
 - Primary keys are `uuid default gen_random_uuid()` unless noted.
 - **Every table has a `user_id`** (see "Multi-user from day one" below), declared
   `user_id uuid not null default auth.uid() references auth.users(id) on delete cascade`. The one
-  exception is `strava_webhook_events`, where it is nullable (the owner may be unknown).
+  exception is `strava_webhook_events`, where it stays nullable for audit rows if ever needed: the
+  webhook no longer writes events of an unknown owner, so today every row has a user.
 - `created_at timestamptz not null default now()` everywhere, `updated_at` where rows are edited
   (maintained by a shared `set_updated_at()` trigger).
 - Times are stored in seconds (`*_s`), distances in meters (`*_m`), speeds in meters per second
@@ -219,7 +228,9 @@ Every child table below has its own `user_id` and a composite foreign key
 | `avg_speed_mps`  | numeric null                                   |                                                     |
 | `station`        | `hyrox_station` null                           | set when a lap is recognised or tagged as a station |
 
-Unique on `(user_id, activity_id, lap_index)`.
+Unique on `(user_id, activity_id, lap_index)`. A Strava sync replaces an activity's laps by deleting
+the old rows and then inserting the new ones (not atomic: a failed insert leaves no laps until the
+retried sync rewrites them).
 
 ### `station_results`
 
@@ -296,8 +307,8 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
   security`: forcing only affects the table owner (`postgres`), which runs the migrations, the seed
   and the `auth.users` cascades. Clients never connect as the owner and `service_role` bypasses RLS
   through `BYPASSRLS` either way.
-- Every table with a client-facing use (all except `strava_connections` and
-  `strava_webhook_events`): one policy per operation, `select`, `insert`, `update` and `delete`,
+- Every table with a client-facing use (all except the three no-policy tables below,
+  `strava_connections`, `strava_webhook_events` and `schema_migrations`): one policy per operation, `select`, `insert`, `update` and `delete`,
   `to authenticated`, with `using (user_id = auth.uid() and roxcoach.has_access())` and, for
   writes, `with check (user_id = auth.uid() and roxcoach.has_access())`. The policy is identical on
   every table because every table, children included, carries `user_id`.
@@ -331,7 +342,9 @@ schema:
 - A signed-in user **without** `app_metadata.roxcoach` (a user of the other app) cannot select or
   insert in any Roxcoach table.
 - A cannot move one of its own rows to B by update (`with check`).
-- `roxcoach.has_access()` is true only for the JSON boolean `true` (not the string `"true"`).
+- `roxcoach.has_access()` is true only for the JSON boolean `true` in `app_metadata` (not the
+  string `"true"`, `null`, an object, or `user_metadata.roxcoach`, which users can write
+  themselves).
 - Deleting user A removes all of A's rows and none of B's.
 
 ## Migrations

@@ -11,6 +11,7 @@ export const ServerEnv = createEnv({
         NEXT_STRAVA_CLIENT_SECRET: z.string().optional(),
         NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
         NEXT_CRON_SECRET: z.string().optional(),
+        TRIGGER_SECRET_KEY: z.string().optional(),
     },
     runtimeEnv: {
         NEXT_SUPABASE_URL: process.env.NEXT_SUPABASE_URL,
@@ -21,5 +22,8 @@ export const ServerEnv = createEnv({
         NEXT_STRAVA_CLIENT_SECRET: process.env.NEXT_STRAVA_CLIENT_SECRET,
         NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN: process.env.NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN,
         NEXT_CRON_SECRET: process.env.NEXT_CRON_SECRET,
+        TRIGGER_SECRET_KEY: process.env.TRIGGER_SECRET_KEY,
     },
+    // An empty value copied from .env.example reads as unset.
+    emptyStringAsUndefined: true,
 })
