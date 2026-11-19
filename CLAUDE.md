@@ -14,7 +14,7 @@ in the same change when behavior, data or contracts change.
 - shadcn components use `base-ui`, NEVER Radix.
 - Types are declared at the top of the file, never in the middle.
 - Nothing is pushed and no secrets are committed: `.env*` is git-ignored, only `.env.example` is tracked.
-- Every commit passes the pre-commit hook (`pnpm fmt`, `pnpm check`, `pnpm knip`). Run `pnpm test` before committing. End every commit message with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- Every commit passes the pre-commit hook (`pnpm fmt`, `pnpm check`, `pnpm knip`). Run `pnpm test` before committing.
 
 ## Imports: ALWAYS use the `@/` alias
 
