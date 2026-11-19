@@ -7,6 +7,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@db': path.resolve(__dirname, './db'),
             'server-only': path.resolve(__dirname, './src/lib/__mocks__/server-only.ts'),
         },
     },
@@ -14,7 +15,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
-        include: ['src/**/*.test.{ts,tsx}'],
+        include: ['src/**/*.test.{ts,tsx}', 'db/tests/**/*.test.ts'],
         env: {
             NEXT_SUPABASE_URL: 'http://localhost:54321',
             NEXT_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
