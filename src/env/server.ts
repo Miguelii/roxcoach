@@ -3,9 +3,9 @@ import { z } from 'zod'
 
 export const ServerEnv = createEnv({
     server: {
-        NEXT_SUPABASE_URL: z.string(),
-        NEXT_SUPABASE_PUBLISHABLE_KEY: z.string(),
-        NEXT_SUPABASE_SERVICE_ROLE_KEY: z.string(),
+        NEXT_SUPABASE_URL: z.string().min(1),
+        NEXT_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+        NEXT_SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
         NEXT_ANTHROPIC_AI_KEY: z.string().optional(),
         NEXT_STRAVA_CLIENT_ID: z.string().optional(),
         NEXT_STRAVA_CLIENT_SECRET: z.string().optional(),
