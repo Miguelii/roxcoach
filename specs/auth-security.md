@@ -65,20 +65,29 @@ Redirect rules in `sbProxy`:
 | Condition                                       | Result                              |
 | ----------------------------------------------- | ----------------------------------- |
 | No claims and path starts with a protected path | redirect to `/login`                |
-| Claims present and path is `/login`             | redirect to `/dashboard`            |
+| Claims without the flag on a protected path     | redirect to `/login`                |
+| Claims with the flag and path is `/login`       | redirect to `/dashboard`            |
 | Anything else                                   | pass through with refreshed cookies |
 
-Constants in `src/lib/constants.ts` (used by the proxy, so also needed in `_bff` if shared, then
-promoted to `src/_bff/core/constants/auth.constants.ts`):
+The decision is the pure function `decideAuthRedirect` in
+`src/_bff/core/helpers/auth-redirect.helper.ts`. A protected prefix only matches on a path-segment
+boundary (`/plan` and `/plan/1` match, `/plans-extra` does not). Redirects carry the refreshed
+session cookies and Supabase's no-cache headers, like the pass-through response.
+
+Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client code):
 `AUTH_PAGE_PATH = '/login'`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
-`PROTECTED_PATHS = ['/dashboard', '/activities', '/plan', '/races', '/settings']`.
+`PROTECTED_PATHS = ['/dashboard', '/coach', '/activities', '/plan', '/races', '/settings']`.
 
 The proxy matcher excludes `_next`, `api/` (webhook and OAuth callback authenticate themselves),
 static assets and the favicon. It is already defined in `src/proxy.ts` and only needs `sbProxy`
 added.
 
-`safeRedirectUrl(next, siteUrl)` from BrewStock is ported so any `next` parameter cannot redirect
-off-origin.
+`safeReturnTo(returnTo, fallback = DEFAULT_POST_AUTH_PATH)` in
+`src/_bff/core/helpers/safe-redirect.helper.ts` replaces BrewStock's `safeRedirectUrl`, so any return
+parameter cannot redirect off-origin. It fully decodes the value first and accepts it only when both
+the raw and decoded forms are same-site absolute paths: protocol-relative, backslash, absolute,
+`javascript:` and control-character forms (including percent-encoded and double-encoded variants)
+give the fallback.
 
 ## Supabase clients
 
