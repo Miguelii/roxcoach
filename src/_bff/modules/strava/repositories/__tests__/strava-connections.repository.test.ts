@@ -105,6 +105,7 @@ const operations = [
                 refresh_token: REFRESH_TOKEN,
                 expires_at: ROW.expires_at,
                 scope: ROW.scope,
+                connected_at: '2026-11-19T10:00:00.000Z',
             }).pipe(Effect.asVoid),
     ],
     ['deleteConnection', [], (s: Client) => deleteConnection(s, USER_ID)],
@@ -214,6 +215,7 @@ describe('upsertConnection', () => {
             refresh_token: REFRESH_TOKEN,
             expires_at: ROW.expires_at,
             scope: ROW.scope,
+            connected_at: '2026-11-19T10:00:00.000Z',
         }
 
         await Effect.runPromise(upsertConnection(supabase, USER_ID, input))
@@ -221,6 +223,26 @@ describe('upsertConnection', () => {
         expect(from).toHaveBeenCalledWith('strava_connections')
         expect(chain.upsert).toHaveBeenCalledWith(
             { user_id: USER_ID, ...input },
+            { onConflict: 'user_id' }
+        )
+    })
+
+    it('writes the given connected_at, so a reconnect replaces the previous connection date', async () => {
+        const { chain, supabase } = makeChain(ok())
+
+        await Effect.runPromise(
+            upsertConnection(supabase, USER_ID, {
+                strava_athlete_id: 12345,
+                access_token: ACCESS_TOKEN,
+                refresh_token: REFRESH_TOKEN,
+                expires_at: ROW.expires_at,
+                scope: ROW.scope,
+                connected_at: '2026-11-20T09:30:00.000Z',
+            })
+        )
+
+        expect(chain.upsert).toHaveBeenCalledWith(
+            expect.objectContaining({ connected_at: '2026-11-20T09:30:00.000Z' }),
             { onConflict: 'user_id' }
         )
     })

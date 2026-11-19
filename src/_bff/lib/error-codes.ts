@@ -121,4 +121,17 @@ export enum ErrorCode {
     // Strava - Jobs
     STRAVA_JOB_EVENT_SB_CLIENT = 'k2d8f5ys',
     STRAVA_JOB_WINDOW_SB_CLIENT = 'w6m1p9ta',
+
+    // Strava - OAuth connection
+    STRAVA_CONNECT_COOKIE = 'oxx48jlp',
+    STRAVA_CONNECT_STATE_MISSING = 'y3yyrddq',
+    STRAVA_CONNECT_STATE_MISMATCH = '7wsbto09',
+    STRAVA_CONNECT_NO_ATHLETE = 'agy36np0',
+    STRAVA_CONNECT_SB_CLIENT = 'gsce1vfc',
+
+    // Strava - Status, disconnect and manual sync
+    STRAVA_STATUS_SB_CLIENT = 'zxlw4jnd',
+    STRAVA_DISCONNECT_SB_CLIENT = '2ht97taa',
+    STRAVA_SYNC_NOW_SB_CLIENT = 't0gpc8c5',
+    STRAVA_SYNC_NOW_NOT_CONNECTED = 's7aig5jz',
 }

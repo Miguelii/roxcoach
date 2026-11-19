@@ -4,11 +4,13 @@ import { normalizeWebsiteUrl } from '@/_bff/core/utils/url.utils'
 
 export const ClientEnv = createEnv({
     client: {
-        NEXT_PUBLIC_WEBSITE_URL: z.string(),
+        // Absolute: OAuth redirect_uri and server redirects are built from it.
+        NEXT_PUBLIC_WEBSITE_URL: z.url(),
     },
     runtimeEnv: {
+        // Read literally so Next.js inlines it. An empty value copied from .env.example reads as unset.
         NEXT_PUBLIC_WEBSITE_URL: normalizeWebsiteUrl(
-            process?.env?.NEXT_PUBLIC_WEBSITE_URL ?? undefined
+            process.env.NEXT_PUBLIC_WEBSITE_URL || undefined
         ),
     },
 })

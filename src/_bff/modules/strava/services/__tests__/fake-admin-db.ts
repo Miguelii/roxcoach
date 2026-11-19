@@ -15,6 +15,7 @@ export type Call = {
 
 export type QueryResult = {
     data?: Json
+    count?: number | null
     error: { code: string; message: string; details?: string; hint?: string } | null
 }
 
@@ -68,6 +69,10 @@ export const makeFakeAdminDb = (handler: (call: Call) => QueryResult | Error) =>
                 return chain
             }),
             is: filter,
+            not: vi.fn((column: string, operator: string, value: Json) => {
+                call.filters.push([`${column}:not:${operator}`, value])
+                return chain
+            }),
             maybeSingle: vi.fn(() => chain),
             single: vi.fn(() => chain),
         })

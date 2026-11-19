@@ -46,6 +46,10 @@ export class WebhookEventError extends Data.TaggedError('WebhookEventError')<Ser
 export class EnqueueStravaJobError extends Data.TaggedError(
     'EnqueueStravaJobError'
 )<ServiceErrorFields> {}
+// The OAuth `state` is missing, does not match its cookie, or its cookie cannot be written.
+export class StravaOAuthStateError extends Data.TaggedError(
+    'StravaOAuthStateError'
+)<ServiceErrorFields> {}
 
 // Athlete
 export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}

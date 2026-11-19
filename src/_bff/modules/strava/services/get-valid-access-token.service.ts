@@ -8,20 +8,13 @@ import { STRAVA_TOKEN_URL, TOKEN_REFRESH_MARGIN_S } from '@/_bff/modules/strava/
 import { stravaOAuthPost } from '@/_bff/modules/strava/helpers/strava-api.client'
 import { getStravaCredentials } from '@/_bff/modules/strava/helpers/strava-credentials.helper'
 import {
-    type StravaTokenResponse,
     stravaTokenResponseSchema,
+    toStoredTokens,
 } from '@/_bff/modules/strava/helpers/strava-schemas.helper'
 import {
     selectConnection,
     updateTokensIfRefreshTokenMatches,
 } from '@/_bff/modules/strava/repositories/strava-connections.repository'
-
-// Strava sends `expires_at` as epoch seconds; the column is a timestamptz.
-const toStoredTokens = (response: StravaTokenResponse) => ({
-    access_token: response.access_token,
-    refresh_token: response.refresh_token,
-    expires_at: new Date(response.expires_at * 1000).toISOString(),
-})
 
 // An unparseable expiry reads as expired, so the token is refreshed rather than trusted.
 const isFresh = (expiresAt: string) =>

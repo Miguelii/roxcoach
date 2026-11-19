@@ -24,13 +24,14 @@ to change.
 
 ## Access gate
 
-Being signed in is not enough. Three layers check the flag:
+Being signed in is not enough. Every entry point checks the flag:
 
-| Layer                | Check                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Proxy (`sbProxy`)    | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login` |
-| `protectedProcedure` | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`           |
-| Database             | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                         |
+| Layer                 | Check                                                                                                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Proxy (`sbProxy`)     | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login`                                                                                                               |
+| `protectedProcedure`  | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`                                                                                                                         |
+| Database              | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                                                                                                                                       |
+| Strava OAuth callback | `src/app/api/strava/callback/route.ts` is outside the proxy matcher, so it calls `getSession()` (`getUser()`, not claims) and `hasRoxcoachAccess` itself: without both it redirects to `/login` and exchanges nothing (see [strava.md](strava.md)) |
 
 The proxy and `roxcoach.has_access()` (RLS) both read the flag from the JWT claims, so revoking
 `app_metadata.roxcoach` only takes effect in them when the access token is reissued (it expires

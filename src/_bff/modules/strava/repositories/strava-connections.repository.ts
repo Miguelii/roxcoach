@@ -22,12 +22,14 @@ type StravaConnection = {
     last_synced_at: string | null
 }
 
+// `connected_at` is passed on every connect, so a reconnect shows the new connection date.
 type ConnectionInput = {
     strava_athlete_id: number
     access_token: string
     refresh_token: string
     expires_at: string
     scope: string
+    connected_at: string
 }
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>

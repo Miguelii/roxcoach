@@ -2,5 +2,5 @@
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "entry": ["trigger.config.ts", "src/_bff/modules/*/jobs/*.job.ts"],
     "tags": ["-lintignore"],
-    "ignore": ["src/components/ui/**", "tools/oxlint/anti-slop/**", "src/env/client.ts"]
+    "ignore": ["src/components/ui/**", "tools/oxlint/anti-slop/**"]
 }

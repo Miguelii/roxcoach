@@ -38,4 +38,11 @@ export const stravaTokenResponseSchema = z.object({
 
 export type StravaActivity = z.infer<typeof stravaActivitySchema>
 export type StravaLap = z.infer<typeof stravaLapSchema>
-export type StravaTokenResponse = z.infer<typeof stravaTokenResponseSchema>
+type StravaTokenResponse = z.infer<typeof stravaTokenResponseSchema>
+
+// Strava sends `expires_at` as epoch seconds; the column is a timestamptz.
+export const toStoredTokens = (response: StravaTokenResponse) => ({
+    access_token: response.access_token,
+    refresh_token: response.refresh_token,
+    expires_at: new Date(response.expires_at * 1000).toISOString(),
+})
