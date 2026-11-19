@@ -126,38 +126,22 @@ describe('handleStravaWebhookEvent', () => {
         expect(decisionOf(exit)).toMatchObject({ action: 'sync', eventId: EVENT_ID })
     })
 
-    it('soft-deletes the activity on delete and marks the event processed', async () => {
+    it('asks for a sync on delete and changes nothing: the unsigned event is not trusted', async () => {
         const db = setup()
 
         const exit = await run(activityEvent('delete'))
 
-        expect(decisionOf(exit)).toEqual({ action: 'deleted' })
-        const softDelete = db.calls.find((call) => call.table === 'activities')
-        expect(softDelete?.op).toBe('update')
-        expect(softDelete?.payload).toMatchObject({ deleted_at: expect.any(String) })
-        expect(softDelete?.filters).toContainEqual(['strava_id', 987654321])
-        expect(softDelete?.filters).toContainEqual(['user_id', USER_ID])
-        const marked = eventWrites(db).find((call) => call.op === 'update')
-        expect(marked?.payload).toEqual({ status: 'processed', error: null })
-        expect(marked?.filters).toEqual([['id', EVENT_ID]])
-    })
-
-    it('marks the event failed with the error tag when the delete fails, and propagates', async () => {
-        const db = setup({
-            fail: (call) =>
-                call.table === 'activities'
-                    ? { data: null, error: { code: '42501', message: 'denied' } }
-                    : undefined,
+        expect(decisionOf(exit)).toEqual({
+            action: 'sync',
+            userId: USER_ID,
+            stravaActivityId: 987654321,
+            eventId: EVENT_ID,
         })
-
-        const exit = await run(activityEvent('delete'))
-
-        expect(failureTag(exit)).toBe('ActivityWriteError')
-        const marked = eventWrites(db).find((call) => call.op === 'update')
-        expect(marked?.payload).toEqual({ status: 'failed', error: 'ActivityWriteError' })
+        expect(db.calls.some((call) => call.table === 'activities')).toBe(false)
+        expect(eventWrites(db).some((call) => call.op === 'update')).toBe(false)
     })
 
-    it('deletes the connection on an athlete update with authorized false', async () => {
+    it('asks for a deauthorization check and keeps the connection', async () => {
         const db = setup()
 
         const exit = await run({
@@ -169,13 +153,42 @@ describe('handleStravaWebhookEvent', () => {
             updates: { authorized: 'false' },
         })
 
-        expect(decisionOf(exit)).toEqual({ action: 'deauthorized' })
-        const removed = db.calls.find(
-            (call) => call.table === 'strava_connections' && call.op === 'delete'
+        expect(decisionOf(exit)).toEqual({
+            action: 'verify_deauthorization',
+            userId: USER_ID,
+            eventId: EVENT_ID,
+        })
+        expect(
+            db.calls.some((call) => call.table === 'strava_connections' && call.op !== 'select')
+        ).toBe(false)
+        // Recorded as usual, left for the job to mark processed or failed.
+        expect(eventWrites(db).map((call) => call.op)).toEqual(['upsert'])
+    })
+
+    it('marks the event failed with the error tag when marking it ignored fails, and propagates', async () => {
+        const db = setup({
+            fail: (call) =>
+                call.table === 'strava_webhook_events' &&
+                call.op === 'update' &&
+                JSON.stringify(call.payload).includes('"ignored"')
+                    ? { data: null, error: { code: '42501', message: 'denied' } }
+                    : undefined,
+        })
+
+        const exit = await run({
+            object_type: 'athlete',
+            object_id: OWNER_ID,
+            aspect_type: 'update',
+            owner_id: OWNER_ID,
+            event_time: EVENT_TIME_S,
+            updates: { title: 'x' },
+        })
+
+        expect(failureTag(exit)).toBe('WebhookEventError')
+        const failed = eventWrites(db).find(
+            (call) => call.op === 'update' && JSON.stringify(call.payload).includes('"failed"')
         )
-        expect(removed?.filters).toEqual([['user_id', USER_ID]])
-        const marked = eventWrites(db).find((call) => call.op === 'update')
-        expect(marked?.payload).toEqual({ status: 'processed', error: null })
+        expect(failed?.payload).toEqual({ status: 'failed', error: 'WebhookEventError' })
     })
 
     it('ignores any other athlete update and keeps the connection', async () => {

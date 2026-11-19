@@ -14,6 +14,8 @@ export const stravaActivitySchema = z.object({
     max_heartrate: z.number().nullish(),
     average_speed: z.number().nullish(),
     calories: z.number().nullish(),
+    // Present on the detail endpoint: used to refuse an activity of another athlete.
+    athlete: z.object({ id: z.number() }).nullish(),
 })
 
 export const stravaLapSchema = z.object({

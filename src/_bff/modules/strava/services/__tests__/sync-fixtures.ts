@@ -10,6 +10,7 @@ import {
 export const USER_ID = 'user-1'
 export const ACTIVITY_ID = '7a1f0f4e-3b0e-4c53-9a0a-6a3a3d2f9c11'
 export const ACCESS_TOKEN = 'secret-access-token-abc'
+export const STRAVA_ATHLETE_ID = 12345
 
 type ActivityOverrides = {
     id?: number
@@ -18,6 +19,7 @@ type ActivityOverrides = {
     start_date?: string
     average_heartrate?: number | null
     max_heartrate?: number | null
+    athlete?: { id: number } | null
 }
 
 type LapPayload = { station: string | null; activity_id: string }
@@ -61,6 +63,17 @@ export const syncHandler =
     (call: Call): QueryResult => {
         const overridden = overrides?.(call)
         if (overridden) return overridden
+        if (call.table === 'strava_connections' && call.op === 'select')
+            return ok({
+                user_id: USER_ID,
+                strava_athlete_id: STRAVA_ATHLETE_ID,
+                access_token: ACCESS_TOKEN,
+                refresh_token: 'secret-refresh-token-def',
+                expires_at: '2026-11-19T18:00:00+00:00',
+                scope: 'read,activity:read_all',
+                connected_at: '2026-11-01T08:00:00+00:00',
+                last_synced_at: null,
+            })
         if (call.table === 'athlete_profiles') return ok(timezone === null ? null : { timezone })
         if (call.table === 'activities' && call.op === 'select') return ok(null)
         if (call.table === 'activities' && call.op === 'insert') return ok({ id: ACTIVITY_ID })
@@ -87,3 +100,7 @@ export const insertedStravaIds = (db: ReturnType<typeof makeFakeAdminDb>): numbe
     db.calls
         .filter((call) => call.table === 'activities' && call.op === 'insert')
         .map((call) => (call.payload as { strava_id: number }).strava_id)
+
+// Writes to the connection row (the sync only ever touches last_synced_at).
+export const connectionWrites = (db: ReturnType<typeof makeFakeAdminDb>) =>
+    db.calls.filter((call) => call.table === 'strava_connections' && call.op !== 'select')

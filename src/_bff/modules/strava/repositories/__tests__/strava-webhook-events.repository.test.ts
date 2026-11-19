@@ -37,7 +37,7 @@ describe('insertEventIfNew', () => {
 
         const result = await Effect.runPromise(insertEventIfNew(supabase, EVENT))
 
-        expect(result.isNew).toBe(false)
+        expect(result).toEqual({ isNew: false })
     })
 
     it('accepts a null user_id for an audit row', async () => {

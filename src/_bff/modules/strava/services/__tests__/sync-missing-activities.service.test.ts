@@ -7,6 +7,7 @@ import { syncMissingActivities } from '@/_bff/modules/strava/services/sync-missi
 import {
     ACCESS_TOKEN,
     fetchMock,
+    connectionWrites,
     insertedStravaIds,
     json,
     makeSyncDb,
@@ -97,12 +98,10 @@ describe('syncMissingActivities', () => {
         expect(
             db.calls.filter((call) => call.table === 'activities' && call.op === 'insert')
         ).toHaveLength(3)
-        const touch = db.calls.find((call) => call.table === 'strava_connections')
+        const touch = connectionWrites(db)[0]
         expect(touch?.op).toBe('update')
-        // The fake clock moved by the two delays between the three activities.
-        expect(touch?.payload).toEqual({
-            last_synced_at: new Date(NOW.getTime() + 2 * SYNC_ITEM_DELAY_MS).toISOString(),
-        })
+        // Stamped with the start of the run, not with the time the delays ended.
+        expect(touch?.payload).toEqual({ last_synced_at: NOW.toISOString() })
         expect(touch?.filters).toEqual([['user_id', USER_ID]])
     })
 
@@ -125,7 +124,7 @@ describe('syncMissingActivities', () => {
         const exit = await run(NO_AFTER)
 
         expect(successValue(exit)).toEqual({ synced: 0 })
-        expect(db.calls.filter((call) => call.table === 'strava_connections')).toHaveLength(1)
+        expect(connectionWrites(db)).toHaveLength(1)
     })
 
     it('waits SYNC_ITEM_DELAY_MS between activities', async () => {
@@ -166,7 +165,7 @@ describe('syncMissingActivities', () => {
 
         expect(failureTag(exit)).toBe('StravaRateLimitedError')
         expect(insertedStravaIds(db)).toEqual([1])
-        expect(db.calls.filter((call) => call.table === 'strava_connections')).toHaveLength(0)
+        expect(connectionWrites(db)).toHaveLength(0)
     })
 
     it('propagates a failing list page without touching last_synced_at', async () => {
@@ -177,7 +176,7 @@ describe('syncMissingActivities', () => {
         const exit = await run(NO_AFTER)
 
         expect(failureTag(exit)).toBe('StravaApiError')
-        expect(db.calls.filter((call) => call.table === 'strava_connections')).toHaveLength(0)
+        expect(connectionWrites(db)).toHaveLength(0)
     })
 
     it('skips and logs a malformed activity without aborting or counting it', async () => {
@@ -199,18 +198,48 @@ describe('syncMissingActivities', () => {
         expect(logged).toContain('StravaPayloadError')
         expect(logged).toContain('2')
         expect(logged).not.toContain(ACCESS_TOKEN)
-        expect(db.calls.filter((call) => call.table === 'strava_connections')).toHaveLength(1)
+        expect(connectionWrites(db)).toHaveLength(1)
     })
 
-    it('skips an activity that cannot be mapped (invalid profile timezone)', async () => {
+    it('fails the whole run on an invalid profile timezone, before any request', async () => {
         const db = makeSyncDb('Not/AZone')
         createDBAdminClientMock.mockReturnValue(db.supabase)
-        stubStrava({ pages: { 1: () => json([{ id: 1 }]) } })
+        const fetchStub = stubStrava({ pages: { 1: () => json([{ id: 1 }]) } })
 
         const exit = await run(NO_AFTER)
 
-        expect(successValue(exit)).toEqual({ synced: 0 })
+        expect(failureTag(exit)).toBe('ProfileQueryError')
+        expect(fetchStub).not.toHaveBeenCalled()
+        expect(connectionWrites(db)).toHaveLength(0)
+    })
+
+    it('skips an activity that belongs to another athlete, without counting it', async () => {
+        const db = makeSyncDb()
+        createDBAdminClientMock.mockReturnValue(db.supabase)
+        stubStrava({
+            pages: { 1: () => json([{ id: 1 }, { id: 2 }]) },
+            detail: { 1: () => json(stravaActivity({ id: 1, athlete: { id: 999 } })) },
+        })
+
+        const exit = await run(NO_AFTER)
+
+        expect(successValue(exit)).toEqual({ synced: 1 })
+        expect(insertedStravaIds(db)).toEqual([2])
         expect(warn).toHaveBeenCalledTimes(1)
+        expect(JSON.stringify(warn.mock.calls)).toContain('StravaPayloadError')
+    })
+
+    it('costs one request for a malformed activity (no laps request)', async () => {
+        createDBAdminClientMock.mockReturnValue(makeSyncDb().supabase)
+        const fetchStub = stubStrava({
+            pages: { 1: () => json([{ id: 1 }]) },
+            detail: { 1: () => json({ id: 1 }) },
+        })
+
+        await run(NO_AFTER)
+
+        const lapCalls = fetchStub.mock.calls.filter(([input]) => String(input).endsWith('/laps'))
+        expect(lapCalls).toHaveLength(0)
     })
 
     it('skips a list entry without a numeric id', async () => {

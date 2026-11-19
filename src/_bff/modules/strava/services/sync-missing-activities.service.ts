@@ -4,14 +4,12 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { Logger } from '@/_bff/lib/server-logger'
-import { StravaPayloadError } from '@/_bff/lib/errors'
-import { selectTimezone } from '@/_bff/modules/athlete/repositories/athlete-profiles.repository'
+import { ProfileQueryError, StravaPayloadError } from '@/_bff/lib/errors'
 import { ACTIVITIES_PER_PAGE, SYNC_ITEM_DELAY_MS } from '@/_bff/modules/strava/constants'
 import { stravaApiGet } from '@/_bff/modules/strava/helpers/strava-api.client'
 import { touchLastSyncedAt } from '@/_bff/modules/strava/repositories/strava-connections.repository'
-import { getValidAccessToken } from '@/_bff/modules/strava/services/get-valid-access-token.service'
 import {
-    createSyncClient,
+    loadSyncContext,
     syncActivityWithContext,
 } from '@/_bff/modules/strava/services/sync-strava-activity.service'
 
@@ -32,16 +30,30 @@ const logSkipped = (error: StravaPayloadError, activityId: number | null) =>
 
 // Lists the athlete's activities page by page and syncs each one (2 Strava requests each). A rate
 // limit or 5xx stops the run and propagates: what was already synced is kept, and
-// `last_synced_at` is only touched when the whole run succeeds. A malformed activity is logged
+// `last_synced_at` is only touched, with the start time of the run, when the whole run succeeds.
+// A malformed activity is logged
 // and skipped, it does not abort the batch and does not count as synced.
 export const syncMissingActivities = Effect.fn('syncMissingActivities')(function* (
     userId: string,
     options: Options
 ) {
-    const supabase = yield* createSyncClient(ErrorCode.STRAVA_SYNC_MISSING_SB_CLIENT)
-    const accessToken = yield* getValidAccessToken(userId)
-    const timezone = yield* selectTimezone(supabase, userId)
-    const context = { supabase, userId, accessToken, timezone }
+    // Captured before the first request: an activity uploaded during the run is picked up by the
+    // next one instead of falling between two runs.
+    const startedAt = new Date().toISOString()
+
+    const context = yield* loadSyncContext(userId, ErrorCode.STRAVA_SYNC_MISSING_SB_CLIENT)
+    const { supabase, accessToken } = context
+
+    // An invalid profile timezone would make every activity fail to map: fail the run up front
+    // instead of skipping everything and advancing `last_synced_at`.
+    yield* Effect.try({
+        try: () => new Intl.DateTimeFormat('en-CA', { timeZone: context.timezone }),
+        catch: () =>
+            new ProfileQueryError({
+                cause: 'Profile timezone is not a valid IANA timezone',
+                error_hash: ErrorCode.ATHLETE_PROFILE_TIMEZONE_INVALID,
+            }),
+    })
 
     let synced = 0
     let attempted = 0
@@ -57,12 +69,14 @@ export const syncMissingActivities = Effect.fn('syncMissingActivities')(function
         for (const item of items) {
             const parsed = listItemSchema.safeParse(item)
             if (!parsed.success) {
-                logSkipped(
-                    new StravaPayloadError({
-                        cause: 'List item has no numeric id',
-                        error_hash: ErrorCode.STRAVA_SYNC_LIST_PAYLOAD,
-                    }),
-                    null
+                yield* Effect.sync(() =>
+                    logSkipped(
+                        new StravaPayloadError({
+                            cause: 'List item has no numeric id',
+                            error_hash: ErrorCode.STRAVA_SYNC_LIST_PAYLOAD,
+                        }),
+                        null
+                    )
                 )
                 continue
             }
@@ -84,7 +98,7 @@ export const syncMissingActivities = Effect.fn('syncMissingActivities')(function
         page += 1
     }
 
-    yield* touchLastSyncedAt(supabase, userId, new Date().toISOString())
+    yield* touchLastSyncedAt(supabase, userId, startedAt)
 
     return { synced }
 })

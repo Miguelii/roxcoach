@@ -88,6 +88,7 @@ export enum ErrorCode {
     ATHLETE_PROFILE_SELECT = '9l42kdu7',
     ATHLETE_PROFILE_SELECT_ERR = 'v141ij6l',
     ATHLETE_PROFILE_SELECT_PARSE = 'm6dy8w79',
+    ATHLETE_PROFILE_TIMEZONE_INVALID = 'w0w6fcsj',
 
     // Strava - Webhook events repository
     STRAVA_EVENT_INSERT = 'ki61c74c',
@@ -102,6 +103,9 @@ export enum ErrorCode {
     STRAVA_SYNC_MAPPING = 'gjkfa24l',
     STRAVA_SYNC_LIST_PAYLOAD = 'l7ays98u',
     STRAVA_SYNC_MISSING_SB_CLIENT = 'i31u3x03',
+    STRAVA_SYNC_ATHLETE_MISMATCH = 'davdrf9h',
+    STRAVA_SYNC_NOT_CONNECTED = '7b8pgc0x',
+    STRAVA_VERIFY_SB_CLIENT = 'ecnq9b07',
 
     // Strava - Webhook event handling
     STRAVA_WEBHOOK_SB_CLIENT = 'pskuolsh',

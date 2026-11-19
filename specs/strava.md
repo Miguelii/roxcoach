@@ -60,12 +60,19 @@ Route: `src/app/api/strava/webhook/route.ts`.
    `sync-strava-activity` job and return.
 4. Event handling by type:
 
-| Event                                           | Action                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| `activity` + `create`                           | fetch and store the activity                                 |
-| `activity` + `update`                           | refetch and update the activity (title, sport type, privacy) |
-| `activity` + `delete`                           | set `deleted_at` on the activity, never hard delete          |
-| `athlete` + `update` with `authorized: "false"` | delete the connection (athlete revoked access)               |
+| Event                                           | Action                                                                              |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `activity` + `create`                           | fetch and store the activity                                                        |
+| `activity` + `update`                           | refetch and update the activity (title, sport type, privacy)                        |
+| `activity` + `delete`                           | sync job: Strava's `404` confirms it, then `deleted_at` is set, never a hard delete |
+| `athlete` + `update` with `authorized: "false"` | verification job: the connection is deleted only if Strava rejects the grant        |
+
+The endpoint is unsigned, so anyone who knows an athlete id and an activity id could forge an event.
+The handler therefore never does anything destructive inline: delete and deauthorization events are
+confirmed with Strava by a job (`sync-strava-activity` for a delete, `verifyStravaDeauthorization`
+for a deauthorization) before anything is removed. `verifyStravaDeauthorization` deletes the
+connection only when the token refresh is rejected by Strava (400, 401 or 403, read twice) or
+`GET /athlete` answers 401; success keeps it and 429, 5xx or network errors propagate for a retry.
 
 The webhook never does heavy work inline. A subscription is created once with
 `POST https://www.strava.com/api/v3/push_subscriptions` (client id, client secret, callback URL,
@@ -126,15 +133,16 @@ The mapper is a pure helper (`helpers/map-strava-activity.helper.ts`) with unit 
 - Station detection runs only for `Workout`, `HighIntensityIntervalTraining` and `Crossfit`
   activities: positional 16-lap detection cannot see distances, so other sport types never get
   station tags. After detection the category is recomputed with `hasStations`.
-- A `404` on the activity or its laps soft-deletes the local activity. A `401` or `403` propagates
+- A `404` on the activity soft-deletes the local activity (a `404` on the laps alone means an empty
+  lap list). An activity whose athlete id differs from the connection's is refused. A `401` or `403` propagates
   and never removes the connection (a refresh race can produce a spurious one); only the webhook
   `athlete` update with `authorized: "false"` deletes it. Rate limits and 5xx propagate so the job
   retries.
 - Payloads are validated per activity. In a bulk sync a malformed activity (or a mapper error such
   as an invalid profile timezone) is skipped and logged with its id and error tag, and is not
   counted as synced. A single sync fails with `StravaPayloadError` instead.
-- The bulk sync waits 250 ms between activities and touches `last_synced_at` only when the whole
-  run succeeds.
+- The bulk sync validates the profile timezone up front, waits 250 ms between activities and
+  touches `last_synced_at`, with the time the run started, only when the whole run succeeds.
 - The webhook handler ignores unknown object or aspect types, unknown `owner_id` values (no row is
   written, so nothing reveals whether an athlete exists) and redelivered events. `event_time` is
   epoch seconds and is stored as an ISO timestamp.

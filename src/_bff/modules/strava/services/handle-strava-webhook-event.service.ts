@@ -3,16 +3,12 @@ import 'server-only'
 import { Effect } from 'effect'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { WebhookEventError } from '@/_bff/lib/errors'
-import {
-    deleteConnection,
-    findConnectionByStravaAthleteId,
-} from '@/_bff/modules/strava/repositories/strava-connections.repository'
+import { findConnectionByStravaAthleteId } from '@/_bff/modules/strava/repositories/strava-connections.repository'
 import {
     insertEventIfNew,
     markEventStatus,
 } from '@/_bff/modules/strava/repositories/strava-webhook-events.repository'
 import { createSyncClient } from '@/_bff/modules/strava/services/sync-strava-activity.service'
-import { softDeleteStravaActivity } from '@/_bff/modules/training/services/soft-delete-strava-activity.service'
 
 type WebhookEvent = {
     object_type: string
@@ -27,8 +23,7 @@ type WebhookEvent = {
 export type WebhookDecision =
     | { action: 'ignore' }
     | { action: 'sync'; userId: string; stravaActivityId: number; eventId: string }
-    | { action: 'deleted' }
-    | { action: 'deauthorized' }
+    | { action: 'verify_deauthorization'; userId: string; eventId: string }
 
 const OBJECT_TYPES = new Set(['activity', 'athlete'])
 const ASPECT_TYPES = new Set(['create', 'update', 'delete'])
@@ -37,7 +32,9 @@ const IGNORE: WebhookDecision = { action: 'ignore' }
 
 // Decides what a Strava push event means for the connected athlete. The route answers 200 whatever
 // happens here, and an unknown owner or a redelivery is simply ignored, so the response never
-// reveals whether an athlete exists. Heavy work (the actual sync) is left to the job.
+// reveals whether an athlete exists. The endpoint is unsigned, so nothing destructive happens here:
+// a delete event asks for a sync (Strava's 404 confirms the deletion) and a deauthorization event
+// asks for a verification (Strava must reject the grant). The jobs do both.
 export const handleStravaWebhookEvent = Effect.fn('handleStravaWebhookEvent')(function* (
     event: WebhookEvent
 ) {
@@ -69,14 +66,8 @@ export const handleStravaWebhookEvent = Effect.fn('handleStravaWebhookEvent')(fu
     const eventId = recorded.id
 
     const decide = Effect.gen(function* () {
-        if (event.object_type === 'activity' && event.aspect_type === 'delete') {
-            yield* softDeleteStravaActivity(supabase, userId, event.object_id)
-            yield* markEventStatus(supabase, eventId, 'processed')
-            return { action: 'deleted' } as const
-        }
-
         if (event.object_type === 'activity') {
-            // The job marks the event processed or failed once the sync ran.
+            // Create, update and delete all sync. The job marks the event processed or failed.
             return {
                 action: 'sync',
                 userId,
@@ -86,9 +77,7 @@ export const handleStravaWebhookEvent = Effect.fn('handleStravaWebhookEvent')(fu
         }
 
         if (event.aspect_type === 'update' && event.updates?.authorized === 'false') {
-            yield* deleteConnection(supabase, userId)
-            yield* markEventStatus(supabase, eventId, 'processed')
-            return { action: 'deauthorized' } as const
+            return { action: 'verify_deauthorization', userId, eventId } as const
         }
 
         yield* markEventStatus(supabase, eventId, 'ignored')

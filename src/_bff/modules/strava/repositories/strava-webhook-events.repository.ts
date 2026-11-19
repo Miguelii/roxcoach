@@ -62,7 +62,7 @@ export const insertEventIfNew = Effect.fn('insertEventIfNew')(function* (
         })
 
     const [inserted] = parsed.data
-    return inserted ? { id: inserted.id, isNew: true } : { id: '', isNew: false }
+    return inserted ? { isNew: true as const, id: inserted.id } : { isNew: false as const }
 })
 
 // `error` is a short safe message (an error tag), never a payload, token or response body.

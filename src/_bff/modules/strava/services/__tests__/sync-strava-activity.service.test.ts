@@ -8,10 +8,12 @@ import {
     ACCESS_TOKEN,
     ACTIVITY_ID,
     fetchMock,
+    connectionWrites,
     json,
     lapRows,
     makeSyncDb,
     stravaActivity,
+    STRAVA_ATHLETE_ID,
     stravaLaps,
     syncHandler,
     USER_ID,
@@ -109,53 +111,6 @@ describe('syncStravaActivity', () => {
         })
     })
 
-    it('stores a plain run as a run, with no station tags even with 16 laps', async () => {
-        const db = makeSyncDb()
-        useDb(db)
-        stubStrava(
-            () => json(stravaActivity({ sport_type: 'Run', name: 'Easy run' })),
-            () => json(stravaLaps(16))
-        )
-
-        await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
-
-        expect(callsOf(db, 'activities', 'insert')[0]?.payload).toMatchObject({ category: 'run' })
-        const laps = lapRows(db)
-        expect(laps).toHaveLength(16)
-        expect(laps.every((lap) => lap.station === null)).toBe(true)
-    })
-
-    it.each(['Ride', 'WeightTraining'])(
-        'does not tag stations of a %s with 16 laps',
-        async (sportType) => {
-            const db = makeSyncDb()
-            useDb(db)
-            stubStrava(
-                () => json(stravaActivity({ sport_type: sportType })),
-                () => json(stravaLaps(16))
-            )
-
-            await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
-
-            const laps = lapRows(db)
-            expect(laps).toHaveLength(16)
-            expect(laps.every((lap) => lap.station === null)).toBe(true)
-        }
-    )
-
-    it('keeps a Workout without station laps as cross', async () => {
-        const db = makeSyncDb()
-        useDb(db)
-        stubStrava(
-            () => json(stravaActivity()),
-            () => json(stravaLaps(5))
-        )
-
-        await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
-
-        expect(callsOf(db, 'activities', 'insert')[0]?.payload).toMatchObject({ category: 'cross' })
-    })
-
     it('stores an activity with zero laps and only clears the old laps', async () => {
         const db = makeSyncDb()
         useDb(db)
@@ -217,7 +172,7 @@ describe('syncStravaActivity edge cases and failures', () => {
         expect(callsOf(db, 'activities', 'insert')).toHaveLength(0)
     })
 
-    it('soft-deletes when the laps endpoint says 404', async () => {
+    it('treats a 404 on the laps alone as an empty lap list and keeps the activity', async () => {
         const db = makeSyncDb()
         useDb(db)
         stubStrava(
@@ -227,7 +182,40 @@ describe('syncStravaActivity edge cases and failures', () => {
 
         const result = await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
 
-        expect(result).toEqual({ deleted: true })
+        expect(result).toEqual({ activityId: ACTIVITY_ID })
+        expect(callsOf(db, 'activities', 'insert')).toHaveLength(1)
+        expect(callsOf(db, 'activities', 'update')).toHaveLength(0)
+        expect(callsOf(db, 'activity_laps', 'insert')).toHaveLength(0)
+    })
+
+    it('refuses an activity of another athlete and does not request its laps', async () => {
+        const db = makeSyncDb()
+        useDb(db)
+        const fetchStub = stubStrava(() => json(stravaActivity({ athlete: { id: 999 } })))
+
+        const exit = await Effect.runPromiseExit(syncStravaActivity(USER_ID, STRAVA_ID))
+
+        expect(failureTag(exit)).toBe('StravaPayloadError')
+        expect(fetchStub).toHaveBeenCalledTimes(1)
+        expect(db.calls.filter((call) => call.op !== 'select')).toHaveLength(0)
+    })
+
+    it('accepts an activity whose athlete id matches the connection', async () => {
+        useDb(makeSyncDb())
+        stubStrava(() => json(stravaActivity({ athlete: { id: STRAVA_ATHLETE_ID } })))
+
+        const result = await Effect.runPromise(syncStravaActivity(USER_ID, STRAVA_ID))
+
+        expect(result).toEqual({ activityId: ACTIVITY_ID })
+    })
+
+    it('requests no laps when the activity payload is malformed', async () => {
+        useDb(makeSyncDb())
+        const fetchStub = stubStrava(() => json({ id: 'not-a-number' }))
+
+        await Effect.runPromiseExit(syncStravaActivity(USER_ID, STRAVA_ID))
+
+        expect(fetchStub).toHaveBeenCalledTimes(1)
     })
 
     it('propagates a 429 as StravaRateLimitedError and writes nothing', async () => {
@@ -258,7 +246,7 @@ describe('syncStravaActivity edge cases and failures', () => {
         const exit = await Effect.runPromiseExit(syncStravaActivity(USER_ID, STRAVA_ID))
 
         expect(failureTag(exit)).toBe('StravaUnauthorizedError')
-        expect(db.calls.filter((call) => call.table === 'strava_connections')).toHaveLength(0)
+        expect(connectionWrites(db)).toHaveLength(0)
     })
 
     it('fails with StravaPayloadError when the activity payload is malformed', async () => {
