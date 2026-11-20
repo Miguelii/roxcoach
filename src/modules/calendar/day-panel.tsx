@@ -12,7 +12,6 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { activityDurationS } from '@/modules/calendar/activity-time'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { getItemKey } from '@/modules/calendar/item-key'
@@ -94,14 +93,8 @@ function PanelItem({ item }: ItemProps) {
 }
 
 export function DayPanel({ date, items, onClose }: Props) {
-    const isMobile = useIsMobile()
-
     return (
-        <Drawer
-            open={date !== null}
-            onOpenChange={(open) => !open && onClose()}
-            direction={isMobile ? 'bottom' : 'right'}
-        >
+        <Drawer open={date !== null} onOpenChange={(open) => !open && onClose()}>
             <DrawerContent className="bg-paper">
                 <DrawerHeader>
                     <DrawerTitle className="display text-3xl">

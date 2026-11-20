@@ -7,7 +7,7 @@ import type { RaceDTO, RaceInput } from '@/_bff/modules/races/types'
 import { Button } from '@/components/ui/button'
 import { CompleteRaceDialog } from '@/modules/races/complete-race-dialog'
 import { RaceCardView } from '@/modules/races/race-card-view'
-import { RaceFormDialog } from '@/modules/races/race-form-dialog'
+import { RaceFormDrawer } from '@/modules/races/race-form-drawer'
 import { raceToFormValues } from '@/modules/races/use-race-form'
 
 type Props = {
@@ -39,11 +39,14 @@ export function RacesList({
 }: Props) {
     const [pendingId, setPendingId] = useState<string | null>(null)
     const [dialog, setDialog] = useState<Dialog | null>(null)
+    const [formInstance, setFormInstance] = useState(0)
     // Keeps the last dialog content mounted while the closing animation runs.
     const [last, setLast] = useState<Dialog>({ kind: 'create' })
     const open = (next: Dialog) => {
         setLast(next)
         setDialog(next)
+        if (next.kind === 'create' || next.kind === 'edit')
+            setFormInstance((current) => current + 1)
     }
     // Disables the card's actions while its cancel or delete runs.
     const withPending = async (id: string, action: (id: string) => Promise<void>) => {
@@ -108,7 +111,8 @@ export function RacesList({
                 </details>
             ) : null}
 
-            <RaceFormDialog
+            <RaceFormDrawer
+                key={formInstance}
                 mode={last.kind === 'edit' ? 'edit' : 'create'}
                 defaults={last.kind === 'edit' ? raceToFormValues(last.race) : null}
                 today={today}

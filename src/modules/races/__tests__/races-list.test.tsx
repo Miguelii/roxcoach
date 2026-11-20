@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RacesList } from '@/modules/races/races-list'
 import type { RaceDTO } from '@/_bff/modules/races/types'
@@ -25,6 +25,14 @@ const setup = (races: RaceDTO[]) => {
 }
 
 describe('RacesList', () => {
+    beforeEach(() => {
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }))
+    })
+
     it('shows the empty state with the New race button', () => {
         setup([])
         expect(screen.getByTestId('races-empty')).toHaveTextContent(
@@ -55,9 +63,10 @@ describe('RacesList', () => {
         )
     })
 
-    it('creates a race through the dialog', async () => {
+    it('creates a race through the drawer', async () => {
         const handlers = setup([])
         fireEvent.click(screen.getByTestId('race-new'))
+        expect(await screen.findByTestId('race-form-drawer')).toBeInTheDocument()
         expect(await screen.findByTestId('race-form-division')).toHaveTextContent('Open Men')
         fireEvent.change(screen.getByTestId('race-form-name'), { target: { value: 'Hyrox Porto' } })
         fireEvent.change(screen.getByTestId('race-form-date'), { target: { value: '2027-02-01' } })
@@ -69,9 +78,10 @@ describe('RacesList', () => {
         )
     })
 
-    it('edits a race through the dialog', async () => {
+    it('edits a race through the drawer', async () => {
         const handlers = setup([HYROX_RACE])
         fireEvent.click(screen.getByTestId('race-edit-r-hyrox'))
+        expect(await screen.findByTestId('race-form-drawer')).toBeInTheDocument()
         expect(await screen.findByTestId('race-form-name')).toHaveValue('Hyrox Lisbon')
         fireEvent.click(screen.getByTestId('race-form-submit'))
         await waitFor(() => expect(handlers.onUpdate).toHaveBeenCalledTimes(1))
@@ -79,6 +89,18 @@ describe('RacesList', () => {
             'r-hyrox',
             expect.objectContaining({ name: 'Hyrox Lisbon' })
         )
+    })
+
+    it('resets the new-race form when it is dismissed and reopened', async () => {
+        setup([])
+        fireEvent.click(screen.getByTestId('race-new'))
+        fireEvent.change(await screen.findByTestId('race-form-name'), {
+            target: { value: 'Unsaved race' },
+        })
+        fireEvent.click(screen.getByTestId('race-form-cancel'))
+
+        fireEvent.click(screen.getByTestId('race-new'))
+        expect(await screen.findByTestId('race-form-name')).toHaveValue('')
     })
 
     it('completes a race through the dialog', async () => {
@@ -91,12 +113,22 @@ describe('RacesList', () => {
         await waitFor(() => expect(handlers.onComplete).toHaveBeenCalledWith('r-run', 2370))
     })
 
-    it('cancels and deletes by id after the confirmation', async () => {
+    it('cancels and deletes only after contextual dialog confirmation', async () => {
         const handlers = setup([RUN_RACE, CANCELLED_RACE])
+        fireEvent.click(screen.getByTestId('race-cancel-r-run'))
+        expect(await screen.findByTestId('race-confirm-dialog-r-run')).toHaveTextContent(
+            'This moves the race to your history.'
+        )
+        fireEvent.click(screen.getByTestId('race-confirm-no-r-run'))
+        expect(handlers.onCancel).not.toHaveBeenCalled()
+
         fireEvent.click(screen.getByTestId('race-cancel-r-run'))
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-run'))
         await waitFor(() => expect(handlers.onCancel).toHaveBeenCalledWith('r-run'))
         fireEvent.click(screen.getByTestId('race-delete-r-cancelled'))
+        expect(await screen.findByTestId('race-confirm-dialog-r-cancelled')).toHaveTextContent(
+            'This permanently removes the race.'
+        )
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-cancelled'))
         await waitFor(() => expect(handlers.onDelete).toHaveBeenCalledWith('r-cancelled'))
     })

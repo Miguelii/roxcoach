@@ -179,17 +179,19 @@ division and the athlete timezone through `createCaller()`, then hands them to t
 wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toast and
 `router.refresh()`). `RacesList` renders:
 
-- A "New race" button (`race-new`) opening `RaceFormDialog` (create and edit). Fields: name, type,
-  date (must be after the athlete's today), location, distance in km (running only), division
-  (Hyrox only, defaults to the profile division), goal time `h:mm:ss`, priority and notes. The
-  form sends no distance unless the race is running and no division unless it is Hyrox. Blank
-  location and notes are stored as NULL.
+- A "New race" button (`race-new`) opening `RaceFormDrawer` (create and edit), right-side on
+  desktop and a bottom sheet on mobile. Fields: name, type, date (must be after the athlete's
+  today), location, distance in km (running only), division (Hyrox only, defaults to the profile
+  division), goal time `h:mm:ss`, priority and notes. The form sends no distance unless the race is
+  running and no division unless it is Hyrox. Blank location and notes are stored as NULL.
 - Upcoming races sorted by date as cards (`RaceCardView`): name, date, days to go (from the
   athlete's today), type (with the division), location, goal time, priority chip (A: Target race,
   B: Tune-up, C: Training race) and, for running races, the required pace (`requiredPaceMps` through
   `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
-  delta shown while typing), Cancel and Delete, each of the last two behind an inline confirmation.
-  Delete is hidden once a race has a result.
+  delta shown while typing), Cancel and Delete. Complete shows a result dialog; Cancel and Delete
+  show accessible confirmation dialogs with the race name and consequence. Delete is hidden once a
+  race has a result, and its confirmation explains that deletion is irreversible and linked
+  planned sessions remain without the race association.
 - A collapsed history (`<details>`) with completed races (result and delta in plain text, for
   example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
 - Empty state: "No races yet. Add one to get a coach plan."
@@ -214,6 +216,13 @@ Two tabs (`SettingsTabs`, default Profile), both fed by `trpcClient.athlete.*` t
 Reuse shadcn components on base-ui only: Button, Card, Dialog, Sheet, Form, Input, Select, Tabs,
 Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (label from
 `SelectValue` children). New project-specific components live in `src/modules/<feature>/`:
+
+The shared `Drawer` component opens from the right on desktop and from the bottom on mobile.
+Feature drawers use this default instead of checking the viewport themselves. An explicit
+direction is available only when a drawer intentionally needs different behavior.
+
+Form drawers share `DrawerFormLayout`: a bold title and close control, a scrollable body, and
+Cancel plus the primary action in a fixed footer. Race forms and activity upload use this layout.
 
 | Component   | Purpose                                    |
 | ----------- | ------------------------------------------ |

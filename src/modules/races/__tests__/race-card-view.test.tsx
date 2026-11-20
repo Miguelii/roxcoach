@@ -76,14 +76,23 @@ describe('RaceCardView', () => {
         expect(handlers.onComplete).toHaveBeenCalledWith(HYROX_RACE)
     })
 
-    it('asks before cancelling, and keeping it does nothing', () => {
+    it('asks before cancelling with context, and keeping it does nothing', () => {
         const handlers = setup(HYROX_RACE)
         fireEvent.click(screen.getByTestId('race-cancel-r-hyrox'))
         expect(handlers.onCancel).not.toHaveBeenCalled()
-        expect(screen.getByTestId('race-confirm-r-hyrox')).toHaveTextContent('Cancel this race?')
+        expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveTextContent(
+            'Cancel Hyrox Lisbon?'
+        )
+        expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveTextContent(
+            'This moves the race to your history.'
+        )
+        expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveAttribute(
+            'role',
+            'alertdialog'
+        )
         fireEvent.click(screen.getByTestId('race-confirm-no-r-hyrox'))
         expect(handlers.onCancel).not.toHaveBeenCalled()
-        expect(screen.queryByTestId('race-confirm-r-hyrox')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('race-confirm-dialog-r-hyrox')).not.toBeInTheDocument()
     })
 
     it('cancels after the confirmation', async () => {
@@ -93,11 +102,16 @@ describe('RaceCardView', () => {
         await waitFor(() => expect(handlers.onCancel).toHaveBeenCalledWith(HYROX_RACE))
     })
 
-    it('asks before deleting a race without a result', async () => {
+    it('warns before permanently deleting a race without a result', async () => {
         const handlers = setup(HYROX_RACE)
         fireEvent.click(screen.getByTestId('race-delete-r-hyrox'))
         expect(handlers.onDelete).not.toHaveBeenCalled()
-        expect(screen.getByTestId('race-confirm-r-hyrox')).toHaveTextContent('cannot be undone')
+        expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveTextContent(
+            'This permanently removes the race.'
+        )
+        expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveTextContent(
+            'Planned sessions linked to it will remain'
+        )
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-hyrox'))
         await waitFor(() => expect(handlers.onDelete).toHaveBeenCalledWith(HYROX_RACE))
     })

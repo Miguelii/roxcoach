@@ -8,6 +8,7 @@ import type { RaceDTO } from '@/_bff/modules/races/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { RaceConfirmationDialog } from '@/modules/races/race-confirmation-dialog'
 import {
     PRIORITY_LABELS,
     RACE_TYPE_LABELS,
@@ -46,6 +47,7 @@ export function RaceCardView({
     onDelete,
 }: Props) {
     const [confirming, setConfirming] = useState<Confirming>(null)
+    const [lastConfirmation, setLastConfirmation] = useState<Exclude<Confirming, null>>('cancel')
     const { id } = race
     const upcoming = race.status === 'upcoming'
     const pace =
@@ -111,84 +113,69 @@ export function RaceCardView({
                     ) : null}
                 </div>
 
-                {confirming ? (
-                    <div data-testid={`race-confirm-${id}`} className="space-y-2">
-                        <p className="text-sm">
-                            {confirming === 'cancel'
-                                ? 'Cancel this race? It moves to your history.'
-                                : 'Delete this race? This cannot be undone.'}
-                        </p>
-                        <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    {upcoming ? (
+                        <>
                             <Button
                                 disabled={pending}
                                 size="sm"
-                                variant="destructive"
-                                data-testid={`race-confirm-yes-${id}`}
-                                onClick={async () => {
-                                    const action = confirming === 'cancel' ? onCancel : onDelete
-                                    setConfirming(null)
-                                    await action(race)
-                                }}
+                                variant="outline"
+                                data-testid={`race-edit-${id}`}
+                                onClick={() => onEdit(race)}
                             >
-                                {confirming === 'cancel' ? 'Cancel race' : 'Delete race'}
+                                Edit
                             </Button>
                             <Button
                                 disabled={pending}
                                 size="sm"
                                 variant="outline"
-                                data-testid={`race-confirm-no-${id}`}
-                                onClick={() => setConfirming(null)}
+                                data-testid={`race-complete-${id}`}
+                                onClick={() => onComplete(race)}
                             >
-                                Keep it
+                                Complete
                             </Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-wrap gap-2">
-                        {upcoming ? (
-                            <>
-                                <Button
-                                    disabled={pending}
-                                    size="sm"
-                                    variant="outline"
-                                    data-testid={`race-edit-${id}`}
-                                    onClick={() => onEdit(race)}
-                                >
-                                    Edit
-                                </Button>
-                                <Button
-                                    disabled={pending}
-                                    size="sm"
-                                    variant="outline"
-                                    data-testid={`race-complete-${id}`}
-                                    onClick={() => onComplete(race)}
-                                >
-                                    Complete
-                                </Button>
-                                <Button
-                                    disabled={pending}
-                                    size="sm"
-                                    variant="outline"
-                                    data-testid={`race-cancel-${id}`}
-                                    onClick={() => setConfirming('cancel')}
-                                >
-                                    Cancel
-                                </Button>
-                            </>
-                        ) : null}
-                        {race.resultTimeS === null ? (
                             <Button
                                 disabled={pending}
                                 size="sm"
-                                variant="ghost"
-                                data-testid={`race-delete-${id}`}
-                                onClick={() => setConfirming('delete')}
+                                variant="outline"
+                                data-testid={`race-cancel-${id}`}
+                                onClick={() => {
+                                    setLastConfirmation('cancel')
+                                    setConfirming('cancel')
+                                }}
                             >
-                                Delete
+                                Cancel
                             </Button>
-                        ) : null}
-                    </div>
-                )}
+                        </>
+                    ) : null}
+                    {race.resultTimeS === null ? (
+                        <Button
+                            disabled={pending}
+                            size="sm"
+                            variant="ghost"
+                            data-testid={`race-delete-${id}`}
+                            onClick={() => {
+                                setLastConfirmation('delete')
+                                setConfirming('delete')
+                            }}
+                        >
+                            Delete
+                        </Button>
+                    ) : null}
+                </div>
+
+                <RaceConfirmationDialog
+                    race={race}
+                    action={confirming ?? lastConfirmation}
+                    open={confirming !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setConfirming(null)
+                    }}
+                    onConfirm={() => {
+                        const action = confirming === 'cancel' ? onCancel : onDelete
+                        return action(race)
+                    }}
+                />
             </CardContent>
         </Card>
     )

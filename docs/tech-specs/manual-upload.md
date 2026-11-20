@@ -86,15 +86,19 @@ see Known limitations).
 ## Upload drawer
 
 Component `UploadActivityDrawer` in `src/modules/dashboard/upload-activity-drawer.tsx` (rendered by
-`dashboard-content.tsx`) with the form logic in `use-upload-activity.ts` next to it (react-hook-form,
-zod schema, `detectHyroxHint`). Test ids: `upload-activity-button`, `upload-format-banner`,
+`dashboard-content.tsx`). It opens from the right on desktop and from the bottom on mobile, using
+the shared `Drawer` default. Its title, close control, scrollable form body, Cancel button and
+Upload action use `DrawerFormLayout`, the same layout as the race form. The form logic lives in
+`use-upload-activity.ts` next to it (react-hook-form, zod schema, `detectHyroxHint`). Test ids:
+`upload-activity-button`, `upload-activity-drawer`, `upload-close`, `upload-cancel`,
+`upload-format-banner`,
 `upload-file-input`, `upload-file-name`, `upload-file-error`, `upload-hyrox-checkbox`,
 `upload-hyrox-label`, `upload-error`, `upload-submit`. Opened by an "Upload activity" button on the dashboard.
 
 Contents, top to bottom:
 
-1. Title "Upload activity" and a one-line description ("Add a workout file exported from your
-   watch or Strava.").
+1. Header with title "Upload activity", a one-line description ("Add a workout file exported from
+   your watch or Strava.") and a close button.
 2. **Banner** (an informational note, semantic tokens only, no fixed colors) with this copy:
    "Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps
    the laps, so your stations can be matched. TCX merges the laps and GPX has none."
@@ -102,7 +106,8 @@ Contents, top to bottom:
 3. File input (`accept=".fit,.tcx,.gpx"`), showing the chosen file name and size.
 4. Checkbox "This is a Hyrox session". Unchecked by default, checked automatically when a TCX
    `Notes` text contains "HYROX". Hidden for GPX, which has no laps.
-5. Submit button ("Upload"), disabled until a valid file is chosen, with a loading state.
+5. Footer with Cancel and Submit ("Upload"). Submit is disabled until a valid file is chosen and
+   shows a loading state during upload. Both dismissal buttons are disabled while uploading.
 
 States: idle, uploading (button disabled, drawer stays open), error (message from the tagged error
 class, shown inside the drawer, the file stays selected), success (the drawer closes, a plain toast

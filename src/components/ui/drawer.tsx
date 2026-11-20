@@ -2,11 +2,19 @@
 
 import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
-
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
-function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-    return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+function Drawer({ direction, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+    const isMobile = useIsMobile()
+
+    return (
+        <DrawerPrimitive.Root
+            data-slot="drawer"
+            direction={direction ?? (isMobile ? 'bottom' : 'right')}
+            {...props}
+        />
+    )
 }
 
 function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {

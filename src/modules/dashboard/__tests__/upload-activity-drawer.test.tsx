@@ -48,6 +48,25 @@ describe('UploadActivityDrawer', () => {
         expect(screen.getByTestId('upload-format-banner')).toHaveTextContent(BANNER)
     })
 
+    it('uses the shared form drawer header and footer', async () => {
+        await open()
+        expect(screen.getByTestId('drawer-form-title')).toHaveTextContent('Upload activity')
+        expect(screen.getByTestId('upload-close')).toBeInTheDocument()
+        expect(screen.getByTestId('upload-cancel')).toBeInTheDocument()
+        expect(screen.getByTestId('upload-submit')).toBeInTheDocument()
+    })
+
+    it('closes from the header close control', async () => {
+        await open()
+        fireEvent.click(screen.getByTestId('upload-close'))
+        await waitFor(() =>
+            expect(screen.getByTestId('upload-activity-button')).toHaveAttribute(
+                'data-state',
+                'closed'
+            )
+        )
+    })
+
     it('keeps submit disabled until a valid file is chosen', async () => {
         await open()
         expect(screen.getByTestId('upload-submit')).toBeDisabled()
@@ -98,6 +117,8 @@ describe('UploadActivityDrawer', () => {
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
         await waitFor(() => expect(screen.getByTestId('upload-submit')).toBeDisabled())
+        expect(screen.getByTestId('upload-close')).toBeDisabled()
+        expect(screen.getByTestId('upload-cancel')).toBeDisabled()
         expect(screen.getByTestId('upload-format-banner')).toBeInTheDocument()
         await act(async () => resolve(json({ activityId: 'a1' })))
     })
@@ -191,7 +212,7 @@ describe('UploadActivityDrawer', () => {
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
         await screen.findByTestId('upload-error')
-        fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+        fireEvent.click(screen.getByTestId('upload-cancel'))
         await waitFor(() =>
             expect(screen.getByTestId('upload-activity-button')).toHaveAttribute(
                 'data-state',

@@ -119,9 +119,12 @@ Behaviour in the UI:
 
 - The Races page lists upcoming races sorted by date with days remaining, then a collapsed
   history of completed and cancelled ones.
-- The card offers Edit and Complete only for upcoming races. Cancel and Delete (Delete only
-  without a result) ask for an inline confirmation, and a card's actions are disabled while its
-  mutation runs.
+- The card offers Edit and Complete only for upcoming races. New and Edit open a drawer (right side
+  on desktop, bottom sheet on mobile) with the shared form layout: a bold title and close control,
+  scrollable fields, then Cancel and submit actions in the footer. Complete opens a result dialog;
+  Cancel and Delete (Delete only without a result) open contextual confirmation dialogs. Delete
+  explains that it is irreversible and that linked planned sessions remain without the race
+  association. A card's actions are disabled while its mutation runs.
 - Completing a race shows goal versus result.
 - After any mutation the page refreshes, and the react-query calendar feed and dashboard race query
   are invalidated.

@@ -95,6 +95,15 @@ function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
                 ) : null}
                 <DialogFooter>
                     <Button
+                        type="button"
+                        variant="outline"
+                        data-testid="complete-cancel"
+                        disabled={form.formState.isSubmitting}
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
                         type="submit"
                         data-testid="complete-submit"
                         disabled={form.formState.isSubmitting}
@@ -113,7 +122,7 @@ function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
 export function CompleteRaceDialog({ race, open, onOpenChange, onSubmit }: Props) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent data-testid="complete-dialog">
+            <DialogContent data-testid="complete-dialog" className="sm:max-w-md">
                 {race ? (
                     <CompleteRaceBody
                         race={race}
