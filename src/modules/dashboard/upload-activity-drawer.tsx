@@ -56,7 +56,7 @@ export function UploadActivityDrawer({ upload, onUploaded }: Props) {
             }}
         >
             <DrawerTrigger asChild>
-                <Button variant="outline" data-testid="upload-activity-button">
+                <Button data-testid="upload-activity-button">
                     <UploadIcon />
                     Upload activity
                 </Button>

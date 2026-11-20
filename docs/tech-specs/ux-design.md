@@ -121,7 +121,9 @@ Target design, top to bottom:
       the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
       overflow opens the day.
     - Today is outlined with the ink token. Past planned sessions with no match show as missed.
-    - Navigation: previous, next, today, and a month and week toggle.
+    - Navigation: previous, next, today, and a month and week toggle. The dashboard URL stores
+      the calendar cursor date (`date`) and selected view (`view`) with nuqs, so a refresh restores
+      the same month or week. Mobile always renders the week agenda, regardless of the stored view.
     - Selecting a day opens a side panel (a bottom sheet on mobile) listing everything that day,
       with a link into each activity. A race shows as an amber card (flag, "Race", priority, name,
       "Goal h:mm:ss") linking to `/races`.

@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { trpcClient } from '@/lib/trpc'
 import { CalendarBody } from '@/modules/calendar/calendar-body'
+import { useCalendarUrlState } from '@/modules/calendar/use-calendar-url-state'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { DayPanel } from '@/modules/calendar/day-panel'
 import {
@@ -23,10 +24,8 @@ type Props = {
     today: string
 }
 
-type View = 'month' | 'week'
-
 /** First and last day shown for the cursor, in the same grid the view renders. */
-const visibleRange = (view: View, cursor: string) => {
+const visibleRange = (view: 'month' | 'week', cursor: string) => {
     if (view === 'week') {
         const days = weekDays(cursor)
         return { from: days[0] ?? cursor, to: days[6] ?? cursor }
@@ -38,11 +37,10 @@ const visibleRange = (view: View, cursor: string) => {
 
 export function Calendar({ today }: Props) {
     const isMobile = useIsMobile()
-    const [cursor, setCursor] = useState(today)
-    const [view, setView] = useState<View>('month')
+    const { cursor, view, setCursor, setView } = useCalendarUrlState(today)
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-    const effectiveView: View = isMobile ? 'week' : view
+    const effectiveView = isMobile ? 'week' : view
     const query = trpcClient.training.getCalendar.useQuery(visibleRange(effectiveView, cursor), {
         placeholderData: keepPreviousData,
         staleTime: DASHBOARD_QUERY_STALE_TIME,
@@ -59,16 +57,18 @@ export function Calendar({ today }: Props) {
             : `${shortDateLabel(days[0] ?? cursor)} to ${shortDateLabel(days[6] ?? cursor)}`
 
     const move = (direction: 1 | -1) =>
-        setCursor((current) =>
+        void setCursor(
             effectiveView === 'month'
-                ? addMonths(current, direction)
-                : addDays(current, direction * 7)
+                ? addMonths(cursor, direction)
+                : addDays(cursor, direction * 7)
         )
 
     return (
         <section aria-label="Training calendar" data-testid="calendar" className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-                <h2 className="display text-4xl">{title}</h2>
+                <h2 data-testid="calendar-title" className="display text-4xl">
+                    {title}
+                </h2>
                 <div className="ml-auto flex items-center gap-2">
                     <Button
                         variant="outline"
@@ -78,20 +78,30 @@ export function Calendar({ today }: Props) {
                     >
                         <IconChevronLeft />
                     </Button>
-                    <Button variant="outline" onClick={() => setCursor(today)}>
+                    <Button variant="outline" onClick={() => void setCursor(null)}>
                         Today
                     </Button>
-                    <Button variant="outline" size="icon" aria-label="Next" onClick={() => move(1)}>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Next"
+                        data-testid="calendar-next"
+                        onClick={() => move(1)}
+                    >
                         <IconChevronRight />
                     </Button>
                     <Tabs
                         value={view}
-                        onValueChange={(value) => setView(value === 'week' ? 'week' : 'month')}
+                        onValueChange={(value) => void setView(value === 'week' ? 'week' : 'month')}
                         className="hidden md:flex"
                     >
                         <TabsList>
-                            <TabsTrigger value="month">Month</TabsTrigger>
-                            <TabsTrigger value="week">Week</TabsTrigger>
+                            <TabsTrigger value="month" data-testid="calendar-view-month">
+                                Month
+                            </TabsTrigger>
+                            <TabsTrigger value="week" data-testid="calendar-view-week">
+                                Week
+                            </TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>

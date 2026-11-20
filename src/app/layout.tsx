@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Anton, Geist, Geist_Mono } from 'next/font/google'
 import '@/styles/globals.css'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import { TrpcContextProvider } from '@/providers/trpc-provider'
@@ -48,7 +49,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             )}
         >
             <body className="min-h-full bg-background font-sans text-foreground">
-                <TrpcContextProvider>{children}</TrpcContextProvider>
+                <NuqsAdapter>
+                    <TrpcContextProvider>{children}</TrpcContextProvider>
+                </NuqsAdapter>
                 <Toaster />
             </body>
         </html>

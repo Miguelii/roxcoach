@@ -14,7 +14,7 @@ repositories on top of Supabase.
 | Database and auth | Supabase, an existing project shared with another app, own schema `roxcoach` |
 | Background work   | Trigger.dev v4                                                               |
 | AI                | AI SDK with `@ai-sdk/anthropic`                                              |
-| UI                | Tailwind v4, shadcn on `base-ui` (never Radix)                               |
+| UI                | Tailwind v4, shadcn on `base-ui` (never Radix), nuqs for URL-backed UI state |
 | Env               | `@t3-oss/env-nextjs` in `src/env/server.ts` and `src/env/client.ts`          |
 | Tooling           | pnpm, vite-plus (`vp lint`, `vp fmt`, `vp test`), knip, husky, anti-slop     |
 
