@@ -1,7 +1,24 @@
-import type { z } from 'zod'
+import { z } from 'zod'
+import { Logger } from '@/_bff/lib/server-logger'
 import type { ToolResult } from '@/_bff/modules/coach/types'
 
 type ToolError = { error: string }
+
+const FailureSchema = z.looseObject({
+    _tag: z.string().optional(),
+    error_hash: z.string().optional(),
+})
+
+// Only the tag and hash are read from a failure: never its message or cause.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- parsed by FailureSchema right below
+const describeFailure = (error: unknown) => {
+    const parsed = FailureSchema.safeParse(error)
+
+    return {
+        tag: parsed.success ? (parsed.data._tag ?? 'unknown') : 'unknown',
+        errorHash: parsed.success ? (parsed.data.error_hash ?? null) : null,
+    }
+}
 
 const READ_FAILED: ToolError = { error: 'could not read data' }
 
@@ -26,7 +43,15 @@ export const runTool = async <S extends z.ZodType>(
 
     try {
         return await handler(parsed.data)
-    } catch {
+    } catch (error) {
+        // Only the failure tag and hash are logged: never the cause, message or input
+        Logger({
+            level: 'error',
+            prefix: 'coach-tool',
+            message: 'tool failed',
+            metadata: describeFailure(error),
+        })
+
         return READ_FAILED
     }
 }
