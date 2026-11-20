@@ -1,0 +1,136 @@
+'use client'
+
+import { Loader2Icon, UploadIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+} from '@/components/ui/drawer'
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { useUploadActivity } from '@/modules/dashboard/use-upload-activity'
+
+type Props = { upload?: (form: FormData) => Promise<Response> }
+
+const BANNER =
+    'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none.'
+
+const formatSize = (bytes: number) =>
+    bytes >= 1024 * 1024
+        ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+        : `${Math.ceil(bytes / 1024)} KB`
+
+export function UploadActivityDrawer({ upload }: Props) {
+    const router = useRouter()
+    const [open, setOpen] = useState(false)
+    const { form, file, submit, selectFile, status, errorMessage, showHyroxOption } =
+        useUploadActivity({
+            upload,
+            onSuccess: () => {
+                setOpen(false)
+                toast.success('Activity uploaded')
+                router.refresh()
+            },
+        })
+    const uploading = status === 'uploading'
+
+    return (
+        <Drawer
+            direction="right"
+            open={open}
+            onOpenChange={(next) => {
+                if (uploading) return
+                setOpen(next)
+            }}
+        >
+            <DrawerTrigger asChild>
+                <Button variant="outline" data-testid="upload-activity-button">
+                    <UploadIcon />
+                    Upload activity
+                </Button>
+            </DrawerTrigger>
+            <DrawerContent>
+                <DrawerHeader>
+                    <DrawerTitle>Upload activity</DrawerTitle>
+                    <DrawerDescription>
+                        Add a workout file exported from your watch or Strava.
+                    </DrawerDescription>
+                </DrawerHeader>
+                <Form {...form}>
+                    <form onSubmit={submit} className="flex flex-col gap-4 p-4">
+                        <p
+                            data-testid="upload-format-banner"
+                            className="rounded-md border bg-muted p-3 text-sm text-muted-foreground"
+                        >
+                            {BANNER}
+                        </p>
+                        <FormField
+                            control={form.control}
+                            name="file"
+                            render={() => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input
+                                            type="file"
+                                            accept=".fit,.tcx,.gpx"
+                                            data-testid="upload-file-input"
+                                            onChange={(event) =>
+                                                void selectFile(event.target.files?.[0])
+                                            }
+                                        />
+                                    </FormControl>
+                                    {file ? (
+                                        <p
+                                            data-testid="upload-file-name"
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            {file.name} ({formatSize(file.size)})
+                                        </p>
+                                    ) : null}
+                                    <FormMessage data-testid="upload-file-error" />
+                                </FormItem>
+                            )}
+                        />
+                        {showHyroxOption ? (
+                            <FormField
+                                control={form.control}
+                                name="hyrox"
+                                render={({ field }) => (
+                                    <FormItem className="flex-row items-center gap-2">
+                                        <Checkbox
+                                            data-testid="upload-hyrox-checkbox"
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                        <span className="text-sm">This is a Hyrox session</span>
+                                    </FormItem>
+                                )}
+                            />
+                        ) : null}
+                        {status === 'error' && errorMessage ? (
+                            <p data-testid="upload-error" className="text-sm text-destructive">
+                                {errorMessage}
+                            </p>
+                        ) : null}
+                        <Button
+                            type="submit"
+                            data-testid="upload-submit"
+                            disabled={!form.formState.isValid || uploading}
+                        >
+                            {uploading ? <Loader2Icon className="animate-spin" /> : null}
+                            Upload
+                        </Button>
+                    </form>
+                </Form>
+            </DrawerContent>
+        </Drawer>
+    )
+}

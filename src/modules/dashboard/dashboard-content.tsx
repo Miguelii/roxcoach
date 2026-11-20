@@ -4,6 +4,7 @@ import { todayIn } from '@/_bff/core/utils/date.utils'
 import { createCaller } from '@/_bff/trpc/caller'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Calendar } from '@/modules/calendar/calendar'
+import { UploadActivityDrawer } from '@/modules/dashboard/upload-activity-drawer'
 import { WeekStrip } from '@/modules/dashboard/week-strip'
 
 // Reads cookies through the caller, so it must render inside a Suspense boundary.
@@ -15,6 +16,9 @@ export async function DashboardContent() {
 
     return (
         <>
+            <div className="flex justify-end">
+                <UploadActivityDrawer />
+            </div>
             <Suspense fallback={<WeekStripSkeleton />}>
                 <WeekStrip today={today} />
             </Suspense>
