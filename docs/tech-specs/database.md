@@ -84,17 +84,15 @@ make a second user work with no migration:
 
 ## Enums
 
-| Enum                     | Values                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `activity_source`        | `strava`, `manual`                                                                                                  |
-| `activity_category`      | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
-| `session_kind`           | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
-| `race_type`              | `hyrox`, `running`, `other`                                                                                         |
-| `race_priority`          | `A`, `B`, `C`                                                                                                       |
-| `race_status`            | `upcoming`, `completed`, `cancelled`                                                                                |
-| `hyrox_station`          | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
-| `report_status`          | `generating`, `ready`, `failed`                                                                                     |
-| `planned_session_status` | `planned`, `done`, `skipped`                                                                                        |
+| Enum                | Values                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `activity_source`   | `strava`, `manual`                                                                                                  |
+| `activity_category` | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
+| `session_kind`      | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
+| `race_type`         | `hyrox`, `running`, `other`                                                                                         |
+| `race_priority`     | `A`, `B`, `C`                                                                                                       |
+| `race_status`       | `upcoming`, `completed`, `cancelled`                                                                                |
+| `hyrox_station`     | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
 
 ## Tables
 
@@ -236,50 +234,33 @@ Hand-entered Hyrox station data. See [manual-logging.md](manual-logging.md).
 | `load_kg`     | numeric null                                   |       |
 | `rpe`         | numeric null                                   | 1..10 |
 
-### `weekly_reports`
+### `coach_conversations`
 
-One report per week, written every Sunday night by the coach (see [coach.md](coach.md)).
+One row per chat with the coach (see [coach-chat.md](coach-chat.md)).
 
-| Column              | Type             | Notes                                                                  |
-| ------------------- | ---------------- | ---------------------------------------------------------------------- |
-| `week_start`        | date             | Monday of the reported ISO week. Unique with `user_id`                 |
-| `status`            | `report_status`  | `generating`, `ready` or `failed`                                      |
-| `headline`          | text null        | one sentence                                                           |
-| `summary`           | text null        | review of the week                                                     |
-| `went_well`         | jsonb            | array of strings                                                       |
-| `watch_out`         | jsonb            | array of strings                                                       |
-| `follow_ups`        | jsonb            | array of `{ topic, status, note }`, status `resolved`, `open`, `worse` |
-| `next_week_focus`   | text null        |                                                                        |
-| `race_outlook`      | jsonb            | array of `{ race_id, weeks_to_go, note }`                              |
-| `goal_check`        | text null        | only when a goal looks unrealistic                                     |
-| `metrics`           | jsonb            | computed in code: minutes, sessions, run km, load ratio, adherence     |
-| `memory_report_ids` | uuid[]           | the up to 3 reports that were in the context                           |
-| `model`             | text             | model id used                                                          |
-| `prompt_version`    | text             |                                                                        |
-| `error`             | text null        | safe message when `failed`                                             |
-| `generated_at`      | timestamptz null |                                                                        |
+| Column  | Type      | Notes                                  |
+| ------- | --------- | -------------------------------------- |
+| `title` | text null | null until the first exchange names it |
 
-Unique on `(user_id, week_start)`. Index on `(user_id, week_start desc)` for the memory lookup. Also
-`unique (id, user_id)` for the composite reference from `planned_sessions`.
+Index on `(user_id, updated_at desc)`. `unique (id, user_id)` for the composite reference from
+`coach_messages`. The `set_updated_at` trigger keeps `updated_at` current.
 
-### `planned_sessions`
+### `coach_messages`
 
-| Column                | Type                                                 | Notes                                  |
-| --------------------- | ---------------------------------------------------- | -------------------------------------- |
-| `report_id`           | uuid references `weekly_reports` on delete cascade   | the report that proposed the session   |
-| `race_id`             | uuid null references `races` on delete set null      | the race this session builds toward    |
-| `planned_date`        | date                                                 |                                        |
-| `session_kind`        | `session_kind`                                       |                                        |
-| `title`               | text                                                 |                                        |
-| `description`         | text                                                 | what to do, pacing and effort guidance |
-| `target_minutes`      | int null                                             |                                        |
-| `target_distance_m`   | int null                                             |                                        |
-| `status`              | `planned_session_status`                             | default `planned`                      |
-| `matched_activity_id` | uuid null references `activities` on delete set null |                                        |
+Append-only: no `updated_at`.
 
-Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id)` to
-`weekly_reports`, `(race_id, user_id)` to `races` and `(matched_activity_id, user_id)` to
-`activities`, the last two with `on delete set null (<column>)`.
+| Column              | Type                                                    | Notes                          |
+| ------------------- | ------------------------------------------------------- | ------------------------------ |
+| `conversation_id`   | uuid references `coach_conversations` on delete cascade |                                |
+| `role`              | text                                                    | check in `user`, `assistant`   |
+| `content`           | text                                                    | not null                       |
+| `model`             | text null                                               | model id of an assistant reply |
+| `prompt_tokens`     | int null                                                |                                |
+| `completion_tokens` | int null                                                |                                |
+
+Index on `(conversation_id, created_at)`. Composite foreign key `(conversation_id, user_id)` to
+`coach_conversations`. Migration `0009` dropped `weekly_reports`, `planned_sessions` and the enum
+types `report_status` and `planned_session_status`.
 
 ## Row Level Security
 
@@ -316,7 +297,7 @@ schema:
 
 - A cannot select, update or delete any of B's rows in any table.
 - A cannot insert a row with B's `user_id`.
-- A cannot insert a child (lap, planned session, set) that references B's activity, report or race
+- A cannot insert a child (lap, set, message) that references B's activity or conversation
   (the composite foreign key rejects it).
 - A signed-in user **without** `app_metadata.roxcoach` (a user of the other app) cannot select or
   insert in any Roxcoach table.
@@ -328,16 +309,17 @@ schema:
 
 ## Migrations
 
-| File                         | Content                                                            |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `0001_schema_and_enums.sql`  | schema, `schema_migrations`, grants, enums, `set_updated_at()`     |
-| `0002_athlete_and_races.sql` | `athlete_profiles`, `availability_slots`, `races`                  |
-| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events` (dropped by `0007`)  |
-| `0004_training.sql`          | `activities`, `activity_laps`, `station_results`, `strength_sets`  |
-| `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions`                               |
-| `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes |
-| `0007_remove_strava.sql`     | drops the Strava tables, `webhook_event_status` and `strava_id`    |
-| `0008_activity_files.sql`    | `activity_files`, private bucket `activity-files` and its policies |
+| File                         | Content                                                                             |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| `0001_schema_and_enums.sql`  | schema, `schema_migrations`, grants, enums, `set_updated_at()`                      |
+| `0002_athlete_and_races.sql` | `athlete_profiles`, `availability_slots`, `races`                                   |
+| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                   |
+| `0004_training.sql`          | `activities`, `activity_laps`, `station_results`, `strength_sets`                   |
+| `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions` (dropped by `0009`)                            |
+| `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes                  |
+| `0007_remove_strava.sql`     | drops the Strava tables, `webhook_event_status` and `strava_id`                     |
+| `0008_activity_files.sql`    | `activity_files`, private bucket `activity-files` and its policies                  |
+| `0009_coach_chat.sql`        | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

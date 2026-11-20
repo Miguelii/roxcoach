@@ -4,8 +4,9 @@ import {
     countRows,
     createUser,
     insertActivity,
+    insertConversation,
+    insertMessage,
     insertRace,
-    insertReport,
     seedUserGraph,
 } from '@db/tests/helpers/fixtures'
 import { createTestDb, type TestDb } from '@db/tests/helpers/pglite'
@@ -19,12 +20,12 @@ const ROXCOACH_TABLES = [
     'activity_laps',
     'athlete_profiles',
     'availability_slots',
-    'planned_sessions',
+    'coach_conversations',
+    'coach_messages',
     'races',
     'schema_migrations',
     'station_results',
     'strength_sets',
-    'weekly_reports',
 ]
 
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
@@ -82,6 +83,7 @@ describe('schema layout', () => {
             '0006_rls.sql',
             '0007_remove_strava.sql',
             '0008_activity_files.sql',
+            '0009_coach_chat.sql',
         ])
     })
 
@@ -156,15 +158,6 @@ describe('unique constraints', () => {
         await expect(testDb.db.query(sql, [other])).resolves.toBeDefined()
     })
 
-    it('rejects a duplicate weekly report and accepts it for another user', async () => {
-        const userId = await createUser(testDb)
-        const other = await createUser(testDb)
-        await insertReport(testDb, userId, '2026-11-09')
-
-        await expect(insertReport(testDb, userId, '2026-11-09')).rejects.toThrow(UNIQUE_ERROR)
-        await expect(insertReport(testDb, other, '2026-11-09')).resolves.toBeDefined()
-    })
-
     it('accepts many manual activities for one user', async () => {
         const userId = await createUser(testDb)
         await insertActivity(testDb, userId)
@@ -219,6 +212,45 @@ describe('activity_files', () => {
         const activityId = await insertActivity(testDb, owner)
 
         await expect(insertFile(other, { activityId })).rejects.toThrow(/foreign key/u)
+    })
+})
+
+describe('coach chat tables', () => {
+    it('rejects a role outside user and assistant', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+
+        await expect(insertMessage(testDb, userId, conversationId, 'system')).rejects.toThrow(
+            CHECK_ERROR
+        )
+        await expect(
+            insertMessage(testDb, userId, conversationId, 'assistant')
+        ).resolves.toBeDefined()
+    })
+
+    it('deletes the messages of a deleted conversation', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+        await insertMessage(testDb, userId, conversationId)
+        await insertMessage(testDb, userId, conversationId, 'assistant')
+
+        await testDb.db.query('delete from roxcoach.coach_conversations where id = $1', [
+            conversationId,
+        ])
+
+        expect(await countRows(testDb, 'coach_messages', userId)).toBe(0)
+    })
+
+    it('no longer has the report and plan tables or their enum types', async () => {
+        await testDb.asSuperuser()
+        const types = await testDb.db.query<{ typname: string }>(
+            `select t.typname from pg_type t join pg_namespace n on n.oid = t.typnamespace
+             where n.nspname = 'roxcoach' and t.typname in ('report_status', 'planned_session_status')`
+        )
+
+        expect(types.rows).toEqual([])
+        expect(ROXCOACH_TABLES).not.toContain('weekly_reports')
+        expect(ROXCOACH_TABLES).not.toContain('planned_sessions')
     })
 })
 
