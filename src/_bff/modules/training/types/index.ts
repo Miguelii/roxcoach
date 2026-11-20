@@ -1,6 +1,18 @@
 import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import type { HyroxStation } from '@/_bff/core/constants/hyrox.constants'
-import type { ActivityCategory } from '@/_bff/modules/strava/helpers/map-strava-activity.helper'
+
+type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
+
+export type LapRow = {
+    lap_index: number
+    name: string | null
+    distance_m: number
+    elapsed_time_s: number
+    moving_time_s: number
+    avg_hr: number | null
+    avg_speed_mps: number | null
+    station: HyroxStation | null
+}
 
 // The service-role client (sync jobs, webhook) or the signed-in user's client (queries).
 export type TrainingClient =
@@ -10,7 +22,6 @@ export type TrainingClient =
 export type ActivityDTO = {
     id: string
     source: 'strava' | 'manual'
-    stravaId: number | null
     category: ActivityCategory
     name: string
     startedAt: string

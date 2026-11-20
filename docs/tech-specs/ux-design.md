@@ -70,15 +70,15 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Screens
 
-| Route              | Access    | Job                                             |
-| ------------------ | --------- | ----------------------------------------------- |
-| `/login`           | public    | sign in                                         |
-| `/dashboard`       | protected | the calendar and this week at a glance          |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results     |
-| `/coach`           | protected | the weekly reports and the coach's memory       |
-| `/plan`            | protected | next sessions and the outlook toward each race  |
-| `/races`           | protected | list, create, edit races and goals              |
-| `/settings`        | protected | profile, weekly availability, Strava connection |
+| Route              | Access    | Job                                            |
+| ------------------ | --------- | ---------------------------------------------- |
+| `/login`           | public    | sign in                                        |
+| `/dashboard`       | protected | the calendar and this week at a glance         |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results    |
+| `/coach`           | protected | the weekly reports and the coach's memory      |
+| `/plan`            | protected | next sessions and the outlook toward each race |
+| `/races`           | protected | list, create, edit races and goals             |
+| `/settings`        | protected | profile, weekly availability                   |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -91,11 +91,11 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 ### Dashboard
 
 Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
-(time, sessions, run km and load ratio from the last 35 days of Strava activities, zeros and
+(time, sessions, run km and load ratio from the last 35 days of activities, zeros and
 "No history yet" without activities) and the calendar with completed activities only. The
 planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
 return with the plans that own them. `/plan`, `/races` and `/coach` render a "coming soon" page
-until their backend ships; `/settings` renders the Strava card (profile and availability return
+until their backend ships; `/settings` shows only a title (profile and availability return
 with a later plan). "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
@@ -123,7 +123,7 @@ only; the `planned` member arrives with plan 5 and the `race` member with plan 3
 
 ### Activity detail
 
-- Header: name, date, category chip, link to the activity on Strava when it came from Strava.
+- Header: name, date, category chip.
 - Key numbers: distance, time, average pace, average and max heart rate, effort.
 - Laps table with pace per lap and station tags (Hyrox).
 - Station results and strength sets when present, plus "Add details" (see
@@ -158,14 +158,10 @@ result with the delta in plain text.
 
 ### Settings
 
-Target: three sections: Profile, Weekly availability (7-column editor), Strava (connection status,
-connect or disconnect, last sync time, "Sync now", attribution).
+Target: two sections: Profile and Weekly availability (7-column editor).
 
-Current state (plan 2): only the Strava card is built. Disconnected it offers "Connect Strava";
-connected it shows the last sync ("Not synced yet" when none), the activity count, "Sync now" and
-"Disconnect" (with a confirmation step). The callback result (`?strava=`) shows as a message above
-the card, and the "Compatible with Strava" attribution is always visible. See
-[strava.md](strava.md#settings-card).
+Current state: the page shows only the title. The Strava card was removed together with the Strava
+sync.
 
 ## Components
 
@@ -180,7 +176,7 @@ Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (
 | `coach/`    | report view, follow-up chips, memory panel |
 | `plan/`     | week section, session row                  |
 | `races/`    | race card, race form                       |
-| `settings/` | availability editor, Strava card           |
+| `settings/` | availability editor                        |
 
 ## States every screen must handle
 

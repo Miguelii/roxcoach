@@ -9,8 +9,7 @@ Roxcoach's schema lives in `db/migrations/` as numbered SQL files. Everything is
 The order matters. Until `0006` has run, the tables carry the default `authenticated` grants with
 RLS off, and sign-ups are open on the shared project (the other app's publishable key is public).
 If the `roxcoach` schema were exposed to the API before `0006`, anyone could insert rows in that
-window (worst case a `strava_connections` row claiming the athlete's globally unique
-`strava_athlete_id`). So the schema is exposed only at the end.
+window. So the schema is exposed only at the end.
 
 1. Run the "Before you start" checks of the rollout checklist below (nothing is changed yet).
 2. Check what is already applied (skip this on the very first run, the table does not exist yet):
@@ -21,7 +20,7 @@ window (worst case a `strava_connections` row claiming the athlete's globally un
 
 3. Open the SQL editor and run each file that is not listed yet, one at a time, in filename order
    (`0001_schema_and_enums.sql`, `0002_athlete_and_races.sql`, `0003_strava.sql`,
-   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, then later files). Paste the
+   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`, then later files). Paste the
    whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its last
    statement.
 4. Run the files as the default `postgres` role of the SQL editor. `0001` sets default privileges
@@ -72,8 +71,6 @@ Human checks, in order. Tick them off as you go; none of them is automated.
         (select count(*) from roxcoach.athlete_profiles) as athlete_profiles,
         (select count(*) from roxcoach.availability_slots) as availability_slots,
         (select count(*) from roxcoach.races) as races,
-        (select count(*) from roxcoach.strava_connections) as strava_connections,
-        (select count(*) from roxcoach.strava_webhook_events) as strava_webhook_events,
         (select count(*) from roxcoach.activities) as activities,
         (select count(*) from roxcoach.activity_laps) as activity_laps,
         (select count(*) from roxcoach.station_results) as station_results,
@@ -93,7 +90,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     -- 2. No privilege for authenticated on the service-only tables: must return no rows.
     select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'roxcoach'
-      and c.relname in ('strava_connections', 'strava_webhook_events', 'schema_migrations')
+      and c.relname in ('schema_migrations')
       and has_table_privilege('authenticated', c.oid, 'select, insert, update, delete, truncate, references, trigger');
 
     -- 3. anon has no usage on the schema: must return false.
@@ -146,8 +143,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
 `0006_rls.sql` enables RLS on every table. The client tables get one policy per operation, each
 `user_id = auth.uid() and roxcoach.has_access()`. `roxcoach.has_access()` is true only when the
 JWT carries `app_metadata.roxcoach` as the JSON boolean `true`, so a signed-in user of the other
-app sees and writes nothing. `strava_connections`, `strava_webhook_events` and
-`schema_migrations` have RLS on, no policies and no privileges for `authenticated` or `anon`:
+app sees and writes nothing. `schema_migrations` has RLS on, no policies and no privileges for `authenticated` or `anon`:
 only the service role (which bypasses RLS) touches them.
 
 ## Granting access to a user

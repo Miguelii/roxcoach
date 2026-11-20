@@ -51,15 +51,14 @@ are all server-side).
 
 ## Backend modules
 
-| Module     | Responsibility                                            | Spec                                                           |
-| ---------- | --------------------------------------------------------- | -------------------------------------------------------------- |
-| `auth`     | Login, logout, session and claims                         | [auth-security.md](auth-security.md)                           |
-| `athlete`  | Profile and weekly availability                           | [athlete-races.md](athlete-races.md)                           |
-| `races`    | Races and goals                                           | [athlete-races.md](athlete-races.md)                           |
-| `strava`   | OAuth, token refresh, webhook, activity fetch and mapping | [strava.md](strava.md)                                         |
-| `training` | Activities, laps, manual sessions, calendar feed          | [strava.md](strava.md), [manual-logging.md](manual-logging.md) |
-| `plan`     | Planned sessions and activity matching                    | [plan.md](plan.md)                                             |
-| `coach`    | Weekly report: context, memory, prompt, generation        | [coach.md](coach.md)                                           |
+| Module     | Responsibility                                     | Spec                                   |
+| ---------- | -------------------------------------------------- | -------------------------------------- |
+| `auth`     | Login, logout, session and claims                  | [auth-security.md](auth-security.md)   |
+| `athlete`  | Profile and weekly availability                    | [athlete-races.md](athlete-races.md)   |
+| `races`    | Races and goals                                    | [athlete-races.md](athlete-races.md)   |
+| `training` | Activities, laps, manual sessions, calendar feed   | [manual-logging.md](manual-logging.md) |
+| `plan`     | Planned sessions and activity matching             | [plan.md](plan.md)                     |
+| `coach`    | Weekly report: context, memory, prompt, generation | [coach.md](coach.md)                   |
 
 Dependency direction: controller to service to (repository | processor | helper). Jobs call the
 services or processors of their own module. Cross-module imports only through `services/` or
@@ -74,7 +73,7 @@ services or processors of their own module. Cross-module imports only through `s
   client and passes it to repositories. Chooses the publishable key or the service-role key.
 - **Repository**: exported `Effect.fn` functions, one file per table. First parameters are
   `supabase: SupabaseClient` and `userId: string`. **Every query filters by `user_id` and every
-  insert sets it**, even when RLS would also enforce it, because jobs and the webhook run with the
+  insert sets it**, even when RLS would also enforce it, because jobs run with the
   service-role client, which bypasses RLS (see [database.md](database.md)). Every query checks
   both the `Effect.tryPromise` catch and the returned `error`.
 - **Errors**: `Data.TaggedError` classes in `src/_bff/lib/errors.ts`, each with
@@ -86,7 +85,7 @@ services or processors of their own module. Cross-module imports only through `s
 
 ## tRPC namespaces
 
-`auth`, `athlete`, `races`, `strava`, `training`, `plan`, `coach`. Example client call:
+`auth`, `athlete`, `races`, `training`, `plan`, `coach`. Example client call:
 `trpcClient.races.create.useMutation()`. Server Components use the server-side caller
 (`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
 `appRouter.createCaller`.
@@ -95,34 +94,23 @@ services or processors of their own module. Cross-module imports only through `s
 
 | Route                                      | Purpose                                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------ |
-| `src/app/api/strava/webhook/route.ts`      | Strava webhook: GET verification, POST event intake                            |
-| `src/app/api/strava/callback/route.ts`     | Strava OAuth redirect handler                                                  |
 | `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet) |
 
-These are plain route handlers because Strava calls them, not the browser app. The webhook route only
-wires `createStravaWebhookHandlers` (helper) to `strava` services (event handling, enqueue and
-`settleStravaEvent`) and holds no logic or data access of its own. The callback route checks the
-session and the access flag itself (the proxy matcher excludes `api/`), then delegates the OAuth
-exchange to `completeStravaConnect`.
+These are plain route handlers because `pg_cron` calls them, not the browser app.
 
 ## Trigger.dev jobs
 
-| Job                             | Module   | Trigger                                                                                |
-| ------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| `sync-strava-activity`          | `strava` | webhook activity event                                                                 |
-| `verify-strava-deauthorization` | `strava` | webhook athlete event with `authorized: "false"`                                       |
-| `backfill-strava`               | `strava` | first connection                                                                       |
-| `sync-missing-strava`           | `strava` | "Sync now" in Settings                                                                 |
-| `generate-weekly-report`        | `coach`  | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
+| Job                      | Module  | Trigger                                                                                |
+| ------------------------ | ------- | -------------------------------------------------------------------------------------- |
+| `generate-weekly-report` | `coach` | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
 
 Jobs run in Trigger.dev's cloud, so they need their own environment variables, set in the
 Trigger.dev dashboard for each environment (dev and prod): `NEXT_SUPABASE_URL`,
 `NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY` (required by `@/env/server` at
-import time through `core/db`), and `NEXT_STRAVA_CLIENT_ID` and `NEXT_STRAVA_CLIENT_SECRET` (read by
-the Strava credentials helper). The jobs do not read `NEXT_PUBLIC_WEBSITE_URL`. The app's
+import time through `core/db`). The jobs do not read `NEXT_PUBLIC_WEBSITE_URL`. The app's
 `TRIGGER_SECRET_KEY` is different for the dev and prod Trigger.dev environments.
 
-Every `jobs/` directory is listed in `trigger.config.ts` `dirs` (today only the `strava` one). The
+Every `jobs/` directory is listed in `trigger.config.ts` `dirs` (none exists today, the Strava jobs were removed). The
 Trigger.dev project ref is set directly in `trigger.config.ts`, not read from an environment
 variable, and `build.conditions: ['react-server']` lets the jobs import services that start with
 `import 'server-only'`. Jobs are idempotent: running a
@@ -130,20 +118,17 @@ job twice for the same activity or report week must not duplicate rows.
 
 ## Environment variables
 
-| Name                               | Scope  | Used by                                                    |
-| ---------------------------------- | ------ | ---------------------------------------------------------- |
-| `NEXT_SUPABASE_URL`                | server | all Supabase clients                                       |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`    | server | session-bound client                                       |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY`   | server | jobs and Strava token access                               |
-| `NEXT_ANTHROPIC_AI_KEY`            | server | coach                                                      |
-| `NEXT_STRAVA_CLIENT_ID`            | server | OAuth                                                      |
-| `NEXT_STRAVA_CLIENT_SECRET`        | server | OAuth and token refresh                                    |
-| `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN` | server | webhook GET verification                                   |
-| `NEXT_CRON_SECRET`                 | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
-| `TRIGGER_SECRET_KEY`               | server | Trigger.dev, triggers jobs from the app                    |
-| `NEXT_PUBLIC_WEBSITE_URL`          | client | absolute URLs, OAuth redirect                              |
+| Name                             | Scope  | Used by                                                    |
+| -------------------------------- | ------ | ---------------------------------------------------------- |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                       |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                       |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | jobs                                                       |
+| `NEXT_ANTHROPIC_AI_KEY`          | server | coach                                                      |
+| `NEXT_CRON_SECRET`               | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
+| `TRIGGER_SECRET_KEY`             | server | Trigger.dev, triggers jobs from the app                    |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                              |
 
-In `src/env/server.ts` only the three Supabase variables are required. The Anthropic, Strava, cron
+In `src/env/server.ts` only the three Supabase variables are required. The Anthropic, cron
 and Trigger.dev variables are optional at startup (the features that need them fail with a tagged
 error when they are missing), and an empty value reads as unset (`emptyStringAsUndefined`).
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to

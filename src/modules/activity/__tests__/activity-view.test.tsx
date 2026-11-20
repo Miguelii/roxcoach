@@ -19,21 +19,6 @@ describe('ActivityView', () => {
         expect(screen.getByTestId('activity-metrics')).not.toHaveTextContent('N/A')
     })
 
-    it('links to Strava only for Strava activities', () => {
-        const { rerender } = render(<ActivityView activity={makeActivity()} laps={[]} />)
-
-        expect(screen.getByTestId('strava-link')).toHaveAttribute(
-            'href',
-            'https://www.strava.com/activities/123456'
-        )
-
-        rerender(
-            <ActivityView activity={makeActivity({ source: 'manual', stravaId: null })} laps={[]} />
-        )
-
-        expect(screen.queryByTestId('strava-link')).toBeNull()
-    })
-
     it('renders the laps table with station tags and dashes for missing values', () => {
         render(
             <ActivityView

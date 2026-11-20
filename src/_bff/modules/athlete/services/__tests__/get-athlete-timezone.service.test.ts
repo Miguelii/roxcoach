@@ -4,7 +4,7 @@ import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
-import { makeFakeAdminDb, ok } from '@/_bff/modules/strava/services/__tests__/fake-admin-db'
+import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 
 const { createDBServerClientMock } = vi.hoisted(() => ({ createDBServerClientMock: vi.fn() }))
 

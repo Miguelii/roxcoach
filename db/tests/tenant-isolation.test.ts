@@ -14,11 +14,7 @@ type NameRow = { name: string }
 type StaleRow = { stale: boolean }
 
 // RLS on, no policies, no privileges for authenticated: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set([
-    'schema_migrations',
-    'strava_connections',
-    'strava_webhook_events',
-])
+const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
 
 const INSUFFICIENT_PRIVILEGE = '42501'
 const FOREIGN_KEY_VIOLATION = '23503'
@@ -73,9 +69,9 @@ beforeAll(async () => {
     clientTables = allTables.filter((table) => !SERVICE_ONLY_TABLES.has(table))
 
     const ids = [await createUser(testDb), await createUser(testDb), await createUser(testDb)]
-    userA = await seedUserGraph(testDb, ids[0], 101)
-    userB = await seedUserGraph(testDb, ids[1], 102)
-    userC = await seedUserGraph(testDb, ids[2], 103)
+    userA = await seedUserGraph(testDb, ids[0])
+    userB = await seedUserGraph(testDb, ids[1])
+    userC = await seedUserGraph(testDb, ids[2])
 })
 
 afterAll(async () => {
@@ -288,8 +284,8 @@ describe('the service role', () => {
 
 describe('deleting a user', () => {
     it('removes every row of that user and none of another', async () => {
-        const doomed = await seedUserGraph(testDb, await createUser(testDb), 201)
-        const survivor = await seedUserGraph(testDb, await createUser(testDb), 202)
+        const doomed = await seedUserGraph(testDb, await createUser(testDb))
+        const survivor = await seedUserGraph(testDb, await createUser(testDb))
 
         await testDb.asSuperuser()
         await testDb.db.query('delete from auth.users where id = $1', [doomed.userId])

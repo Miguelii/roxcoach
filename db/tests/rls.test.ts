@@ -18,11 +18,7 @@ type AccessRow = { has_access: boolean }
 type CountRow = { count: number }
 
 // RLS on, no policies: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set([
-    'schema_migrations',
-    'strava_connections',
-    'strava_webhook_events',
-])
+const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
 
 // How PostgreSQL prints the owner check of every client policy.
 const OWNER_CHECK = '((user_id = auth.uid()) AND roxcoach.has_access())'
@@ -184,7 +180,7 @@ describe('self-grant attempts', () => {
 
     beforeAll(async () => {
         ownerId = await createUser(testDb)
-        await seedUserGraph(testDb, ownerId, 201)
+        await seedUserGraph(testDb, ownerId)
         clientTables = allTables.filter((table) => !SERVICE_ONLY_TABLES.has(table))
     })
 

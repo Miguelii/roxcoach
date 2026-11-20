@@ -6,7 +6,6 @@ import {
     insertActivity,
     insertRace,
     insertReport,
-    insertWebhookEvent,
     seedUserGraph,
 } from '@db/tests/helpers/fixtures'
 import { createTestDb, type TestDb } from '@db/tests/helpers/pglite'
@@ -23,8 +22,6 @@ const ROXCOACH_TABLES = [
     'races',
     'schema_migrations',
     'station_results',
-    'strava_connections',
-    'strava_webhook_events',
     'strength_sets',
     'weekly_reports',
 ]
@@ -32,11 +29,7 @@ const ROXCOACH_TABLES = [
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
 
 // Tables only the service role may touch: 0006 revokes every privilege on them from authenticated.
-const SERVICE_ONLY_TABLES = new Set([
-    'schema_migrations',
-    'strava_connections',
-    'strava_webhook_events',
-])
+const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
 
 const UNIQUE_ERROR = /unique/u
 
@@ -85,6 +78,7 @@ describe('schema layout', () => {
             '0004_training.sql',
             '0005_coach_and_plan.sql',
             '0006_rls.sql',
+            '0007_remove_strava.sql',
         ])
     })
 
@@ -168,27 +162,11 @@ describe('unique constraints', () => {
         await expect(insertReport(testDb, other, '2026-11-09')).resolves.toBeDefined()
     })
 
-    it('rejects a duplicate strava_id and accepts it for another user', async () => {
-        const userId = await createUser(testDb)
-        const other = await createUser(testDb)
-        await insertActivity(testDb, userId, 7777)
-
-        await expect(insertActivity(testDb, userId, 7777)).rejects.toThrow(UNIQUE_ERROR)
-        await expect(insertActivity(testDb, other, 7777)).resolves.toBeDefined()
-    })
-
-    it('accepts many manual activities without strava_id for one user', async () => {
+    it('accepts many manual activities for one user', async () => {
         const userId = await createUser(testDb)
         await insertActivity(testDb, userId)
 
         await expect(insertActivity(testDb, userId)).resolves.toBeDefined()
-    })
-
-    it('rejects a redelivered webhook event and accepts another owner', async () => {
-        await insertWebhookEvent(testDb, null, 9001)
-
-        await expect(insertWebhookEvent(testDb, null, 9001)).rejects.toThrow(UNIQUE_ERROR)
-        await expect(insertWebhookEvent(testDb, null, 9002)).resolves.toBeUndefined()
     })
 })
 
@@ -196,8 +174,8 @@ describe('deleting a user', () => {
     it('cascades to every table and leaves other users untouched', async () => {
         const doomed = await createUser(testDb)
         const survivor = await createUser(testDb)
-        await seedUserGraph(testDb, doomed, 555)
-        await seedUserGraph(testDb, survivor, 556)
+        await seedUserGraph(testDb, doomed)
+        await seedUserGraph(testDb, survivor)
         const seeded = Object.fromEntries(USER_TABLES.map((table) => [table, 1]))
         const emptied = Object.fromEntries(USER_TABLES.map((table) => [table, 0]))
 

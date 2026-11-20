@@ -18,8 +18,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
     - the same with `alter default privileges for role postgres in schema roxcoach ...` so later
       tables created by `postgres` (the SQL editor role that runs the migrations) follow.
     - nothing is granted to `anon`.
-    - `0006` revokes every privilege on the service-only tables (`strava_connections`,
-      `strava_webhook_events`, `schema_migrations`) from `authenticated` and `anon`.
+    - `0006` revokes every privilege on the service-only table `schema_migrations` from
+      `authenticated` and `anon`.
 
     The schema is added to the API only after `0006` has been applied and verified: in Supabase,
     Project Settings, API, append `roxcoach` to "Exposed schemas" (never replace the list, the other
@@ -49,9 +49,7 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
 - All objects are in the `roxcoach` schema. Examples below omit the prefix for readability.
 - Primary keys are `uuid default gen_random_uuid()` unless noted.
 - **Every table has a `user_id`** (see "Multi-user from day one" below), declared
-  `user_id uuid not null default auth.uid() references auth.users(id) on delete cascade`. The one
-  exception is `strava_webhook_events`, where it stays nullable for audit rows if ever needed: the
-  webhook no longer writes events of an unknown owner, so today every row has a user.
+  `user_id uuid not null default auth.uid() references auth.users(id) on delete cascade`.
 - `created_at timestamptz not null default now()` everywhere, `updated_at` where rows are edited
   (maintained by a shared `set_updated_at()` trigger).
 - Times are stored in seconds (`*_s`), distances in meters (`*_m`), speeds in meters per second
@@ -77,14 +75,11 @@ make a second user work with no migration:
    `(user_id, weekday, session_kind)`, `(user_id, local_date)`, `(user_id, week_start)`.
 4. **Deleting a user deletes everything.** `on delete cascade` from `auth.users` on every
    `user_id`.
-5. **Service-role code does not get RLS.** Jobs, the webhook and the report generator use the
+5. **Service-role code does not get RLS.** Jobs and the report generator use the
    service-role client, which bypasses RLS. Every repository function therefore receives `userId`
    as an explicit parameter and filters or inserts with it (see [architecture.md](architecture.md)).
    Nothing may read a table without a `user_id` condition.
-6. **Global identifiers map to exactly one user.** `strava_athlete_id` is unique across the table:
-   one Strava account belongs to one Roxcoach user, and the webhook resolves `owner_id` to a
-   `user_id` through `strava_connections`.
-7. **Profile row per user.** Today it is inserted by hand. A later `on auth.users insert` trigger
+6. **Profile row per user.** Today it is inserted by hand. A later `on auth.users insert` trigger
    can create it, with no schema change.
 
 ## Enums
@@ -100,7 +95,6 @@ make a second user work with no migration:
 | `hyrox_station`          | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
 | `report_status`          | `generating`, `ready`, `failed`                                                                                     |
 | `planned_session_status` | `planned`, `done`, `skipped`                                                                                        |
-| `webhook_event_status`   | `received`, `processed`, `ignored`, `failed`                                                                        |
 
 ## Tables
 
@@ -150,49 +144,15 @@ Unique on `(user_id, weekday, session_kind)`. A `rest` slot marks a day with not
 
 Index on `(user_id, race_date)`.
 
-### `strava_connections`
-
-One row per user (`user_id` is the primary key). Sensitive: no client policy, only the service-role
-client reads or writes it.
-
-| Column              | Type                   | Notes |
-| ------------------- | ---------------------- | ----- |
-| `strava_athlete_id` | bigint unique not null |       |
-| `access_token`      | text not null          |       |
-| `refresh_token`     | text not null          |       |
-| `expires_at`        | timestamptz not null   |       |
-| `scope`             | text not null          |       |
-| `connected_at`      | timestamptz            |       |
-| `last_synced_at`    | timestamptz null       |       |
-
-### `strava_webhook_events`
-
-Idempotency and audit for the webhook. Service-role only.
-
-| Column        | Type                   | Notes                                                     |
-| ------------- | ---------------------- | --------------------------------------------------------- |
-| `user_id`     | uuid null              | resolved from `owner_id`; null when no connection matches |
-| `object_type` | text                   | `activity` or `athlete`                                   |
-| `object_id`   | bigint                 |                                                           |
-| `aspect_type` | text                   | `create`, `update`, `delete`                              |
-| `owner_id`    | bigint                 | Strava athlete id                                         |
-| `event_time`  | timestamptz            |                                                           |
-| `status`      | `webhook_event_status` |                                                           |
-| `error`       | text null              |                                                           |
-
-Unique on `(owner_id, object_type, object_id, aspect_type, event_time)` so a redelivered event is
-a no-op. Index on `(user_id, event_time desc)`.
-
 ### `activities`
 
-Every workout, from Strava or entered by hand.
+Every workout, uploaded or entered by hand. Strava sync was removed (`0007`).
 
 | Column             | Type                | Notes                                                   |
 | ------------------ | ------------------- | ------------------------------------------------------- |
-| `source`           | `activity_source`   |                                                         |
-| `strava_id`        | bigint null         | unique per user when present                            |
-| `category`         | `activity_category` | derived from the Strava sport type or chosen manually   |
-| `sport_type`       | text null           | raw Strava value, for example `Run`, `WeightTraining`   |
+| `source`           | `activity_source`   | `manual` today; the enum still holds `strava` (unused)  |
+| `category`         | `activity_category` | chosen or derived when the file is parsed               |
+| `sport_type`       | text null           | raw sport type of the source, for example `Run`         |
 | `name`             | text                |                                                         |
 | `started_at`       | timestamptz         |                                                         |
 | `local_date`       | date                | the day in the athlete's timezone, used by the calendar |
@@ -206,9 +166,9 @@ Every workout, from Strava or entered by hand.
 | `calories`         | numeric null        |                                                         |
 | `perceived_effort` | smallint null       | RPE 1..10, entered by hand, applies to both sources     |
 | `notes`            | text null           |                                                         |
-| `deleted_at`       | timestamptz null    | soft delete when Strava reports deletion                |
+| `deleted_at`       | timestamptz null    | soft delete                                             |
 
-Index on `(user_id, local_date)`. Unique on `(user_id, strava_id)` where `strava_id is not null`.
+Index on `(user_id, local_date)`.
 Also `unique (id, user_id)` so children can reference it with a composite key.
 
 ### `activity_laps`
@@ -228,9 +188,9 @@ Every child table below has its own `user_id` and a composite foreign key
 | `avg_speed_mps`  | numeric null                                   |                                                     |
 | `station`        | `hyrox_station` null                           | set when a lap is recognised or tagged as a station |
 
-Unique on `(user_id, activity_id, lap_index)`. A Strava sync replaces an activity's laps by deleting
+Unique on `(user_id, activity_id, lap_index)`. Laps of an activity are replaced by deleting
 the old rows and then inserting the new ones (not atomic: a failed insert leaves no laps until the
-retried sync rewrites them).
+replacement is retried).
 
 ### `station_results`
 
@@ -308,7 +268,7 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
   and the `auth.users` cascades. Clients never connect as the owner and `service_role` bypasses RLS
   through `BYPASSRLS` either way.
 - Every table with a client-facing use (all except the three no-policy tables below,
-  `strava_connections`, `strava_webhook_events` and `schema_migrations`): one policy per operation, `select`, `insert`, `update` and `delete`,
+  `schema_migrations`): one policy per operation, `select`, `insert`, `update` and `delete`,
   `to authenticated`, with `using (user_id = auth.uid() and roxcoach.has_access())` and, for
   writes, `with check (user_id = auth.uid() and roxcoach.has_access())`. The policy is identical on
   every table because every table, children included, carries `user_id`.
@@ -319,13 +279,13 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
   JSON boolean `true` only. Execute is granted to `authenticated` and `service_role`, revoked from
   `public`. `app_metadata` can only be written with the service role, never by the user, so a user
   of the other app cannot grant themselves access and cannot create rows in Roxcoach tables.
-- `strava_connections`, `strava_webhook_events` and `schema_migrations`: RLS on, **no policies**,
+- `schema_migrations`: RLS on, **no policies**,
   and no privileges for `authenticated` or `anon` (a client query fails with a permission error).
   Only the service-role client touches them, from server code and jobs. Tokens are never exposed
   to a client session, even if a policy were added by mistake.
 - tRPC services use the session-bound client (publishable key), so RLS is a second layer under the
   `user_id` filters in the repositories.
-- Jobs, the webhook handler and the report generator use the service-role client. RLS does not
+- Jobs and the report generator use the service-role client. RLS does not
   protect them, so they rely on rules 2, 5 and 6 of "Multi-user from day one".
 
 ### Tenant isolation tests
@@ -338,7 +298,6 @@ schema:
 - A cannot insert a row with B's `user_id`.
 - A cannot insert a child (lap, planned session, set) that references B's activity, report or race
   (the composite foreign key rejects it).
-- A client session cannot read `strava_connections` or `strava_webhook_events` at all.
 - A signed-in user **without** `app_metadata.roxcoach` (a user of the other app) cannot select or
   insert in any Roxcoach table.
 - A cannot move one of its own rows to B by update (`with check`).
@@ -353,10 +312,11 @@ schema:
 | ---------------------------- | ------------------------------------------------------------------ |
 | `0001_schema_and_enums.sql`  | schema, `schema_migrations`, grants, enums, `set_updated_at()`     |
 | `0002_athlete_and_races.sql` | `athlete_profiles`, `availability_slots`, `races`                  |
-| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events`                      |
+| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events` (dropped by `0007`)  |
 | `0004_training.sql`          | `activities`, `activity_laps`, `station_results`, `strength_sets`  |
 | `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions`                               |
 | `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes |
+| `0007_remove_strava.sql`     | drops the Strava tables, `webhook_event_status` and `strava_id`    |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

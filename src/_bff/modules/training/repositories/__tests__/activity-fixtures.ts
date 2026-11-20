@@ -2,8 +2,7 @@ export const ACTIVITY_ID = '7a1f0f4e-3b0e-4c53-9a0a-6a3a3d2f9c11'
 
 export const DB_ROW = {
     id: ACTIVITY_ID,
-    source: 'strava',
-    strava_id: 987654321,
+    source: 'manual',
     category: 'run',
     name: 'Morning run',
     started_at: '2026-11-18T07:30:00+00:00',
@@ -22,8 +21,7 @@ export const DB_ROW = {
 
 export const DTO = {
     id: ACTIVITY_ID,
-    source: 'strava',
-    stravaId: 987654321,
+    source: 'manual',
     category: 'run',
     name: 'Morning run',
     startedAt: '2026-11-18T07:30:00+00:00',

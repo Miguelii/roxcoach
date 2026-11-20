@@ -5,8 +5,7 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
-import type { LapRow } from '@/_bff/modules/strava/helpers/map-strava-activity.helper'
-import type { LapDTO, TrainingClient } from '@/_bff/modules/training/types'
+import type { LapDTO, LapRow, TrainingClient } from '@/_bff/modules/training/types'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 

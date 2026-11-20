@@ -7,7 +7,6 @@ type RowBuilder = (graph: UserGraph) => Statement
 // The ids of one user's seeded rows, used to aim inserts at that user's parents.
 export type UserGraph = {
     userId: string
-    stravaAthleteId: number
     activityId: string
     raceId: string
     reportId: string
@@ -59,24 +58,6 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
-        'strava_connections',
-        (graph) => ({
-            sql: `insert into roxcoach.strava_connections
-                    (user_id, strava_athlete_id, access_token, refresh_token, expires_at, scope)
-                  values ($1, $2, 'access', 'refresh', now(), 'activity:read_all')`,
-            params: [graph.userId, graph.stravaAthleteId],
-        }),
-    ],
-    [
-        'strava_webhook_events',
-        (graph) => ({
-            sql: `insert into roxcoach.strava_webhook_events
-                    (user_id, object_type, object_id, aspect_type, owner_id, event_time, status)
-                  values ($1, 'activity', 42, 'create', $2, '2026-11-19T10:00:00Z', 'received')`,
-            params: [graph.userId, graph.stravaAthleteId],
-        }),
-    ],
-    [
         'activity_laps',
         (graph) => ({
             sql: `insert into roxcoach.activity_laps (user_id, activity_id, lap_index) values ($1, $2, 0)`,
@@ -114,8 +95,6 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
 const GRAPH_CHILD_TABLES = [
     'athlete_profiles',
     'availability_slots',
-    'strava_connections',
-    'strava_webhook_events',
     'activity_laps',
     'station_results',
     'strength_sets',
@@ -139,16 +118,12 @@ async function insertId(testDb: TestDb, sql: string, params: unknown[]): Promise
     return result.rows[0].id
 }
 
-export async function insertActivity(
-    testDb: TestDb,
-    userId: string,
-    stravaId: number | null = null
-): Promise<string> {
+export async function insertActivity(testDb: TestDb, userId: string): Promise<string> {
     return insertId(
         testDb,
-        `insert into roxcoach.activities (user_id, source, strava_id, category, name, started_at, local_date)
-         values ($1, $2, $3, 'run', 'Easy run', now(), current_date) returning id`,
-        [userId, stravaId === null ? 'manual' : 'strava', stravaId]
+        `insert into roxcoach.activities (user_id, source, category, name, started_at, local_date)
+         values ($1, 'manual', 'run', 'Easy run', now(), current_date) returning id`,
+        [userId]
     )
 }
 
@@ -190,31 +165,12 @@ export async function insertPlannedSession(
     )
 }
 
-export async function insertWebhookEvent(
-    testDb: TestDb,
-    userId: string | null,
-    ownerId: number
-): Promise<void> {
-    await testDb.db.query(
-        `insert into roxcoach.strava_webhook_events
-            (user_id, object_type, object_id, aspect_type, owner_id, event_time, status)
-         values ($1, 'activity', 42, 'create', $2, '2026-11-19T10:00:00Z', 'received')`,
-        [userId, ownerId]
-    )
-}
-
 // Inserts the parents (activity, race, report), then one row in every other user-owned table, so
-// the user owns exactly one row per table. The Strava athlete id is global, so each seeded user
-// needs its own.
-export async function seedUserGraph(
-    testDb: TestDb,
-    userId: string,
-    stravaAthleteId: number
-): Promise<UserGraph> {
+// the user owns exactly one row per table..
+export async function seedUserGraph(testDb: TestDb, userId: string): Promise<UserGraph> {
     const graph: UserGraph = {
         userId,
-        stravaAthleteId,
-        activityId: await insertActivity(testDb, userId, 1001),
+        activityId: await insertActivity(testDb, userId),
         raceId: await insertRace(testDb, userId),
         reportId: await insertReport(testDb, userId),
     }

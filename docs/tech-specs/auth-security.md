@@ -26,12 +26,11 @@ to change.
 
 Being signed in is not enough. Every entry point checks the flag:
 
-| Layer                 | Check                                                                                                                                                                                                                                              |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Proxy (`sbProxy`)     | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login`                                                                                                               |
-| `protectedProcedure`  | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`                                                                                                                         |
-| Database              | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                                                                                                                                       |
-| Strava OAuth callback | `src/app/api/strava/callback/route.ts` is outside the proxy matcher, so it calls `getSession()` (`getUser()`, not claims) and `hasRoxcoachAccess` itself: without both it redirects to `/login` and exchanges nothing (see [strava.md](strava.md)) |
+| Layer                | Check                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Proxy (`sbProxy`)    | after `getClaims()`, a claim without `app_metadata.roxcoach === true` is treated as no user on protected paths: redirect to `/login` |
+| `protectedProcedure` | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`           |
+| Database             | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                         |
 
 The proxy and `roxcoach.has_access()` (RLS) both read the flag from the JWT claims, so revoking
 `app_metadata.roxcoach` only takes effect in them when the access token is reissued (it expires
@@ -91,7 +90,7 @@ Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client
 `AUTH_PAGE_PATH = '/login'`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
 `PROTECTED_PATHS = ['/dashboard', '/coach', '/activities', '/plan', '/races', '/settings']`.
 
-The proxy matcher excludes `_next`, `api/` (webhook and OAuth callback authenticate themselves),
+The proxy matcher excludes `_next`, `api/` (route handlers there authenticate themselves),
 static assets and the favicon. It is already defined in `src/proxy.ts` and only needs `sbProxy`
 added.
 
@@ -111,13 +110,12 @@ dot segments that resolve to a protocol-relative path (`/.//evil.com`) and non-s
 | ---------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `createDBServerClient()`     | publishable key, cookie session  | tRPC services acting as the logged-in user (RLS applies) |
 | `createDBServerClient(true)` | service-role key, cookie session | not an admin client, see below                           |
-| `createDBAdminClient()`      | service-role key, no cookies     | Trigger.dev jobs, webhook handler, Strava token storage  |
+| `createDBAdminClient()`      | service-role key, no cookies     | Trigger.dev jobs                                         |
 
 `createDBServerClient(true)` is not a reliable way to act as the service role. When a cookie
 session exists, supabase-js sends the user's access token instead of the key, so PostgREST runs as
 `authenticated` under RLS, with that user's policies and flag. It acts as the
-service role only when nobody is signed in. Use `createDBAdminClient()` for Strava tokens, jobs
-and webhooks.
+service role only when nobody is signed in. Use `createDBAdminClient()` for jobs.
 
 Every client is created with `db: { schema: 'roxcoach' }` so table names resolve inside the
 Roxcoach schema and never in `public`. A new client is created on every request. Services pick the key and pass the client into
@@ -148,17 +146,14 @@ and of every other device. Local scope ends only this browser's session.
 - Every protected tRPC procedure uses `protectedProcedure` and filters by `ctx.user.id`.
 - RLS is the second layer: even a repository bug cannot read another user's rows (see
   [database.md](database.md)).
-- Strava tokens are never returned to the client. Only the connection status is exposed.
-- Webhook and OAuth callback routes use the service-role client and verify their own inputs
-  (see [strava.md](strava.md)).
+- Route handlers under `api/` use the service-role client only after verifying their own inputs.
 
 ## Content Security Policy
 
 Already implemented in `src/lib/set-csp.ts`: `default-src 'self'`, `frame-ancestors 'none'`,
 `object-src 'none'`, `upgrade-insecure-requests`, `'unsafe-eval'` in development only.
 
-Additions expected over time: the Strava image host in `img-src` (profile photos, if shown). All
-Strava and Anthropic calls are server-side, so `connect-src` stays `'self'`.
+All Anthropic calls are server-side, so `connect-src` stays `'self'`.
 
 ## Security headers
 
@@ -172,8 +167,3 @@ browsing-topics denied.
 - All secrets in env vars (see [architecture.md](architecture.md)), validated at startup by
   `@t3-oss/env-nextjs`. `TRIGGER_SECRET_KEY` is not in `ServerEnv` yet: it is added with the
   Trigger.dev plan.
-- Strava `access_token` and `refresh_token` sit in `strava_connections`, behind RLS with no
-  policies. They are never logged. Error objects stored in `strava_webhook_events.error` must not
-  contain tokens.
-- The webhook verify token and Strava client secret are compared with constant-time equality where
-  they are checked.

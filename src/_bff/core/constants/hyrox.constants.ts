@@ -30,8 +30,3 @@ const HYROX_STATION_ORDER: HyroxStation[] = [
     'sandbag_lunges',
     'wall_balls',
 ]
-
-export const HYROX_STATIONS = HYROX_STATION_ORDER.map((key) => ({
-    key,
-    label: HYROX_STATION_LABELS[key],
-}))
