@@ -1,3 +1,4 @@
+import { LYFTA_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/lyfta.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 
 type LyftaUiError = {
@@ -25,9 +26,13 @@ const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
         'Could not save imported sets. Try syncing again.',
 }
 
+export const LYFTA_MORE_TO_SYNC_MESSAGE =
+    'More workouts to sync. Press Sync workouts again to continue.'
+
 const GENERIC_ERROR_MESSAGE = 'Lyfta could not complete the request. Try again.'
 
 export const messageForLyftaError = ({ message }: LyftaUiError): string => {
+    if (message === LYFTA_SYNC_IN_PROGRESS_MESSAGE) return message
     const errorCode = Object.values(ErrorCode).find((code) => code === message)
     return (errorCode && ERROR_MESSAGES[errorCode]) || GENERIC_ERROR_MESSAGE
 }

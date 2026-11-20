@@ -4,6 +4,8 @@ import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import {
     deleteLyftaConnection,
+    releaseLyftaSyncLease,
+    takeLyftaSyncLease,
     selectLyftaConnection,
     updateLyftaLastSyncedAt,
     upsertLyftaConnection,
@@ -74,5 +76,77 @@ describe('Lyfta connection repository', () => {
         )
 
         expect(failureTag(exit)).toBe('LyftaConnectionWriteError')
+    })
+
+    it('takes the sync lease with a user-scoped compare-and-set and reports whether it won', async () => {
+        const won = makeFakeDb([ok({ user_id: USER_ID })])
+        const lost = makeFakeDb([ok(null)])
+
+        const first = await Effect.runPromise(
+            takeLyftaSyncLease(
+                won.supabase,
+                USER_ID,
+                '2026-11-20T08:30:00.000Z',
+                '2026-11-20T08:25:00.000Z'
+            )
+        )
+        const second = await Effect.runPromise(
+            takeLyftaSyncLease(
+                lost.supabase,
+                USER_ID,
+                '2026-11-20T08:30:00.000Z',
+                '2026-11-20T08:25:00.000Z'
+            )
+        )
+
+        expect(first).toBe(true)
+        expect(second).toBe(false)
+        expect(won.chains[0]?.update).toHaveBeenCalledWith({
+            sync_started_at: '2026-11-20T08:30:00.000Z',
+        })
+        expect(won.chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(won.chains[0]?.or).toHaveBeenCalledWith(
+            'sync_started_at.is.null,sync_started_at.lt.2026-11-20T08:25:00.000Z'
+        )
+    })
+
+    it('releases only the lease it took, scoped by user id', async () => {
+        const { chains, supabase } = makeFakeDb([ok()])
+
+        await Effect.runPromise(
+            releaseLyftaSyncLease(supabase, USER_ID, '2026-11-20T08:30:00.000Z')
+        )
+
+        expect(chains[0]?.update).toHaveBeenCalledWith({ sync_started_at: null })
+        expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(chains[0]?.eq).toHaveBeenCalledWith('sync_started_at', '2026-11-20T08:30:00.000Z')
+    })
+
+    it('fails the lease calls on a returned error and on a rejected query', async () => {
+        const returned = makeFakeDb([{ data: null, error: { code: 'XX001', message: 'no' } }])
+        const rejected = makeFakeDb([new Error('down')])
+
+        expect(
+            failureTag(
+                await Effect.runPromiseExit(
+                    takeLyftaSyncLease(returned.supabase, USER_ID, 'a', 'b')
+                )
+            )
+        ).toBe('LyftaConnectionWriteError')
+        expect(
+            failureTag(
+                await Effect.runPromiseExit(releaseLyftaSyncLease(rejected.supabase, USER_ID, 'a'))
+            )
+        ).toBe('LyftaConnectionWriteError')
+    })
+
+    it('resets the checkpoint in the same upsert only when asked', async () => {
+        const { chains, supabase } = makeFakeDb([ok(), ok()])
+
+        await Effect.runPromise(upsertLyftaConnection(supabase, USER_ID, ENCRYPTED_KEY, true))
+        await Effect.runPromise(upsertLyftaConnection(supabase, USER_ID, ENCRYPTED_KEY))
+
+        expect(chains[0]?.upsert.mock.calls[0]?.[0]).toMatchObject({ last_synced_at: null })
+        expect(chains[1]?.upsert.mock.calls[0]?.[0]).not.toHaveProperty('last_synced_at')
     })
 })

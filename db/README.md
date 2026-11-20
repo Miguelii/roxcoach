@@ -23,7 +23,7 @@ window. So the schema is exposed only at the end.
    `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`,
    `0008_activity_files.sql`, `0009_coach_chat.sql`, `0010_lyfta.sql`,
    `0011_lyfta_progress_metrics.sql`, `0012_strength_exercise_order.sql`,
-   `0013_strength_exercise_images.sql`, then later files). Paste
+   `0013_strength_exercise_images.sql`, `0014_coach_usage.sql`, then later files). Paste
    the whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its
    last statement.
 4. Run the files as the default `postgres` role of the SQL editor. `0001` sets default privileges
@@ -107,7 +107,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     ```
 
 - [ ] Before applying `0008`: `select id, public from storage.buckets where id = 'activity-files';` returns no rows (the migration fails loudly otherwise), and the output of `select policyname, cmd, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects';` is reviewed: permissive policies of the other app with no `bucket_id` filter would also grant access to this bucket.
-- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0013`.
+- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0014`.
 
 ### Exposing the schema
 

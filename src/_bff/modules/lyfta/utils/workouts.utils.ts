@@ -4,7 +4,6 @@ import type {
     LyftaExercise,
     LyftaWorkout,
     LyftaWorkoutPage,
-    LyftaWorkoutRange,
     ParseResult,
 } from '@/_bff/modules/lyfta/types'
 
@@ -74,6 +73,9 @@ function isLyftaExerciseImageUrl(value: string): boolean {
 
     return (
         url.protocol === 'https:' &&
+        url.port === '' &&
+        url.username === '' &&
+        url.password === '' &&
         url.search === '' &&
         url.hash === '' &&
         (isLyftaCatalogImage || isGymvisualImage)
@@ -271,44 +273,4 @@ export function parseLyftaWorkoutPage(
             workouts,
         },
     }
-}
-
-export function getLyftaIncrementalRange(lastSyncedAt: string, now: Date): LyftaWorkoutRange {
-    const lastSync = new Date(lastSyncedAt)
-    if (Number.isNaN(lastSync.getTime()) || Number.isNaN(now.getTime())) {
-        throw new TypeError('Invalid Lyfta sync timestamp')
-    }
-
-    const from = new Date(
-        Date.UTC(lastSync.getUTCFullYear(), lastSync.getUTCMonth(), lastSync.getUTCDate())
-    )
-    from.setUTCDate(from.getUTCDate() - 1)
-
-    const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-    if (from > to) throw new Error('Lyfta sync checkpoint is in the future')
-
-    return {
-        from: from.toISOString().slice(0, 10),
-        to: to.toISOString().slice(0, 10),
-    }
-}
-
-export function toLocalDate(instant: string, timeZone: string): string {
-    const date = new Date(instant)
-    if (Number.isNaN(date.getTime())) throw new TypeError('Invalid workout timestamp')
-
-    const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).formatToParts(date)
-    const values = new Map(parts.map(({ type, value }) => [type, value]))
-    const year = values.get('year')
-    const month = values.get('month')
-    const day = values.get('day')
-    if (year === undefined || month === undefined || day === undefined) {
-        throw new Error('Could not calculate the athlete-local workout date')
-    }
-    return `${year}-${month}-${day}`
 }

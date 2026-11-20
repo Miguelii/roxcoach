@@ -4,7 +4,6 @@ import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
 import { vi } from 'vitest'
 import { z } from 'zod'
-import { localDayBoundsUtc, todayIn } from '@/_bff/core/utils/date.utils'
 import { createChatHandler } from '@/_bff/modules/coach/helpers/chat-handler.helper'
 import type {
     CoachModel,
@@ -92,6 +91,8 @@ export const makeStore = (options: { timezone?: string; tools?: CoachTool[] } = 
         },
     ]
     const writes: string[] = []
+    // Slots taken per `userId|local day`.
+    const usage = new Map<string, number>()
     let counter = 0
     const clock = { now: NOW }
 
@@ -149,22 +150,19 @@ export const makeStore = (options: { timezone?: string; tools?: CoachTool[] } = 
                     }))
             ),
         touch: () => Effect.succeed(true),
-        countToday: (user, timezone, now) => {
-            const { fromIso, toIso } = localDayBoundsUtc(todayIn(timezone, now), timezone)
-            return Effect.succeed(
-                messages.filter(
-                    (m) =>
-                        m.userId === user.id &&
-                        m.role === 'user' &&
-                        m.createdAt >= fromIso &&
-                        m.createdAt < toIso
-                ).length
-            )
-        },
+        // Like the database function: one counter per athlete and local day, apart from the messages.
+        takeMessageSlot: (user, day, cap) =>
+            Effect.sync(() => {
+                const key = `${user.id}|${day}`
+                const used = usage.get(key) ?? 0
+                if (used >= cap) return false
+                usage.set(key, used + 1)
+                return true
+            }),
         getContext: () => Effect.succeed({ context: CONTEXT, timezone: 'UTC' }),
         makeTools: () => options.tools ?? [],
     }
-    return { ports, messages, writes, conversations, clock }
+    return { ports, messages, writes, conversations, clock, usage }
 }
 
 export const setup = (

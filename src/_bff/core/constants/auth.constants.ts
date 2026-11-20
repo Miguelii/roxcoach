@@ -7,9 +7,8 @@ export const DEFAULT_POST_AUTH_PATH = '/dashboard'
 // Path prefixes that require `app_metadata.roxcoach === true`. Matched on a path-segment boundary.
 export const PROTECTED_PATHS: string[] = [
     '/dashboard',
-    '/coach',
+    '/calendar',
     '/activities',
-    '/plan',
     '/races',
     '/settings',
 ]

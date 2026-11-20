@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaConnection } from '@/modules/settings/use-lyfta-connection'
 
 export function LyftaTab() {
@@ -46,8 +47,8 @@ export function LyftaTab() {
                     Lyfta
                 </h2>
                 <p className="max-w-prose text-sm text-muted-foreground">
-                    Import completed gym workouts and sets from your Lyfta account. Sync starts only
-                    when you choose it.
+                    Import completed gym workouts and sets from your Lyfta account. The first sync
+                    imports the last 360 days. Sync starts only when you choose it.
                 </p>
             </div>
 
@@ -202,11 +203,20 @@ export function LyftaTab() {
                 </Form>
             ) : null}
 
-            {lyfta.syncResult ? (
+            {lyfta.syncResult?.hasMore ? (
+                <p data-testid="lyfta-sync-more" className="text-sm text-muted-foreground">
+                    {lyfta.syncResult.created} workouts added and {lyfta.syncResult.updated}{' '}
+                    updated. {LYFTA_MORE_TO_SYNC_MESSAGE}
+                </p>
+            ) : null}
+
+            {lyfta.syncResult && !lyfta.syncResult.hasMore ? (
                 <p data-testid="lyfta-sync-success" className="text-sm text-muted-foreground">
                     Sync complete: {lyfta.syncResult.created} workouts added and{' '}
-                    {lyfta.syncResult.updated} updated. Last synced{' '}
-                    {lyfta.formatTimestamp(lyfta.syncResult.lastSyncedAt)}.
+                    {lyfta.syncResult.updated} updated.
+                    {lyfta.syncResult.lastSyncedAt
+                        ? ` Last synced ${lyfta.formatTimestamp(lyfta.syncResult.lastSyncedAt)}.`
+                        : ''}
                 </p>
             ) : null}
 

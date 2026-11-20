@@ -5,6 +5,7 @@ import { Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { QueryError } from '@/components/query-error'
 import { trpcClient } from '@/lib/trpc'
+import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
 export function SyncLyfta() {
@@ -56,11 +57,20 @@ export function SyncLyfta() {
                 </p>
             ) : null}
 
-            {lyfta.syncResult ? (
+            {lyfta.syncResult?.hasMore ? (
+                <p data-testid="sync-lyfta-more" className="text-sm text-muted-foreground">
+                    {lyfta.syncResult.created} workouts added and {lyfta.syncResult.updated}{' '}
+                    updated. {LYFTA_MORE_TO_SYNC_MESSAGE}
+                </p>
+            ) : null}
+
+            {lyfta.syncResult && !lyfta.syncResult.hasMore ? (
                 <p data-testid="sync-lyfta-success" className="text-sm text-muted-foreground">
                     Sync complete: {lyfta.syncResult.created} workouts added and{' '}
-                    {lyfta.syncResult.updated} updated. Last synced{' '}
-                    {lyfta.formatTimestamp(lyfta.syncResult.lastSyncedAt)}.
+                    {lyfta.syncResult.updated} updated.
+                    {lyfta.syncResult.lastSyncedAt
+                        ? ` Last synced ${lyfta.formatTimestamp(lyfta.syncResult.lastSyncedAt)}.`
+                        : ''}
                 </p>
             ) : null}
 

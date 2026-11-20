@@ -4,7 +4,11 @@ import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
 import { appRouter } from '@/_bff/trpc/router'
 import { ErrorCode } from '@/_bff/lib/error-codes'
-import { LyftaCredentialError, LyftaRateLimitError } from '@/_bff/lib/errors'
+import {
+    LyftaCredentialError,
+    LyftaRateLimitError,
+    LyftaSyncInProgressError,
+} from '@/_bff/lib/errors'
 
 const mocks = vi.hoisted(() => ({
     connect: vi.fn(),
@@ -106,6 +110,27 @@ describe('Lyfta controllers', () => {
         expect(credential.message).toBe(ErrorCode.LYFTA_CREDENTIAL)
         expect(rateLimit.code).toBe('TOO_MANY_REQUESTS')
         expect(rateLimit.message).toBe(ErrorCode.LYFTA_RATE_LIMIT)
+    })
+
+    it('refuses an over-long key and maps an overlapping sync to CONFLICT with a fixed message', async () => {
+        const tooLong = await caught(caller.lyfta.connect({ apiKey: 'k'.repeat(513) }))
+        mocks.connect.mockReturnValue(Effect.succeed({ connected: true, lastSyncedAt: null }))
+        await caller.lyfta.connect({ apiKey: 'k'.repeat(512) })
+
+        mocks.syncWorkouts.mockReturnValueOnce(
+            Effect.fail(
+                new LyftaSyncInProgressError({
+                    cause: 'running',
+                    error_hash: ErrorCode.LYFTA_SYNC_IN_PROGRESS,
+                })
+            )
+        )
+        const conflict = await caught(caller.lyfta.syncWorkouts())
+
+        expect(tooLong.code).toBe('BAD_REQUEST')
+        expect(mocks.connect).toHaveBeenCalledTimes(1)
+        expect(conflict.code).toBe('CONFLICT')
+        expect(conflict.message).toBe('A Lyfta sync is already running')
     })
 
     it('syncs and disconnects through protected procedures', async () => {

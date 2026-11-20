@@ -48,6 +48,7 @@ describe('LyftaTab', () => {
         mocks.sync.mutateAsync.mockResolvedValue({
             created: 0,
             updated: 0,
+            hasMore: false,
             lastSyncedAt: '2026-11-20T08:30:00.000Z',
         })
         mocks.disconnect.mutateAsync.mockResolvedValue(undefined)
@@ -103,6 +104,7 @@ describe('LyftaTab', () => {
         mocks.sync.mutateAsync.mockResolvedValueOnce({
             created: 2,
             updated: 1,
+            hasMore: false,
             lastSyncedAt: '2026-11-20T08:30:00.000Z',
         })
         render(<LyftaTab />)
@@ -120,6 +122,33 @@ describe('LyftaTab', () => {
         await waitFor(() => {
             expect(screen.getByTestId('lyfta-error')).toHaveTextContent(
                 'Lyfta is rate limiting requests.'
+            )
+        })
+    })
+
+    it('asks to sync again when more workouts remain, and shows the running sync message', async () => {
+        mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
+        mocks.sync.mutateAsync.mockResolvedValueOnce({
+            created: 3,
+            updated: 0,
+            hasMore: true,
+            lastSyncedAt: null,
+        })
+        render(<LyftaTab />)
+        fireEvent.click(screen.getByTestId('lyfta-sync'))
+
+        await waitFor(() => {
+            expect(screen.getByTestId('lyfta-sync-more')).toHaveTextContent(
+                'More workouts to sync. Press Sync workouts again to continue.'
+            )
+        })
+        expect(screen.queryByTestId('lyfta-sync-success')).toBeNull()
+
+        mocks.sync.mutateAsync.mockRejectedValueOnce(new Error('A Lyfta sync is already running'))
+        fireEvent.click(screen.getByTestId('lyfta-sync'))
+        await waitFor(() => {
+            expect(screen.getByTestId('lyfta-error')).toHaveTextContent(
+                'A Lyfta sync is already running'
             )
         })
     })

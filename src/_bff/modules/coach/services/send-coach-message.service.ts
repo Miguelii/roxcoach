@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect, Exit } from 'effect'
-import { localDayBoundsUtc, todayIn, validTimezoneOrUtc } from '@/_bff/core/utils/date.utils'
+import { todayIn, validTimezoneOrUtc } from '@/_bff/core/utils/date.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     ConversationNotFoundError,
@@ -32,8 +32,8 @@ import {
     selectConversation,
     touchConversation,
 } from '@/_bff/modules/coach/repositories/coach-conversations.repository'
+import { takeMessageSlot } from '@/_bff/modules/coach/repositories/coach-usage.repository'
 import {
-    countUserMessagesBetween,
     insertMessage,
     selectLatestMessages,
 } from '@/_bff/modules/coach/repositories/coach-messages.repository'
@@ -67,9 +67,10 @@ type PortError =
 
 type Ported<T> = Effect.Effect<T, PortError>
 
-// Everything the service reads or writes, so tests pass fakes. The real ports share one Supabase
-// client created before streaming: the assistant message is saved while the response streams,
-// when the request cookies may no longer be readable.
+// Everything the service reads or writes, so tests pass fakes. The save, touch and slot ports
+// share one Supabase client created before streaming: the assistant message is saved while the
+// response streams, when the request cookies may no longer be readable. The context and the tools
+// create their own session-bound clients.
 export type CoachPorts = {
     getTimezone: (user: User) => Ported<string>
     findConversation: (user: User, id: string) => Ported<ConversationDTO | null>
@@ -77,7 +78,8 @@ export type CoachPorts = {
     saveMessage: (user: User, input: MessageInput) => Ported<MessageDTO>
     latestMessages: (user: User, conversationId: string, limit: number) => Ported<MessageDTO[]>
     touch: (user: User, conversationId: string) => Ported<boolean>
-    countToday: (user: User, timezone: string, now: Date) => Ported<number>
+    // Atomically takes one slot of the athlete's local `day` (YYYY-MM-DD). False: the cap is reached.
+    takeMessageSlot: (user: User, day: string, cap: number) => Ported<boolean>
     getContext: (user: User) => Ported<{ context: string; timezone: string }>
     makeTools: (user: User) => CoachTool[]
 }
@@ -94,10 +96,7 @@ const makeRealPorts = (supabase: CoachClient): CoachPorts => ({
     latestMessages: (user, conversationId, limit) =>
         selectLatestMessages(supabase, user.id, conversationId, limit),
     touch: (user, conversationId) => touchConversation(supabase, user.id, conversationId),
-    countToday: (user, timezone, now) => {
-        const { fromIso, toIso } = localDayBoundsUtc(todayIn(timezone, now), timezone)
-        return countUserMessagesBetween(supabase, user.id, fromIso, toIso)
-    },
+    takeMessageSlot: (_user, day, cap) => takeMessageSlot(supabase, day, cap),
     getContext: (user) => getCoachContext(user),
     makeTools: (user) => makeCoachTools(user),
 })
@@ -167,8 +166,9 @@ async function* streamReply(
 }
 
 // Does every check and write that must happen before the response starts, then returns the event
-// stream. Order: ownership of the conversation, the daily cap, the new conversation, the user
-// message (saved on arrival, so cancelled and failed attempts count toward the cap), the context.
+// stream. Order: ownership of the conversation, the daily cap (one atomic slot per athlete-local
+// day, taken before anything is written, so a cancelled or failed attempt still counts and
+// deleting a conversation never gives it back), the new conversation, the user message, the context.
 export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
     user: User,
     input: Input,
@@ -189,8 +189,8 @@ export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
     }
 
     const timezone = validTimezoneOrUtc(yield* ports.getTimezone(user))
-    const sentToday = yield* ports.countToday(user, timezone, now)
-    if (sentToday >= DAILY_MESSAGE_CAP)
+    const slotTaken = yield* ports.takeMessageSlot(user, todayIn(timezone, now), DAILY_MESSAGE_CAP)
+    if (!slotTaken)
         return yield* new DailyCapReachedError({
             cause: 'Daily message cap reached',
             error_hash: ErrorCode.COACH_DAILY_CAP_REACHED,
@@ -198,7 +198,10 @@ export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
 
     const id =
         existingId ??
-        (yield* ports.createConversation(user, input.message.slice(0, TITLE_MAX_CHARS))).id
+        (yield* ports.createConversation(
+            user,
+            Array.from(input.message).slice(0, TITLE_MAX_CHARS).join('')
+        )).id
 
     yield* ports.saveMessage(user, { conversationId: id, role: 'user', content: input.message })
 

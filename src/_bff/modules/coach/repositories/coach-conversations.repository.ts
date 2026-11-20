@@ -18,6 +18,9 @@ const TABLE = 'coach_conversations'
 const COLUMNS = 'id, title, updated_at'
 const TITLE_MAX_CHARS = 60
 
+// Cuts by code points, so an emoji (a surrogate pair) is never split.
+const cutTitle = (title: string): string => Array.from(title).slice(0, TITLE_MAX_CHARS).join('')
+
 const conversationRowSchema = z.object({
     id: z.string(),
     title: z.string().nullable(),
@@ -94,7 +97,7 @@ export const selectConversation = Effect.fn('selectConversation')(function* (
     return row === null ? null : toDTO(row)
 })
 
-// The caller supplies a title already cut to 60 characters; the cap is enforced again here.
+// The caller supplies a title already cut to 60 code points; the cap is enforced again here.
 export const insertConversation = Effect.fn('insertConversation')(function* (
     supabase: CoachClient,
     userId: string,
@@ -104,7 +107,7 @@ export const insertConversation = Effect.fn('insertConversation')(function* (
         () =>
             supabase
                 .from(TABLE)
-                .insert({ user_id: userId, title: title.slice(0, TITLE_MAX_CHARS) })
+                .insert({ user_id: userId, title: cutTitle(title) })
                 .select(COLUMNS)
                 .single(),
         INSERT_CODES,

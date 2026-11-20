@@ -4,7 +4,6 @@ import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeAdminDb, ok, type Call } from '@/_bff/lib/fake-admin-db'
-import { countUserMessagesToday } from '@/_bff/modules/coach/services/count-messages-today.service'
 import { deleteConversation } from '@/_bff/modules/coach/services/delete-conversation.service'
 import { getConversationMessages } from '@/_bff/modules/coach/services/get-conversation-messages.service'
 import { listConversations } from '@/_bff/modules/coach/services/list-conversations.service'
@@ -133,22 +132,5 @@ describe('coach conversation services', () => {
         expect(failureTag(await Effect.runPromiseExit(listConversations(USER)))).toBe(
             'CreateSbClientError'
         )
-    })
-
-    it('countUserMessagesToday uses different intervals for Lisbon and Auckland at the same instant', async () => {
-        const db = makeFakeAdminDb(() => ({ data: null, count: 3, error: null }))
-        createDBServerClientMock.mockResolvedValue(db.supabase)
-        const now = new Date('2026-11-20T23:30:00Z')
-
-        expect(await Effect.runPromise(countUserMessagesToday(USER, 'Europe/Lisbon', now))).toBe(3)
-        await Effect.runPromise(countUserMessagesToday(USER, 'Pacific/Auckland', now))
-
-        const [lisbon, auckland] = db.calls
-        expect(filterValue(lisbon!, 'created_at:gte')).toBe('2026-11-20T00:00:00.000Z')
-        expect(filterValue(lisbon!, 'created_at:lt')).toBe('2026-11-21T00:00:00.000Z')
-        expect(filterValue(auckland!, 'created_at:gte')).toBe('2026-11-20T11:00:00.000Z')
-        expect(filterValue(auckland!, 'created_at:lt')).toBe('2026-11-21T11:00:00.000Z')
-        expect(filterValue(lisbon!, 'role')).toBe('user')
-        expect(filterValue(lisbon!, 'user_id')).toBe('user-1')
     })
 })

@@ -22,6 +22,7 @@ const ROXCOACH_TABLES = [
     'availability_slots',
     'coach_conversations',
     'coach_messages',
+    'coach_usage',
     'lyfta_connections',
     'races',
     'schema_migrations',
@@ -89,6 +90,7 @@ describe('schema layout', () => {
             '0011_lyfta_progress_metrics.sql',
             '0012_strength_exercise_order.sql',
             '0013_strength_exercise_images.sql',
+            '0014_coach_usage.sql',
         ])
     })
 
@@ -389,6 +391,129 @@ describe('coach chat tables', () => {
         expect(types.rows).toEqual([])
         expect(ROXCOACH_TABLES).not.toContain('weekly_reports')
         expect(ROXCOACH_TABLES).not.toContain('planned_sessions')
+    })
+})
+
+describe('coach usage counter', () => {
+    const takeSlot = async (day: string, cap = 50): Promise<boolean> => {
+        const result = await testDb.db.query<{ taken: boolean }>(
+            'select roxcoach.coach_take_message_slot($1::date, $2) as taken',
+            [day, cap]
+        )
+        return result.rows[0].taken
+    }
+
+    const readCount = async (userId: string, day: string): Promise<number | null> => {
+        await testDb.asService()
+        const result = await testDb.db.query<{ count: number }>(
+            'select message_count as count from roxcoach.coach_usage where user_id = $1 and day = $2',
+            [userId, day]
+        )
+        return result.rows[0]?.count ?? null
+    }
+
+    it('takes 50 slots, refuses the 51st and keeps the counter at 50', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asUser(userId)
+
+        const taken: boolean[] = []
+        for (let call = 0; call < 51; call += 1) {
+            // oxlint-disable-next-line no-await-in-loop -- sequential calls on one connection
+            taken.push(await takeSlot('2026-11-20'))
+        }
+
+        expect(taken.slice(0, 50).every(Boolean)).toBe(true)
+        expect(taken[50]).toBe(false)
+        expect(await readCount(userId, '2026-11-20')).toBe(50)
+    })
+
+    it('counts per user and per day independently', async () => {
+        const first = await createUser(testDb)
+        const second = await createUser(testDb)
+
+        await testDb.asUser(first)
+        expect(await takeSlot('2026-11-20', 1)).toBe(true)
+        expect(await takeSlot('2026-11-20', 1)).toBe(false)
+        expect(await takeSlot('2026-11-21', 1)).toBe(true)
+        await testDb.asUser(second)
+        expect(await takeSlot('2026-11-20', 1)).toBe(true)
+
+        expect(await readCount(first, '2026-11-20')).toBe(1)
+        expect(await readCount(first, '2026-11-21')).toBe(1)
+        expect(await readCount(second, '2026-11-20')).toBe(1)
+    })
+
+    it('only ever touches the caller row', async () => {
+        const owner = await createUser(testDb)
+        const other = await createUser(testDb)
+        await testDb.asUser(owner)
+        await takeSlot('2026-11-20')
+
+        await testDb.asUser(other)
+        await takeSlot('2026-11-20')
+
+        expect(await readCount(owner, '2026-11-20')).toBe(1)
+        expect(await readCount(other, '2026-11-20')).toBe(1)
+    })
+
+    it('refuses a caller without the access flag and an anonymous caller', async () => {
+        const userId = await createUser(testDb)
+
+        await testDb.asUser(userId, { access: false })
+        await expect(takeSlot('2026-11-20')).rejects.toMatchObject({ code: '42501' })
+        await testDb.asAnon()
+        await expect(takeSlot('2026-11-20')).rejects.toMatchObject({ code: '42501' })
+        expect(await readCount(userId, '2026-11-20')).toBeNull()
+    })
+
+    it('does not give the quota back when a conversation is deleted', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+        await insertMessage(testDb, userId, conversationId)
+        await testDb.asUser(userId)
+        await takeSlot('2026-11-20')
+
+        await testDb.db.query('delete from roxcoach.coach_conversations where id = $1', [
+            conversationId,
+        ])
+
+        expect(await readCount(userId, '2026-11-20')).toBe(1)
+    })
+
+    it('lets a client neither delete the counter nor lower it below zero', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asUser(userId)
+        await takeSlot('2026-11-20')
+
+        const deleted = await testDb.db.query(
+            'delete from roxcoach.coach_usage where user_id = $1',
+            [userId]
+        )
+        await expect(
+            testDb.db.query(
+                'update roxcoach.coach_usage set message_count = -1 where user_id = $1',
+                [userId]
+            )
+        ).rejects.toThrow(CHECK_ERROR)
+
+        expect(deleted.affectedRows).toBe(0)
+        expect(await readCount(userId, '2026-11-20')).toBe(1)
+    })
+
+    it('adds the Lyfta sync lease column, null by default', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key) values ($1, 'x')`,
+            [userId]
+        )
+
+        const result = await testDb.db.query<{ sync_started_at: string | null }>(
+            'select sync_started_at from roxcoach.lyfta_connections where user_id = $1',
+            [userId]
+        )
+
+        expect(result.rows[0].sync_started_at).toBeNull()
     })
 })
 

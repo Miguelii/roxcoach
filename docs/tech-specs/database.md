@@ -249,18 +249,27 @@ updating a source workout; see [lyfta.md](lyfta.md). An index on `(user_id, sour
 supports per-exercise progress queries. A second index on `(user_id, activity_id, exercise_index,
 set_index)` returns exercise groups and sets in workout order.
 
+### `coach_usage`
+
+One row per athlete and athlete-local day: `user_id` (default `auth.uid()`, cascade), `day` date,
+`message_count` int (check `>= 0`), primary key `(user_id, day)`. RLS with the owner policy for
+`select`, `insert` and `update` and no `delete` policy (a client can never reset the counter).
+`roxcoach.coach_take_message_slot(p_day date, p_cap int) returns boolean` (security invoker, execute
+for `authenticated` and `service_role`) takes one slot atomically. See [coach-chat.md](coach-chat.md).
+
 ### `lyfta_connections`
 
 One row per user, storing the encrypted personal API key and manual-sync checkpoint. See
 [lyfta.md](lyfta.md) for encryption, credential lifecycle and sync behavior.
 
-| Column              | Type             | Notes                                                     |
-| ------------------- | ---------------- | --------------------------------------------------------- |
-| `user_id`           | uuid             | primary key; cascades from `auth.users`                   |
-| `encrypted_api_key` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext |
-| `last_synced_at`    | timestamptz null | set only after every page in a sync succeeds              |
-| `created_at`        | timestamptz      |                                                           |
-| `updated_at`        | timestamptz      | maintained by `set_updated_at()`                          |
+| Column              | Type             | Notes                                                             |
+| ------------------- | ---------------- | ----------------------------------------------------------------- |
+| `user_id`           | uuid             | primary key; cascades from `auth.users`                           |
+| `encrypted_api_key` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext         |
+| `last_synced_at`    | timestamptz null | end of the last fully completed sync window (see lyfta.md)        |
+| `sync_started_at`   | timestamptz null | sync lease (`0014`): set while a sync runs, stale after 5 minutes |
+| `created_at`        | timestamptz      |                                                                   |
+| `updated_at`        | timestamptz      | maintained by `set_updated_at()`                                  |
 
 ### `coach_conversations`
 
@@ -342,21 +351,22 @@ schema:
 
 ## Migrations
 
-| File                                | Content                                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `0001_schema_and_enums.sql`         | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                    |
-| `0002_athlete_and_races.sql`        | `athlete_profiles`, `availability_slots`, `races`                                                 |
-| `0003_strava.sql`                   | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                 |
-| `0004_training.sql`                 | `activities`, `activity_laps`, `station_results`, `strength_sets`                                 |
-| `0005_coach_and_plan.sql`           | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                          |
-| `0006_rls.sql`                      | `has_access()`, RLS on every table, policies, service-only revokes                                |
-| `0007_remove_strava.sql`            | drops the Strava tables, `webhook_event_status` and `strava_id`                                   |
-| `0008_activity_files.sql`           | `activity_files`, private bucket `activity-files` and its policies                                |
-| `0009_coach_chat.sql`               | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums               |
-| `0010_lyfta.sql`                    | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                         |
-| `0011_lyfta_progress_metrics.sql`   | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync |
-| `0012_strength_exercise_order.sql`  | Stores exercise order for strength sets; requests one full manual Lyfta resync                    |
-| `0013_strength_exercise_images.sql` | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                  |
+| File                                | Content                                                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `0001_schema_and_enums.sql`         | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                              |
+| `0002_athlete_and_races.sql`        | `athlete_profiles`, `availability_slots`, `races`                                                           |
+| `0003_strava.sql`                   | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                           |
+| `0004_training.sql`                 | `activities`, `activity_laps`, `station_results`, `strength_sets`                                           |
+| `0005_coach_and_plan.sql`           | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                    |
+| `0006_rls.sql`                      | `has_access()`, RLS on every table, policies, service-only revokes                                          |
+| `0007_remove_strava.sql`            | drops the Strava tables, `webhook_event_status` and `strava_id`                                             |
+| `0008_activity_files.sql`           | `activity_files`, private bucket `activity-files` and its policies                                          |
+| `0009_coach_chat.sql`               | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums                         |
+| `0010_lyfta.sql`                    | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                                   |
+| `0011_lyfta_progress_metrics.sql`   | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync           |
+| `0012_strength_exercise_order.sql`  | Stores exercise order for strength sets; requests one full manual Lyfta resync                              |
+| `0013_strength_exercise_images.sql` | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                            |
+| `0014_coach_usage.sql`              | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

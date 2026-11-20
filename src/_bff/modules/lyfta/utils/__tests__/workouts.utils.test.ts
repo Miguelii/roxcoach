@@ -1,11 +1,7 @@
 // oxlint-disable max-lines-per-function
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import {
-    getLyftaIncrementalRange,
-    parseLyftaWorkoutPage,
-    toLocalDate,
-} from '@/_bff/modules/lyfta/utils/workouts.utils'
+import { parseLyftaWorkoutPage } from '@/_bff/modules/lyfta/utils/workouts.utils'
 
 const SANDBOX_PAGE = {
     status: true,
@@ -189,6 +185,9 @@ describe('parseLyftaWorkoutPage', () => {
     it.each([
         ['unknown origin', 'https://example.com/exercise.png'],
         ['unsupported CDN path', 'https://apilyfta.com/static/other/exercise.png'],
+        ['userinfo', 'https://u@lyfta.app/images/exercises/x'],
+        ['user and password', 'https://u:p@lyfta.app/images/exercises/x'],
+        ['explicit port', 'https://lyfta.app:8443/images/exercises/x'],
     ])('rejects exercise images from an %s', (_reason, imageUrl) => {
         const result = parseLyftaWorkoutPage(
             {
@@ -211,6 +210,19 @@ describe('parseLyftaWorkoutPage', () => {
         expect(result).toEqual({
             success: false,
             issues: ['workouts.0.exercises.0.exercise_image'],
+        })
+    })
+
+    it('accepts a normal Lyfta catalog image URL, with the default https port spelled out', () => {
+        const imageUrl = 'https://lyfta.app/images/exercises/x.png'
+        const workout = {
+            ...SANDBOX_PAGE.workouts[0],
+            exercises: [{ ...SANDBOX_PAGE.workouts[0].exercises[0], exercise_image: imageUrl }],
+        }
+
+        expect(parseLyftaWorkoutPage({ ...SANDBOX_PAGE, workouts: [workout] }, 1)).toMatchObject({
+            success: true,
+            data: { workouts: [{ exercises: [{ imageUrl }] }] },
         })
     })
 
@@ -311,32 +323,5 @@ describe('parseLyftaWorkoutPage', () => {
         const result = parseLyftaWorkoutPage({ ...SANDBOX_PAGE, workouts: [workout, workout] }, 1)
 
         expect(result).toEqual({ success: false, issues: ['workouts.1.id'] })
-    })
-})
-
-describe('getLyftaIncrementalRange', () => {
-    it('overlaps by one UTC day and ends on the current UTC day', () => {
-        expect(
-            getLyftaIncrementalRange(
-                '2026-11-20T23:30:00-03:00',
-                new Date('2026-11-22T01:00:00-08:00')
-            )
-        ).toEqual({ from: '2026-11-20', to: '2026-11-22' })
-    })
-
-    it('rejects a future checkpoint', () => {
-        expect(() =>
-            getLyftaIncrementalRange('2026-11-22T12:00:00Z', new Date('2026-11-20T12:00:00Z'))
-        ).toThrow()
-    })
-})
-
-describe('toLocalDate', () => {
-    it('converts an instant into the athlete timezone around a UTC date boundary', () => {
-        expect(toLocalDate('2026-11-20T01:30:00.000Z', 'America/Los_Angeles')).toBe('2026-11-19')
-    })
-
-    it('rejects an invalid timezone instead of guessing a local date', () => {
-        expect(() => toLocalDate('2026-11-20T01:30:00.000Z', 'invalid/timezone')).toThrow()
     })
 })

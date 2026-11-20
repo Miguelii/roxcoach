@@ -140,9 +140,9 @@ export enum ErrorCode {
     COACH_MESSAGE_INSERT = 'mi2g8m3d',
     COACH_MESSAGE_INSERT_ERR = 'mi5l6n7e',
     COACH_MESSAGE_INSERT_PARSE = 'mi8p1q9f',
-    COACH_MESSAGES_COUNT = 'mc4r3s6g',
-    COACH_MESSAGES_COUNT_ERR = 'mc7t9u2h',
-    COACH_MESSAGES_COUNT_PARSE = 'mc3x2y4k',
+    COACH_USAGE_SLOT = 'us4r3s6g',
+    COACH_USAGE_SLOT_ERR = 'us7t9u2h',
+    COACH_USAGE_SLOT_PARSE = 'us3x2y4k',
     COACH_CONVERSATION_NOT_FOUND = 'cn1v5w8j',
     COACH_DAILY_CAP_REACHED = 'dc6k2m9p',
 
@@ -163,4 +163,6 @@ export enum ErrorCode {
     LYFTA_CLIENT = 'lyfta011',
     LYFTA_NO_CONNECTION = 'lyfta012',
     LYFTA_RATE_LIMIT = 'lyfta017',
+    LYFTA_SYNC_IN_PROGRESS = 'lyfta018',
+    LYFTA_SYNC_LEASE = 'lyfta019',
 }

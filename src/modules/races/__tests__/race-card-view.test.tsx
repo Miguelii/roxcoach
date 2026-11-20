@@ -117,7 +117,7 @@ describe('RaceCardView', () => {
             'This permanently removes the race.'
         )
         expect(screen.getByTestId('race-confirm-dialog-r-hyrox')).toHaveTextContent(
-            'Planned sessions linked to it will remain'
+            'Your coach will no longer see it'
         )
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-hyrox'))
         await waitFor(() => expect(handlers.onDelete).toHaveBeenCalledWith(HYROX_RACE))

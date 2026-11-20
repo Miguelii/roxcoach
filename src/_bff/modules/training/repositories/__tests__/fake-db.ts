@@ -40,6 +40,7 @@ const makeChain = (item: QueryResult | Error) => {
         delete: vi.fn(() => chain),
         eq: vi.fn(() => chain),
         is: vi.fn(() => chain),
+        or: vi.fn((_filter: string) => chain),
         in: vi.fn(() => chain),
         not: vi.fn(() => chain),
         gte: vi.fn(() => chain),

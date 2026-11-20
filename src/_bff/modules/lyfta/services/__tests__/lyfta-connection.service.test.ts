@@ -4,6 +4,7 @@ import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { connectLyfta } from '@/_bff/modules/lyfta/services/lyfta-connection.service'
+import { encryptLyftaApiKey } from '@/_bff/modules/lyfta/utils/credentials.utils'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 
 // SAFETY: These services only read the authenticated user's ID.
@@ -94,10 +95,13 @@ describe('connectLyfta', () => {
         expect(from).not.toHaveBeenCalled()
     })
 
-    it('preserves the successful sync checkpoint when replacing a valid key', async () => {
+    it('preserves the sync checkpoint when the same key is saved again', async () => {
         const syncedAt = '2026-11-20T08:30:00.000Z'
         const { chains, supabase } = makeFakeDb([
-            ok({ encrypted_api_key: 'v1.old', last_synced_at: syncedAt }),
+            ok({
+                encrypted_api_key: encryptLyftaApiKey(API_KEY, ENCRYPTION_KEY),
+                last_synced_at: syncedAt,
+            }),
             ok(),
         ])
 
@@ -106,6 +110,40 @@ describe('connectLyfta', () => {
         )
 
         expect(result).toEqual({ connected: true, lastSyncedAt: syncedAt })
-        expect(chains[1]?.upsert).toHaveBeenCalledTimes(1)
+        expect(chains[1]?.upsert.mock.calls[0]?.[0]).not.toHaveProperty('last_synced_at')
+    })
+
+    it('resets the checkpoint when the key changes, so the next sync is a full import', async () => {
+        const { chains, supabase } = makeFakeDb([
+            ok({
+                encrypted_api_key: encryptLyftaApiKey('another-account-key', ENCRYPTION_KEY),
+                last_synced_at: '2026-11-20T08:30:00.000Z',
+            }),
+            ok(),
+        ])
+
+        const result = await Effect.runPromise(
+            connectLyfta(USER, API_KEY, dependencies(supabase, validFetcher()))
+        )
+
+        expect(result).toEqual({ connected: true, lastSyncedAt: null })
+        expect(chains[1]?.upsert.mock.calls[0]?.[0]).toMatchObject({
+            user_id: USER.id,
+            last_synced_at: null,
+        })
+    })
+
+    it('treats a stored key that cannot be decrypted as a different key', async () => {
+        const { chains, supabase } = makeFakeDb([
+            ok({ encrypted_api_key: 'v1.old', last_synced_at: '2026-11-20T08:30:00.000Z' }),
+            ok(),
+        ])
+
+        const result = await Effect.runPromise(
+            connectLyfta(USER, API_KEY, dependencies(supabase, validFetcher()))
+        )
+
+        expect(result.lastSyncedAt).toBeNull()
+        expect(chains[1]?.upsert.mock.calls[0]?.[0]).toMatchObject({ last_synced_at: null })
     })
 })

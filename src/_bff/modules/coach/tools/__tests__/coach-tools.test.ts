@@ -219,6 +219,50 @@ describe('makeCoachTools', () => {
         expect(missing.calls.getActivity[0]).toEqual([USER, ID])
     })
 
+    it('getActivity returns at most 200 strength sets and reports how many were left out', async () => {
+        const sets = Array.from({ length: 230 }, (_, index) => ({
+            exercise: 'Squat',
+            exerciseIndex: 1,
+            exerciseImageUrl: null,
+            sourceExerciseId: null,
+            setIndex: index + 1,
+            reps: 5,
+            loadKg: 100,
+            rir: null,
+            rpe: null,
+        }))
+        const capped = setup({
+            getActivity: async () => ({
+                activity: activity({ id: ID }),
+                laps: [],
+                strengthSets: sets,
+            }),
+        })
+        const exact = setup({
+            getActivity: async () => ({
+                activity: activity({ id: ID }),
+                laps: [],
+                strengthSets: sets.slice(0, 200),
+            }),
+        })
+
+        // SAFETY: the tool returns this shape for a found activity.
+        const big = (await capped.run('getActivity', { id: ID })) as {
+            strengthSets: unknown[]
+            truncatedSets?: number
+        }
+        // SAFETY: the tool returns this shape for a found activity.
+        const full = (await exact.run('getActivity', { id: ID })) as {
+            strengthSets: unknown[]
+            truncatedSets?: number
+        }
+
+        expect(big.strengthSets).toHaveLength(200)
+        expect(big.truncatedSets).toBe(30)
+        expect(full.strengthSets).toHaveLength(200)
+        expect(full.truncatedSets).toBeUndefined()
+    })
+
     it('getWeeklySummary totals the week from the calendar', async () => {
         const items = [
             item(

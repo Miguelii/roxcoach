@@ -3,7 +3,6 @@ import 'server-only'
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
-import { CoachQueryError } from '@/_bff/lib/errors'
 import {
     runCoachRead,
     runCoachWrite,
@@ -34,11 +33,6 @@ const INSERT_CODES: Codes = {
     returned: ErrorCode.COACH_MESSAGE_INSERT_ERR,
     parse: ErrorCode.COACH_MESSAGE_INSERT_PARSE,
 }
-const COUNT_CODES: Codes = {
-    call: ErrorCode.COACH_MESSAGES_COUNT,
-    returned: ErrorCode.COACH_MESSAGES_COUNT_ERR,
-    parse: ErrorCode.COACH_MESSAGES_COUNT_PARSE,
-}
 
 const toDTO = (row: MessageRow): MessageDTO => ({
     id: row.id,
@@ -46,8 +40,6 @@ const toDTO = (row: MessageRow): MessageDTO => ({
     content: row.content,
     createdAt: row.created_at,
 })
-
-const countSchema = z.number().int().nonnegative()
 
 const rowList = z.preprocess((value) => value ?? [], z.array(messageRowSchema))
 
@@ -99,37 +91,4 @@ export const selectLatestMessages = Effect.fn('selectLatestMessages')(function* 
         rowList
     )
     return rows.map(toDTO).reverse()
-})
-
-// Counts the user's own 'user' messages in the half-open interval [fromIso, toIso).
-export const countUserMessagesBetween = Effect.fn('countUserMessagesBetween')(function* (
-    supabase: CoachClient,
-    userId: string,
-    fromIso: string,
-    toIso: string
-) {
-    const outcome = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(TABLE)
-                .select('id', { count: 'exact', head: true })
-                .eq('user_id', userId)
-                .eq('role', 'user')
-                .gte('created_at', fromIso)
-                .lt('created_at', toIso),
-        catch: (cause) =>
-            new CoachQueryError({ cause: String(cause), error_hash: COUNT_CODES.call }),
-    })
-    if (outcome.error)
-        return yield* new CoachQueryError({
-            cause: `${outcome.error.code}: ${outcome.error.message}`,
-            error_hash: COUNT_CODES.returned,
-        })
-    const count = countSchema.safeParse(outcome.count)
-    if (!count.success)
-        return yield* new CoachQueryError({
-            cause: 'Count missing from the response',
-            error_hash: COUNT_CODES.parse,
-        })
-    return count.data
 })

@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
+import {
+    createLyftaImportContext,
+    importLyftaWorkout,
+} from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 
@@ -36,13 +39,10 @@ const WORKOUT: LyftaWorkout = {
     ],
 }
 
-const dependencies = (
+const context = (
     supabase: ReturnType<typeof makeFakeDb>['supabase'],
     timeZone = 'America/Los_Angeles'
-) => ({
-    createUserClient: vi.fn(async () => supabase),
-    getTimezone: vi.fn(() => Effect.succeed(timeZone)),
-})
+) => ({ supabase, timeZone })
 
 describe('importLyftaWorkout', () => {
     it('upserts the activity and replaces only the current user activity sets', async () => {
@@ -53,9 +53,7 @@ describe('importLyftaWorkout', () => {
             ok(),
         ])
 
-        const result = await Effect.runPromise(
-            importLyftaWorkout(USER, WORKOUT, dependencies(supabase))
-        )
+        const result = await Effect.runPromise(importLyftaWorkout(USER, WORKOUT, context(supabase)))
 
         expect(result).toEqual({ activityId: ACTIVITY_ID, created: true })
         expect(from.mock.calls.map(([table]) => table)).toEqual([
@@ -141,7 +139,7 @@ describe('importLyftaWorkout', () => {
         ])
 
         await expect(
-            Effect.runPromise(importLyftaWorkout(USER, WORKOUT, dependencies(supabase)))
+            Effect.runPromise(importLyftaWorkout(USER, WORKOUT, context(supabase)))
         ).resolves.toEqual({ activityId: ACTIVITY_ID, created: false })
     })
 
@@ -154,9 +152,25 @@ describe('importLyftaWorkout', () => {
         ])
 
         const exit = await Effect.runPromiseExit(
-            importLyftaWorkout(USER, WORKOUT, dependencies(supabase))
+            importLyftaWorkout(USER, WORKOUT, context(supabase))
         )
 
         expect(failureTag(exit)).toBe('ActivityWriteError')
+    })
+
+    it('creates the import context once: valid timezone kept, invalid one falls back to UTC', async () => {
+        const { supabase } = makeFakeDb([])
+        const createUserClient = vi.fn(async () => supabase)
+        const make = (timezone: string) =>
+            Effect.runPromise(
+                createLyftaImportContext(USER, {
+                    createUserClient,
+                    getTimezone: () => Effect.succeed(timezone),
+                })
+            )
+
+        expect(await make('Europe/Lisbon')).toEqual({ supabase, timeZone: 'Europe/Lisbon' })
+        expect((await make('Mars/Olympus')).timeZone).toBe('UTC')
+        expect(createUserClient).toHaveBeenCalledTimes(2)
     })
 })

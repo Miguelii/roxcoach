@@ -59,7 +59,8 @@ following the existing Settings tabs behavior.
 - **Replace key:** allow submitting a new key through the same validation flow. Do not remove the
   existing connection until the replacement key has been validated and stored successfully.
 - **Sync feedback:** disable duplicate submissions while connecting or syncing. On success, show
-  counts of workouts created and updated, and the sync time. On failure, keep the connection and
+  counts of workouts created and updated, and the sync time; when `hasMore` is true, show "More
+  workouts to sync. Press Sync workouts again to continue." instead. On failure, keep the connection and
   show an actionable error. A retry is safe.
 - **Dashboard and Calendar:** show a shared action group with `Upload activity` and `Sync Lyfta`.
   The sync action is manual, disabled while connection status is loading or when Lyfta is not
@@ -140,7 +141,7 @@ distance or duration.
 
 Migration `0011_lyfta_progress_metrics.sql` adds the metric columns and source exercise metadata.
 It clears existing Lyfta sync checkpoints so the next manual sync fetches all pages and refreshes
-previously imported workouts with the new fields. This is a one-time full-history sync after
+previously imported workouts with the new fields. This is a one-time resync (bounded to the last 360 days since the windowed sync) after
 deployment; it remains manual and does not create a background job.
 
 Migration `0012_strength_exercise_order.sql` stores each exercise's position in its workout and
@@ -169,27 +170,56 @@ Expose a `lyfta.syncWorkouts` protected tRPC mutation and keep all Lyfta network
 server-side `lyfta` module.
 
 1. Require an existing connection. Decrypt its key on the server.
-2. On the first sync, fetch all workout pages with `limit=100`, starting at page 1. Process pages
-   sequentially and stop at the API's reported `total_pages` (also validate the current page and
-   response shape).
-3. After a successful sync, save `last_synced_at`. Later syncs request from the UTC calendar day
-   before `last_synced_at` through the current UTC day, inclusive, and paginate the complete result.
-   The one-day overlap handles boundary and delayed-entry cases. Lyfta does not document a
-   modification-time filter, so edits to workouts older than that window are not guaranteed to be
-   discovered by incremental sync.
-4. Upsert activities by `(user_id, source, source_id)` through the `training` service, then replace
+2. Take the sync lease (below). Resolve the athlete timezone (`validTimezoneOrUtc`) and create the
+   session-bound client once for the whole run, not per workout.
+3. **Windows.** The sync reads the history in ascending windows of `SYNC_WINDOW_DAYS` (90) UTC
+   calendar days with the API's `from` and `to` filters (both ends inclusive), oldest first, each
+   window paginated with `limit=100` from page 1 up to the reported `total_pages` (the current page
+   and response shape are validated). The start is today (UTC) minus `SYNC_HISTORY_DAYS` (360) when
+   there is no checkpoint (the initial import is the last 360 days, older workouts are not
+   imported), otherwise the UTC day before `last_synced_at` (one-day overlap for boundary and
+   delayed entries) but never earlier than that 360 day floor. The last window ends today (UTC).
+   Lyfta does not document a modification-time filter, so edits to workouts older than the window
+   are not discovered.
+4. **Budget and ceiling.** A run stops starting new workouts after `SYNC_TIME_BUDGET_MS` (40 s,
+   under the route's `maxDuration` of 60 s; the workout in flight is finished) and never fetches
+   more than `MAX_PAGES_PER_SYNC` (20) pages in total. Either limit ends the run with
+   `hasMore: true`.
+5. **Checkpoint.** `last_synced_at` moves to the end of each fully completed window (the start of
+   its last UTC day, so the next run's one-day overlap re-reads that day) and, after the window that
+   ends today, to the sync time. It never moves past a window that was not fully processed, so a
+   stopped or failed run resumes where it left off. The result carries `hasMore`: true while the
+   final window is not completed. The UI then shows "More workouts to sync. Press Sync workouts
+   again to continue."; false is a plain success. Each workout upsert is idempotent by source id,
+   so overlaps and re-processing are harmless.
+6. Upsert activities by `(user_id, source, source_id)` through the `training` service, then replace
    that activity's imported sets with the already validated set list. Use the session-bound client
    and filter each read, update and delete by `user_id`. Keep all orchestration and mapping in the
    application; the database migration contains only schema, indexes, RLS and grants. These
    PostgREST writes are not one transaction. If set replacement fails after the activity upsert or
    old-set deletion, fail the sync and leave the checkpoint unchanged so a retry can repair it.
    Never include locally owned notes or perceived effort in an activity update.
-5. Advance `last_synced_at` only after every requested page has been fetched and processed. If a
-   later page or write fails, earlier successfully committed workouts remain; a retry is safe
-   because each workout upsert is idempotent. Do not report the run as successful or advance its
-   checkpoint after a partial failure.
-6. Return only aggregate created/updated counts and the successful sync timestamp. Never return
-   the API key or raw Lyfta response.
+7. If a page or write fails, earlier committed workouts and completed windows remain; a retry is
+   safe because each workout upsert is idempotent. Do not report the run as successful or advance
+   the checkpoint past the failed window.
+8. Return only aggregate created/updated counts, `hasMore` and the checkpoint. Never return the
+   API key or raw Lyfta response.
+
+**Sync lease.** Two overlapping syncs could both delete and insert the sets of a workout and
+duplicate them (no unique key, two calls). `lyfta_connections.sync_started_at` (migration `0014`)
+is a lease: a run takes it with a compare-and-set update filtered by `user_id` that succeeds only
+when it is null or older than `SYNC_LEASE_STALE_MS` (5 minutes, a crashed run frees itself). When
+no row is updated the sync fails with `LyftaSyncInProgressError` (`CONFLICT`, fixed message "A Lyfta
+sync is already running"). The lease is always released when the run ends, also on failure, and
+only if it is still the lease this run took; a release failure never replaces the primary result.
+
+**Replacing the key.** Saving a different key (the stored one is decrypted and compared) resets
+`last_synced_at` to null, so the next sync imports the last 360 days for the new account. Saving
+the same key keeps the checkpoint. The key input is at most 512 characters.
+
+**Known limits.** A workout imported from Lyfta and also uploaded as a file is counted twice: there
+is no cross-source duplicate guard, so weekly totals and the coach load ratio include both. A Lyfta
+workout with an empty duration counts as 0 minutes but 1 session.
 
 Make page requests sequential to respect rate limits. Handle 401 as an invalid/revoked key, 429 as
 rate limited, other non-success responses as upstream errors, and transport, timeout, parsing and
@@ -223,7 +253,9 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
 - Verify key encryption round-trips, rejects tampered ciphertext, and never returns plaintext
   from connection status or repository-facing DTOs.
 - Verify connection validation keeps the previous key if a replacement is invalid.
-- Verify first-sync pagination, incremental UTC date bounds, overlap, duplicate upsert behavior,
+- Verify the 360 day start and clamp, 90 day window arithmetic (month and leap-year boundaries),
+  the time budget and page ceiling, checkpoint-per-window, resume, the sync lease (overlap, stale,
+  release on success and failure), once-per-run timezone and client, duplicate upsert behavior,
   locally owned notes/RPE preservation and source-set replacement.
 - Verify a page/API/database failure does not advance `last_synced_at`, and retrying after partial
   progress does not duplicate activities.

@@ -20,6 +20,9 @@ type CountRow = { count: number }
 // RLS on, no policies: only the service role touches them.
 const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
+// Tables whose client rows are never deleted by a client: they have no DELETE policy.
+const NO_DELETE_POLICY_TABLES = new Set(['coach_usage'])
+
 // How PostgreSQL prints the owner check of every client policy.
 const OWNER_CHECK = '((user_id = auth.uid()) AND roxcoach.has_access())'
 
@@ -66,13 +69,17 @@ describe('row level security setup', () => {
             SERVICE_ONLY_TABLES.has(table)
                 ? []
                 : [
-                      {
-                          tablename: table,
-                          cmd: 'DELETE',
-                          roles: ['authenticated'],
-                          qual: OWNER_CHECK,
-                          with_check: null,
-                      },
+                      ...(NO_DELETE_POLICY_TABLES.has(table)
+                          ? []
+                          : [
+                                {
+                                    tablename: table,
+                                    cmd: 'DELETE',
+                                    roles: ['authenticated'],
+                                    qual: OWNER_CHECK,
+                                    with_check: null,
+                                },
+                            ]),
                       {
                           tablename: table,
                           cmd: 'INSERT',

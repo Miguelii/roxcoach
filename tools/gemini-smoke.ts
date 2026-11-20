@@ -1,9 +1,8 @@
-// Run with: pnpm dlx tsx tools/gemini-smoke.ts (NEXT_GEMINI_API_KEY and NEXT_COACH_MODEL loaded in the shell).
+// Run with: pnpm dlx tsx tools/gemini-smoke.ts. `main()` loads the Next env files itself (importing
+// this file loads nothing, so unit tests never read a real .env).
 // Prints only OK or a status code: never the key, the response body or the prompt.
 
 import { loadEnvConfig } from '@next/env'
-
-loadEnvConfig(process.cwd())
 
 type SmokeOptions = {
     apiKey: string | undefined
@@ -36,6 +35,7 @@ export async function runGeminiSmoke(options: SmokeOptions): Promise<SmokeResult
 }
 
 async function main() {
+    loadEnvConfig(process.cwd())
     const result = await runGeminiSmoke({
         apiKey: process.env.NEXT_GEMINI_API_KEY,
         model: process.env.NEXT_COACH_MODEL,

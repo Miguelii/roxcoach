@@ -66,6 +66,15 @@ const statusFrom = (
     lastSyncedAt: connection?.lastSyncedAt ?? null,
 })
 
+// True when the stored (encrypted) key decrypts to `apiKey`.
+const sameStoredKey = (storedEncrypted: string, apiKey: string, encryptionKey: string): boolean => {
+    try {
+        return decryptLyftaApiKey(storedEncrypted, encryptionKey) === apiKey
+    } catch {
+        return false
+    }
+}
+
 export const getLyftaConnectionStatus = Effect.fn('getLyftaConnectionStatus')(function* (
     user: User,
     dependencies: LyftaConnectionDependencies = DEFAULT_LYFTA_CONNECTION_DEPENDENCIES
@@ -94,8 +103,12 @@ export const connectLyfta = Effect.fn('connectLyfta')(function* (
             }),
     })
 
-    yield* upsertLyftaConnection(supabase, user.id, encryptedApiKey)
-    return statusFrom({ lastSyncedAt: existing?.lastSyncedAt ?? null })
+    // A different key means a different Lyfta account: its history must be imported in full, so
+    // the old checkpoint is dropped. An existing key that cannot be decrypted counts as different.
+    const keyChanged =
+        existing !== null && !sameStoredKey(existing.encryptedApiKey, apiKey, encryptionKey)
+    yield* upsertLyftaConnection(supabase, user.id, encryptedApiKey, keyChanged)
+    return statusFrom({ lastSyncedAt: keyChanged ? null : (existing?.lastSyncedAt ?? null) })
 })
 
 export const disconnectLyfta = Effect.fn('disconnectLyfta')(function* (

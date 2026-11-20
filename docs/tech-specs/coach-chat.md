@@ -175,14 +175,20 @@ Check order and answers (error bodies are `{ "error": "<message>" }`, fixed stri
 | Any other failure                                                     | 500                        | Something went wrong. Try again.                             |
 
 After the checks the service creates the conversation when needed (title: the first 60 characters
-of the message), saves the user message on arrival, builds the context and the history, and starts
+of the message, cut by code points so an emoji is never split), saves the user message on arrival, builds the context and the history, and starts
 the stream. The user message is saved before the model runs, so cancelled and failed attempts count
-toward the daily cap on purpose (cancelling cannot bypass it).
+toward the daily cap on purpose (cancelling cannot bypass it): the slot is taken before anything is
+written.
 
 - **Daily cap.** At most 50 user messages per athlete per local day (the day in the athlete's
-  timezone, bounds from `localDayBoundsUtc`; an invalid stored timezone is read as UTC, applied
-  where the timezone is first obtained so the context and the cap agree). Checked before any write
-  or model call. The cap is best effort: two concurrent requests at 49 messages can both pass.
+  timezone, as the date from `todayIn`; an invalid stored timezone is read as UTC, applied where
+  the timezone is first obtained so the context and the cap agree). The cap is atomic: before any
+  write or model call the service calls `roxcoach.coach_take_message_slot(p_day, p_cap)` (migration
+  `0014`) through the session-bound client. It upserts one counter row per athlete and local day
+  (`coach_usage`) and counts only while the counter is below the cap, so concurrent requests cannot
+  all pass. A `false` answer is the 429 with nothing written and no model call. The counter lives
+  apart from the messages: deleting a conversation never gives the quota back. A cancelled or
+  failed attempt keeps its slot.
 - **History.** The last 20 messages of the conversation, in order. Leading assistant messages of
   that window are dropped, so the history sent to the model starts with a user turn (some Gemini
   endpoints reject a history that starts with a model turn). Consecutive user turns (an earlier
@@ -199,8 +205,9 @@ toward the daily cap on purpose (cancelling cannot bypass it).
 - **Request scope.** Next runs the handler inside its request store but pipes the response body
   outside it, where `cookies()` (used through the Supabase client) throws. The handler takes an
   `AsyncLocalStorage` snapshot before returning and runs every stream step, and the cancel,
-  through it. The real ports of the chat service share one Supabase client created before
-  streaming, for the same reason.
+  through it. Only the save, touch and slot ports of the chat service share one Supabase client
+  created before streaming, for the same reason. The context and the tools create their own
+  session-bound clients while the stream is consumed (see Known limitations).
 - **Secrets.** The API key is read only on the server through `src/env/server.ts`. It never
   reaches the client, logs or error payloads. Logs carry a tag and an error hash only: never the
   message, the model output, the context or the key.
@@ -211,7 +218,17 @@ toward the daily cap on purpose (cancelling cannot bypass it).
 - **Privacy.** The Gemini free tier may use requests to improve Google products. The athlete
   accepted that for training data. The model receives no user id, name or email. It does receive
   activity ids and race ids (activity ids are needed to call `getActivity`) and free-text notes,
-  because those are the injuries and limits the coach needs.
+  because those are the injuries and limits the coach needs. `bodyWeightKg` of an activity (a
+  Lyfta workout carries it) also reaches the model through the activity tools. `getActivity`
+  returns at most 200 strength sets (`ACTIVITY_SETS_RETURNED`) and adds `truncatedSets` with the
+  number left out when there are more.
+
+## Known limitations
+
+- A Supabase token refresh that happens during the up to 60 s stream writes cookies into a store
+  Next never sends, so the browser may keep a rotated-out refresh token (rare). The mitigation
+  under consideration is building the stream's clients from the already validated access token with
+  `persistSession` and `autoRefreshToken` off.
 
 ## tRPC
 
@@ -241,6 +258,13 @@ with cascade, RLS with the owner policy and `roxcoach.has_access()`, grants as i
 route always sets it to the first 60 characters of the first message), `created_at`, `updated_at`
 (kept by the `set_updated_at` trigger; the service also bumps it after a saved reply). Index on
 `(user_id, updated_at desc)`. `unique (id, user_id)`.
+
+`coach_usage` (migration `0014`): `user_id` uuid (default `auth.uid()`, cascade), `day` date (the
+athlete-local calendar day), `message_count` int (check `>= 0`), primary key `(user_id, day)`. RLS
+with the owner policies for select, insert and update and no delete policy. The function
+`roxcoach.coach_take_message_slot(p_day date, p_cap int) returns boolean` (security invoker, granted
+to `authenticated` and `service_role`) does `insert ... on conflict (user_id, day) do update set
+message_count = message_count + 1 where message_count < p_cap` and returns whether a slot was taken.
 
 `coach_messages`: `id` uuid, `conversation_id` uuid with composite foreign key
 `(conversation_id, user_id)` to `coach_conversations` and `on delete cascade`, `role` text check in
@@ -291,8 +315,10 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
 `NEXT_GEMINI_API_KEY` and `NEXT_COACH_MODEL` are declared in `src/env/server.ts` (optional
 strings). `tools/gemini-smoke.ts` makes one non-streaming `generateContent` call with plain
 `fetch` (no SDK) using the two variables and prints only `OK` or a status code (`no-key` or
-`network` when it never got a response). The athlete runs it with `pnpm dlx tsx tools/gemini-smoke.ts`
-with the variables loaded in the shell. The key never goes through the chat.
+`network` when it never got a response). The athlete runs it with `pnpm dlx tsx tools/gemini-smoke.ts`;
+the script loads the Next env files itself (`loadEnvConfig` runs inside `main()` only, so importing
+the file, as the unit test does, reads no `.env`). The key never goes through the chat and the
+script never prints the key, the body or the prompt.
 
 ## Tests
 
@@ -320,3 +346,6 @@ with the variables loaded in the shell. The key never goes through the chat.
    real questions against real data (goal check, last long run, week comparison, a Hyrox session
    with stations, a question with no data) and read the answers. If it fails, switch the model id
    or the provider behind the interface.
+5. **Token refresh during a stream.** Manual check: keep a chat stream open across a session
+   refresh (an access token close to expiry) and confirm the next page load is still signed in.
+   See Known limitations.

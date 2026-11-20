@@ -183,10 +183,10 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
   `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
   delta shown while typing), Cancel and Delete. Complete shows a result dialog; Cancel and Delete
   show accessible confirmation dialogs with the race name and consequence. Delete is hidden once a
-  race has a result, and its confirmation explains that deletion is irreversible and mentions linked planned sessions (stale copy, planned sessions no longer exist).
+  race has a result, and its confirmation explains that deletion is irreversible and the coach will no longer see the race.
 - A collapsed history (`<details>`) with completed races (result and delta in plain text, for
   example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
-- Empty state: "No races yet. Add one to get a coach plan."
+- Empty state: "No races yet. Add one so your coach knows your goal."
 
 ### Settings
 
@@ -234,7 +234,7 @@ layout.
 ## States every screen must handle
 
 Loading (skeletons shaped like the final content), empty (explains why and offers the next
-action, for example "No races yet. Add one to get a coach plan."), error (what failed, one retry
+action, for example "No races yet. Add one so your coach knows your goal."), error (what failed, one retry
 action) and offline or stale (a muted "Updated 2 hours ago" line where sync matters).
 
 ## Copy rules

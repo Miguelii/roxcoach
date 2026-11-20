@@ -80,3 +80,14 @@ describe('localDayBoundsUtc', () => {
         })
     })
 })
+
+describe('localDateIn (Lyfta workout dates)', () => {
+    it('converts an instant into the athlete timezone around a UTC date boundary', () => {
+        expect(localDateIn('2026-11-20T01:30:00.000Z', 'America/Los_Angeles')).toBe('2026-11-19')
+    })
+
+    it('rejects an invalid timezone or timestamp instead of guessing a local date', () => {
+        expect(() => localDateIn('2026-11-20T01:30:00.000Z', 'invalid/timezone')).toThrow()
+        expect(() => localDateIn('not a date', 'UTC')).toThrow()
+    })
+})

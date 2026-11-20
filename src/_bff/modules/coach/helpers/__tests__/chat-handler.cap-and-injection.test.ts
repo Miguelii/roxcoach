@@ -1,4 +1,5 @@
 // @vitest-environment node
+import type { User } from '@supabase/supabase-js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildCoachSystemPrompt } from '@/_bff/modules/coach/helpers/coach-system-prompt.helper'
 import type { CoachTool } from '@/_bff/modules/coach/types'
@@ -15,24 +16,14 @@ import {
 afterEach(() => vi.restoreAllMocks())
 
 describe('createChatHandler: daily cap', () => {
-    const seed = (store: ReturnType<typeof makeStore>, count: number, createdAt: string) => {
-        for (let i = 0; i < count; i++)
-            store.messages.push({
-                id: `seed${i}`,
-                userId: 'user-1',
-                conversationId: MINE,
-                role: 'user',
-                content: `seed ${i}`,
-                createdAt,
-                model: null,
-                promptTokens: null,
-                completionTokens: null,
-            })
+    // Pre-takes `count` slots of the athlete's local day.
+    const seed = (store: ReturnType<typeof makeStore>, count: number, day = '2026-11-20') => {
+        store.usage.set(`user-1|${day}`, count)
     }
 
     it('the 51st message gets 429 before any write or model call, cancelled attempts counting', async () => {
         const { handler, store, requests } = setup(script({ type: 'error', kind: 'unavailable' }))
-        seed(store, 49, '2026-11-20T08:00:00Z')
+        seed(store, 49)
         const fiftieth = await handler(post({ conversationId: MINE, message: 'fifty' }))
         expect(fiftieth.status).toBe(200)
         await fiftieth.text() // a failed attempt still counted
@@ -51,7 +42,7 @@ describe('createChatHandler: daily cap', () => {
             )
             yield* []
         })
-        seed(store, 49, '2026-11-20T08:00:00Z')
+        seed(store, 49)
         const controller = new AbortController()
         const response = await handler(
             post({ conversationId: MINE, message: 'cancel me' }, { signal: controller.signal })
@@ -70,7 +61,7 @@ describe('createChatHandler: daily cap', () => {
             ['Pacific/Auckland', 200],
         ] as const) {
             const store = makeStore({ timezone })
-            seed(store, 50, '2026-11-20T10:00:00Z')
+            seed(store, 50)
             const { handler } = setup(script(DONE), { ports: store.ports, now })
             const response = await handler(post({ conversationId: MINE, message: 'hi' }))
             expect(response.status).toBe(expected)
@@ -78,9 +69,44 @@ describe('createChatHandler: daily cap', () => {
         }
     })
 
+    it('deleting a conversation does not give the daily quota back', async () => {
+        const { handler, store } = setup(script(DONE))
+        seed(store, 49)
+        const fiftieth = await handler(post({ conversationId: MINE, message: 'fifty' }))
+        expect(fiftieth.status).toBe(200)
+        await fiftieth.text()
+
+        store.conversations.splice(0, store.conversations.length)
+        store.messages.splice(0, store.messages.length)
+
+        const next = await handler(post({ conversationId: null, message: 'fifty one' }))
+        expect(next.status).toBe(429)
+    })
+
+    it('takes the slot before writing anything and passes the cap and the local date', async () => {
+        const store = makeStore({ timezone: 'Pacific/Auckland' })
+        const taken: Array<[string, number]> = []
+        const ports = {
+            ...store.ports,
+            takeMessageSlot: (user: User, day: string, cap: number) => {
+                taken.push([day, cap])
+                expect(store.writes).toEqual([])
+                return store.ports.takeMessageSlot(user, day, cap)
+            },
+        }
+        const { handler } = setup(script(DONE), {
+            ports,
+            now: new Date('2026-11-20T23:30:00Z'),
+        })
+
+        await (await handler(post({ conversationId: MINE, message: 'hi' }))).text()
+
+        expect(taken).toEqual([['2026-11-21', 50]])
+    })
+
     it('falls back to UTC for an invalid timezone instead of failing', async () => {
         const store = makeStore({ timezone: 'Mars/Olympus' })
-        seed(store, 50, '2026-11-20T10:00:00Z')
+        seed(store, 50)
         const { handler } = setup(script(DONE), { ports: store.ports })
         const response = await handler(post({ conversationId: MINE, message: 'hi' }))
         expect(response.status).toBe(429)

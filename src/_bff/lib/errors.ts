@@ -104,6 +104,9 @@ export class LyftaApiError extends Data.TaggedError('LyftaApiError')<ServiceErro
 export class LyftaResponseError extends Data.TaggedError(
     'LyftaResponseError'
 )<ServiceErrorFields> {}
+export class LyftaSyncInProgressError extends Data.TaggedError(
+    'LyftaSyncInProgressError'
+)<ServiceErrorFields> {}
 export class LyftaImportError extends Data.TaggedError('LyftaImportError')<ServiceErrorFields> {}
 export class LyftaCheckpointError extends Data.TaggedError(
     'LyftaCheckpointError'

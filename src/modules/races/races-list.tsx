@@ -90,7 +90,7 @@ export function RacesList({
 
             {races.length === 0 ? (
                 <p data-testid="races-empty" className="text-sm text-muted-foreground">
-                    No races yet. Add one to get a coach plan.
+                    No races yet. Add one so your coach knows your goal.
                 </p>
             ) : null}
 

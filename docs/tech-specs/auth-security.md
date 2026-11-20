@@ -82,13 +82,13 @@ Redirect rules in `sbProxy`:
 
 The decision is the pure function `decideAuthRedirect` in
 `src/_bff/core/helpers/auth-redirect.helper.ts`. A protected prefix only matches on a path-segment
-boundary (`/plan` and `/plan/1` match, `/plans-extra` does not). Redirects carry the refreshed
+boundary (`/calendar` and `/calendar/1` match, `/calendarx` does not). Redirects carry the refreshed
 session cookies and Supabase's no-cache headers, like the pass-through response, and `setCSP` keeps
 those headers, so a response that sets a session cookie is never cacheable.
 
 Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client code):
 `AUTH_PAGE_PATH = '/login'`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
-`PROTECTED_PATHS = ['/dashboard', '/coach', '/activities', '/plan', '/races', '/settings']`.
+`PROTECTED_PATHS = ['/dashboard', '/calendar', '/activities', '/races', '/settings']`.
 
 The proxy matcher excludes `_next`, `api/` (route handlers there authenticate themselves),
 static assets and the favicon. It is already defined in `src/proxy.ts` and only needs `sbProxy`

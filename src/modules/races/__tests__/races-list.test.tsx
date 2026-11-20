@@ -36,7 +36,7 @@ describe('RacesList', () => {
     it('shows the empty state with the New race button', () => {
         setup([])
         expect(screen.getByTestId('races-empty')).toHaveTextContent(
-            'No races yet. Add one to get a coach plan.'
+            'No races yet. Add one so your coach knows your goal.'
         )
         expect(screen.getByTestId('race-new')).toHaveTextContent('New race')
         expect(screen.queryByTestId('races-history')).not.toBeInTheDocument()

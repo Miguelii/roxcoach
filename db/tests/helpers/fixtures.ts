@@ -98,6 +98,14 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
+        'coach_usage',
+        (graph) => ({
+            sql: `insert into roxcoach.coach_usage (user_id, day, message_count)
+                  values ($1, current_date, 1)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
         'lyfta_connections',
         (graph) => ({
             sql: `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
@@ -116,6 +124,7 @@ const GRAPH_CHILD_TABLES = [
     'strength_sets',
     'activity_files',
     'coach_messages',
+    'coach_usage',
     'lyfta_connections',
 ]
 

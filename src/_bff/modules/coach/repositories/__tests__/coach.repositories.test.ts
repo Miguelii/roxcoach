@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
-import { failureTag } from '@/_bff/lib/tests-utils'
+import { asClient, failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeAdminDb, ok, type Call } from '@/_bff/lib/fake-admin-db'
 import {
     deleteConversationById,
@@ -10,10 +10,11 @@ import {
     touchConversation,
 } from '@/_bff/modules/coach/repositories/coach-conversations.repository'
 import {
-    countUserMessagesBetween,
     insertMessage,
     selectLatestMessages,
 } from '@/_bff/modules/coach/repositories/coach-messages.repository'
+import { takeMessageSlot } from '@/_bff/modules/coach/repositories/coach-usage.repository'
+import type { CoachClient } from '@/_bff/modules/coach/repositories/coach-query'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ID = '22222222-2222-4222-8222-222222222222'
@@ -26,6 +27,22 @@ const message = (id: string, createdAt: string, role = 'user') => ({
     content: `text ${id}`,
     created_at: createdAt,
 })
+
+// A fake client with only `rpc`, settled by `handler` (an Error rejects like a thrown call).
+type RpcOutcome =
+    | Error
+    | { data: boolean | string | null; error: { code: string; message: string } | null }
+
+const makeRpcClient = (handler: () => RpcOutcome) => {
+    const rpc = vi.fn(async () => {
+        const outcome = handler()
+        if (outcome instanceof Error) throw outcome
+        return outcome
+    })
+    // The repository only calls `rpc`; `from` is there to satisfy the fake client type.
+    const client: CoachClient = asClient({ from: vi.fn(), rpc })
+    return { rpc, client }
+}
 
 const filterValue = (call: Call, column: string) =>
     call.filters.find(([name]) => name === column)?.[1]
@@ -82,6 +99,19 @@ describe('coach conversations repository', () => {
 
         expect(calls[0]?.op).toBe('insert')
         expect(calls[0]?.payload).toEqual({ user_id: 'user-1', title: 'x'.repeat(60) })
+    })
+
+    it('insertConversation never splits a surrogate pair at the 60 character boundary', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok(CONVERSATION_ROW))
+
+        await Effect.runPromise(
+            insertConversation(supabase, 'user-1', `${'x'.repeat(59)}\u{1F3CB}\u{1F3CB}`)
+        )
+
+        expect(calls[0]?.payload).toEqual({
+            user_id: 'user-1',
+            title: `${'x'.repeat(59)}\u{1F3CB}`,
+        })
     })
 
     it('touchConversation updates updated_at filtered by id and user_id', async () => {
@@ -199,24 +229,35 @@ describe('coach messages repository', () => {
         })
     })
 
-    it('countUserMessagesBetween counts only user rows in [from, to) for the athlete', async () => {
-        const { calls, supabase } = makeFakeAdminDb(() => ({ data: null, count: 7, error: null }))
+    it('takeMessageSlot calls the database function with the local day and the cap', async () => {
+        const { rpc, client } = makeRpcClient(() => ({ data: true, error: null }))
 
-        const count = await Effect.runPromise(
-            countUserMessagesBetween(
-                supabase,
-                'user-1',
-                '2026-11-20T00:00:00.000Z',
-                '2026-11-21T00:00:00.000Z'
-            )
-        )
+        expect(await Effect.runPromise(takeMessageSlot(client, '2026-11-20', 50))).toBe(true)
 
-        expect(count).toBe(7)
-        const [call] = calls
-        expect(filterValue(call!, 'user_id')).toBe('user-1')
-        expect(filterValue(call!, 'role')).toBe('user')
-        expect(filterValue(call!, 'created_at:gte')).toBe('2026-11-20T00:00:00.000Z')
-        expect(filterValue(call!, 'created_at:lt')).toBe('2026-11-21T00:00:00.000Z')
+        expect(rpc).toHaveBeenCalledWith('coach_take_message_slot', {
+            p_day: '2026-11-20',
+            p_cap: 50,
+        })
+    })
+
+    it('takeMessageSlot returns false at the cap and fails on thrown, returned and malformed', async () => {
+        const full = makeRpcClient(() => ({ data: false, error: null }))
+        expect(await Effect.runPromise(takeMessageSlot(full.client, 'd', 50))).toBe(false)
+
+        const hashes = new Set<unknown>()
+        const outcomes: RpcOutcome[] = [
+            new Error('boom'),
+            { data: null, error: { code: '42501', message: 'denied' } },
+            { data: 'yes', error: null },
+        ]
+        for (const outcome of outcomes) {
+            const { client } = makeRpcClient(() => outcome)
+            // oxlint-disable-next-line no-await-in-loop -- three sequential cases
+            const exit = await Effect.runPromiseExit(takeMessageSlot(client, 'd', 50))
+            expect(failureTag(exit)).toBe('CoachWriteError')
+            hashes.add(JSON.stringify(exit))
+        }
+        expect(hashes.size).toBe(3)
     })
 
     it('fails with the thrown, returned and parse branches of every call', async () => {
@@ -239,11 +280,6 @@ describe('coach messages repository', () => {
                         content: 'x',
                     }),
                 'CoachWriteError',
-            ],
-            [
-                'count',
-                (db) => countUserMessagesBetween(db.supabase, 'u', 'a', 'b'),
-                'CoachQueryError',
             ],
         ]
         for (const [name, run, tag] of cases) {

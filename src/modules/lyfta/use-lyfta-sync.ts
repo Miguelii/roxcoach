@@ -7,7 +7,8 @@ import { formatLyftaTimestamp, messageForLyftaError } from '@/modules/lyfta/lyft
 type SyncResult = {
     created: number
     updated: number
-    lastSyncedAt: string
+    lastSyncedAt: string | null
+    hasMore: boolean
 }
 
 export function useLyftaSync() {

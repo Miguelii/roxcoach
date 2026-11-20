@@ -23,6 +23,18 @@ import {
 afterEach(() => vi.restoreAllMocks())
 
 describe('createChatHandler: the stream', () => {
+    it('cuts the title by code points: an emoji on the 60th character stays whole', async () => {
+        const message = `${'x'.repeat(59)}\u{1F3CB}\u{FE0F}tail`
+        const { handler, store } = setup(script(DONE))
+
+        await (await handler(post({ conversationId: null, message }))).text()
+
+        const title = store.conversations.at(-1)?.title ?? ''
+        expect(title).toBe(`${'x'.repeat(59)}\u{1F3CB}`)
+        expect(Array.from(title)).toHaveLength(60)
+        expect(title.isWellFormed()).toBe(true)
+    })
+
     it('creates the conversation with the first 60 characters, saves the user message, meta comes first', async () => {
         const message = 'x'.repeat(100)
         const { handler, store, requests } = setup(
