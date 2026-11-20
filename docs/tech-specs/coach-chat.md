@@ -59,7 +59,7 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
 | `helpers/coach-system-prompt.helper.ts`                                                                 | the system prompt                                                                        |
 | `helpers/build-history.helper.ts`                                                                       | history window and turn merging                                                          |
 | `helpers/chat-handler.helper.ts`                                                                        | the route handler (auth result, body checks, NDJSON stream), with injected dependencies  |
-| `providers/coach-model.ts`, `gemini-coach-model.ts`                                                     | the `CoachModel` interface and its Gemini implementation                                 |
+| `providers/coach-model.ts`, `gemini-coach-model.ts`, `fallback-coach-model.ts`                          | the `CoachModel` interface and its Gemini implementation                                 |
 | `tools/`                                                                                                | the five read-only tools, `coach-tools.ts` (the factory), `run-tool.ts`, `plain-date.ts` |
 | `constants/index.ts`, `types/index.ts`                                                                  | limits and DTO or input types                                                            |
 
@@ -149,7 +149,8 @@ or null) or one `{ type: 'error', kind }` with `kind` in `rate_limited`, `unavai
 from the provider error or its nested causes, never from message text) to `rate_limited`, a
 content-filter finish to `blocked` and everything else to `unavailable`. An aborted request ends
 the stream without an event. Tests use a fake model. The models come from the fixed ordered
-list in `coach-model-fallback.md`, wrapped by the fallback model.
+list in `coach-model-fallback.md`, wrapped by the fallback model, which also adds a
+`{ type: 'model', modelId, switchedFrom }` event before the first text.
 
 ## Route and security
 
@@ -195,12 +196,13 @@ written.
 - **Stream.** `application/x-ndjson; charset=utf-8`, `Cache-Control: no-store`, one JSON event per
   line: `{"type":"meta","conversationId":"..."}` first, then, when the provider emits it,
   `{"type":"model","model":"...","switchedFrom":"..."|null}` (the model that answers, sent right
-  before its first text; `switchedFrom` names the model it replaced, else null), then
+  before its first text; `switchedFrom` names the model skipped last, else null), then
   `{"type":"text","delta":"..."}` events, then exactly one of `{"type":"done"}` or `{"type":"error","kind":"rate_limited"|"unavailable"|"blocked"}`.
   The daily cap is a pre-stream 429, not a stream event. A defect inside the stream becomes an
   `unavailable` error event.
-- **Saving the reply.** The assistant message (text, the id of the model that answered, token counts; the last `model` event of the reply, else the provider's own id) is saved only on
-  `done` with non-empty text and a request that was not aborted. If that save fails it is logged
+- **Saving the reply.** The assistant message (text, the id of the model that answered, token
+  counts) is saved only on `done` with non-empty text and a request that was not aborted. The
+  saved model id is the last `model` event of the reply, else the provider's own id. If that save fails it is logged
   (tag and error hash) and `done` is still emitted, since the athlete already saw the reply. A
   cancelled body aborts the model signal and no assistant message is saved.
 - **Request scope.** Next runs the handler inside its request store but pipes the response body
@@ -315,9 +317,11 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
 
 ## Env and smoke script
 
-`NEXT_GEMINI_API_KEY` is declared in `src/env/server.ts` (optional string). `tools/gemini-smoke.ts` makes one non-streaming `generateContent` call with plain
-`fetch` (no SDK) using the key (and each listed model, or one id given as an argument) and prints only `OK` or a status code (`no-key` or
-`network` when it never got a response). The athlete runs it with `pnpm dlx tsx tools/gemini-smoke.ts`;
+`NEXT_GEMINI_API_KEY` is declared in `src/env/server.ts` (optional string). `tools/gemini-smoke.ts`
+makes one non-streaming `generateContent` call per model with plain `fetch` (no SDK) using the key.
+It checks each listed model, or the one id given as an argument, and prints one line per model:
+`<id>: OK` or `<id>: <status>` (an HTTP status, `no-key` or `network` when it never got a
+response). The athlete runs it with `pnpm dlx tsx tools/gemini-smoke.ts`;
 the script loads the Next env files itself (`loadEnvConfig` runs inside `main()` only, so importing
 the file, as the unit test does, reads no `.env`). The key never goes through the chat and the
 script never prints the key, the body or the prompt.

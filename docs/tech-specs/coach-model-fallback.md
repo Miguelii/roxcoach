@@ -3,9 +3,13 @@
 The coach chat ([coach-chat.md](coach-chat.md)) runs on the Google Gemini free tier. Each Gemini
 model has its own free quota, so when one model reaches its limit another may still have room. This
 spec adds a fixed, ordered list of models: when the current one is rate limited, the server retries
-the same request on the next one. The chat never stops to ask anything. It shows the model that is answering as a small caption under
-the message box, and, when a switch happens, a short note in the conversation.
-Status: the backend is implemented (model list, fallback, saved model, route wiring, smoke script). The chat UI caption comes in the UI task.
+the same request on the next one. The chat never stops to ask anything. It shows the model that is
+answering as a small caption under the message box, and, when a switch happens, a short note in the
+conversation.
+
+Status: implemented (model list, fallback wrapper, Gemini provider changes, saved model, route
+wiring, smoke script, chat caption and switch note). The manual checks under "Open questions" are
+still pending.
 
 ## Intent
 
@@ -41,16 +45,17 @@ answering and when it changed.
 
 ## The model list
 
-A constant `COACH_MODELS` (an ordered array of Gemini model ids) in the coach module constants.
-Position 0 is tried first. The order is best first, by expected quality for this job (following
+`COACH_MODELS` in `src/_bff/core/constants/coach-models.constants.ts` is an ordered array of
+`{ id, label }` entries (the Gemini API id and the friendly name). `coachModelLabel(id)` in the same
+file returns the label of a listed id, or the raw id when it is not listed. Position 0 is tried first. The order is best first, by expected quality for this job (following
 instructions, calling the read-only tools, answering in the athlete's language), then by
 generation. Flash models come before Flash Lite models because tool calling is the weak point of
 the small models.
 
-Order (the athlete's candidates plus Gemini 3.6 Flash, ranked by the author; checked against Google's
-public docs, see "Verification"):
+Order, as in the code (the athlete's candidates plus Gemini 3.6 Flash, ranked by the author; checked
+against Google's public docs, see "Verification"). The label is what the chat shows:
 
-| #   | Model                 | API id                   | Status in Google's docs                                       | Free tier | Function calling |
+| #   | Label                 | API id                   | Status in Google's docs                                       | Free tier | Function calling |
 | --- | --------------------- | ------------------------ | ------------------------------------------------------------- | --------- | ---------------- |
 | 1   | Gemini 4 Hydrogen     | `gemini-4-hydrogen`      | Stable (updated November 2026)                                | Yes       | Supported        |
 | 2   | Gemini 3.8 Flash      | `gemini-3.8-flash`       | Stable (updated September 2026)                               | Yes       | Supported        |
@@ -72,7 +77,8 @@ and routed to `gemini-3.5-flash-lite` from December 1, 2026. Added at the athlet
 
 Context sizes are the same for all of them for this use: about 1M tokens in, 65,536 out (Hydrogen
 allows more output with long decode, not needed here). Gemini 3.8 Flash does not support the
-`minimal` thinking level (it errors), so the provider must not request that level for it. The paid
+`minimal` thinking level (it errors), so the provider sets no thinking level or thinking option for
+any model. The paid
 prices of 3.8 Flash and 3.6 Flash double on January 1, 2027, which does not matter on the free tier.
 
 ### Verification
@@ -85,62 +91,80 @@ input and output on the free tier for these models (verbatim for Hydrogen, 3.8 F
 structured outputs and thinking supported on every model of the list. No page shows a date marker
 for the page itself, only per-model "latest update" months.
 
-Not verifiable from the docs, and therefore still a rule for the builder: before an id enters
-`COACH_MODELS` the athlete (or the builder, with the athlete's key) runs the smoke script for that id
-and it must answer `OK` on the free tier. An id that fails is removed from the list instead of left in
-as dead weight. The ranking is a judgment, not a benchmark: it is revisited after the manual end to end
-check of five real questions per model (goal check, last long run, week comparison, a Hyrox session
-with stations, a question with no data), and any model that fails tool calls moves down or out.
+Not verifiable from the docs, and therefore still a rule: the athlete runs the smoke script (see
+"Configuration changes") and every id that does not answer `OK` on the free tier is removed from
+`COACH_MODELS` instead of being left in as dead weight. The ranking is a judgment, not a benchmark:
+it is revisited after the manual end to end check of five real questions per model (goal check, last
+long run, week comparison, a Hyrox session with stations, a question with no data), and any model
+that fails tool calls moves down or out.
 
 ## Behavior
 
-A new `CoachModel` implementation, `createFallbackCoachModel(models: CoachModel[])`, wraps the models
-of the list in order and is itself a `CoachModel`. The chat handler, the service and the tools do not
+`createFallbackCoachModel(models, { onFallback })` (`providers/fallback-coach-model.ts`) wraps the
+models of the list in order and is itself a `CoachModel` (its `modelId` is the first model's id, and it
+throws a `RangeError` for an empty list). `buildCoachModels` (`helpers/build-coach-models.helper.ts`)
+creates one Gemini model per id and wraps them. The chat handler, the service and the tools do not
 change: they receive one model.
 
-For each request it runs the models in order:
+For each request it runs the models in order (before each model, and on every event, it stops if the
+request signal is aborted):
 
-1. Start the stream of model `i`.
-2. If a `text` event arrives, or a tool step has already produced text, the reply is committed to
-   this model: every later event of this stream is passed through unchanged, including a failure.
-3. If the first terminal outcome of model `i` is an `error` event with kind `rate_limited` or
-   `unavailable` and NO text has been emitted, discard that failure and start model `i + 1` with the
-   identical request (system prompt, history, tools, step limit, abort signal).
-4. A `blocked` outcome is passed through, never retried.
-5. An abort of the request signal stops everything: no further model is started.
-6. When every model failed before emitting text, emit ONE `error` event: kind `rate_limited` if every
-   failure was a rate limit, otherwise `unavailable`.
+1. Start the stream of model `i`. Any `model` event a provider emits itself is dropped: only the
+   wrapper announces the model.
+2. The first `text` event commits the reply to this model. The wrapper then emits the `model` event
+   (see below) followed by that text, and passes every later event of this stream through unchanged,
+   including a failure.
+3. If, before any text, model `i` ends with an `error` event of kind `rate_limited` or `unavailable`,
+   that failure is discarded and model `i + 1` starts with the identical request (system prompt,
+   history, tools, step limit, abort signal). The same applies when the model throws, or when its
+   stream ends without a terminal event, before any text: both count as `unavailable`.
+4. Any other terminal event before text (`blocked`, or a `done` with no text) is passed through and ends
+   the chain: a `blocked` outcome is never retried.
+5. An abort of the request signal stops everything: no further model is started, nothing more is
+   emitted, no failure is recorded and `onFallback` is not called.
+6. After text, a throw from the model is rethrown unchanged (the service turns it into an
+   `unavailable` error event) and no other model is tried.
+7. When every model failed before text, the wrapper emits ONE `error` event: kind `rate_limited` if
+   every failure was a rate limit, otherwise `unavailable`.
 
 Tools are read-only, so a model that called tools and then failed before emitting text leaves nothing
 behind; the next model simply runs the tools again.
 
 ### Which model answered, on the wire
 
-The NDJSON stream (see [coach-chat.md](coach-chat.md)) gets one new event, sent once per reply as soon
-as a model is committed to it (before its first `text` event):
+The NDJSON stream (see [coach-chat.md](coach-chat.md)) has one event for it:
 
 `{ "type": "model", "model": "<model id>", "switchedFrom": "<model id>" | null }`
 
-`switchedFrom` is the id of the model that was skipped last because of a rate limit or server failure,
-or `null` when the first model of the list answered. The chat service saves the id of the model that
-answered in `coach_messages.model` (today it saves the configured id). `MessageDTO` gains
-`model: string | null` (null for user messages and for replies saved before this change). Clients
-that do not know the `model` event ignore it, as the UI already ignores unknown event types.
+The wrapper emits it once per reply, right before the first `text` event. A reply that ends without
+any text (a `done` or an error before text) has no `model` event. `switchedFrom` is the id of the
+model skipped last (the last one that failed), or `null` when the first model of the list answered.
+Inside the server the same event is `{ type: 'model', modelId, switchedFrom }`, and the chat service
+maps `modelId` to the wire key `model`. Clients that do not know the event ignore it, as the UI
+already ignores unknown event types.
+
+The chat service saves the id of the model that answered in `coach_messages.model`: the id of the last
+`model` event of the reply, or the provider's own `modelId` when none was seen (a single model, no
+wrapper). `MessageDTO.model` is `string | null` (null for user messages and for replies saved before
+this change) and is returned with the conversation history.
 
 ### What the chat shows
 
 Two elements, both UI only: nothing is added to the saved messages.
 
 **Caption under the message box.** Small muted text inside the panel, below the input and the send
-button, with the friendly name of the model only (`Gemini 3.8 Flash`). It never carries the switch
-text: that sentence is too long for the narrow mobile panel and would disappear when the next reply
-starts.
+button, with the friendly name of the model only (`Gemini 3.8 Flash`), on one line with an ellipsis.
+It never carries the switch text: that sentence is too long for the narrow mobile panel and would
+disappear when the next reply starts. The caption changes to the announced model on the first text
+delta that follows the `model` event, so a reply that fails right after the event keeps the
+previous caption.
 
 **Switch note in the conversation.** A muted, small, centered line placed in the message list right
 before the reply that came from a fallback model, for example "Gemini 3.8 Flash reached its limit.
-Answering with Gemini 3 Flash." It exists in the session where the switch happened. It is not saved
-and does not appear when the conversation is reopened. It is not announced as an alert (it is plain
-text in the log, announced with the reply).
+Answering with Gemini 3 Flash." It is attached to the reply when the `model` event arrives with a
+non-null `switchedFrom`. It exists in the session where the switch happened only: it is not saved and
+does not appear when the conversation is reopened. It is not an alert and the live region does not
+announce it.
 
 ```
  Coach                                      x
@@ -162,41 +186,49 @@ text in the log, announced with the reply).
 | A reply from the first model       | Its name                                   | None                             |
 | A reply from a fallback model      | The fallback model's name                  | Shown before that reply          |
 | The next reply starts              | Follows the `model` event of the new reply | Only if that reply also switched |
-| A conversation is reopened         | The model of its last assistant message    | None                             |
+| A conversation is reopened         | The last non-null model of its messages    | None                             |
 | Every model failed                 | Keeps the last known model                 | None; the existing error message |
 
-The friendly name comes from a map in one frontend constants file (model id to display name). An id
-missing from the map is shown as the raw id, so a new model in `COACH_MODELS` never breaks the
-caption or the note. Test ids: `coach-model-caption` and `coach-model-switch-note`.
+The friendly name comes from `coachModelLabel` (the `label` of the `COACH_MODELS` entry). An id that
+is not listed is shown as the raw id, so a retired model id in an old message never breaks the
+caption or the note. A null model (old messages, or none yet) shows no caption. Test ids:
+`coach-model-caption` and `coach-model-switch-note`.
 
 ### Gemini provider changes
 
-- The Gemini model must not retry on its own when it is part of a list: set the AI SDK's own retry
-  count to zero for list members, otherwise the SDK waits and retries the exhausted model before the
-  fallback can start. The installed SDK's option name and default are confirmed in its types.
-- A rate limit must be recognized whether it arrives as a thrown error or as an `error` stream part
-  (the current provider already maps both). Quota exhaustion by tokens, requests per minute or
-  requests per day all map to `rate_limited`.
-- Each model entry keeps its own id and the same provider settings; nothing else differs between
-  models.
+`createGeminiCoachModel` (`providers/gemini-coach-model.ts`) differs from the single-model version in
+two ways:
+
+- It passes `maxRetries: 0` to the AI SDK, so an exhausted model fails at once and the fallback list
+  is the only retry policy (otherwise the SDK would wait and retry the exhausted model first).
+- It sets no thinking level and no thinking provider option, for any model (Gemini 3.8 Flash rejects
+  `minimal`).
+
+A rate limit is recognized from the HTTP status 429 of the provider error or its nested causes,
+whether it is thrown or arrives as an `error` stream part, and maps to `rate_limited`. A content
+filter finish maps to `blocked`; every other failure maps to `unavailable`. Each list entry uses the
+same settings and only its own id.
 
 ## Logging and secrecy
 
-When the fallback skips a model it logs one line with the tag `CoachModelFallback`, the model id that
-failed and the failure kind (`rate_limited` or `unavailable`). Model ids are not secrets. Nothing from
-the request, the reply, the context or the key is logged, as everywhere else in the chat.
+When the wrapper skips a model, the route logs one line through `Logger` at level `warn` with prefix
+`coachModelFallback` and metadata `{ modelId, kind }`, where `kind` is `rate_limited` or
+`unavailable`. Model ids are not secrets. Nothing from the request, the reply, the context or the key
+is logged, as everywhere else in the chat.
 
 ## Configuration changes
 
-- `NEXT_COACH_MODEL` is removed from `src/env/server.ts`, the architecture env table, the README
-  setup note and the smoke script. `NEXT_GEMINI_API_KEY` stays the only coach variable.
-- The route builds the list from `COACH_MODELS` and the key, and no longer has a default model id
-  or a provisional-id comment.
+- `NEXT_COACH_MODEL` and the default model id `DEFAULT_COACH_MODEL` (`gemini-2.5-flash`) are gone:
+  removed from `src/env/server.ts`, the architecture env table, the README setup note, the route and
+  the smoke script. `NEXT_GEMINI_API_KEY` is the only coach variable.
+- The route builds the list from `COACH_MODELS` and the key with `buildCoachModels`. The 503 "coach
+  not configured" answer stays tied to the missing API key only.
 - `tools/gemini-smoke.ts` takes an optional model id argument (`pnpm dlx tsx tools/gemini-smoke.ts
-  gemini-2.5-flash`) and, with no argument, checks every model of `COACH_MODELS` one by one and
-  prints one `OK` or status code per model id. It still never prints the key, a response body or a
-  prompt.
-- The 503 "coach not configured" answer stays tied to the missing API key only.
+  gemini-3.8-flash`). The argument must match letters, digits, dot, dash, colon and underscore,
+  otherwise it prints a usage line and exits with code 1. With no argument it checks every model of
+  `COACH_MODELS` one by one. It prints one line per model, `<id>: OK` or `<id>: <status>` (an HTTP
+  status number, `no-key` or `network`), and exits with code 1 if any model did not answer `OK`. It
+  never prints the key, a response body or a prompt.
 
 ## Failure behavior
 
@@ -241,13 +273,16 @@ without a spend limit (not applicable to the free tier).
   also falls back; failure after text does not fall back and is passed through; `blocked` is passed
   through; every model failed gives one `error` (`rate_limited` only when all were rate limited);
   abort stops the chain with no further model started; a thrown error from a model counts as a
-  failure; the `done` event carries the id of the model that answered; exactly one terminal event.
+  failure; a stream that ends without a terminal event before text counts as `unavailable`; a `model`
+  event emitted by a provider is dropped; `switchedFrom` is the last skipped id; exactly one
+  terminal event.
 - Saved model id: the assistant message stores the id of the answering model, tested through the chat
   service ports with a fake fallback.
-- Gemini provider: the SDK retry count is zero; a rate limit as a thrown error and as an `error`
-  part both map to `rate_limited`.
+- Gemini provider: the SDK retry count is zero and no thinking option is set; a rate limit as a
+  thrown error and as an `error` part both map to `rate_limited`.
 - Config: `NEXT_COACH_MODEL` is gone from `ServerEnv`; the route builds the list from the constant;
-  the smoke script checks each listed model and never prints the key (fake `fetch`).
+  the smoke script checks each listed model, validates its argument and never prints the key (fake
+  `fetch`).
 - Manual: for each model of the list, the five-question check above, and one forced fallback by
   temporarily putting an exhausted or invalid first id.
 
@@ -263,8 +298,6 @@ without a spend limit (not applicable to the free tier).
    for these models). Already accepted by the athlete for training data (see
    [coach-chat.md](coach-chat.md)).
 5. Whether the order should change after the manual per-model check.
-6. `gemini-2.5-flash` is the provisional default of the current code (the route and the smoke script).
-   It is deprecated: the implementation plan replaces it with the list.
-7. Google's own pages disagree on how to describe Gemini 3.8 Flash (the models card says
+6. Google's own pages disagree on how to describe Gemini 3.8 Flash (the models card says
    "previous-generation", its own page says "our most intelligent Flash model") and on which model
    replaces 2.5 Flash Lite. The ranking does not depend on this wording.
