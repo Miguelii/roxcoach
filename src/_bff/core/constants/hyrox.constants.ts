@@ -20,7 +20,7 @@ export const HYROX_STATION_LABELS: Record<HyroxStation, string> = {
 }
 
 /** Stations in race order, each following one 1 km run. */
-const HYROX_STATION_ORDER: HyroxStation[] = [
+export const HYROX_STATION_ORDER: HyroxStation[] = [
     'ski_erg',
     'sled_push',
     'sled_pull',
