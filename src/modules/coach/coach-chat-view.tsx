@@ -62,7 +62,7 @@ export function CoachChatView(props: Props) {
                 className="fixed bottom-20 left-1/2 z-30 flex h-12 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-full border border-hairline bg-paper px-5 text-left text-sm text-muted-foreground shadow-md md:bottom-4"
             >
                 <MessageCircleIcon className="size-4 shrink-0" />
-                Ask your coach...
+                Ask Migueli Coach...
             </button>
         )
 
@@ -254,8 +254,8 @@ function PanelBody({
                                             inputRef.current = node
                                         }}
                                         rows={2}
-                                        aria-label="Message to your coach"
-                                        placeholder="Ask your coach..."
+                                        aria-label="Message to Migueli Coach"
+                                        placeholder="Ask Migueli Coach..."
                                         data-testid="coach-input"
                                         className="min-h-0 max-h-32"
                                         onKeyDown={(event) => {
