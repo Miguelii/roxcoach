@@ -1,6 +1,10 @@
 // Run with: pnpm dlx tsx tools/gemini-smoke.ts (NEXT_GEMINI_API_KEY and NEXT_COACH_MODEL loaded in the shell).
 // Prints only OK or a status code: never the key, the response body or the prompt.
 
+import { loadEnvConfig } from '@next/env'
+
+loadEnvConfig(process.cwd())
+
 type SmokeOptions = {
     apiKey: string | undefined
     model: string | undefined

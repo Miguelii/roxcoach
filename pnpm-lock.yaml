@@ -105,6 +105,9 @@ importers:
       '@electric-sql/pglite':
         specifier: 0.5.15
         version: 0.5.15
+      '@next/env':
+        specifier: ^16.4.6
+        version: 16.4.6
       '@oxlint/plugins':
         specifier: 1.94.0
         version: 1.94.0
