@@ -16,6 +16,7 @@ before touching its code, and update it in the same change.
 | [auth-security.md](auth-security.md)   | Login page, Supabase session, proxy, CSP, key usage                  |
 | [athlete-races.md](athlete-races.md)   | Starting point (profile, weekly availability) and races with goals   |
 | [manual-logging.md](manual-logging.md) | Station times, loads and strength sets entered by hand               |
+| [manual-upload.md](manual-upload.md)   | FIT, TCX and GPX upload from the dashboard, parsing, file storage    |
 | [coach.md](coach.md)                   | Sunday weekly report, 3-report memory, context, prompt, output       |
 | [plan.md](plan.md)                     | Rolling week from the report, periodization rules, matching          |
 | [ux-design.md](ux-design.md)           | Design system (from BrewStock), screens, calendar, states            |
@@ -49,7 +50,7 @@ before touching its code, and update it in the same change.
 
 1. Hyrox station loads per division. Store them in one constants file and verify against the
    official HYROX rules for the division you race in before first use.
-2. Manual upload: which file formats to accept (FIT, GPX, TCX) and how activities are parsed. Needs its own spec.
+2. Manual upload: see [manual-upload.md](manual-upload.md) for the open questions.
 3. Trigger.dev project: reuse the BrewStock organization with a new project, or a new account.
 
 ## Suggested build order
@@ -57,7 +58,7 @@ before touching its code, and update it in the same change.
 1. `architecture` and `database` (project skeleton, migrations, env)
 2. `auth-security` (login, proxy, protected layout)
 3. `athlete-races` (profile, availability, races CRUD)
-4. `manual-upload` (to be specified)
+4. `manual-upload` (FIT, TCX and GPX upload, storage)
 5. `ux-design` calendar and activity detail on top of real data
 6. `manual-logging`
 7. `coach` weekly report and memory, then `plan` matching
