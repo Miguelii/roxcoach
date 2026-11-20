@@ -137,9 +137,9 @@ readable. Client-side checks
        the laps and the `activity_files` row. If a later write fails, the activity (hard-deleted, laps
        cascade) and
        the object are removed, without masking the original error.
-4. The response is `{ activityId }`. The drawer closes, shows the toast and calls
-   `router.refresh()` (week strip) and invalidates the client calendar query (`getCalendar`) so
-   both reload. The client does not navigate.
+4. The response is `{ activityId }`. The drawer closes, shows the toast and invalidates the client
+   calendar query (`getCalendar`), which refreshes both the calendar and week strip. The client does
+   not navigate.
 
 ### Route behavior
 

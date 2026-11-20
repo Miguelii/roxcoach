@@ -1,64 +1,90 @@
 # Athlete and races
 
 Two small modules (`athlete`, `races`) that capture the athlete's starting point and the races
-that drive the plan. Everything the coach proposes is derived from these inputs.
+that drive the plan. The coach chat (a later plan, see [coach-chat.md](coach-chat.md)) will read
+these inputs through the services of each module: `getProfile`, `getAvailability` and `listRaces`.
 
 ## Athlete profile
 
-Edited in Settings. One row in `athlete_profiles` (see [database.md](database.md)).
+Edited in Settings (Profile tab). One row in `athlete_profiles` (see [database.md](database.md)).
+Validation lives in `helpers/profile-validation.helper.ts`; the numeric limits are in
+`PROFILE_LIMITS` (`src/_bff/core/constants/athlete.constants.ts`), shared by the helper, the
+controller input and the form.
 
-| Field              | Required | Used by                                                   |
-| ------------------ | -------- | --------------------------------------------------------- |
-| Display name       | yes      | app shell                                                 |
-| Timezone           | yes      | `local_date` of activities, calendar days, scheduled jobs |
-| Max heart rate     | no       | HR zone analysis in the weekly report                     |
-| Resting heart rate | no       | same                                                      |
-| Hyrox division     | no       | default for new Hyrox races, station loads                |
-| Weekly hours cap   | no       | hard ceiling in plan generation                           |
-| Notes              | no       | injuries and preferences passed to the coach verbatim     |
+| Field              | Required | Rules                                                      |
+| ------------------ | -------- | ---------------------------------------------------------- |
+| Display name       | yes      | trimmed, 1 to 60 characters                                |
+| Timezone           | yes      | a valid IANA zone, default `Europe/Lisbon`                 |
+| Max heart rate     | no       | integer 120 to 230                                         |
+| Resting heart rate | no       | integer 30 to 120, must be below max heart rate when set   |
+| Hyrox division     | no       | a key from `HYROX_DIVISIONS`, default for new Hyrox races  |
+| Weekly hours cap   | no       | above 0 and at most 40                                     |
+| Notes              | no       | at most 1000 characters, an empty string is stored as NULL |
+
+What reads it today: the timezone drives `todayIn(timezone)` (the dashboard, the races page, the
+calendar and race date validation) through `athlete.getTimezone`, and the division is the default
+of the race form. Nothing reads the heart rates, the weekly cap or the notes yet; they are stored
+for the coach chat.
+
+Defaults: without a saved row, `getProfile` returns an empty display name, `Europe/Lisbon` and
+nulls (a missing row is not an error). `updateProfile` validates first, writes nothing on invalid
+input and upserts the row for the signed-in user.
 
 ## Weekly availability
 
-The athlete describes a typical week in Settings. Stored as `availability_slots`.
+The athlete describes a typical week in Settings (Weekly availability tab). Stored as
+`availability_slots`. Validation lives in `helpers/availability-validation.helper.ts`.
 
-For each weekday the athlete can add one or more slots:
+For each weekday (ISO, 1 = Monday to 7 = Sunday) the athlete can add slots:
 
 | Field        | Meaning                                                                                                              |
 | ------------ | -------------------------------------------------------------------------------------------------------------------- |
 | Session kind | `hyrox`, `run`, `strength`, `cross` or `rest`                                                                        |
 | Fixed        | on: a commitment that already exists (for example a Hyrox class every Tuesday). Off: an open slot the coach may fill |
-| Max minutes  | upper bound for the session                                                                                          |
-| Notes        | for example "lunch break only"                                                                                       |
+| Max minutes  | integer 15 to 360, or null                                                                                           |
+| Notes        | at most 200 characters, or null. Accepted by the API; the editor does not expose it yet                              |
 
-Rules:
+Rules (all validated server-side, the first problem is returned as a reason code):
 
-- A weekday with a `rest` slot cannot also have other slots (validated server-side).
 - The same `(weekday, session_kind)` pair cannot appear twice.
-- Fixed slots are planned as-is, with the coach adapting the load around them. Open slots are
-  where the coach places the sessions it chooses.
-- Changing availability does not regenerate anything immediately: the next Sunday report uses it,
-  and "Generate now" on the Coach page applies it sooner (see [plan.md](plan.md)).
+- A weekday has at most 4 slots.
+- A `rest` slot cannot be fixed and has no max minutes, and a weekday with a `rest` slot cannot
+  have other slots.
+- Fixed slots are meant to be planned as-is, with the coach adapting the load around them. Open
+  slots are where the coach places the sessions it chooses.
 
-UX: a 7-column week editor with the slots as chips per day, an "Add slot" action per day, and a
-summary line ("4 sessions per week, 6h max").
+Save strategy: `saveAvailability` validates, upserts the new set (conflict target
+`user_id,weekday,session_kind`) and only then deletes the rows outside it. There is no
+transaction. The week is therefore never empty midway: a failed upsert deletes nothing, and a
+failed delete leaves the new slots saved plus stale extra slots until the next save. Two
+concurrent saves by the same user can race the delete step. The delete removes only the signed-in
+user's rows (PostgREST has no tuple `NOT IN`, so the user's pairs are read and the stale ones are
+removed with one delete per weekday). Saving an empty week deletes every slot.
+
+Changing availability does not regenerate anything: the coach chat reads the saved week when asked.
+
+UX: a 7-column week editor with the slots as chips per day, an "Add" menu per day and a summary
+line ("N sessions per week, up to H h"). See [ux-design.md](ux-design.md).
 
 ## Races
 
-The athlete can add any number of races. Each has its own goal.
+The athlete can add any number of races. Each has its own goal. Validation lives in
+`helpers/race-validation.helper.ts`; the controller input schema is `race-input.schema.ts` (same
+ranges).
 
-| Field       | Rules                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------- |
-| Name        | required, for example `Hyrox Lisbon` or `S. Silvestre Guimaraes 10k`                        |
-| Type        | `hyrox`, `running` or `other`                                                               |
-| Date        | required, may be in the past only when status is `completed`                                |
-| Location    | optional                                                                                    |
-| Distance    | required for `running` (meters), hidden for `hyrox`                                         |
-| Division    | required for `hyrox`, defaults to the profile division                                      |
-| Target time | required, entered as `h:mm:ss`, stored in seconds. Examples: Hyrox `1:10:00`, 10k `0:39:59` |
-| Priority    | `A`, `B` or `C`, default `A`                                                                |
-| Status      | `upcoming`, `completed`, `cancelled`                                                        |
-| Result time | optional, set when completing a race                                                        |
-| Notes       | optional                                                                                    |
+| Field       | Rules                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| Name        | required, trimmed, 1 to 80 characters, for example `Hyrox Lisbon` or `S. Silvestre Guimaraes 10k`         |
+| Type        | `hyrox`, `running` or `other`                                                                             |
+| Date        | a real calendar date. Must be after the athlete's today, see the date rules below                         |
+| Location    | optional, at most 80 characters, blank is stored as NULL                                                  |
+| Distance    | required for `running` (integer meters, 400 to 200000), rejected for `hyrox`                              |
+| Division    | required for `hyrox` (a valid key). Rejected for `running` and `other`: non-hyrox races carry no division |
+| Target time | required integer seconds, 60 to 86400, entered as `h:mm:ss`. Examples: Hyrox `1:10:00`, 10k `0:39:59`     |
+| Priority    | `A`, `B` or `C`, default `A`                                                                              |
+| Status      | `upcoming`, `completed`, `cancelled`. A new race is `upcoming`                                            |
+| Result time | set when completing a race, integer seconds 1 to 86400                                                    |
+| Notes       | optional, at most 500 characters, blank is stored as NULL                                                 |
 
 Goal examples that must be expressible: "Hyrox in 1h10" (target `1:10:00`) and "S. Silvestre 10k
 sub 40 min" (target `0:39:59`). The app always shows the stored time, never rewrites it as "sub".
@@ -71,25 +97,46 @@ Priority meaning (used by the coach, see [plan.md](plan.md)):
 | `B`      | A tune-up inside a block: short taper, still a real effort |
 | `C`      | A training session: no taper, run as part of the load      |
 
-Behaviour:
+Date rules ("today" is the athlete's local date from the profile timezone, never UTC):
+
+- Creating a race requires a date strictly after today.
+- Editing an upcoming race requires a future date unless the date is unchanged, so an upcoming
+  race whose date has passed can still be edited if the date is kept.
+- Editing a completed race may keep a past date.
+
+State rules (enforced in the services, answered with a state error):
+
+- Complete: records `result_time_s` and sets the status to `completed`. A cancelled race cannot
+  be completed.
+- Cancel: the row stays with status `cancelled`. A completed race cannot be cancelled.
+- Delete: a hard delete, only for a race without a result (status not `completed` and no
+  `result_time_s`). Cancel it instead to keep it as history. Deleting a race detaches planned
+  sessions that point at it (`race_id` set null) instead of deleting the sessions.
+- A race that is not found, or belongs to another user, is a not-found error (every query also
+  filters by `user_id`).
+
+Behaviour in the UI:
 
 - The Races page lists upcoming races sorted by date with days remaining, then a collapsed
-  history of completed ones.
-- Creating, editing or cancelling an upcoming race is picked up by the next Sunday report, or
-  immediately with "Generate now".
-- Completing a race records `result_time_s`, shows goal versus result, and the coach comments on
-  it in the weekly report if the race also exists as a synced activity (matched by `local_date`).
-- A division is only valid on a `hyrox` race (validation rejects it otherwise). Blank location and
-  notes are stored as NULL.
-- The Races page offers Edit and Complete only for upcoming races. Cancel and Delete (Delete only
+  history of completed and cancelled ones.
+- The card offers Edit and Complete only for upcoming races. Cancel and Delete (Delete only
   without a result) ask for an inline confirmation, and a card's actions are disabled while its
-  mutation runs. An upcoming race whose date has passed can still be edited if the date is kept.
-- Past dates are rejected on creation. Deleting a race with planned sessions detaches them
-  (`race_id` set null) instead of deleting the sessions.
+  mutation runs.
+- Completing a race shows goal versus result.
+- After any mutation the page refreshes, and the react-query calendar feed and dashboard race query
+  are invalidated.
+
+Integration:
+
+- Calendar: `training.getCalendar` merges activities with races from `listRacesInRange` (upcoming
+  and completed, never cancelled) into a `CalendarItem` union. Races are shown as chips, and are
+  ignored by the week totals and the week strip.
+- Dashboard: the `NextRace` card shows the first upcoming race dated today or later, linking to
+  `/races`.
 
 ## Backend
 
-Module `athlete`:
+Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 
 | File                                                                              | Purpose                                                                                           |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -97,18 +144,26 @@ Module `athlete`:
 | `controllers/get-timezone.controller.ts`                                          | protected query, the timezone string (default Europe/Lisbon); the dashboard derives today from it |
 | `controllers/update-profile.controller.ts`                                        | protected mutation                                                                                |
 | `controllers/get-availability.controller.ts`                                      | protected query                                                                                   |
-| `controllers/save-availability.controller.ts`                                     | protected mutation, replaces the full week in one transaction                                     |
-| `services/*.service.ts`                                                           | business logic and validation                                                                     |
+| `controllers/save-availability.controller.ts`                                     | protected mutation, upsert then delete (no transaction)                                           |
+| `services/get-profile`, `update-profile`, `get-availability`, `save-availability` | business logic and validation, run as the signed-in user                                          |
+| `services/get-athlete-timezone.service.ts`                                        | the timezone, used by the controller and by the races services                                    |
+| `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`       | pure validation                                                                                   |
 | `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                                                       |
 
-Module `races`:
+Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `update`,
+`complete`, `cancel`, `delete`):
 
-| File                                                                                              | Purpose                           |
-| ------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `controllers/list-races.controller.ts`                                                            | protected query, filter by status |
-| `controllers/create-race.controller.ts`, `update-race.controller.ts`, `delete-race.controller.ts` | protected mutations               |
-| `controllers/complete-race.controller.ts`                                                         | records the result                |
-| `repositories/races.repository.ts`                                                                | data access                       |
+| File                                                                                      | Purpose                                                                            |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `controllers/list-races.controller.ts`                                                    | protected query, optional filter by status                                         |
+| `controllers/create-race.controller.ts`, `update-race.controller.ts`                      | protected mutations, input from `race-input.schema.ts`                             |
+| `controllers/complete-race.controller.ts`, `cancel-race.controller.ts`                    | protected mutations, the result time and the cancellation                          |
+| `controllers/delete-race.controller.ts`                                                   | protected mutation                                                                 |
+| `services/list-races.service.ts`                                                          | filter by status and dates; also the read entry point for other modules            |
+| `services/list-races-in-range.service.ts`                                                 | upcoming and completed races between two dates, used by the training calendar feed |
+| `services/create-race`, `update-race` (also `cancelRace`), `complete-race`, `delete-race` | business rules above                                                               |
+| `services/races-client.service.ts`                                                        | creates the session-bound Supabase client                                          |
+| `helpers/race-validation.helper.ts`                                                       | pure validation                                                                    |
+| `repositories/races.repository.ts`                                                        | data access, trims text and stores blank location and notes as NULL                |
 
-The mutations do not call the coach. The plan page notices a change newer than the last report by
-comparing `updated_at` timestamps.
+The mutations do not call the coach.

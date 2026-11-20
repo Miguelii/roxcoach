@@ -110,7 +110,7 @@ Target design, top to bottom:
 
 1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
    ratio with a plain-language label (for example "Balanced", "Ramping fast").
-2. **Next race** (`NextRace` server component in its own `Suspense`, `NextRaceView` for the markup):
+2. **Next race** (`NextRace` client query with `NextRaceView` for the markup):
    the next upcoming race (date today or later) as an amber card with a flag icon: name, date, days
    to go, goal time and priority (for example "A: Target race"), linking to `/races`. Hidden when
    there is no upcoming race. The planned-session half of "Next up" returns with plan 5.
@@ -134,8 +134,14 @@ returns activities and races for the visible range, typed as a discriminated uni
 (`activity`, `race`; the race member carries a `RaceSummaryDTO`), merged and ordered by date. Races
 come from `listRacesInRange` (upcoming and completed, never cancelled). Every switch on `type` is
 exhaustive (`Match.exhaustive`). A `planned` member arrives with plan 5. After a races mutation the
-Races page invalidates `training.getCalendar` (`runRaceAction` with an injected `onChanged`), since
-`router.refresh()` does not reach the react-query calendar.
+Races page invalidates `training.getCalendar` and `races.list` (`runRaceAction` with an injected
+`onChanged`), since `router.refresh()` does not reach client queries.
+
+The dashboard loads its timezone, 35-day week strip, upcoming races and calendar through tRPC
+client queries. React Query retains their results while navigating between routes and revalidates
+them after 30 seconds; uploads and race or profile mutations invalidate the relevant queries.
+Cached results render immediately on return while stale results refresh in the background. The
+client query cache is cleared on logout.
 
 ### Activity detail
 

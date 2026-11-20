@@ -48,7 +48,10 @@ export function ProfileTab() {
             throw error
         }
         toast.success('Profile saved')
-        await utils.athlete.getProfile.invalidate()
+        await Promise.all([
+            utils.athlete.getProfile.invalidate(),
+            utils.athlete.getTimezone.invalidate(),
+        ])
     }
 
     return <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />

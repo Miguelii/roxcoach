@@ -31,8 +31,7 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
     const cancel = trpcClient.races.cancel.useMutation()
     const remove = trpcClient.races.delete.useMutation()
 
-    // Runs `action` with the fixed copy; after a change the server components refresh and the client
-    // calendar query is invalidated (router.refresh() does not reach react-query).
+    // Runs `action` with fixed copy, refreshing server data and invalidating client queries.
     const run = <Result,>(action: () => Promise<Result>, success: string, failure: string) =>
         runRaceAction({
             action,
@@ -43,6 +42,7 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
             onChanged: () => {
                 router.refresh()
                 void utils.training.getCalendar.invalidate()
+                void utils.races.list.invalidate()
             },
         })
 
