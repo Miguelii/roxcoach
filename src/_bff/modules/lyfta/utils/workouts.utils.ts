@@ -65,6 +65,28 @@ const optionalWeightSchema = z
 
 const optionalRirSchema = optionalIntegerSchema
 
+function isLyftaExerciseImageUrl(value: string): boolean {
+    const url = new URL(value)
+    const isLyftaCatalogImage =
+        url.hostname === 'lyfta.app' && url.pathname.startsWith('/images/exercises/')
+    const isGymvisualImage =
+        url.hostname === 'apilyfta.com' && url.pathname.startsWith('/static/GymvisualPNG/')
+
+    return (
+        url.protocol === 'https:' &&
+        url.search === '' &&
+        url.hash === '' &&
+        (isLyftaCatalogImage || isGymvisualImage)
+    )
+}
+
+const exerciseImageUrlSchema = z
+    .url()
+    .refine(isLyftaExerciseImageUrl)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null)
+
 const rawSetSchema = z.object({
     is_completed: z.boolean(),
     reps: z.custom<LyftaJsonValue>().optional(),
@@ -75,6 +97,7 @@ const rawSetSchema = z.object({
 const rawExerciseSchema = z.object({
     exercise_id: numericId,
     excercise_name: z.string().trim().min(1),
+    exercise_image: exerciseImageUrlSchema,
     sets: z.array(rawSetSchema),
 })
 
@@ -175,6 +198,7 @@ function parseWorkout(raw: RawWorkout, index: number, issues: string[]): LyftaWo
     const exercises: LyftaExercise[] = raw.exercises.map((exercise, exerciseIndex) => ({
         exerciseId: String(exercise.exercise_id),
         name: exercise.excercise_name,
+        imageUrl: exercise.exercise_image,
         sets: parseCompletedSets(exercise, index, exerciseIndex, raw.weight_unit, issues),
     }))
 

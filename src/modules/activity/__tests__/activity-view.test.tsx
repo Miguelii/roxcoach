@@ -63,6 +63,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Deadlift',
                         exerciseIndex: 2,
+                        exerciseImageUrl: null,
                         sourceExerciseId: '502',
                         setIndex: 1,
                         reps: 5,
@@ -73,6 +74,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Bench Press',
                         exerciseIndex: 1,
+                        exerciseImageUrl: 'https://lyfta.app/images/exercises/00251101.png',
                         sourceExerciseId: '501',
                         setIndex: 2,
                         reps: 4,
@@ -83,6 +85,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Bench Press',
                         exerciseIndex: 1,
+                        exerciseImageUrl: 'https://lyfta.app/images/exercises/00251101.png',
                         sourceExerciseId: '501',
                         setIndex: 1,
                         reps: 5,
@@ -97,15 +100,19 @@ describe('ActivityView', () => {
         expect(screen.getByTestId('metric-time-value')).toHaveTextContent('45m')
         expect(screen.getByTestId('metric-volume-value')).toHaveTextContent('1,230 kg x reps')
         expect(screen.getByTestId('metric-body-weight-value')).toHaveTextContent('72.5 kg')
-        expect(screen.getByTestId('strength-exercise-count')).toHaveTextContent('2 exercises')
         expect(screen.getByTestId('strength-exercise-1-name')).toHaveTextContent('Bench Press')
         expect(screen.getByTestId('strength-exercise-2-name')).toHaveTextContent('Deadlift')
+        expect(screen.getByTestId('strength-exercise-1-image')).toHaveAttribute(
+            'alt',
+            'Bench Press demonstration'
+        )
+        expect(screen.getByTestId('strength-exercise-2-image-placeholder')).toBeTruthy()
         expect(screen.getByTestId('strength-exercise-1-set-1-reps')).toHaveTextContent('5')
         expect(screen.getByTestId('strength-exercise-1-set-1-load')).toHaveTextContent('80 kg')
         expect(screen.getByTestId('strength-exercise-1-set-2-reps')).toHaveTextContent('4')
         expect(screen.getByTestId('strength-exercise-1-set-2-rir')).toHaveTextContent('-')
         expect(screen.getByTestId('strength-exercise-2-set-1-load')).toHaveTextContent('100 kg')
-        expect(screen.getByTestId('strength-exercise-2-rir-header')).toHaveTextContent('RIR')
+        expect(screen.getByTestId('strength-exercise-1-set-1-rir')).toHaveTextContent('RIR 2')
     })
 
     it('uses an alphabetical fallback for legacy sets without exercise order', () => {
@@ -117,6 +124,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Goblet Squat',
                         exerciseIndex: null,
+                        exerciseImageUrl: null,
                         sourceExerciseId: null,
                         setIndex: 1,
                         reps: 10,
@@ -127,6 +135,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Arnold Press',
                         exerciseIndex: null,
+                        exerciseImageUrl: null,
                         sourceExerciseId: null,
                         setIndex: 1,
                         reps: 8,
@@ -141,7 +150,7 @@ describe('ActivityView', () => {
         expect(screen.getByTestId('strength-exercise-1-name')).toHaveTextContent('Arnold Press')
         expect(screen.getByTestId('strength-exercise-2-name')).toHaveTextContent('Goblet Squat')
         expect(screen.getByTestId('metric-volume-value')).toHaveTextContent('296 kg x reps')
-        expect(screen.queryByTestId('strength-exercise-1-rir-header')).toBeNull()
+        expect(screen.queryByTestId('strength-exercise-1-set-1-rir')).toBeNull()
     })
 
     it('shows an honest empty state when a strength activity has no set data', () => {
@@ -168,6 +177,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Bench Press',
                         exerciseIndex: 1,
+                        exerciseImageUrl: null,
                         sourceExerciseId: '501',
                         setIndex: 1,
                         reps: 5,
@@ -178,6 +188,7 @@ describe('ActivityView', () => {
                     {
                         exercise: 'Bench Press',
                         exerciseIndex: 1,
+                        exerciseImageUrl: null,
                         sourceExerciseId: '501',
                         setIndex: 2,
                         reps: null,

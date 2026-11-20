@@ -1,3 +1,4 @@
+// oxlint-disable max-lines-per-function
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
@@ -26,6 +27,7 @@ const SANDBOX_PAGE = {
                 {
                     exercise_id: 501,
                     excercise_name: 'Bench Press',
+                    exercise_image: 'https://lyfta.app/images/exercises/00251101.png',
                     sets: [
                         { weight: '80', reps: '5', rir: '2', is_completed: true },
                         { weight: '90', reps: '3', rir: null, is_completed: true },
@@ -57,6 +59,7 @@ describe('parseLyftaWorkoutPage', () => {
                             {
                                 exerciseId: '501',
                                 name: 'Bench Press',
+                                imageUrl: 'https://lyfta.app/images/exercises/00251101.png',
                                 sets: [
                                     { setIndex: 1, reps: 5, loadKg: 80, rir: 2 },
                                     { setIndex: 2, reps: 3, loadKg: 90, rir: null },
@@ -181,6 +184,56 @@ describe('parseLyftaWorkoutPage', () => {
         )
 
         expect(result.success).toBe(false)
+    })
+
+    it.each([
+        ['unknown origin', 'https://example.com/exercise.png'],
+        ['unsupported CDN path', 'https://apilyfta.com/static/other/exercise.png'],
+    ])('rejects exercise images from an %s', (_reason, imageUrl) => {
+        const result = parseLyftaWorkoutPage(
+            {
+                ...SANDBOX_PAGE,
+                workouts: [
+                    {
+                        ...SANDBOX_PAGE.workouts[0],
+                        exercises: [
+                            {
+                                ...SANDBOX_PAGE.workouts[0].exercises[0],
+                                exercise_image: imageUrl,
+                            },
+                        ],
+                    },
+                ],
+            },
+            1
+        )
+
+        expect(result).toEqual({
+            success: false,
+            issues: ['workouts.0.exercises.0.exercise_image'],
+        })
+    })
+
+    it('accepts live Gymvisual exercise image URLs', () => {
+        const imageUrl =
+            'https://apilyfta.com/static/GymvisualPNG/02411101-Cable-Triceps-Pushdown-(V-bar-attachment)_Upper-Arms_small.png'
+        const workout = {
+            ...SANDBOX_PAGE.workouts[0],
+            exercises: [
+                {
+                    ...SANDBOX_PAGE.workouts[0].exercises[0],
+                    exercise_image: imageUrl,
+                },
+            ],
+        }
+        const result = parseLyftaWorkoutPage({ ...SANDBOX_PAGE, workouts: [workout] }, 1)
+
+        expect(result).toMatchObject({
+            success: true,
+            data: {
+                workouts: [{ exercises: [{ imageUrl }] }],
+            },
+        })
     })
 
     it('converts pounds to kilograms and stores exercise metadata and workout duration', () => {

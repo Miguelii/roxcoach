@@ -175,15 +175,41 @@ describe('makeCoachTools', () => {
             station: 'sled_push',
         }
         const a = activity({ id: ID })
+        const strengthSet = {
+            exercise: 'Bench Press',
+            exerciseIndex: 1,
+            exerciseImageUrl: 'https://lyfta.app/images/exercises/00251101.png',
+            sourceExerciseId: '501',
+            setIndex: 1,
+            reps: 5,
+            loadKg: 80,
+            rir: 2,
+            rpe: null,
+        }
         // SAFETY: the lap literal matches LapDTO.
         const found = setup({
-            getActivity: async () => ({ activity: a, laps: [lap] as never, strengthSets: [] }),
+            getActivity: async () => ({
+                activity: a,
+                laps: [lap] as never,
+                strengthSets: [strengthSet],
+            }),
         })
 
         expect(await found.run('getActivity', { id: ID })).toEqual({
             activity: a,
             laps: [lap],
-            strengthSets: [],
+            strengthSets: [
+                {
+                    exercise: 'Bench Press',
+                    exerciseIndex: 1,
+                    sourceExerciseId: '501',
+                    setIndex: 1,
+                    reps: 5,
+                    loadKg: 80,
+                    rir: 2,
+                    rpe: null,
+                },
+            ],
         })
 
         const missing = setup()

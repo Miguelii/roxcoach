@@ -88,6 +88,7 @@ describe('schema layout', () => {
             '0010_lyfta.sql',
             '0011_lyfta_progress_metrics.sql',
             '0012_strength_exercise_order.sql',
+            '0013_strength_exercise_images.sql',
         ])
     })
 
@@ -235,7 +236,7 @@ describe('Lyfta connections', () => {
     })
 
     describe('Lyfta progress metrics', () => {
-        it('stores source exercise order, IDs, RIR and workout metrics in kilograms', async () => {
+        it('stores exercise order, image URL, source IDs, RIR and workout metrics', async () => {
             const userId = await createUser(testDb)
             const activityId = await insertActivity(testDb, userId)
 
@@ -247,21 +248,23 @@ describe('Lyfta connections', () => {
             )
             await testDb.db.query(
                 `insert into roxcoach.strength_sets
-                    (user_id, activity_id, exercise, exercise_index, source_exercise_id,
-                     set_index, reps, load_kg, rir)
-                 values ($1, $2, 'Bench Press', 2, '501', 1, 5, 80, 2)`,
+                    (user_id, activity_id, exercise, exercise_index, exercise_image_url,
+                     source_exercise_id, set_index, reps, load_kg, rir)
+                 values ($1, $2, 'Bench Press', 2, 'https://lyfta.app/images/exercises/00251101.png',
+                         '501', 1, 5, 80, 2)`,
                 [userId, activityId]
             )
 
             const result = await testDb.db.query<{
                 source_exercise_id: string
                 exercise_index: number
+                exercise_image_url: string
                 load_kg: string
                 rir: number
                 body_weight_kg: string
                 lyfta_total_volume_kg_reps: string
             }>(
-                `select s.exercise_index, s.source_exercise_id, s.load_kg, s.rir,
+                `select s.exercise_index, s.exercise_image_url, s.source_exercise_id, s.load_kg, s.rir,
                         a.body_weight_kg, a.lyfta_total_volume_kg_reps
                  from roxcoach.strength_sets s
                  join roxcoach.activities a on a.id = s.activity_id and a.user_id = s.user_id
@@ -273,6 +276,7 @@ describe('Lyfta connections', () => {
                 {
                     source_exercise_id: '501',
                     exercise_index: 2,
+                    exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
                     load_kg: '80',
                     rir: 2,
                     body_weight_kg: '72.5',

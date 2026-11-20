@@ -49,6 +49,7 @@ const DB_LAP = {
 const DB_STRENGTH_SET = {
     exercise: 'Bench Press',
     exercise_index: 1,
+    exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
     source_exercise_id: '501',
     set_index: 1,
     reps: 5,
@@ -79,6 +80,7 @@ describe('getActivity', () => {
             {
                 exercise: 'Bench Press',
                 exerciseIndex: 1,
+                exerciseImageUrl: 'https://lyfta.app/images/exercises/00251101.png',
                 sourceExerciseId: '501',
                 setIndex: 1,
                 reps: 5,

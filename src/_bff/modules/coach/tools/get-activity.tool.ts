@@ -18,7 +18,16 @@ export const makeGetActivityTool = (user: User, deps: CoachToolDeps): CoachTool 
                 ? {
                       activity: found.activity,
                       laps: found.laps,
-                      strengthSets: found.strengthSets,
+                      strengthSets: found.strengthSets.map((set) => ({
+                          exercise: set.exercise,
+                          exerciseIndex: set.exerciseIndex,
+                          sourceExerciseId: set.sourceExerciseId,
+                          setIndex: set.setIndex,
+                          reps: set.reps,
+                          loadKg: set.loadKg,
+                          rir: set.rir,
+                          rpe: set.rpe,
+                      })),
                   }
                 : { error: 'activity not found' }
         }),

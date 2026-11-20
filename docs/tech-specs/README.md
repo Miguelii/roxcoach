@@ -64,7 +64,7 @@ before touching its code, and update it in the same change.
 5. `ux-design` calendar and activity detail on top of real data
 6. `manual-logging`
 7. `coach-chat` (migration `0009`, the `coach` module, the dashboard panel)
-8. `lyfta` (migrations `0010` through `0012`, manual read-only workout sync; no background job)
+8. `lyfta` (migrations `0010` through `0013`, manual read-only workout sync; no background job)
 
 ## Implementation plans
 

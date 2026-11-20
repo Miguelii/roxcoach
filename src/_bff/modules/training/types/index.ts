@@ -20,6 +20,7 @@ export type LyftaActivityRow = {
 export type NewStrengthSetRow = {
     exercise: string
     exercise_index: number
+    exercise_image_url: string | null
     source_exercise_id?: string | null
     set_index: number
     reps: number | null
@@ -31,6 +32,7 @@ export type NewStrengthSetRow = {
 export type StrengthSetDTO = {
     exercise: string
     exerciseIndex: number | null
+    exerciseImageUrl: string | null
     sourceExerciseId: string | null
     setIndex: number
     reps: number | null

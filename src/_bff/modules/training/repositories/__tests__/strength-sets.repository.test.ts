@@ -19,6 +19,7 @@ describe('strength sets repository', () => {
                 {
                     exercise: 'Bench Press',
                     exercise_index: 2,
+                    exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
                     source_exercise_id: '501',
                     set_index: 1,
                     reps: 5,
@@ -35,6 +36,7 @@ describe('strength sets repository', () => {
             {
                 exercise: 'Bench Press',
                 exerciseIndex: 2,
+                exerciseImageUrl: 'https://lyfta.app/images/exercises/00251101.png',
                 sourceExerciseId: '501',
                 setIndex: 1,
                 reps: 5,
@@ -55,6 +57,7 @@ describe('strength sets repository', () => {
             {
                 exercise: 'Squat',
                 exercise_index: 1,
+                exercise_image_url: null,
                 source_exercise_id: null,
                 set_index: 1,
                 reps: 8,
@@ -75,6 +78,7 @@ describe('strength sets repository', () => {
                 activity_id: ACTIVITY_ID,
                 exercise: 'Squat',
                 exercise_index: 1,
+                exercise_image_url: null,
                 source_exercise_id: null,
                 set_index: 1,
                 reps: 8,

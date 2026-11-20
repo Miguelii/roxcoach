@@ -64,6 +64,7 @@ export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
         exercise.sets.map((set) => ({
             exercise: exercise.name,
             exercise_index: exerciseIndex + 1,
+            exercise_image_url: exercise.imageUrl,
             source_exercise_id: exercise.exerciseId,
             set_index: set.setIndex,
             reps: set.reps,

@@ -21,6 +21,7 @@ const WORKOUT: LyftaWorkout = {
         {
             exerciseId: '501',
             name: 'Bench Press',
+            imageUrl: 'https://lyfta.app/images/exercises/00251101.png',
             sets: [
                 { setIndex: 1, reps: 5, loadKg: 80, rir: 2 },
                 { setIndex: 2, reps: null, loadKg: null, rir: null },
@@ -29,6 +30,7 @@ const WORKOUT: LyftaWorkout = {
         {
             exerciseId: '502',
             name: 'Row',
+            imageUrl: null,
             sets: [{ setIndex: 1, reps: 10, loadKg: 35, rir: 1 }],
         },
     ],
@@ -93,6 +95,7 @@ describe('importLyftaWorkout', () => {
                 activity_id: ACTIVITY_ID,
                 exercise: 'Bench Press',
                 exercise_index: 1,
+                exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
                 source_exercise_id: '501',
                 set_index: 1,
                 reps: 5,
@@ -105,6 +108,7 @@ describe('importLyftaWorkout', () => {
                 activity_id: ACTIVITY_ID,
                 exercise: 'Bench Press',
                 exercise_index: 1,
+                exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
                 source_exercise_id: '501',
                 set_index: 2,
                 reps: null,
@@ -117,6 +121,7 @@ describe('importLyftaWorkout', () => {
                 activity_id: ACTIVITY_ID,
                 exercise: 'Row',
                 exercise_index: 2,
+                exercise_image_url: null,
                 source_exercise_id: '502',
                 set_index: 1,
                 reps: 10,

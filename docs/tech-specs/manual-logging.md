@@ -56,9 +56,9 @@ athlete's previous exercises.
   Only effort, notes, station results, strength sets and lap station tags are editable on them.
 - Lyfta-imported activity fields and Lyfta-derived strength sets are read-only; only locally owned
   effort and notes can be edited.
-- Manual strength sets leave `source_exercise_id` and `rir` null. Lyfta-origin weights are
-  normalized to kilograms before storage. New manual sets keep their exercise order; legacy rows
-  with unknown order are grouped by name.
+- Manual strength sets leave `source_exercise_id`, `exercise_image_url` and `rir` null.
+  Lyfta-origin weights are normalized to kilograms before storage. New manual sets keep their
+  exercise order; legacy rows with unknown order are grouped by name.
 - Deleting a manual session deletes its station results and sets (cascade). An uploaded activity
   cannot be deleted from the app.
 - A manual session is read by the coach chat, same as an uploaded activity.

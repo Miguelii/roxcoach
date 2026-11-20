@@ -111,6 +111,7 @@ export const fetchLyftaWorkoutPage = Effect.fn('fetchLyftaWorkoutPage')(function
 
     const body = yield* parseResponseJson(response)
     const parsed = parseLyftaWorkoutPage(body, page)
+
     if (!parsed.success) {
         return yield* new LyftaResponseError({
             cause: `Lyfta response failed validation: ${parsed.issues.join(', ')}`,

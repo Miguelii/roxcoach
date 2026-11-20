@@ -33,8 +33,11 @@ The athlete creates a key at `https://my.lyfta.app/community/api`. Send it only 
 `/workouts` returns `status`, pagination metadata and `workouts`. Each workout has an `id`,
 `title`, `workout_perform_date`, `workout_duration`, `weight_unit`, `body_weight`, `total_volume`
 and `exercises`. Exercises have `exercise_id`, `excercise_name` (the upstream field is misspelled
-and must be read exactly as returned) and `sets`; sets include `weight`, `reps`, `rir`,
-`is_completed`, and other Lyfta fields. Only completed workouts are provided by this endpoint.
+and must be read exactly as returned), optional `exercise_image` URL and `sets`; sets include
+`weight`, `reps`, `rir`, `is_completed`, and other Lyfta fields. The image field is present in the
+sandbox payload but is not documented in OpenAPI. Validate it as an HTTPS URL under
+`lyfta.app/images/exercises/` or `apilyfta.com/static/GymvisualPNG/`; a missing or null image is
+allowed. Only completed workouts are provided by this endpoint.
 The sandbox returns an ISO timestamp with `Z`; the live personal API has been observed to return
 `YYYY-MM-DD HH:mm:ss` without an offset. Interpret that observed format as UTC, matching the API's
 documented UTC timeline date filtering. Accept explicit ISO offsets and reject other ambiguous or
@@ -120,9 +123,10 @@ Create one `activities` row per Lyfta workout:
 
 Create `strength_sets` rows from each exercise's sets where `is_completed === true`. Set
 `exercise_index` from its workout order starting at 1, `source_exercise_id` from `exercise_id`,
-`exercise` from `excercise_name`, `set_index` from that exercise's set order starting at 1, `reps`
-from the upstream integer reps value, `load_kg` from the upstream weight converted to kilograms,
-and `rir` from the upstream non-negative integer. `rpe` is `NULL`. Accept `kg`, `lb` and `lbs` as
+`exercise` from `excercise_name`, `exercise_image_url` from `exercise_image`, `set_index` from that
+exercise's set order starting at 1, `reps` from the upstream integer reps value, `load_kg` from the
+upstream weight converted to kilograms, and `rir` from the upstream non-negative integer. `rpe` is
+`NULL`. Store only the image URL, never the image bytes. Accept `kg`, `lb` and `lbs` as
 `weight_unit`; convert pounds to kilograms before any weight is written. A non-null weight without
 a known unit is invalid, never assume it is kg. Absent optional reps, weight or RIR values map to
 `NULL`; malformed non-empty values fail validation rather than being silently dropped. Ignore
@@ -139,6 +143,10 @@ Migration `0012_strength_exercise_order.sql` stores each exercise's position in 
 clears Lyfta sync checkpoints again. The next manual sync reimports the history with the original
 exercise order. Existing manual rows whose order was not stored remain nullable and are grouped by
 exercise name.
+
+Migration `0013_strength_exercise_images.sql` adds the optional exercise image URL and resets Lyfta
+sync checkpoints. The next manual sync refreshes the imported sets with the image URLs where Lyfta
+provides them.
 
 Lyfta owns the imported workout identity, name, date and set rows. Sync updates those source-owned
 fields when a known workout is returned, replacing its Lyfta-derived set rows through the

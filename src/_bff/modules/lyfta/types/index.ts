@@ -18,6 +18,7 @@ export type LyftaCompletedSet = {
 export type LyftaExercise = {
     exerciseId: string
     name: string
+    imageUrl: string | null
     sets: LyftaCompletedSet[]
 }
 

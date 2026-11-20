@@ -144,14 +144,16 @@ client query cache is cleared on logout.
 
 ### Activity detail
 
-- Header: name, date, category chip.
+- Header: name, date, category chip. The document title uses the activity name, followed by the
+  root title template (`| Roxcoach`).
 - Key numbers: distance, time, average pace, average and max heart rate, effort.
 - Laps table with pace per lap and station tags (Hyrox).
 - Strength activities show duration, total volume and body weight when available. Lyfta's total
   volume is preferred; otherwise it is calculated only when every set has reps and load. Exercise
-  groups follow the stored workout order. Each group shows its sets in set order with reps, load in
-  kg and RIR when any set has it. Legacy sets without exercise order fall back to exercise name;
-  missing values show a dash. An activity without sets gets an honest empty state.
+  groups follow the stored workout order and show the name with Lyfta's optional image. Sets appear
+  in set order as a numbered list with reps, load in kg and RIR when any set has it. Do not show
+  rest timers. Legacy sets without exercise order fall back to exercise name; missing images or
+  values remain honest. An activity without sets gets an empty state.
 - Station results and other activity details when present, plus "Add details" (see
   [manual-logging.md](manual-logging.md)).
 
