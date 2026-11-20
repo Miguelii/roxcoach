@@ -9,9 +9,9 @@ export function ActivityActions() {
             data-testid="activity-actions"
             role="group"
             aria-label="Activity actions"
-            className="grid justify-items-start gap-2"
+            className="grid justify-items-start gap-2 w-full"
         >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap md:flex-row items-center gap-3 w-full">
                 <UploadActivity />
                 <SyncLyfta />
             </div>

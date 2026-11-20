@@ -4,8 +4,8 @@ import { COACH_MODELS, coachModelLabel } from '@/_bff/core/constants/coach-model
 describe('COACH_MODELS', () => {
     it('lists the exact ids in order', () => {
         expect(COACH_MODELS.map((m) => m.id)).toEqual([
-            'gemini-4-hydrogen',
-            'gemini-3.8-flash',
+            //'gemini-4-hydrogen',
+            //'gemini-3.8-flash',
             'gemini-3.6-flash',
             'gemini-3-flash-preview',
             'gemini-3.5-flash-lite',

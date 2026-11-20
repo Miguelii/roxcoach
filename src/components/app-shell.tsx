@@ -8,6 +8,7 @@ import {
     IconFlag,
     IconLogout,
     IconSettings,
+    IconSparkles,
     type Icon,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
@@ -19,8 +20,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Switch } from '@/components/ui/switch'
 import { trpcClient } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
+import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 
 type NavItem = {
     href: string
@@ -30,6 +33,11 @@ type NavItem = {
 
 type Props = {
     children: React.ReactNode
+}
+
+type MobileNavLinkProps = {
+    item: NavItem
+    active: boolean
 }
 
 type AccountMenuProps = {
@@ -87,7 +95,28 @@ function AccountMenu({ isMobile = false, isPending, onLogout }: AccountMenuProps
     )
 }
 
+function MobileNavLink({ item: { href, label, Icon }, active }: MobileNavLinkProps) {
+    return (
+        <Link
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+                'flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors motion-reduce:transition-none',
+                active ? 'bg-ink/10 text-ink' : 'text-muted-foreground'
+            )}
+        >
+            <Icon className="size-5" />
+            {label}
+        </Link>
+    )
+}
+
 export function AppShell({ children }: Props) {
+    const {
+        setOpen: setCoachOpen,
+        enabled: coachEnabled,
+        setEnabled: setCoachEnabled,
+    } = useCoachPanel()
     const pathname = usePathname()
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -135,6 +164,18 @@ export function AppShell({ children }: Props) {
                             {label}
                         </Link>
                     ))}
+                    <div className="flex h-11 items-center gap-3 px-3 text-sm font-medium text-muted-foreground">
+                        <IconSparkles className="size-5" />
+                        <span id="coach-toggle-label" className="flex-1">
+                            Coach
+                        </span>
+                        <Switch
+                            data-testid="coach-toggle"
+                            aria-labelledby="coach-toggle-label"
+                            checked={coachEnabled}
+                            onCheckedChange={setCoachEnabled}
+                        />
+                    </div>
                 </nav>
 
                 <div className="mt-auto border-t border-hairline pt-4">
@@ -150,27 +191,36 @@ export function AppShell({ children }: Props) {
                     <AccountMenu isMobile isPending={logout.isPending} onLogout={onLogout} />
                 </header>
 
-                <div className="pb-20 md:pb-6">{children}</div>
+                <div className="pb-28 md:pb-6">{children}</div>
             </div>
 
             <nav
                 aria-label="Primary"
                 data-testid="nav-mobile"
-                className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-hairline bg-paper/95 backdrop-blur md:hidden"
+                className={cn(
+                    'fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:hidden',
+                    'grid grid-cols-5 items-center rounded-full p-1.5',
+                    // Liquid glass: blurred, saturated backdrop with a bright rim and a soft shadow.
+                    'border border-white/60 bg-paper/70 shadow-[0_8px_32px_rgba(23,24,28,0.14),inset_0_1px_0_rgba(255,255,255,0.7)]',
+                    'backdrop-blur-xl backdrop-saturate-150',
+                    // Solid fallback for users who asked for less transparency.
+                    '[@media(prefers-reduced-transparency:reduce)]:bg-paper [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none'
+                )}
             >
-                {MOBILE_NAV_ITEMS.map(({ href, label, Icon }) => (
-                    <Link
-                        key={href}
-                        href={href}
-                        aria-current={isActive(href) ? 'page' : undefined}
-                        className={cn(
-                            'flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium',
-                            isActive(href) ? 'text-ink' : 'text-muted-foreground'
-                        )}
-                    >
-                        <Icon className="size-5" />
-                        {label}
-                    </Link>
+                {MOBILE_NAV_ITEMS.slice(0, 2).map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
+                ))}
+                <button
+                    type="button"
+                    data-testid="nav-coach"
+                    aria-label="Open coach chat"
+                    onClick={() => setCoachOpen(true)}
+                    className="mx-auto flex size-12 items-center justify-center rounded-full bg-ink text-primary-foreground shadow-md transition-transform active:scale-95 motion-reduce:transition-none"
+                >
+                    <IconSparkles className="size-6" />
+                </button>
+                {MOBILE_NAV_ITEMS.slice(2).map((item) => (
+                    <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
                 ))}
             </nav>
         </div>

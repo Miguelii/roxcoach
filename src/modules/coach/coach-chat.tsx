@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { trpcClient } from '@/lib/trpc'
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
+import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 import { COACH_SUGGESTIONS } from '@/modules/coach/suggestions'
 import { useCoachChat } from '@/modules/coach/use-coach-chat'
 
 // Wires the hook to the conversation queries. The list refreshes after every completed reply
 // (the first one creates the conversation) and after a delete.
 export function CoachChat() {
-    const [open, setOpen] = useState(false)
+    const { open, setOpen, enabled, setEnabled } = useCoachPanel()
     const utils = trpcClient.useUtils()
     const conversations = trpcClient.coach.listConversations.useQuery(undefined, { enabled: open })
     const remove = trpcClient.coach.deleteConversation.useMutation()
@@ -45,6 +47,11 @@ export function CoachChat() {
         <CoachChatView
             open={open}
             onOpenChange={setOpen}
+            launcherEnabled={enabled}
+            onDismissLauncher={() => {
+                setEnabled(false)
+                toast('Coach bar hidden. Turn it back on in the sidebar.')
+            }}
             messages={chat.messages}
             status={chat.status}
             errorKind={chat.errorKind}

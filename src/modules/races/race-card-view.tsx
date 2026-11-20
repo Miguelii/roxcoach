@@ -113,13 +113,12 @@ export function RaceCardView({
                     ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col lg:flex-row gap-2 w-full">
                     {upcoming ? (
                         <>
                             <Button
                                 disabled={pending}
                                 size="sm"
-                                variant="outline"
                                 data-testid={`race-edit-${id}`}
                                 onClick={() => onEdit(race)}
                             >
@@ -129,7 +128,6 @@ export function RaceCardView({
                                 <Button
                                     disabled={pending}
                                     size="sm"
-                                    variant="outline"
                                     data-testid={`race-complete-${id}`}
                                     onClick={() => onComplete(race)}
                                 >
@@ -154,7 +152,7 @@ export function RaceCardView({
                         <Button
                             disabled={pending}
                             size="sm"
-                            variant="ghost"
+                            variant="destructive"
                             data-testid={`race-delete-${id}`}
                             onClick={() => {
                                 setLastConfirmation('delete')

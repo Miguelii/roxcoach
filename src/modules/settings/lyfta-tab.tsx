@@ -68,6 +68,7 @@ export function LyftaTab() {
 
                     <div className="flex flex-wrap gap-3">
                         <Button
+                            className="w-full md:max-w-37.5"
                             data-testid="lyfta-sync"
                             disabled={busy}
                             onClick={() => void lyfta.syncWorkouts()}
@@ -78,6 +79,7 @@ export function LyftaTab() {
                         {!lyfta.showKeyForm && !lyfta.confirmDisconnect ? (
                             <>
                                 <Button
+                                    className="w-full md:max-w-37.5"
                                     variant="outline"
                                     data-testid="lyfta-replace-key"
                                     disabled={busy}
@@ -89,7 +91,8 @@ export function LyftaTab() {
                                     Replace API key
                                 </Button>
                                 <Button
-                                    variant="outline"
+                                    className="w-full md:max-w-37.5"
+                                    variant="destructive"
                                     data-testid="lyfta-disconnect"
                                     disabled={busy}
                                     onClick={() => {

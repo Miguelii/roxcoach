@@ -65,12 +65,13 @@ export function Calendar({ today }: Props) {
 
     return (
         <section aria-label="Training calendar" data-testid="calendar" className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
                 <h2 data-testid="calendar-title" className="display text-4xl">
                     {title}
                 </h2>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="flex w-full items-center gap-2 md:ml-auto md:w-auto">
                     <Button
+                        className="shrink-0"
                         variant="outline"
                         size="icon"
                         aria-label="Previous"
@@ -78,10 +79,15 @@ export function Calendar({ today }: Props) {
                     >
                         <IconChevronLeft />
                     </Button>
-                    <Button variant="outline" onClick={() => void setCursor(null)}>
+                    <Button
+                        className="flex-1 md:flex-none"
+                        variant="outline"
+                        onClick={() => void setCursor(null)}
+                    >
                         Today
                     </Button>
                     <Button
+                        className="shrink-0"
                         variant="outline"
                         size="icon"
                         aria-label="Next"

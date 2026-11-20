@@ -61,8 +61,10 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ## Layout
 
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
-  plus an account menu for logout. On mobile use a compact top bar and bottom navigation for
-  Dashboard, Calendar, Races and Settings.
+  plus an account menu for logout. On mobile use a compact top bar and a floating bottom
+  navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
+  `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
+  filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.
 - Page container: `main-container` (max-w-5xl) for reading pages, `main-container-lg` for the
   dashboard and calendar.
 - Light and dark themes through `next-themes`, as in BrewStock.
@@ -145,8 +147,15 @@ The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a clie
 (`CoachChat`) mounted in the authenticated app layout, available across app pages; there are no
 `/coach` or `/plan` routes.
 
-- **Launcher**: a bar fixed at the bottom ("Ask your coach...", above the mobile bottom nav) that
-  opens the panel. The panel is a full-height container on narrow screens and a fixed bottom-right
+- **Launcher**: from `md` up, a bar fixed at the bottom ("Ask your coach...") that opens the panel.
+  On mobile there is no bar: the centered coach button in the bottom nav opens it (the open state
+  is shared through `CoachPanelProvider`).
+  The desktop bar has an X that hides it (with a toast saying where to bring it back). The desktop
+  sidebar has a "Coach" row with a switch that shows or hides the bar. The preference lives in the
+  `coach_enabled` cookie (`"0"` = hidden, written by the client, 1 year) rather than localStorage,
+  so the server layout reads it (`cookies()` inside a `Suspense`, as the app uses
+  `cacheComponents`) and the first paint is already correct, with no flash. It only controls the
+  desktop bar: the mobile nav button always opens the coach. The panel is a full-height container on narrow screens and a fixed bottom-right
   panel (26rem wide) from the `md` breakpoint (a CSS-only switch, no portal). Escape or the close
   button returns to the launcher. Focus moves to the input on open.
 - **Header**: the coach title, a conversations menu (new conversation, past conversations with

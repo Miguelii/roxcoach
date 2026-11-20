@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/app-shell'
+import { CoachPanelProvider, useCoachPanel } from '@/modules/coach/coach-panel-context'
 
 const mocks = vi.hoisted(() => ({
     mutateAsync: vi.fn(),
@@ -94,5 +95,41 @@ describe('AppShell navigation', () => {
         expect(mobileNav).toHaveTextContent('Calendar')
         expect(mobileNav).toHaveTextContent('Races')
         expect(mobileNav).toHaveTextContent('Settings')
+    })
+
+    it('toggles the desktop coach preference and stores it in a cookie', () => {
+        const Probe = () => (
+            <span data-testid="coach-enabled">{String(useCoachPanel().enabled)}</span>
+        )
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <CoachPanelProvider>
+                    <AppShell>content</AppShell>
+                    <Probe />
+                </CoachPanelProvider>
+            </QueryClientProvider>
+        )
+        expect(screen.getByTestId('coach-enabled')).toHaveTextContent('true')
+        fireEvent.click(screen.getByTestId('coach-toggle'))
+        expect(screen.getByTestId('coach-enabled')).toHaveTextContent('false')
+        expect(document.cookie).toContain('coach_enabled=0')
+        fireEvent.click(screen.getByTestId('coach-toggle'))
+        expect(screen.getByTestId('coach-enabled')).toHaveTextContent('true')
+        expect(document.cookie).toContain('coach_enabled=1')
+    })
+
+    it('opens the coach panel from the mobile nav button', () => {
+        const Probe = () => <span data-testid="coach-state">{String(useCoachPanel().open)}</span>
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <CoachPanelProvider>
+                    <AppShell>content</AppShell>
+                    <Probe />
+                </CoachPanelProvider>
+            </QueryClientProvider>
+        )
+        expect(screen.getByTestId('coach-state')).toHaveTextContent('false')
+        fireEvent.click(screen.getByTestId('nav-coach'))
+        expect(screen.getByTestId('coach-state')).toHaveTextContent('true')
     })
 })

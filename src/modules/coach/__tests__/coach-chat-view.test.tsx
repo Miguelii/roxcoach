@@ -46,10 +46,14 @@ function HarnessView({
     startOpen: boolean
 }) {
     const [open, setOpen] = useState(startOpen)
+    const [launcherEnabled, setLauncherEnabled] = useState(true)
+    const onDismissLauncher = () => setLauncherEnabled(false)
     return (
         <CoachChatView
             open={open}
             onOpenChange={setOpen}
+            launcherEnabled={launcherEnabled}
+            onDismissLauncher={onDismissLauncher}
             messages={chat.messages}
             status={chat.status}
             errorKind={chat.errorKind}
@@ -77,6 +81,13 @@ describe('CoachChatView', () => {
         fireEvent.click(screen.getByTestId('coach-launcher'))
         expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
         expect(screen.getByTestId('coach-input')).toHaveFocus()
+    })
+
+    it('hides the launcher with its X button', () => {
+        render(<Harness startOpen={false} />)
+        fireEvent.click(screen.getByTestId('coach-launcher-dismiss'))
+        expect(screen.queryByTestId('coach-launcher')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
     })
 
     it('closes with the close button and Escape', () => {

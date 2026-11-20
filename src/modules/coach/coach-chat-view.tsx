@@ -20,6 +20,8 @@ import { useCoachComposer } from '@/modules/coach/use-coach-composer'
 type Props = {
     open: boolean
     onOpenChange: (open: boolean) => void
+    launcherEnabled: boolean
+    onDismissLauncher: () => void
     messages: ChatMessage[]
     status: ChatStatus
     errorKind: ChatErrorKind | null
@@ -51,20 +53,34 @@ const NEAR_LIMIT = COACH_MESSAGE_MAX_CHARS - 200
 const STICK_PX = 48
 
 export function CoachChatView(props: Props) {
-    const { open, onOpenChange, status, errorKind } = props
+    const { open, onOpenChange, status, errorKind, launcherEnabled, onDismissLauncher } = props
 
-    if (!open)
+    if (!open) {
+        if (!launcherEnabled) return null
+        // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
         return (
-            <button
-                type="button"
-                data-testid="coach-launcher"
-                onClick={() => onOpenChange(true)}
-                className="fixed bottom-20 left-1/2 z-30 flex h-12 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-full border border-hairline bg-paper px-5 text-left text-sm text-muted-foreground shadow-md md:bottom-4"
-            >
-                <MessageCircleIcon className="size-4 shrink-0" />
-                Ask Migueli Coach...
-            </button>
+            <div className="fixed bottom-4 left-1/2 z-30 hidden h-12 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center rounded-full border border-hairline bg-paper text-sm text-muted-foreground shadow-md md:flex">
+                <button
+                    type="button"
+                    data-testid="coach-launcher"
+                    onClick={() => onOpenChange(true)}
+                    className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-5 text-left"
+                >
+                    <MessageCircleIcon className="size-4 shrink-0" />
+                    Ask Migueli Coach...
+                </button>
+                <button
+                    type="button"
+                    data-testid="coach-launcher-dismiss"
+                    aria-label="Hide coach bar"
+                    onClick={onDismissLauncher}
+                    className="mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted"
+                >
+                    <XIcon className="size-4" />
+                </button>
+            </div>
         )
+    }
 
     return (
         <div

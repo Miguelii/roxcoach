@@ -216,6 +216,7 @@ export function ProfileForm({ defaults, onSubmit }: Props) {
                 />
                 <div className="flex items-center gap-3">
                     <Button
+                        className="w-full md:max-w-37.5"
                         type="submit"
                         data-testid="profile-submit"
                         disabled={form.formState.isSubmitting}

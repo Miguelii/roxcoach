@@ -37,6 +37,7 @@ export function SyncLyfta() {
 
     return (
         <Button
+            className="w-full md:max-w-37.5"
             type="button"
             variant="outline"
             data-testid="sync-lyfta"

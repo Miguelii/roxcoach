@@ -56,7 +56,7 @@ export function UploadActivityDrawer({ upload, onUploaded }: Props) {
             }}
         >
             <DrawerTrigger asChild>
-                <Button data-testid="upload-activity-button">
+                <Button data-testid="upload-activity-button" className="w-full md:max-w-37.5">
                     <UploadIcon />
                     Upload activity
                 </Button>
