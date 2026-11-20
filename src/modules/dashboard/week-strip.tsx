@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { QueryError } from '@/components/query-error'
 import { trpcClient } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
-import { DashboardQueryError } from '@/modules/dashboard/dashboard-query-error'
 import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { WeekStripView } from '@/modules/dashboard/week-strip-view'
 
@@ -18,7 +18,7 @@ export function WeekStrip({ today }: Props) {
     if (query.data === undefined && query.isPending) return <WeekStripSkeleton />
     if (query.data === undefined)
         return (
-            <DashboardQueryError
+            <QueryError
                 message="Could not load this week's training."
                 onRetry={() => void query.refetch()}
                 testId="week-strip-error"
@@ -29,7 +29,7 @@ export function WeekStrip({ today }: Props) {
         <>
             <WeekStripView items={query.data} today={today} />
             {query.isError && (
-                <DashboardQueryError
+                <QueryError
                     message="Could not refresh this week's training."
                     onRetry={() => void query.refetch()}
                     testId="week-strip-refresh-error"

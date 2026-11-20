@@ -131,16 +131,18 @@ Behaviour in the UI:
   explains that it is irreversible and that linked planned sessions remain without the race
   association (copy kept from the dialog; planned sessions no longer exist). A card's actions are disabled while its mutation runs.
 - Completing a race shows goal versus result.
-- After any mutation the page refreshes, and the react-query calendar feed and dashboard race query
-  are invalidated.
+- The race list, timezone and profile division are loaded through tRPC client queries with a
+  30-second stale time. Cached data stays visible during background refetches and route navigation.
+- After any mutation, invalidate the tRPC races list and calendar feed queries so both update
+  without refreshing the page.
 
 Integration:
 
 - Calendar: `training.getCalendar` merges activities with races from `listRacesInRange` (upcoming
   and completed, never cancelled) into a `CalendarItem` union. Races are shown as chips, and are
   ignored by the week totals and the week strip.
-- Dashboard: the `NextRace` card shows the first upcoming race dated today or later, linking to
-  `/races`.
+- Upcoming and completed races are listed on `/races`; the dashboard is reserved for training
+  progress.
 
 ## Backend
 

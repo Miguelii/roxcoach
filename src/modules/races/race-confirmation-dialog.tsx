@@ -50,7 +50,7 @@ export function RaceConfirmationDialog({ race, action, open, onOpenChange, onCon
                 role="alertdialog"
                 showCloseButton={!submitting}
                 data-testid={`race-confirm-dialog-${race.id}`}
-                className="sm:max-w-md"
+                className="md:max-w-md"
             >
                 <DialogHeader>
                     <DialogTitle>

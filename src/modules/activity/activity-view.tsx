@@ -109,7 +109,8 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
     return (
         <>
             <Link
-                href="/dashboard"
+                href="/calendar"
+                data-testid="activity-back-to-calendar"
                 className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
                 <IconArrowLeft className="size-4" /> Back to calendar

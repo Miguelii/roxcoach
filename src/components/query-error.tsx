@@ -6,7 +6,7 @@ type Props = {
     testId: string
 }
 
-export function DashboardQueryError({ message, onRetry, testId }: Props) {
+export function QueryError({ message, onRetry, testId }: Props) {
     return (
         <div
             data-testid={testId}

@@ -71,7 +71,8 @@ list, create, update, complete, cancel and delete controllers, the matching serv
 helper. Rules and file lists are in [athlete-races.md](athlete-races.md). `coach` reads the other
 modules only through their services (`getProfile`, `getAvailability`, `getAthleteTimezone`,
 `listRaces`, `getCalendar`, `getActivity`); the week totals and load ratio it shares with the
-dashboard calendar live in `src/_bff/core/utils/week-stats.utils.ts` and `week-dates.utils.ts`.
+dashboard summary and calendar page live in `src/_bff/core/utils/week-stats.utils.ts` and
+`week-dates.utils.ts`.
 
 ## Layer rules
 

@@ -61,6 +61,10 @@ following the existing Settings tabs behavior.
 - **Sync feedback:** disable duplicate submissions while connecting or syncing. On success, show
   counts of workouts created and updated, and the sync time. On failure, keep the connection and
   show an actionable error. A retry is safe.
+- **Dashboard and Calendar:** show a shared action group with `Upload activity` and `Sync Lyfta`.
+  The sync action is manual, disabled while connection status is loading or when Lyfta is not
+  connected, and displays the same success counts and actionable errors as Settings. When
+  disconnected, link to Settings to connect.
 - **Disconnect:** confirm before removing the encrypted key. Keep already imported activities and
   their strength sets; disconnecting must not delete training history.
 
