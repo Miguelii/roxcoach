@@ -58,4 +58,62 @@ describe('parseGpx', () => {
         expect(Result.isFailure(result)).toBe(true)
         if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
     })
+
+    it('uses min and max timestamps for out-of-order points', () => {
+        const result = run(
+            gpx(
+                'running',
+                pt(0, 0.02, 1, '2026-01-01T10:10:00Z') +
+                    pt(0, 0, 1, '2026-01-01T10:00:00Z') +
+                    pt(0, 0.01, 1, '2026-01-01T10:05:00Z')
+            )
+        )
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.startedAt).toBe('2026-01-01T10:00:00.000Z')
+        expect(result.success.elapsedTimeS).toBe(600)
+    })
+
+    it('does not bridge the gap between segments or tracks', () => {
+        const seg = (a: string) => `<trkseg>${a}</trkseg>`
+        const xml = `<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/1"><trk>${seg(
+            pt(0, 0, 0, '2026-01-01T10:00:00Z') + pt(0, 0.01, 10, '2026-01-01T10:01:00Z')
+        )}${seg(pt(1, 1, 0, '2026-01-01T10:02:00Z') + pt(1, 1.01, 10, '2026-01-01T10:03:00Z'))}</trk></gpx>`
+        const result = run(xml)
+        if (Result.isFailure(result)) throw new Error('expected success')
+        // two segments of about 1112 m each, nothing for the 150 km jump
+        expect(result.success.distanceM).toBeGreaterThan(2200)
+        expect(result.success.distanceM).toBeLessThan(2250)
+        expect(result.success.elevationGainM).toBe(20)
+    })
+
+    it('accepts empty trkseg and trk elements', () => {
+        const xml = `<?xml version="1.0"?><gpx><trk/><trk><trkseg/><trkseg>${pt(0, 0, 1, '2026-01-01T10:00:00Z')}</trkseg></trk></gpx>`
+        const result = run(xml)
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.startedAt).toBe('2026-01-01T10:00:00.000Z')
+    })
+
+    it('handles a single point', () => {
+        const result = run(gpx('running', pt(0, 0, 5, '2026-01-01T10:00:00Z', 120)))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.elapsedTimeS).toBe(0)
+        expect(result.success.distanceM).toBeNull()
+        expect(result.success.avgSpeedMps).toBeNull()
+        expect(result.success.avgHr).toBe(120)
+    })
+
+    it('gives null elevation gain without ele', () => {
+        const noEle = (t: string) => `<trkpt lat="0" lon="0"><time>${t}</time></trkpt>`
+        const result = run(
+            gpx('running', noEle('2026-01-01T10:00:00Z') + noEle('2026-01-01T10:00:05Z'))
+        )
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.elevationGainM).toBeNull()
+    })
+
+    it('reads a timestamp without a zone as UTC', () => {
+        const result = run(gpx('running', pt(0, 0, 1, '2026-01-01T10:00:00')))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.startedAt).toBe('2026-01-01T10:00:00.000Z')
+    })
 })

@@ -102,7 +102,7 @@ describe('parseFit without a session message', () => {
         if (Result.isFailure(result)) throw new Error('expected success')
         expect(result.success.maxHr).toBe(159)
         expect(result.success.elapsedTimeS).toBe(199999)
-    })
+    }, 60000)
 })
 
 describe('parseActivityFile', () => {

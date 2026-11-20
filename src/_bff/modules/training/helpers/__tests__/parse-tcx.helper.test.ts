@@ -61,12 +61,68 @@ describe('parseTcx synthetic', () => {
         if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
     })
 
-    it('fails on garbage and does not expand entities', () => {
-        const bomb = `<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa"><!ENTITY b "&a;&a;&a;&a;">]><TrainingCenterDatabase><Activities><Activity Sport="Running"><Notes>&b;</Notes></Activity></Activities></TrainingCenterDatabase>`
-        for (const input of ['nope', bomb]) {
-            const result = run(enc(input))
-            expect(Result.isFailure(result)).toBe(true)
-            if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
-        }
+    it('fails on garbage', () => {
+        const result = run(enc('nope'))
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
+    })
+
+    it('rejects an entity declaration even with a valid Lap', () => {
+        const xml = `<?xml version="1.0"?><!DOCTYPE x [<!ENTITY b "bbb">]><TrainingCenterDatabase><Activities><Activity Sport="Running"><Notes>&b;</Notes>${lap('2026-01-01T10:00:00Z', 60, 100, 5, 100, 110)}</Activity></Activities></TrainingCenterDatabase>`
+        const result = run(enc(xml))
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
+    })
+
+    it('decodes the predefined entities in the note', () => {
+        const xml = doc(
+            'Running',
+            `<Notes>Tom &amp; Jerry &lt;x&gt; &amp;lt;</Notes>${lap('2026-01-01T10:00:00Z', 60, 100, 5, 100, 110)}`
+        )
+        const result = run(enc(xml))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.noteText).toBe('Tom & Jerry <x> &lt;')
+        expect(result.success.name).toBe('Tom & Jerry <x> &lt;')
+    })
+
+    it('weights the average heart rate by lap duration', () => {
+        const xml = doc(
+            'Running',
+            lap('2026-01-01T10:00:00Z', 10, 30, 1, 100, 110) +
+                lap('2026-01-01T10:00:10Z', 1800, 5000, 100, 150, 170)
+        )
+        const result = run(enc(xml))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.avgHr).toBe(150)
+    })
+
+    it('uses the first trackpoint time when a lap has no StartTime', () => {
+        const noStart =
+            '<Lap><TotalTimeSeconds>60</TotalTimeSeconds><AverageHeartRateBpm><Value>120</Value></AverageHeartRateBpm><Track><Trackpoint><Time>2026-01-01T10:00:05Z</Time></Trackpoint></Track></Lap>'
+        const result = run(enc(doc('Running', noStart)))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.startedAt).toBe('2026-01-01T10:00:05.000Z')
+        expect(result.success.laps).toHaveLength(1)
+        expect(result.success.avgHr).toBe(120)
+    })
+
+    it('fails when no lap has any start', () => {
+        const result = run(
+            enc(doc('Running', '<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap>'))
+        )
+        expect(Result.isFailure(result)).toBe(true)
+    })
+
+    it('computes totals only from laps that have a start', () => {
+        const bad =
+            '<Lap><TotalTimeSeconds>500</TotalTimeSeconds><DistanceMeters>900</DistanceMeters><Calories>40</Calories><AverageHeartRateBpm><Value>200</Value></AverageHeartRateBpm><MaximumHeartRateBpm><Value>220</Value></MaximumHeartRateBpm></Lap>'
+        const result = run(
+            enc(doc('Running', lap('2026-01-01T10:00:00Z', 60, 100, 5, 100, 110) + bad))
+        )
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.elapsedTimeS).toBe(60)
+        expect(result.success.avgHr).toBe(100)
+        expect(result.success.maxHr).toBe(110)
+        expect(result.success.calories).toBe(5)
     })
 })

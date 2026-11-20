@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
-import { isoOf, numOf, parseXml } from '@/_bff/modules/training/helpers/parse-tcx.helper'
+import { isoOf, numOf, parseXml, type XmlTree } from '@/_bff/modules/training/helpers/xml.helper'
 import type { ParsedActivity } from '@/_bff/modules/training/types'
 
 type Point = {
@@ -24,21 +24,17 @@ const pointSchema = z.object({
         .optional()
         .catch(undefined),
 })
-const gpxSchema = z.object({
-    gpx: z.object({
-        trk: z
-            .array(
-                z.object({
-                    name: leaf,
-                    type: leaf,
-                    trkseg: z
-                        .array(z.object({ trkpt: z.array(pointSchema).default([]) }))
-                        .default([]),
-                })
-            )
-            .default([]),
-    }),
-})
+// An empty element arrives as '' and is read as an empty container.
+const segSchema = z
+    .union([z.object({ trkpt: z.array(pointSchema).default([]) }), z.literal('')])
+    .transform((v) => (v === '' ? { trkpt: [] } : v))
+const trkSchema = z
+    .union([
+        z.object({ name: leaf, type: leaf, trkseg: z.array(segSchema).default([]) }),
+        z.literal(''),
+    ])
+    .transform((v) => (v === '' ? { name: undefined, type: undefined, trkseg: [] } : v))
+const gpxSchema = z.object({ gpx: z.object({ trk: z.array(trkSchema).default([]) }) })
 type GpxPoint = z.infer<typeof pointSchema>
 
 const EARTH_RADIUS_M = 6371000
@@ -63,26 +59,36 @@ function readPoint(p: GpxPoint): Point {
     }
 }
 
-function build(root: Record<string, never>): ParsedActivity | null {
-    const trks = gpxSchema.parse(root).gpx.trk
-    const points = trks.flatMap((t) => t.trkseg.flatMap((s) => s.trkpt)).map(readPoint)
-    const times = points.flatMap((p) => p.time ?? [])
-    const first = times[0]
-    const last = times.at(-1)
-    if (first === undefined || last === undefined) return null
-    const elapsed = Math.round((Date.parse(last) - Date.parse(first)) / 1000)
+const sumOf = (values: number[]) => values.reduce((a, b) => a + b, 0)
 
-    const positions = points.flatMap((p) =>
+// Distance and elevation gain are summed per segment: the gap between segments is never bridged.
+function segmentStats(segment: Point[]) {
+    const positions = segment.flatMap((p) =>
         p.lat !== null && p.lon !== null ? [{ lat: p.lat, lon: p.lon }] : []
     )
-    const distance =
-        positions.length > 1
-            ? positions.slice(1).reduce((acc, p, i) => acc + haversine(positions[i]!, p), 0)
-            : null
-    const eles = points.flatMap((p) => p.ele ?? [])
-    const gain = eles.length
-        ? eles.slice(1).reduce((acc, e, i) => acc + Math.max(0, e - eles[i]!), 0)
-        : null
+    const eles = segment.flatMap((p) => p.ele ?? [])
+    return {
+        positions: positions.length,
+        distance: sumOf(positions.slice(1).map((p, i) => haversine(positions[i]!, p))),
+        eles: eles.length,
+        gain: sumOf(eles.slice(1).map((e, i) => Math.max(0, e - eles[i]!))),
+    }
+}
+
+function build(root: XmlTree): ParsedActivity | null {
+    const trks = gpxSchema.parse(root).gpx.trk
+    const segments = trks.flatMap((t) => t.trkseg.map((s) => s.trkpt.map(readPoint)))
+    const points = segments.flat()
+    const times = points.flatMap((p) => p.time ?? []).map((t) => Date.parse(t))
+    if (!times.length) return null
+    const min = times.reduce((a, b) => Math.min(a, b), Infinity)
+    const max = times.reduce((a, b) => Math.max(a, b), -Infinity)
+    const first = new Date(min).toISOString()
+    const elapsed = Math.round((max - min) / 1000)
+
+    const stats = segments.map(segmentStats)
+    const distance = stats.some((s) => s.positions > 1) ? sumOf(stats.map((s) => s.distance)) : null
+    const gain = stats.some((s) => s.eles > 0) ? sumOf(stats.map((s) => s.gain)) : null
     const hrs = points.flatMap((p) => p.hr ?? [])
 
     const trk = trks[0]
@@ -100,7 +106,7 @@ function build(root: Record<string, never>): ParsedActivity | null {
         elapsedTimeS: elapsed,
         elevationGainM: gain,
         avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
-        maxHr: hrs.length ? Math.round(Math.max(...hrs)) : null,
+        maxHr: hrs.length ? Math.round(hrs.reduce((a, b) => Math.max(a, b), -Infinity)) : null,
         avgSpeedMps: distance !== null && elapsed > 0 ? distance / elapsed : null,
         calories: null,
         noteText: null,
