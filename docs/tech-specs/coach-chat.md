@@ -68,17 +68,16 @@ real session and service into the handler). The UI is `src/modules/coach/`.
 
 Constants in `constants/index.ts`:
 
-| Constant                 | Value              | Meaning                                                      |
-| ------------------------ | ------------------ | ------------------------------------------------------------ |
-| `CONTEXT_MAX_CHARS`      | 12000              | size cap of the context block (about 3000 tokens)            |
-| `MESSAGE_MAX_CHARS`      | 2000               | longest message an athlete can send                          |
-| `DAILY_MESSAGE_CAP`      | 50                 | user messages per athlete per local day                      |
-| `HISTORY_WINDOW`         | 20                 | messages sent to the model, the new one included             |
-| `MAX_STEPS`              | 5                  | model steps per reply, tool rounds included                  |
-| `TITLE_MAX_CHARS`        | 60                 | a conversation is titled with the start of its first message |
-| `MESSAGES_RETURNED`      | 200                | latest messages returned for one conversation                |
-| `CONVERSATIONS_RETURNED` | 30                 | latest conversations returned                                |
-| `DEFAULT_COACH_MODEL`    | `gemini-2.5-flash` | provisional, used only when `NEXT_COACH_MODEL` is unset      |
+| Constant                 | Value | Meaning                                                      |
+| ------------------------ | ----- | ------------------------------------------------------------ |
+| `CONTEXT_MAX_CHARS`      | 12000 | size cap of the context block (about 3000 tokens)            |
+| `MESSAGE_MAX_CHARS`      | 2000  | longest message an athlete can send                          |
+| `DAILY_MESSAGE_CAP`      | 50    | user messages per athlete per local day                      |
+| `HISTORY_WINDOW`         | 20    | messages sent to the model, the new one included             |
+| `MAX_STEPS`              | 5     | model steps per reply, tool rounds included                  |
+| `TITLE_MAX_CHARS`        | 60    | a conversation is titled with the start of its first message |
+| `MESSAGES_RETURNED`      | 200   | latest messages returned for one conversation                |
+| `CONVERSATIONS_RETURNED` | 30    | latest conversations returned                                |
 
 ## How the model gets the data
 
@@ -149,8 +148,8 @@ or null) or one `{ type: 'error', kind }` with `kind` in `rate_limited`, `unavai
 `@ai-sdk/google`), on the server only: the browser never sees the SDK. It maps an HTTP 429 (read
 from the provider error or its nested causes, never from message text) to `rate_limited`, a
 content-filter finish to `blocked` and everything else to `unavailable`. An aborted request ends
-the stream without an event. Tests use a fake model. The model id comes from `NEXT_COACH_MODEL`
-(default `DEFAULT_COACH_MODEL`).
+the stream without an event. Tests use a fake model. The models come from the fixed ordered
+list in `coach-model-fallback.md`, wrapped by the fallback model.
 
 ## Route and security
 
@@ -310,15 +309,14 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   chat instead.
 - The `/coach` and `/plan` pages and their navigation entries are gone. The Races page stays. The
   auth constant `PROTECTED_PATHS` still lists the two prefixes (harmless, the routes 404).
-- `NEXT_ANTHROPIC_AI_KEY` is replaced by `NEXT_GEMINI_API_KEY` and `NEXT_COACH_MODEL`, both
-  optional at startup (the route answers 503 when the key is missing). `NEXT_CRON_SECRET`, the
+- `NEXT_ANTHROPIC_AI_KEY` is replaced by `NEXT_GEMINI_API_KEY`, optional at
+  startup (the route answers 503 when the key is missing). `NEXT_CRON_SECRET`, the
   cron route, `TRIGGER_SECRET_KEY`, the Trigger.dev SDK and `trigger.config.ts` were removed.
 
 ## Env and smoke script
 
-`NEXT_GEMINI_API_KEY` and `NEXT_COACH_MODEL` are declared in `src/env/server.ts` (optional
-strings). `tools/gemini-smoke.ts` makes one non-streaming `generateContent` call with plain
-`fetch` (no SDK) using the two variables and prints only `OK` or a status code (`no-key` or
+`NEXT_GEMINI_API_KEY` is declared in `src/env/server.ts` (optional string). `tools/gemini-smoke.ts` makes one non-streaming `generateContent` call with plain
+`fetch` (no SDK) using the key (and each listed model, or one id given as an argument) and prints only `OK` or a status code (`no-key` or
 `network` when it never got a response). The athlete runs it with `pnpm dlx tsx tools/gemini-smoke.ts`;
 the script loads the Next env files itself (`loadEnvConfig` runs inside `main()` only, so importing
 the file, as the unit test does, reads no `.env`). The key never goes through the chat and the
@@ -341,8 +339,8 @@ script never prints the key, the body or the prompt.
 1. **Gemini free tier in the athlete's region (go or no-go).** The pricing page restricts free use
    in the EEA, UK and Switzerland. The athlete runs the smoke script with their key; if the call is
    refused, the provider or billing changes, and the rest stands because of the provider interface.
-2. **Model id.** `gemini-2.5-flash` is provisional. Verify it against Google's current model list
-   and set `NEXT_COACH_MODEL`.
+2. **Model ids.** The listed ids are provisional. Verify them against Google's current model list
+   (`coach-model-fallback.md`).
 3. **Blocked prompts.** A prompt blocked before any output may surface only as an error part of
    the stream (reported as `unavailable`, not `blocked`). Not verified against the live API.
 4. **Tool calls in a real stream.** Whether the chosen free model follows tool calls reliably

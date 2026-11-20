@@ -7,7 +7,6 @@ export const ServerEnv = createEnv({
         NEXT_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
         NEXT_SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
         NEXT_GEMINI_API_KEY: z.string().optional(),
-        NEXT_COACH_MODEL: z.string().optional(),
         NEXT_LYFTA_ENCRYPTION_KEY: z
             .string()
             .refine((value) => {
@@ -21,7 +20,6 @@ export const ServerEnv = createEnv({
         NEXT_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_SUPABASE_PUBLISHABLE_KEY,
         NEXT_SUPABASE_SERVICE_ROLE_KEY: process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY,
         NEXT_GEMINI_API_KEY: process.env.NEXT_GEMINI_API_KEY,
-        NEXT_COACH_MODEL: process.env.NEXT_COACH_MODEL,
         NEXT_LYFTA_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
     },
     // An empty value copied from .env.example reads as unset.

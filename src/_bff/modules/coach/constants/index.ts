@@ -24,6 +24,3 @@ export const TITLE_MAX_CHARS = 60
 
 // Strength sets of one activity returned to the model by the getActivity tool.
 export const ACTIVITY_SETS_RETURNED = 200
-
-// Provisional: used only when NEXT_COACH_MODEL is unset. Verify against Google's current model list.
-export const DEFAULT_COACH_MODEL = 'gemini-2.5-flash'

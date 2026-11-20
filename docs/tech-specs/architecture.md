@@ -126,7 +126,6 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 | `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client          |
 | `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                    |
 | `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                |
-| `NEXT_COACH_MODEL`               | server | coach model id                |
 | `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption      |
 | `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect |
 

@@ -5,7 +5,7 @@ model has its own free quota, so when one model reaches its limit another may st
 spec adds a fixed, ordered list of models: when the current one is rate limited, the server retries
 the same request on the next one. The chat never stops to ask anything. It shows the model that is answering as a small caption under
 the message box, and, when a switch happens, a short note in the conversation.
-Status: spec only, nothing is built yet.
+Status: the backend is implemented (model list, fallback, saved model, route wiring, smoke script). The chat UI caption comes in the UI task.
 
 ## Intent
 

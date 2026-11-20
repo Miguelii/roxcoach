@@ -2,18 +2,23 @@ import { Cause, Effect, Exit } from 'effect'
 import { ServerEnv } from '@/env/server'
 import { Logger } from '@/_bff/lib/server-logger'
 import { getSession } from '@/_bff/modules/auth/services/get-session.service'
-import { DEFAULT_COACH_MODEL } from '@/_bff/modules/coach/constants'
+import { COACH_MODELS } from '@/_bff/core/constants/coach-models.constants'
+import { buildCoachModels } from '@/_bff/modules/coach/helpers/build-coach-models.helper'
 import { createChatHandler } from '@/_bff/modules/coach/helpers/chat-handler.helper'
-import { createGeminiCoachModel } from '@/_bff/modules/coach/providers/gemini-coach-model'
 import { sendCoachMessage } from '@/_bff/modules/coach/services/send-coach-message.service'
 
 // The proxy matcher excludes `api/`, so this route authenticates itself, like the upload route.
-// The Gemini key and model id are read here only; helpers receive the built model.
+// The Gemini key is read here only; helpers receive the built model.
 export const maxDuration = 60
 
 const apiKey = ServerEnv.NEXT_GEMINI_API_KEY
 const model = apiKey
-    ? createGeminiCoachModel({ apiKey, modelId: ServerEnv.NEXT_COACH_MODEL ?? DEFAULT_COACH_MODEL })
+    ? buildCoachModels({
+          apiKey,
+          modelIds: COACH_MODELS.map(({ id }) => id),
+          log: ({ modelId, kind }) =>
+              Logger({ level: 'warn', prefix: 'coachModelFallback', metadata: { modelId, kind } }),
+      })
     : null
 
 const handler = createChatHandler({
