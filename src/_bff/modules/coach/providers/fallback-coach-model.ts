@@ -34,6 +34,8 @@ export const createFallbackCoachModel = (
             try {
                 for await (const event of model.stream(request)) {
                     if (signal.aborted) return
+                    // The wrapper alone announces the model: drop any provider-emitted event.
+                    if (event.type === 'model') continue
                     if (committed) {
                         yield event
                         continue
@@ -61,6 +63,8 @@ export const createFallbackCoachModel = (
                 failure = 'unavailable'
             }
 
+            // An aborted request records no failure and never calls onFallback.
+            if (signal.aborted) return
             if (committed) return
             if (failure === null) return
             failures.push(failure)

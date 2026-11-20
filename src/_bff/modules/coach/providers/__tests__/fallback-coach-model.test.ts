@@ -181,7 +181,6 @@ describe('createFallbackCoachModel', () => {
         const controller = new AbortController()
         const a = fake('a', async function* () {
             yield RATE
-            controller.abort()
         })
         const b = fake('b', events(TEXT, DONE))
         const out = await collect(
@@ -231,5 +230,101 @@ describe('createFallbackCoachModel', () => {
 
     it('throws a RangeError for an empty list', () => {
         expect(() => createFallbackCoachModel([])).toThrow(RangeError)
+    })
+
+    it('records nothing when the first model aborts and ends with no events', async () => {
+        const controller = new AbortController()
+        const a = fake('a', async function* () {
+            controller.abort()
+            yield* []
+        })
+        const b = fake('b', events(TEXT, DONE))
+        const fallbacks: unknown[] = []
+        const out = await collect(
+            createFallbackCoachModel([a.model, b.model], {
+                onFallback: (entry) => fallbacks.push(entry),
+            }),
+            makeRequest(controller.signal)
+        )
+        expect(out).toEqual([])
+        expect(fallbacks).toEqual([])
+        expect(b.requests).toHaveLength(0)
+    })
+
+    it('records nothing when the first model aborts and throws', async () => {
+        const controller = new AbortController()
+        const a = fake('a', async function* () {
+            controller.abort()
+            yield* []
+            throw new Error('aborted')
+        })
+        const b = fake('b', events(TEXT, DONE))
+        const fallbacks: unknown[] = []
+        const out = await collect(
+            createFallbackCoachModel([a.model, b.model], {
+                onFallback: (entry) => fallbacks.push(entry),
+            }),
+            makeRequest(controller.signal)
+        )
+        expect(out).toEqual([])
+        expect(fallbacks).toEqual([])
+        expect(b.requests).toHaveLength(0)
+    })
+
+    it('drops a provider model event so only the wrapper announces', async () => {
+        const a = fake(
+            'a',
+            events({ type: 'model', modelId: 'inner', switchedFrom: null }, TEXT, DONE)
+        )
+        const out = await collect(createFallbackCoachModel([a.model]))
+        expect(out).toEqual([{ type: 'model', modelId: 'a', switchedFrom: null }, TEXT, DONE])
+    })
+
+    it('uses the second skipped id as switchedFrom and reports both failures in order', async () => {
+        const fallbacks: unknown[] = []
+        const list = [
+            fake('a', events(RATE)).model,
+            fake('b', events(UNAVAILABLE)).model,
+            fake('c', events(TEXT, DONE)).model,
+        ]
+        const out = await collect(
+            createFallbackCoachModel(list, { onFallback: (entry) => fallbacks.push(entry) })
+        )
+        expect(out[0]).toEqual({ type: 'model', modelId: 'c', switchedFrom: 'b' })
+        expect(fallbacks).toEqual([
+            { modelId: 'a', kind: 'rate_limited' },
+            { modelId: 'b', kind: 'unavailable' },
+        ])
+    })
+
+    it('emits one error when the only model fails', async () => {
+        const out = await collect(createFallbackCoachModel([fake('a', events(RATE)).model]))
+        expect(out).toEqual([RATE])
+    })
+
+    it('runs the finally of a skipped model and of the active model on early stop', async () => {
+        const cleaned: string[] = []
+        const a = fake('a', async function* () {
+            try {
+                yield RATE
+                yield TEXT
+            } finally {
+                cleaned.push('a')
+            }
+        })
+        const b = fake('b', async function* () {
+            try {
+                yield TEXT
+                yield TEXT
+                yield DONE
+            } finally {
+                cleaned.push('b')
+            }
+        })
+        const wrapper = createFallbackCoachModel([a.model, b.model])
+        for await (const event of wrapper.stream(makeRequest())) {
+            if (event.type === 'text') break
+        }
+        expect(cleaned).toEqual(['a', 'b'])
     })
 })
