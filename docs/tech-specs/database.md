@@ -231,20 +231,22 @@ Hand-entered Hyrox station data. See [manual-logging.md](manual-logging.md).
 
 ### `strength_sets`
 
-| Column               | Type                                           | Notes                                             |
-| -------------------- | ---------------------------------------------- | ------------------------------------------------- |
-| `activity_id`        | uuid references `activities` on delete cascade |                                                   |
-| `exercise`           | text not null                                  | Display name from Lyfta or manual entry           |
-| `source_exercise_id` | text null                                      | Stable ID from the source, used to group progress |
-| `set_index`          | int                                            |                                                   |
-| `reps`               | int null                                       |                                                   |
-| `load_kg`            | numeric null                                   | Always kilograms for Lyfta imports                |
-| `rir`                | smallint null                                  | Non-negative reps in reserve from Lyfta           |
-| `rpe`                | numeric null                                   | 1..10                                             |
+| Column               | Type                                           | Notes                                                    |
+| -------------------- | ---------------------------------------------- | -------------------------------------------------------- |
+| `activity_id`        | uuid references `activities` on delete cascade |                                                          |
+| `exercise`           | text not null                                  | Display name from Lyfta or manual entry                  |
+| `exercise_index`     | int null                                       | Original order within the activity; null for legacy rows |
+| `source_exercise_id` | text null                                      | Stable ID from the source, used to group progress        |
+| `set_index`          | int                                            |                                                          |
+| `reps`               | int null                                       |                                                          |
+| `load_kg`            | numeric null                                   | Always kilograms for Lyfta imports                       |
+| `rir`                | smallint null                                  | Non-negative reps in reserve from Lyfta                  |
+| `rpe`                | numeric null                                   | 1..10                                                    |
 
 Lyfta imports store completed exercise sets here. The Lyfta sync replaces imported set rows when
 updating a source workout; see [lyfta.md](lyfta.md). An index on `(user_id, source_exercise_id)`
-supports per-exercise progress queries.
+supports per-exercise progress queries. A second index on `(user_id, activity_id, exercise_index,
+set_index)` returns exercise groups and sets in workout order.
 
 ### `lyfta_connections`
 
@@ -339,19 +341,20 @@ schema:
 
 ## Migrations
 
-| File                              | Content                                                                                           |
-| --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `0001_schema_and_enums.sql`       | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                    |
-| `0002_athlete_and_races.sql`      | `athlete_profiles`, `availability_slots`, `races`                                                 |
-| `0003_strava.sql`                 | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                 |
-| `0004_training.sql`               | `activities`, `activity_laps`, `station_results`, `strength_sets`                                 |
-| `0005_coach_and_plan.sql`         | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                          |
-| `0006_rls.sql`                    | `has_access()`, RLS on every table, policies, service-only revokes                                |
-| `0007_remove_strava.sql`          | drops the Strava tables, `webhook_event_status` and `strava_id`                                   |
-| `0008_activity_files.sql`         | `activity_files`, private bucket `activity-files` and its policies                                |
-| `0009_coach_chat.sql`             | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums               |
-| `0010_lyfta.sql`                  | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                         |
-| `0011_lyfta_progress_metrics.sql` | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync |
+| File                               | Content                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `0001_schema_and_enums.sql`        | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                    |
+| `0002_athlete_and_races.sql`       | `athlete_profiles`, `availability_slots`, `races`                                                 |
+| `0003_strava.sql`                  | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                 |
+| `0004_training.sql`                | `activities`, `activity_laps`, `station_results`, `strength_sets`                                 |
+| `0005_coach_and_plan.sql`          | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                          |
+| `0006_rls.sql`                     | `has_access()`, RLS on every table, policies, service-only revokes                                |
+| `0007_remove_strava.sql`           | drops the Strava tables, `webhook_event_status` and `strava_id`                                   |
+| `0008_activity_files.sql`          | `activity_files`, private bucket `activity-files` and its policies                                |
+| `0009_coach_chat.sql`              | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums               |
+| `0010_lyfta.sql`                   | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                         |
+| `0011_lyfta_progress_metrics.sql`  | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync |
+| `0012_strength_exercise_order.sql` | Stores exercise order for strength sets; requests one full manual Lyfta resync                    |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

@@ -25,6 +25,7 @@ const numeric = z
 
 const strengthSetRowSchema = z.object({
     exercise: z.string(),
+    exercise_index: z.number().int().nullable(),
     source_exercise_id: z.string().nullable(),
     set_index: z.number().int(),
     reps: z.number().int().nullable(),
@@ -48,9 +49,12 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
         try: () =>
             supabase
                 .from(TABLE)
-                .select('exercise, source_exercise_id, set_index, reps, load_kg, rir, rpe')
+                .select(
+                    'exercise, exercise_index, source_exercise_id, set_index, reps, load_kg, rir, rpe'
+                )
                 .eq('user_id', userId)
                 .eq('activity_id', activityId)
+                .order('exercise_index', { ascending: true })
                 .order('set_index', { ascending: true })
                 .order('exercise', { ascending: true }),
         catch: (cause) =>
@@ -71,6 +75,7 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
 
     return parsed.data.map((row): StrengthSetDTO => ({
         exercise: row.exercise,
+        exerciseIndex: row.exercise_index,
         sourceExerciseId: row.source_exercise_id,
         setIndex: row.set_index,
         reps: row.reps,
@@ -110,6 +115,7 @@ export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
         user_id: userId,
         activity_id: activityId,
         exercise: set.exercise,
+        exercise_index: set.exercise_index,
         source_exercise_id: set.source_exercise_id ?? null,
         set_index: set.set_index,
         reps: set.reps,

@@ -6,12 +6,12 @@ workout that has no file.
 
 ## What can be logged
 
-| Item                             | Storage                                           | Notes                                                              |
-| -------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
-| A whole manual session           | `activities` with `source = 'manual'`             | name, date, category, duration, optional distance and heart rate   |
-| Hyrox station results            | `station_results`                                 | station, time, load, reps, distance                                |
-| Strength sets                    | `strength_sets`                                   | exercise, set index, reps, load, RPE; Lyfta adds source ID and RIR |
-| Effort and notes on any activity | `activities.perceived_effort`, `activities.notes` | works on uploaded activities too                                   |
+| Item                             | Storage                                           | Notes                                                                 |
+| -------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+| A whole manual session           | `activities` with `source = 'manual'`             | name, date, category, duration, optional distance and heart rate      |
+| Hyrox station results            | `station_results`                                 | station, time, load, reps, distance                                   |
+| Strength sets                    | `strength_sets`                                   | exercise order and set, reps, load, RPE; Lyfta adds source ID and RIR |
+| Effort and notes on any activity | `activities.perceived_effort`, `activities.notes` | works on uploaded activities too                                      |
 
 Manual sessions appear in the calendar and are visible to the coach exactly like uploaded ones.
 
@@ -57,7 +57,8 @@ athlete's previous exercises.
 - Lyfta-imported activity fields and Lyfta-derived strength sets are read-only; only locally owned
   effort and notes can be edited.
 - Manual strength sets leave `source_exercise_id` and `rir` null. Lyfta-origin weights are
-  normalized to kilograms before storage.
+  normalized to kilograms before storage. New manual sets keep their exercise order; legacy rows
+  with unknown order are grouped by name.
 - Deleting a manual session deletes its station results and sets (cascade). An uploaded activity
   cannot be deleted from the app.
 - A manual session is read by the coach chat, same as an uploaded activity.

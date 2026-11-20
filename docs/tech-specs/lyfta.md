@@ -119,20 +119,26 @@ Create one `activities` row per Lyfta workout:
 | `distance_m`, moving time, heart-rate and elevation fields | `NULL`                                                                |
 
 Create `strength_sets` rows from each exercise's sets where `is_completed === true`. Set
-`source_exercise_id` from `exercise_id`, `exercise` from `excercise_name`, `set_index` from that
-exercise's order starting at 1, `reps` from the upstream integer reps value, `load_kg` from the
-upstream weight converted to kilograms, and `rir` from the upstream non-negative integer. `rpe`
-is `NULL`. Accept `kg`, `lb` and `lbs` as `weight_unit`; convert pounds to kilograms before any
-weight is written. A non-null weight without a known unit is invalid, never assume it is kg.
-Absent optional reps, weight or RIR values map to `NULL`; malformed non-empty values fail
-validation rather than being silently dropped. Ignore incomplete sets intentionally. Duration,
-body weight, total volume, RIR and exercise ID are retained for progress analysis. Do not use
-`total_volume` or `totalLiftedWeight` as activity distance or duration.
+`exercise_index` from its workout order starting at 1, `source_exercise_id` from `exercise_id`,
+`exercise` from `excercise_name`, `set_index` from that exercise's set order starting at 1, `reps`
+from the upstream integer reps value, `load_kg` from the upstream weight converted to kilograms,
+and `rir` from the upstream non-negative integer. `rpe` is `NULL`. Accept `kg`, `lb` and `lbs` as
+`weight_unit`; convert pounds to kilograms before any weight is written. A non-null weight without
+a known unit is invalid, never assume it is kg. Absent optional reps, weight or RIR values map to
+`NULL`; malformed non-empty values fail validation rather than being silently dropped. Ignore
+incomplete sets intentionally. Duration, body weight, total volume, RIR and exercise ID are
+retained for progress analysis. Do not use `total_volume` or `totalLiftedWeight` as activity
+distance or duration.
 
 Migration `0011_lyfta_progress_metrics.sql` adds the metric columns and source exercise metadata.
 It clears existing Lyfta sync checkpoints so the next manual sync fetches all pages and refreshes
 previously imported workouts with the new fields. This is a one-time full-history sync after
 deployment; it remains manual and does not create a background job.
+
+Migration `0012_strength_exercise_order.sql` stores each exercise's position in its workout and
+clears Lyfta sync checkpoints again. The next manual sync reimports the history with the original
+exercise order. Existing manual rows whose order was not stored remain nullable and are grouped by
+exercise name.
 
 Lyfta owns the imported workout identity, name, date and set rows. Sync updates those source-owned
 fields when a known workout is returned, replacing its Lyfta-derived set rows through the
@@ -200,8 +206,8 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
 ## Tests
 
 - Validate sandbox and representative workout payloads, including Lyfta's exact
-  `excercise_name` field, missing optional values, malformed numeric values, invalid dates and
-  incomplete sets.
+  `excercise_name` field, source exercise order, missing optional values, malformed numeric values,
+  invalid dates and incomplete sets.
 - Verify key encryption round-trips, rejects tampered ciphertext, and never returns plaintext
   from connection status or repository-facing DTOs.
 - Verify connection validation keeps the previous key if a replacement is invalid.

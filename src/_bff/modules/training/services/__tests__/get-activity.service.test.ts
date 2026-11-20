@@ -48,6 +48,7 @@ const DB_LAP = {
 
 const DB_STRENGTH_SET = {
     exercise: 'Bench Press',
+    exercise_index: 1,
     source_exercise_id: '501',
     set_index: 1,
     reps: 5,
@@ -77,6 +78,7 @@ describe('getActivity', () => {
         expect(result?.strengthSets).toEqual([
             {
                 exercise: 'Bench Press',
+                exerciseIndex: 1,
                 sourceExerciseId: '501',
                 setIndex: 1,
                 reps: 5,

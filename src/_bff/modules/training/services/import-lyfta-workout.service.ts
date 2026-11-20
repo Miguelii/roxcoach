@@ -60,9 +60,10 @@ export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
         lyfta_total_volume_kg_reps: workout.totalVolumeKgReps,
     })
 
-    const sets = workout.exercises.flatMap((exercise) =>
+    const sets = workout.exercises.flatMap((exercise, exerciseIndex) =>
         exercise.sets.map((set) => ({
             exercise: exercise.name,
+            exercise_index: exerciseIndex + 1,
             source_exercise_id: exercise.exerciseId,
             set_index: set.setIndex,
             reps: set.reps,

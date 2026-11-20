@@ -18,6 +18,7 @@ describe('strength sets repository', () => {
             ok([
                 {
                     exercise: 'Bench Press',
+                    exercise_index: 2,
                     source_exercise_id: '501',
                     set_index: 1,
                     reps: 5,
@@ -33,6 +34,7 @@ describe('strength sets repository', () => {
         expect(result).toEqual([
             {
                 exercise: 'Bench Press',
+                exerciseIndex: 2,
                 sourceExerciseId: '501',
                 setIndex: 1,
                 reps: 5,
@@ -44,6 +46,7 @@ describe('strength sets repository', () => {
         expect(from).toHaveBeenCalledWith('strength_sets')
         expect(chains[0]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER_ID)
         expect(chains[0]?.eq).toHaveBeenNthCalledWith(2, 'activity_id', ACTIVITY_ID)
+        expect(chains[0]?.order).toHaveBeenCalledWith('exercise_index', { ascending: true })
     })
 
     it('deletes only the current user activity sets and inserts explicit ownership fields', async () => {
@@ -51,6 +54,7 @@ describe('strength sets repository', () => {
         const sets = [
             {
                 exercise: 'Squat',
+                exercise_index: 1,
                 source_exercise_id: null,
                 set_index: 1,
                 reps: 8,
@@ -70,6 +74,7 @@ describe('strength sets repository', () => {
                 user_id: USER_ID,
                 activity_id: ACTIVITY_ID,
                 exercise: 'Squat',
+                exercise_index: 1,
                 source_exercise_id: null,
                 set_index: 1,
                 reps: 8,

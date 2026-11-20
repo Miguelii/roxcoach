@@ -87,6 +87,7 @@ describe('schema layout', () => {
             '0009_coach_chat.sql',
             '0010_lyfta.sql',
             '0011_lyfta_progress_metrics.sql',
+            '0012_strength_exercise_order.sql',
         ])
     })
 
@@ -234,7 +235,7 @@ describe('Lyfta connections', () => {
     })
 
     describe('Lyfta progress metrics', () => {
-        it('stores source exercise IDs, RIR and workout metrics in kilograms', async () => {
+        it('stores source exercise order, IDs, RIR and workout metrics in kilograms', async () => {
             const userId = await createUser(testDb)
             const activityId = await insertActivity(testDb, userId)
 
@@ -246,19 +247,21 @@ describe('Lyfta connections', () => {
             )
             await testDb.db.query(
                 `insert into roxcoach.strength_sets
-                    (user_id, activity_id, exercise, source_exercise_id, set_index, reps, load_kg, rir)
-                 values ($1, $2, 'Bench Press', '501', 1, 5, 80, 2)`,
+                    (user_id, activity_id, exercise, exercise_index, source_exercise_id,
+                     set_index, reps, load_kg, rir)
+                 values ($1, $2, 'Bench Press', 2, '501', 1, 5, 80, 2)`,
                 [userId, activityId]
             )
 
             const result = await testDb.db.query<{
                 source_exercise_id: string
+                exercise_index: number
                 load_kg: string
                 rir: number
                 body_weight_kg: string
                 lyfta_total_volume_kg_reps: string
             }>(
-                `select s.source_exercise_id, s.load_kg, s.rir,
+                `select s.exercise_index, s.source_exercise_id, s.load_kg, s.rir,
                         a.body_weight_kg, a.lyfta_total_volume_kg_reps
                  from roxcoach.strength_sets s
                  join roxcoach.activities a on a.id = s.activity_id and a.user_id = s.user_id
@@ -269,6 +272,7 @@ describe('Lyfta connections', () => {
             expect(result.rows).toEqual([
                 {
                     source_exercise_id: '501',
+                    exercise_index: 2,
                     load_kg: '80',
                     rir: 2,
                     body_weight_kg: '72.5',
@@ -278,8 +282,17 @@ describe('Lyfta connections', () => {
             await expect(
                 testDb.db.query(
                     `insert into roxcoach.strength_sets
-                        (user_id, activity_id, exercise, source_exercise_id, set_index, rir)
-                     values ($1, $2, 'Bench Press', '501', 2, -1)`,
+                        (user_id, activity_id, exercise, exercise_index, source_exercise_id,
+                         set_index, rir)
+                     values ($1, $2, 'Bench Press', 2, '501', 2, -1)`,
+                    [userId, activityId]
+                )
+            ).rejects.toThrow(CHECK_ERROR)
+            await expect(
+                testDb.db.query(
+                    `insert into roxcoach.strength_sets
+                        (user_id, activity_id, exercise, exercise_index, set_index)
+                     values ($1, $2, 'Bench Press', 0, 3)`,
                     [userId, activityId]
                 )
             ).rejects.toThrow(CHECK_ERROR)

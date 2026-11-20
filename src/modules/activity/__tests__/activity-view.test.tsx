@@ -49,14 +49,40 @@ describe('ActivityView', () => {
         expect(screen.queryByTestId('laps-table')).toBeNull()
     })
 
-    it('renders imported strength sets as read-only data', () => {
+    it('shows strength metrics and groups sets in exercise and set order', () => {
         render(
             <ActivityView
-                activity={makeActivity({ category: 'strength', source: 'lyfta' })}
+                activity={makeActivity({
+                    category: 'strength',
+                    source: 'lyfta',
+                    bodyWeightKg: 72.5,
+                    lyftaTotalVolumeKgReps: 1230,
+                })}
                 laps={[]}
                 strengthSets={[
                     {
+                        exercise: 'Deadlift',
+                        exerciseIndex: 2,
+                        sourceExerciseId: '502',
+                        setIndex: 1,
+                        reps: 5,
+                        loadKg: 100,
+                        rir: null,
+                        rpe: null,
+                    },
+                    {
                         exercise: 'Bench Press',
+                        exerciseIndex: 1,
+                        sourceExerciseId: '501',
+                        setIndex: 2,
+                        reps: 4,
+                        loadKg: 82.5,
+                        rir: null,
+                        rpe: null,
+                    },
+                    {
+                        exercise: 'Bench Press',
+                        exerciseIndex: 1,
                         sourceExerciseId: '501',
                         setIndex: 1,
                         reps: 5,
@@ -64,12 +90,47 @@ describe('ActivityView', () => {
                         rir: 2,
                         rpe: null,
                     },
+                ]}
+            />
+        )
+
+        expect(screen.getByTestId('metric-time-value')).toHaveTextContent('45m')
+        expect(screen.getByTestId('metric-volume-value')).toHaveTextContent('1,230 kg x reps')
+        expect(screen.getByTestId('metric-body-weight-value')).toHaveTextContent('72.5 kg')
+        expect(screen.getByTestId('strength-exercise-count')).toHaveTextContent('2 exercises')
+        expect(screen.getByTestId('strength-exercise-1-name')).toHaveTextContent('Bench Press')
+        expect(screen.getByTestId('strength-exercise-2-name')).toHaveTextContent('Deadlift')
+        expect(screen.getByTestId('strength-exercise-1-set-1-reps')).toHaveTextContent('5')
+        expect(screen.getByTestId('strength-exercise-1-set-1-load')).toHaveTextContent('80 kg')
+        expect(screen.getByTestId('strength-exercise-1-set-2-reps')).toHaveTextContent('4')
+        expect(screen.getByTestId('strength-exercise-1-set-2-rir')).toHaveTextContent('-')
+        expect(screen.getByTestId('strength-exercise-2-set-1-load')).toHaveTextContent('100 kg')
+        expect(screen.getByTestId('strength-exercise-2-rir-header')).toHaveTextContent('RIR')
+    })
+
+    it('uses an alphabetical fallback for legacy sets without exercise order', () => {
+        render(
+            <ActivityView
+                activity={makeActivity({ category: 'strength' })}
+                laps={[]}
+                strengthSets={[
                     {
-                        exercise: 'Deadlift',
-                        sourceExerciseId: '502',
-                        setIndex: 2,
-                        reps: null,
-                        loadKg: null,
+                        exercise: 'Goblet Squat',
+                        exerciseIndex: null,
+                        sourceExerciseId: null,
+                        setIndex: 1,
+                        reps: 10,
+                        loadKg: 20,
+                        rir: null,
+                        rpe: null,
+                    },
+                    {
+                        exercise: 'Arnold Press',
+                        exerciseIndex: null,
+                        sourceExerciseId: null,
+                        setIndex: 1,
+                        reps: 8,
+                        loadKg: 12,
                         rir: null,
                         rpe: null,
                     },
@@ -77,11 +138,57 @@ describe('ActivityView', () => {
             />
         )
 
-        expect(screen.getByTestId('strength-sets-table')).toBeTruthy()
-        expect(screen.getByTestId('strength-set-1-exercise')).toHaveTextContent('Bench Press')
-        expect(screen.getByTestId('strength-set-1-reps')).toHaveTextContent('5')
-        expect(screen.getByTestId('strength-set-1-load')).toHaveTextContent('80 kg')
-        expect(screen.getByTestId('strength-set-2-reps')).toHaveTextContent('-')
-        expect(screen.getByTestId('strength-set-2-load')).toHaveTextContent('-')
+        expect(screen.getByTestId('strength-exercise-1-name')).toHaveTextContent('Arnold Press')
+        expect(screen.getByTestId('strength-exercise-2-name')).toHaveTextContent('Goblet Squat')
+        expect(screen.getByTestId('metric-volume-value')).toHaveTextContent('296 kg x reps')
+        expect(screen.queryByTestId('strength-exercise-1-rir-header')).toBeNull()
+    })
+
+    it('shows an honest empty state when a strength activity has no set data', () => {
+        render(
+            <ActivityView
+                activity={makeActivity({ category: 'strength' })}
+                laps={[]}
+                strengthSets={[]}
+            />
+        )
+
+        expect(screen.getByTestId('strength-sets-empty')).toHaveTextContent(
+            'No set data recorded for this strength workout.'
+        )
+        expect(screen.queryByTestId('metric-volume-value')).toBeNull()
+    })
+
+    it('does not estimate volume when a set is missing reps or load', () => {
+        render(
+            <ActivityView
+                activity={makeActivity({ category: 'strength' })}
+                laps={[]}
+                strengthSets={[
+                    {
+                        exercise: 'Bench Press',
+                        exerciseIndex: 1,
+                        sourceExerciseId: '501',
+                        setIndex: 1,
+                        reps: 5,
+                        loadKg: 80,
+                        rir: null,
+                        rpe: null,
+                    },
+                    {
+                        exercise: 'Bench Press',
+                        exerciseIndex: 1,
+                        sourceExerciseId: '501',
+                        setIndex: 2,
+                        reps: null,
+                        loadKg: 80,
+                        rir: null,
+                        rpe: null,
+                    },
+                ]}
+            />
+        )
+
+        expect(screen.queryByTestId('metric-volume-value')).toBeNull()
     })
 })
