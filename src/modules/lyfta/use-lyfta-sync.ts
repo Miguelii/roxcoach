@@ -11,7 +11,13 @@ type SyncResult = {
     hasMore: boolean
 }
 
-export function useLyftaSync() {
+type Options = {
+    // Extra reactions to a finished sync (the dashboard button shows toasts).
+    onSynced?: (result: SyncResult) => void
+    onFailed?: (message: string) => void
+}
+
+export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
     const syncMutation = trpcClient.lyfta.syncWorkouts.useMutation()
     const utils = trpcClient.useUtils()
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -24,24 +30,28 @@ export function useLyftaSync() {
         try {
             result = await syncMutation.mutateAsync()
         } catch (error) {
-            setErrorMessage(
-                messageForLyftaError({ message: error instanceof Error ? error.message : '' })
-            )
+            const message = messageForLyftaError({
+                message: error instanceof Error ? error.message : '',
+            })
+            setErrorMessage(message)
             syncMutation.reset()
+            onFailed?.(message)
             return
         }
 
         syncMutation.reset()
         setSyncResult(result)
+        onSynced?.(result)
         try {
             await Promise.all([
                 utils.lyfta.getConnectionStatus.invalidate(),
                 utils.training.getCalendar.invalidate(),
             ])
         } catch {
-            setErrorMessage(
+            const message =
                 'Sync completed, but some data could not refresh. Reload to see the latest history.'
-            )
+            setErrorMessage(message)
+            onFailed?.(message)
         }
     }
 
