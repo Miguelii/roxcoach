@@ -45,8 +45,7 @@ create policy delete_own on roxcoach.activity_files for delete to authenticated
 
 -- Private bucket, 10 MB limit. allowed_mime_types stays null: extensions are checked in code.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('activity-files', 'activity-files', false, 10485760, null)
-on conflict (id) do nothing;
+values ('activity-files', 'activity-files', false, 10485760, null);
 
 -- Objects live under '<user_id>/<file_id>.<format>': the first folder must be the caller's id.
 create policy activity_files_select_own on storage.objects for select to authenticated

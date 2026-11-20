@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { UploadActivityDrawer } from '@/modules/dashboard/upload-activity-drawer'
 
-type Props = { upload?: (form: FormData) => Promise<Response> }
-
-const mocks = vi.hoisted(() => ({ refresh: vi.fn(), success: vi.fn() }))
-
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock('sonner', () => ({ toast: { success: mocks.success } }))
+type Props = { upload?: (form: FormData) => Promise<Response>; onUploaded?: () => void }
 
 const BANNER =
     'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none.'
@@ -116,6 +111,21 @@ describe('UploadActivityDrawer', () => {
         expect(screen.getByTestId('upload-file-name')).toHaveTextContent('run.fit')
     })
 
+    it('does not run onUploaded when the upload fails', async () => {
+        const upload = vi.fn(async () => json({ error: 'Duplicate file' }, 409))
+        const onUploaded = vi.fn()
+        await open({ upload, onUploaded })
+        await choose(fit())
+        fireEvent.click(screen.getByTestId('upload-submit'))
+        await screen.findByTestId('upload-error')
+        expect(onUploaded).not.toHaveBeenCalled()
+        expect(screen.getByTestId('upload-error')).toHaveAttribute('role', 'alert')
+        expect(screen.getByTestId('upload-file-input')).toHaveAttribute(
+            'aria-label',
+            'Activity file'
+        )
+    })
+
     it('shows a generic error for a non JSON response', async () => {
         const upload = vi.fn(async () => new Response('boom', { status: 500 }))
         await open({ upload })
@@ -126,13 +136,13 @@ describe('UploadActivityDrawer', () => {
         )
     })
 
-    it('closes, toasts and refreshes on success, sending hyrox only when checked', async () => {
+    it('closes and runs onUploaded on success, sending hyrox only when checked', async () => {
         const upload = vi.fn(async (_form: FormData) => json({ activityId: 'a1' }))
-        await open({ upload })
+        const onUploaded = vi.fn()
+        await open({ upload, onUploaded })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        await waitFor(() => expect(mocks.success).toHaveBeenCalledWith('Activity uploaded'))
-        expect(mocks.refresh).toHaveBeenCalled()
+        await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(1))
         // vaul keeps the node mounted for its exit animation, so assert the closed state.
         await waitFor(() =>
             expect(screen.getByTestId('upload-activity-button')).toHaveAttribute(

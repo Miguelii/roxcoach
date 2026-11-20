@@ -75,7 +75,11 @@ see Known limitations).
 - Storage policies on `storage.objects` for this bucket: select, insert and delete only when
   `(storage.foldername(name))[1] = auth.uid()::text` and `roxcoach.has_access()`. The bucket lives
   in the shared project, so the policies are scoped to this bucket id and must not touch the other
-  app's buckets.
+  app's buckets. The migration inserts the bucket without `on conflict`, so it fails loudly if a
+  bucket with that id already exists. Before applying 0008 on the shared project run
+  `select id, public from storage.buckets where id = 'activity-files';` (must return no rows) and
+  review `select policyname, cmd, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects';`:
+  permissive policies of the other app with no `bucket_id` filter would also grant access to this bucket.
 - The app never hands the client a public URL. Downloads (if ever needed) use a short-lived signed
   URL created on the server.
 
@@ -124,15 +128,18 @@ readable. Client-side checks
        parse failure returns `ActivityFileParseError` and stores nothing.
     3. Hashes the bytes (sha256) and rejects a duplicate for that user: same hash, or an activity
        of that user with the same `started_at` (so the same workout in another format is also a
-       duplicate). Both are `DuplicateActivityFileError`.
+       duplicate). Both are `DuplicateActivityFileError`. The `started_at` check needs identical instants:
+       a FIT and a GPX of the same workout whose starts differ by a second or more are not caught.
     4. Reads the athlete timezone through the `athlete` service and computes `local_date`.
     5. Builds the lap rows. With the "Hyrox" flag, `labelHyroxLaps` sets `station` (below); when any
        lap got a station the activity `category` is `hyrox`, otherwise the category of its sport.
     6. Writes the object to Storage at `<user_id>/<file_id>.<format>`, then the `activities` row,
-       the laps and the `activity_files` row. If a later write fails, the activity (soft-delete) and
+       the laps and the `activity_files` row. If a later write fails, the activity (hard-deleted, laps
+       cascade) and
        the object are removed, without masking the original error.
 4. The response is `{ activityId }`. The drawer closes, shows the toast and calls
-   `router.refresh()` so the calendar and week strip reload. The client does not navigate.
+   `router.refresh()` (week strip) and invalidates the client calendar query (`getCalendar`) so
+   both reload. The client does not navigate.
 
 ### Route behavior
 
@@ -163,6 +170,11 @@ Everything runs with the session-bound client, so RLS applies. No service-role c
 
 ### Known limitations
 
+- Hosting limit: serverless hosts that cap request bodies (Vercel Functions reject bodies over
+  about 4.5 MB before the handler runs, returning a non-JSON 413) make uploads between that cap
+  and 10 MB fail with the generic error. If the app is hosted on such a platform, lower the limit
+  everywhere (client schema, handler, service, bucket, banner copy, this spec) or move uploads to
+  signed Storage URLs.
 - An upload without a valid `content-length` header is rejected with 413 before the body is read.
   The header check allows 64 KiB of multipart overhead; the 10 MB limit applies to the file itself.
 - A concurrent upload of the same workout in two formats has different hashes, so both can pass

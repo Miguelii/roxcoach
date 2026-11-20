@@ -10,7 +10,7 @@ import { ServerEnv } from '@/env/server'
 /**
  * Creates a DB client without cookie-based session management and with the SERVICE_ROLE_KEY.
  *
- * For Trigger.dev jobs, the Strava webhook handler and token storage. Bypasses RLS.
+ * For Trigger.dev jobs and server-side admin work. Bypasses RLS.
  */
 export const createDBAdminClient = () =>
     createClient(ServerEnv.NEXT_SUPABASE_URL, ServerEnv.NEXT_SUPABASE_SERVICE_ROLE_KEY, {

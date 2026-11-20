@@ -141,7 +141,7 @@ export const selectActivityById = Effect.fn('selectActivityById')(function* (
 const writeError = (error: ReturnedError, error_hash: ErrorCode) =>
     new ActivityWriteError({ cause: `${error.code}: ${error.message}`, error_hash })
 
-// Manual uploads only: the source is fixed, the Strava sync owns its own inserts.
+// Manual uploads only: the source is always 'manual'.
 export const insertActivity = Effect.fn('insertActivity')(function* (
     supabase: TrainingClient,
     userId: string,

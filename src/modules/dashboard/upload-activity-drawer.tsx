@@ -1,9 +1,7 @@
 'use client'
 
 import { Loader2Icon, UploadIcon } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -18,7 +16,10 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input'
 import { useUploadActivity } from '@/modules/dashboard/use-upload-activity'
 
-type Props = { upload?: (form: FormData) => Promise<Response> }
+type Props = {
+    upload?: (form: FormData) => Promise<Response>
+    onUploaded?: () => void
+}
 
 const BANNER =
     'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none.'
@@ -28,8 +29,7 @@ const formatSize = (bytes: number) =>
         ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
         : `${Math.ceil(bytes / 1024)} KB`
 
-export function UploadActivityDrawer({ upload }: Props) {
-    const router = useRouter()
+export function UploadActivityDrawer({ upload, onUploaded }: Props) {
     const [open, setOpen] = useState(false)
     const {
         form,
@@ -46,8 +46,7 @@ export function UploadActivityDrawer({ upload }: Props) {
         upload,
         onSuccess: () => {
             setOpen(false)
-            toast.success('Activity uploaded')
-            router.refresh()
+            onUploaded?.()
         },
     })
     const uploading = status === 'uploading'
@@ -92,6 +91,7 @@ export function UploadActivityDrawer({ upload }: Props) {
                                         <Input
                                             key={inputKey}
                                             type="file"
+                                            aria-label="Activity file"
                                             accept=".fit,.tcx,.gpx"
                                             data-testid="upload-file-input"
                                             name={field.name}
@@ -137,7 +137,11 @@ export function UploadActivityDrawer({ upload }: Props) {
                             />
                         ) : null}
                         {status === 'error' && errorMessage ? (
-                            <p data-testid="upload-error" className="text-sm text-destructive">
+                            <p
+                                role="alert"
+                                data-testid="upload-error"
+                                className="text-sm text-destructive"
+                            >
                                 {errorMessage}
                             </p>
                         ) : null}

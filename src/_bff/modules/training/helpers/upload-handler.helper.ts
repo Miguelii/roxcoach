@@ -17,6 +17,7 @@ type UploadHandlerDeps = {
     upload: (user: User, input: UploadInput) => Promise<UploadOutcome>
 }
 
+const MAX_NAME_LENGTH = 255
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 // Multipart framing around the file, allowed on the content-length check only.
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024
@@ -69,7 +70,7 @@ export const createUploadHandler =
         try {
             const outcome = await upload(user, {
                 bytes: new Uint8Array(await file.arrayBuffer()),
-                originalName: file.name,
+                originalName: file.name.slice(0, MAX_NAME_LENGTH),
                 isHyrox: form?.get('hyrox') === 'true',
             })
             if (outcome.ok) return Response.json({ activityId: outcome.activityId })

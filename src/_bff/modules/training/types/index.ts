@@ -47,7 +47,7 @@ export type ParsedActivity = {
     laps: ParsedLap[]
 }
 
-// The service-role client (sync jobs, webhook) or the signed-in user's client (queries).
+// The service-role client (Trigger.dev jobs and server-side admin work) or the signed-in user's client (queries).
 export type TrainingClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>

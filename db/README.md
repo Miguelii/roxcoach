@@ -101,6 +101,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     where n.nspname = 'roxcoach' and c.relkind = 'r' and not c.relrowsecurity;
     ```
 
+- [ ] Before applying `0008`: `select id, public from storage.buckets where id = 'activity-files';` returns no rows (the migration fails loudly otherwise), and the output of `select policyname, cmd, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects';` is reviewed: permissive policies of the other app with no `bucket_id` filter would also grant access to this bucket.
 - [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0008`.
 
 ### Exposing the schema

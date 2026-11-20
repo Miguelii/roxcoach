@@ -185,6 +185,20 @@ describe('createUploadHandler', () => {
         })
     })
 
+    it('truncates the original name to 255 characters', async () => {
+        const names: string[] = []
+        const handler = createUploadHandler({
+            getUser: async () => ACCESS_USER,
+            upload: async (_user, input) => {
+                names.push(input.originalName)
+                return { ok: true, activityId: 'a' }
+            },
+        })
+        const long = new File([new Uint8Array([1])], `${'a'.repeat(300)}.fit`)
+        await handler(request({ file: long }))
+        expect(names[0]).toHaveLength(255)
+    })
+
     it('defaults isHyrox to false', async () => {
         const { handler, upload } = setup(ACCESS_USER, { ok: true, activityId: 'a' })
         await handler(request({ file: file(), hyrox: 'yes' }))

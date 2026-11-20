@@ -6,6 +6,7 @@ import { isoOf, numOf, parseXml, type XmlTree } from '@/_bff/modules/training/he
 import type { ParsedActivity, ParsedLap } from '@/_bff/modules/training/types'
 
 type Maybe<T> = T | undefined
+type LapWithMax = { lap: ParsedLap; maxHr: number | null }
 
 // parseTagValue is off, so every leaf is a string.
 const leaf = z.string().optional()
@@ -42,8 +43,6 @@ const sum = (values: (number | null)[]): number | null => {
     return present.length ? present.reduce((a, b) => a + b, 0) : null
 }
 const hrValue = (v: Maybe<{ Value?: Maybe<string> }>): number | null => numOf(v?.Value)
-
-type LapWithMax = { lap: ParsedLap; maxHr: number | null }
 
 // The lap start falls back to the first trackpoint time when StartTime is missing.
 function parseLap(lap: TcxLap, index: number): LapWithMax | null {
