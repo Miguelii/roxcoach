@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COACH_MODELS } from '@/_bff/core/constants/coach-models.constants'
-import { runGeminiSmoke, runModelChecks } from '../gemini-smoke'
+import { parseModelArg, runGeminiSmoke, runModelChecks } from '../gemini-smoke'
 
 type Call = { url: string; init: RequestInit | undefined }
 
@@ -126,5 +126,40 @@ describe('runModelChecks', () => {
         const out = lines.join('\n')
         expect(out).not.toContain(KEY)
         expect(out).not.toContain('secret')
+    })
+})
+
+describe('parseModelArg', () => {
+    it('accepts no argument and a valid id', () => {
+        expect(parseModelArg(undefined)).toEqual({ ok: true, modelId: undefined })
+        expect(parseModelArg('gemini-3.8-flash')).toEqual({ ok: true, modelId: 'gemini-3.8-flash' })
+    })
+
+    it.each(['', 'bad\nid', 'bad\u001b[31mid', 'a b', 'a/b'])('rejects %j', (arg) => {
+        expect(parseModelArg(arg)).toEqual({ ok: false })
+    })
+})
+
+describe('runModelChecks failures', () => {
+    it('prints network when fetch throws the key and never prints the key', async () => {
+        const lines: string[] = []
+        const throwing: typeof fetch = async () => {
+            throw new Error(KEY)
+        }
+        await runModelChecks({ apiKey: KEY, fetch: throwing, print: (l) => lines.push(l) })
+        const out = lines.join('\n')
+        expect(out).toContain('network')
+        expect(out).not.toContain(KEY)
+    })
+
+    it('does not run all models for an empty-string id', async () => {
+        const calls: Call[] = []
+        await runModelChecks({
+            apiKey: KEY,
+            modelId: '',
+            fetch: fakeFetch(200, calls),
+            print: () => {},
+        })
+        expect(calls).toHaveLength(1)
     })
 })

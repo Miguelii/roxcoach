@@ -13,6 +13,15 @@ type SmokeOptions = {
     fetch?: typeof fetch
 }
 
+type CheckOptions = {
+    apiKey: string | undefined
+    modelId?: string
+    fetch?: typeof fetch
+    print: (line: string) => void
+}
+
+type ModelArg = { ok: true; modelId: string | undefined } | { ok: false }
+
 type SmokeResult = 'ok' | { status: number | 'no-key' | 'network' }
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -37,16 +46,10 @@ export async function runGeminiSmoke(options: SmokeOptions): Promise<SmokeResult
     }
 }
 
-type CheckOptions = {
-    apiKey: string | undefined
-    modelId?: string
-    fetch?: typeof fetch
-    print: (line: string) => void
-}
-
 // Checks one model id, or every listed id in order; returns true when all are OK.
 export async function runModelChecks(options: CheckOptions): Promise<boolean> {
-    const ids = options.modelId ? [options.modelId] : COACH_MODELS.map((model) => model.id)
+    const ids =
+        options.modelId !== undefined ? [options.modelId] : COACH_MODELS.map((model) => model.id)
     let allOk = true
     for (const id of ids) {
         const result = await runGeminiSmoke({
@@ -64,11 +67,27 @@ export async function runModelChecks(options: CheckOptions): Promise<boolean> {
     return allOk
 }
 
+const MODEL_ID_PATTERN = /^[\w.:-]+$/
+
+// Validates the optional CLI model id: absent means all models, anything else must look like an id.
+export function parseModelArg(arg: string | undefined): ModelArg {
+    if (arg === undefined) return { ok: true, modelId: undefined }
+    return MODEL_ID_PATTERN.test(arg) ? { ok: true, modelId: arg } : { ok: false }
+}
+
 async function main() {
+    const parsed = parseModelArg(process.argv[2])
+    if (!parsed.ok) {
+        console.log(
+            'Usage: gemini-smoke.ts [model-id] (letters, digits, dot, dash, colon, underscore)'
+        )
+        process.exitCode = 1
+        return
+    }
     loadEnvConfig(process.cwd())
     const allOk = await runModelChecks({
         apiKey: process.env.NEXT_GEMINI_API_KEY,
-        modelId: process.argv[2],
+        modelId: parsed.modelId,
         print: console.log,
     })
     if (!allOk) process.exitCode = 1
