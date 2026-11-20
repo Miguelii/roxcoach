@@ -8,7 +8,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { DrawerFormLayout } from '@/components/ui/drawer-form-layout'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { useUploadActivity } from '@/modules/dashboard/use-upload-activity'
+import { useUploadActivity } from '@/modules/activity/use-upload-activity'
 
 type Props = {
     upload?: (form: FormData) => Promise<Response>

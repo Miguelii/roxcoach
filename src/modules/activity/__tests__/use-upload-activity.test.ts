@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { detectHyroxHint, useUploadActivity } from '@/modules/dashboard/use-upload-activity'
+import { detectHyroxHint, useUploadActivity } from '@/modules/activity/use-upload-activity'
 
 type Deferred = { file: File; release: (text: string) => void }
 

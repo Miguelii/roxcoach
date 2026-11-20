@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { UploadActivity } from '@/modules/dashboard/upload-activity'
+import { UploadActivity } from '@/modules/activity/upload-activity'
 
 const mocks = vi.hoisted(() => ({
     success: vi.fn(),
