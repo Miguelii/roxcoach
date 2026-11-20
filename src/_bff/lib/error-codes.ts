@@ -81,6 +81,31 @@ export enum ErrorCode {
     ATHLETE_AVAILABILITY_INVALID = 'u2i4v8hg',
     ATHLETE_AVAILABILITY_SB_CLIENT = 'w7o5e1bn',
 
+    // Races - Repository and services
+    RACES_SELECT = 'c4r8k2ma',
+    RACES_SELECT_ERR = 'd7t3n6xb',
+    RACES_SELECT_PARSE = 'e1y9p5qc',
+    RACES_INSERT = 'f6w2h8zd',
+    RACES_INSERT_ERR = 'g3u7j4ne',
+    RACES_INSERT_PARSE = 'h9v5s1rf',
+    RACES_UPDATE = 'j2b8m6tg',
+    RACES_UPDATE_ERR = 'k5c1x9wh',
+    RACES_UPDATE_PARSE = 'l8d4z3yj',
+    RACES_RESULT = 'm1e7q2uk',
+    RACES_RESULT_ERR = 'n4f3a8vl',
+    RACES_RESULT_PARSE = 'p7g9b5wm',
+    RACES_STATUS = 'q2h6c1xn',
+    RACES_STATUS_ERR = 'r5j8d4yp',
+    RACES_STATUS_PARSE = 's9k1e7zq',
+    RACES_DELETE = 't3l5f2ar',
+    RACES_DELETE_ERR = 'u6m8g9bs',
+    RACES_DELETE_PARSE = 'v1n4h3ct',
+    RACES_INVALID = 'w8p2j6du',
+    RACES_NOT_FOUND = 'x4q7k1ev',
+    RACES_STATE_CANCELLED = 'y9r3l5fw',
+    RACES_STATE_COMPLETED = 'z2s6m8gx',
+    RACES_SB_CLIENT = 'a5t1n4hy',
+
     // Athlete - Queries
     ATHLETE_SB_CLIENT = 'xq3k7m2d',
 }

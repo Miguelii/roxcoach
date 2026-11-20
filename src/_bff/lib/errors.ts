@@ -30,6 +30,15 @@ export class AvailabilityValidationError extends Data.TaggedError('AvailabilityV
     ServiceErrorFields & { reason: string }
 > {}
 
+// Races
+export class RaceQueryError extends Data.TaggedError('RaceQueryError')<ServiceErrorFields> {}
+// `field` names the race field that failed validation.
+export class RaceValidationError extends Data.TaggedError('RaceValidationError')<
+    ServiceErrorFields & { field: string }
+> {}
+export class RaceNotFoundError extends Data.TaggedError('RaceNotFoundError')<ServiceErrorFields> {}
+export class RaceStateError extends Data.TaggedError('RaceStateError')<ServiceErrorFields> {}
+
 // Training
 export class ActivityQueryError extends Data.TaggedError(
     'ActivityQueryError'
