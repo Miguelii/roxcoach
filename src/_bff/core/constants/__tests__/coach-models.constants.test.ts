@@ -32,10 +32,6 @@ describe('coachModelLabel', () => {
         expect(coachModelLabel('gemini-3.8-flash')).toBe('Gemini 3.8 Flash')
     })
 
-    it('returns the label of a legacy id that is not in the list', () => {
-        expect(coachModelLabel('gemini-2.5-flash')).toBe('Gemini 2.5 Flash')
-    })
-
     it('returns an unknown id unchanged', () => {
         expect(coachModelLabel('some-future-model')).toBe('some-future-model')
     })

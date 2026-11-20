@@ -147,7 +147,7 @@ The chat service saves the id of the model that answered in `coach_messages.mode
 `model` event of the reply, or the provider's own `modelId` when none was seen (a single model, no
 wrapper). `MessageDTO.model` is `string | null` (null for user messages and for any row without a model; older
 replies hold the id that was configured when they were saved, for example `gemini-2.5-flash`, which
-the caption shows through a small legacy label map outside the list, so the fallback never uses it) and is returned with the conversation history.
+the caption shows as the raw id, because the label map only knows the listed models) and is returned with the conversation history.
 
 ### What the chat shows
 

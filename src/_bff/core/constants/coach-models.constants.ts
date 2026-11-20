@@ -11,10 +11,7 @@ export const COACH_MODELS: ReadonlyArray<CoachModelEntry> = [
     { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
 ]
 
-// Ids that older assistant rows may hold. Never used by the fallback chain.
-const LEGACY_MODEL_LABELS = new Map([['gemini-2.5-flash', 'Gemini 2.5 Flash']])
-
-// Friendly name of a listed model id, then of a legacy id, otherwise the raw id.
+// Friendly name of a listed model id, otherwise the raw id.
 export function coachModelLabel(id: string): string {
-    return COACH_MODELS.find((model) => model.id === id)?.label ?? LEGACY_MODEL_LABELS.get(id) ?? id
+    return COACH_MODELS.find((model) => model.id === id)?.label ?? id
 }

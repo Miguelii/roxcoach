@@ -62,7 +62,7 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
 | `helpers/chat-handler.helper.ts`                                                                        | the route handler (auth result, body checks, NDJSON stream), with injected dependencies          |
 | `providers/coach-model.ts`, `gemini-coach-model.ts`, `fallback-coach-model.ts`                          | the `CoachModel` interface, its Gemini implementation and the fallback wrapper over a model list |
 | `tools/`                                                                                                | the five read-only tools, `coach-tools.ts` (the factory), `run-tool.ts`, `plain-date.ts`         |
-| `src/_bff/core/constants/coach-models.constants.ts`                                                     | the ordered model list, friendly labels and legacy labels                                        |
+| `src/_bff/core/constants/coach-models.constants.ts`                                                     | the ordered model list, friendly labels                                                          |
 | `constants/index.ts`, `types/index.ts`                                                                  | limits and DTO or input types                                                                    |
 
 The route is `src/app/api/coach/chat/route.ts` (thin: reads the env, builds the model, wires the
