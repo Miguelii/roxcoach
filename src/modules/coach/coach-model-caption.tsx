@@ -10,7 +10,7 @@ export function CoachModelCaption({ modelId }: Props) {
             data-testid="coach-model-caption"
             className="truncate px-3 pb-2 text-xs text-muted-foreground"
         >
-            {coachModelLabel(modelId)}
+            Current model: {coachModelLabel(modelId)}
         </p>
     )
 }

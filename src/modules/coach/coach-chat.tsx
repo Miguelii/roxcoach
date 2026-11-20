@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { toast } from 'sonner'
 import { trpcClient } from '@/lib/trpc'
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
@@ -50,7 +49,7 @@ export function CoachChat() {
             launcherEnabled={enabled}
             onDismissLauncher={() => {
                 setEnabled(false)
-                toast('Coach bar hidden. Turn it back on in the sidebar.')
+                //toast('Coach bar hidden. Turn it back on in the sidebar.')
             }}
             messages={chat.messages}
             status={chat.status}

@@ -255,7 +255,7 @@ function PanelBody({
                         event.preventDefault()
                         submit(streaming)
                     }}
-                    className="flex items-end gap-2 border-t border-hairline p-3"
+                    className="flex items-center gap-2 border-t border-hairline p-3"
                 >
                     <FormField
                         control={form.control}
