@@ -71,6 +71,7 @@ describe('selectIdByStartedAt', () => {
         ).toBe('act-9')
         expect(hit.chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
         expect(hit.chains[0]?.eq).toHaveBeenCalledWith('started_at', ROW.started_at)
+        expect(hit.chains[0]?.is).toHaveBeenCalledWith('deleted_at', null)
         expect(
             await Effect.runPromise(selectIdByStartedAt(miss.supabase, USER_ID, ROW.started_at))
         ).toBeNull()
@@ -93,8 +94,15 @@ describe('selectIdByStartedAt', () => {
 })
 
 describe('deleteActivity', () => {
+    it('fails when no row was removed', async () => {
+        const db = makeFakeDb([{ data: [], error: null }])
+        expect(
+            failureTag(await Effect.runPromiseExit(deleteActivity(db.supabase, USER_ID, 'a')))
+        ).toBe('ActivityWriteError')
+    })
+
     it('deletes by id and user', async () => {
-        const { chains, supabase } = makeFakeDb([ok()])
+        const { chains, supabase } = makeFakeDb([ok([{ id: 'act-1' }])])
         await Effect.runPromise(deleteActivity(supabase, USER_ID, 'act-1'))
         expect(chains[0]?.delete).toHaveBeenCalled()
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)

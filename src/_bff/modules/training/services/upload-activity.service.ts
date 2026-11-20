@@ -149,9 +149,9 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
                 error_code: null,
             })
         }).pipe(
-            Effect.tapError(() => deleteActivity(supabase, user.id, activityId).pipe(Effect.ignore))
+            Effect.onError(() => deleteActivity(supabase, user.id, activityId).pipe(Effect.ignore))
         )
 
         return { activityId }
-    }).pipe(Effect.tapError(() => removeActivityFile(storage, storagePath).pipe(Effect.ignore)))
+    }).pipe(Effect.onError(() => removeActivityFile(storage, storagePath).pipe(Effect.ignore)))
 })

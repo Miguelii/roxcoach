@@ -124,6 +124,16 @@ class, shown inside the drawer, the file stays selected), success (the drawer cl
 
 Everything runs with the session-bound client, so RLS applies. No service-role client is needed.
 
+### Known limitations
+
+- A concurrent upload of the same workout in two formats has different hashes, so both can pass
+  the `started_at` pre-check and create two activities. There is deliberately no unique index on
+  `(user_id, started_at)`, because manual sessions entered by hand may share a start time.
+  Same-bytes races are caught by the unique `(user_id, sha256)`. The athlete can delete one later.
+- Re-uploading the same bytes after soft-deleting the activity stays rejected as a duplicate,
+  because the `activity_files` row still exists. There is no delete UI yet, so this is intended
+  for now.
+
 ## Normalized parse result
 
 One type shared by all parsers, in `src/_bff/modules/training/types`:

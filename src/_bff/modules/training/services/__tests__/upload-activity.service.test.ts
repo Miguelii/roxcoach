@@ -183,6 +183,21 @@ describe('uploadActivity', () => {
         expect(remove).toHaveBeenCalledTimes(1)
     })
 
+    it('rolls back when a step dies with a defect', async () => {
+        const defect = {
+            data: null,
+            get error(): never {
+                throw new Error('defect')
+            },
+        }
+        const { db, remove, run } = setup([ok(), ok(), ok({ id: 'act-1' }), defect, ok()])
+        const exit = await run(TCX)
+        expect(failureTag(exit)).toBeNull()
+        expect(exit._tag).toBe('Failure')
+        expect(remove).toHaveBeenCalledTimes(1)
+        expect(db.chains[4]?.delete).toHaveBeenCalled()
+    })
+
     it('keeps the local date in Lisbon winter and moves it forward in Tokyo', async () => {
         const instant = '2026-11-20T23:30:00Z'
         const lisbon = setup(HAPPY, 'Europe/Lisbon')

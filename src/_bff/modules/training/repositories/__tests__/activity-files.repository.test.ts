@@ -60,6 +60,7 @@ describe('insertActivityFile', () => {
             { data: null, error: { code: '42501', message: 'denied', details: ROW.original_name } },
         ])
         const exit = await Effect.runPromiseExit(insertActivityFile(db.supabase, USER_ID, ROW))
+        expect(failureTag(exit)).toBe('ActivityWriteError')
         expect(JSON.stringify(exit)).not.toContain('run.fit')
     })
 })

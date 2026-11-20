@@ -205,8 +205,8 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
     userId: string,
     id: string
 ) {
-    const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).delete().eq('user_id', userId).eq('id', id),
+    const { data, error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).delete().eq('user_id', userId).eq('id', id).select('id'),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -215,4 +215,10 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
     })
 
     if (error) return yield* writeError(error, ErrorCode.TRAINING_ACTIVITY_DELETE_ERR)
+    // RLS or a mismatched id removes nothing without an error, so zero rows is a failure.
+    if (!data || data.length === 0)
+        return yield* new ActivityWriteError({
+            cause: 'delete removed no row',
+            error_hash: ErrorCode.TRAINING_ACTIVITY_DELETE_ERR,
+        })
 })
