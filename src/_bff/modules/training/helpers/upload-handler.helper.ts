@@ -18,6 +18,8 @@ type UploadHandlerDeps = {
 }
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024
+// Multipart framing around the file, allowed on the content-length check only.
+const MULTIPART_OVERHEAD_BYTES = 64 * 1024
 
 const INVALID_FILE = 'This file is not a valid FIT, TCX or GPX file'
 const GENERIC = 'Something went wrong. Try again.'
@@ -38,12 +40,26 @@ const fail = (status: number, error: string) => Response.json({ error }, { statu
 export const createUploadHandler =
     ({ getUser, upload }: UploadHandlerDeps) =>
     async (request: Request): Promise<Response> => {
-        const user = await getUser()
+        let user: User | null
+        try {
+            user = await getUser()
+        } catch {
+            Logger({
+                level: 'error',
+                prefix: 'uploadActivity',
+                metadata: { tag: 'SessionFailure' },
+            })
+            return fail(500, GENERIC)
+        }
         if (!user) return fail(401, 'Sign in to upload')
         if (!hasRoxcoachAccess(user)) return fail(403, 'You do not have access')
 
-        const declared = Number(request.headers.get('content-length'))
-        if (Number.isFinite(declared) && declared > MAX_FILE_BYTES) return fail(413, TOO_LARGE)
+        // Browsers always send content-length for FormData. Without a valid one the body could be
+        // unbounded, so it is rejected before anything is read.
+        const header = request.headers.get('content-length')
+        const declared = header === null || header.trim() === '' ? Number.NaN : Number(header)
+        if (!Number.isFinite(declared) || declared > MAX_FILE_BYTES + MULTIPART_OVERHEAD_BYTES)
+            return fail(413, TOO_LARGE)
 
         const form = await request.formData().catch(() => null)
         const file = form?.get('file')
@@ -58,13 +74,13 @@ export const createUploadHandler =
             })
             if (outcome.ok) return Response.json({ activityId: outcome.activityId })
 
+            const mapped = ERROR_RESPONSES.get(outcome.tag)
             Logger({
-                level: 'error',
+                level: mapped ? 'warn' : 'error',
                 prefix: 'uploadActivity',
                 userId: user.id,
                 metadata: { tag: outcome.tag, error_hash: outcome.errorHash },
             })
-            const mapped = ERROR_RESPONSES.get(outcome.tag)
             return mapped ? fail(mapped.status, mapped.message) : fail(500, GENERIC)
         } catch {
             Logger({

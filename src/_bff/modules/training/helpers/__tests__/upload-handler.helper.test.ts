@@ -1,6 +1,15 @@
 // @vitest-environment node
 import type { User } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
+import {
+    ActivityFileParseError,
+    ActivityFileStorageError,
+    ActivityFileTooLargeError,
+    ActivityWriteError,
+    DuplicateActivityFileError,
+    UnsupportedActivityFileError,
+} from '@/_bff/lib/errors'
+import { ErrorCode } from '@/_bff/lib/error-codes'
 import { createUploadHandler } from '@/_bff/modules/training/helpers/upload-handler.helper'
 
 type UploadOutcome = Awaited<ReturnType<Parameters<typeof createUploadHandler>[0]['upload']>>
@@ -25,13 +34,14 @@ const setup = (user: User | null, outcome: UploadOutcome | Error) => {
     return { upload, handler }
 }
 
+// Browsers always send content-length for FormData; a Request built here does not, so it is set.
 const request = (fields: Record<string, string | File>, headers: Record<string, string> = {}) => {
     const body = new FormData()
     for (const [key, value] of Object.entries(fields)) body.set(key, value)
     return new Request('http://localhost/api/activities/upload', {
         method: 'POST',
         body,
-        headers,
+        headers: { 'content-length': '1000', ...headers },
     })
 }
 
@@ -68,13 +78,17 @@ describe('createUploadHandler', () => {
         expect(response.status).toBe(422)
     })
 
+    const tagOf = (
+        Error: new (fields: { cause: unknown; error_hash: ErrorCode }) => { _tag: string }
+    ) => new Error({ cause: 'x', error_hash: ErrorCode.TRAINING_FILE_UNSUPPORTED })._tag
+
     it.each([
-        ['UnsupportedActivityFileError', 415, 'This file is not a valid FIT, TCX or GPX file'],
-        ['ActivityFileParseError', 422, 'This file is not a valid FIT, TCX or GPX file'],
-        ['DuplicateActivityFileError', 409, 'This file was already uploaded'],
-        ['ActivityFileTooLargeError', 413, 'The file is larger than 10 MB'],
-        ['ActivityFileStorageError', 500, 'Something went wrong. Try again.'],
-        ['ActivityWriteError', 500, 'Something went wrong. Try again.'],
+        [tagOf(UnsupportedActivityFileError), 415, 'This file is not a valid FIT, TCX or GPX file'],
+        [tagOf(ActivityFileParseError), 422, 'This file is not a valid FIT, TCX or GPX file'],
+        [tagOf(DuplicateActivityFileError), 409, 'This file was already uploaded'],
+        [tagOf(ActivityFileTooLargeError), 413, 'The file is larger than 10 MB'],
+        [tagOf(ActivityFileStorageError), 500, 'Something went wrong. Try again.'],
+        [tagOf(ActivityWriteError), 500, 'Something went wrong. Try again.'],
     ])('maps %s to %i', async (tag, status, message) => {
         const { handler } = setup(ACCESS_USER, { ok: false, tag, errorHash: 'X' })
         const response = await handler(request({ file: file() }))
@@ -84,15 +98,71 @@ describe('createUploadHandler', () => {
         expect(text).not.toContain('secret-name')
     })
 
-    it('returns 413 from content-length without reading the body', async () => {
+    it.each([
+        ['missing', null],
+        ['empty', ''],
+        ['non-numeric', 'abc'],
+        ['over limit plus overhead', String(10 * 1024 * 1024 + 64 * 1024 + 1)],
+    ])('returns 413 without reading the body when content-length is %s', async (_name, value) => {
         const { handler, upload } = setup(ACCESS_USER, { ok: true, activityId: 'a' })
-        const req = request({ file: file() }, { 'content-length': String(11 * 1024 * 1024) })
+        const req = request({ file: file() })
+        if (value === null) req.headers.delete('content-length')
+        else req.headers.set('content-length', value)
         const formData = vi.spyOn(req, 'formData')
         const response = await handler(req)
         expect(response.status).toBe(413)
         expect(await response.json()).toEqual({ error: 'The file is larger than 10 MB' })
         expect(formData).not.toHaveBeenCalled()
         expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('accepts a header within the multipart overhead with a file just under 10 MB', async () => {
+        const { handler, upload } = setup(ACCESS_USER, { ok: true, activityId: 'a' })
+        const nearLimit = new File([new Uint8Array(10 * 1024 * 1024 - 5)], 'near.fit')
+        const response = await handler(
+            request({ file: nearLimit }, { 'content-length': String(10 * 1024 * 1024 + 1000) })
+        )
+        expect(response.status).toBe(200)
+        expect(upload).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not read the body on 401 or 403', async () => {
+        for (const user of [null, NO_FLAG_USER]) {
+            const { handler } = setup(user, { ok: true, activityId: 'a' })
+            const req = request({ file: file() })
+            const formData = vi.spyOn(req, 'formData')
+            await handler(req)
+            expect(formData).not.toHaveBeenCalled()
+        }
+    })
+
+    it('returns a generic 500 when getUser throws', async () => {
+        const upload = vi.fn()
+        const handler = createUploadHandler({
+            getUser: async () => {
+                throw new Error('down')
+            },
+            upload,
+        })
+        const response = await handler(request({ file: file() }))
+        expect(response.status).toBe(500)
+        expect(await response.json()).toEqual({ error: 'Something went wrong. Try again.' })
+        expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('maps an empty file through the service error to 415', async () => {
+        const unsupported = new UnsupportedActivityFileError({
+            cause: 'unknown format',
+            error_hash: ErrorCode.TRAINING_FILE_UNSUPPORTED,
+        })
+        const { handler, upload } = setup(ACCESS_USER, {
+            ok: false,
+            tag: unsupported._tag,
+            errorHash: unsupported.error_hash,
+        })
+        const response = await handler(request({ file: new File([], 'empty.fit') }))
+        expect(upload).toHaveBeenCalledTimes(1)
+        expect(response.status).toBe(415)
     })
 
     it('returns 413 when the file itself is over the limit', async () => {

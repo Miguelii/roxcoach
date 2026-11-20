@@ -126,6 +126,8 @@ Everything runs with the session-bound client, so RLS applies. No service-role c
 
 ### Known limitations
 
+- An upload without a valid `content-length` header is rejected with 413 before the body is read.
+  The header check allows 64 KiB of multipart overhead; the 10 MB limit applies to the file itself.
 - A concurrent upload of the same workout in two formats has different hashes, so both can pass
   the `started_at` pre-check and create two activities. There is deliberately no unique index on
   `(user_id, started_at)`, because manual sessions entered by hand may share a start time.
