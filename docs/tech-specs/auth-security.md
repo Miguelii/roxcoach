@@ -110,12 +110,12 @@ dot segments that resolve to a protocol-relative path (`/.//evil.com`) and non-s
 | ---------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `createDBServerClient()`     | publishable key, cookie session  | tRPC services acting as the logged-in user (RLS applies) |
 | `createDBServerClient(true)` | service-role key, cookie session | not an admin client, see below                           |
-| `createDBAdminClient()`      | service-role key, no cookies     | Trigger.dev jobs                                         |
+| `createDBAdminClient()`      | service-role key, no cookies     | server-side admin work                                   |
 
 `createDBServerClient(true)` is not a reliable way to act as the service role. When a cookie
 session exists, supabase-js sends the user's access token instead of the key, so PostgREST runs as
 `authenticated` under RLS, with that user's policies and flag. It acts as the
-service role only when nobody is signed in. Use `createDBAdminClient()` for jobs.
+service role only when nobody is signed in. Use `createDBAdminClient()` for admin work.
 
 Every client is created with `db: { schema: 'roxcoach' }` so table names resolve inside the
 Roxcoach schema and never in `public`. A new client is created on every request. Services pick the key and pass the client into
@@ -153,7 +153,7 @@ and of every other device. Local scope ends only this browser's session.
 Already implemented in `src/lib/set-csp.ts`: `default-src 'self'`, `frame-ancestors 'none'`,
 `object-src 'none'`, `upgrade-insecure-requests`, `'unsafe-eval'` in development only.
 
-All Anthropic calls are server-side, so `connect-src` stays `'self'`.
+All Gemini calls are server-side, so `connect-src` stays `'self'`.
 
 ## Security headers
 
@@ -165,5 +165,4 @@ browsing-topics denied.
 ## Secrets
 
 - All secrets in env vars (see [architecture.md](architecture.md)), validated at startup by
-  `@t3-oss/env-nextjs`. `TRIGGER_SECRET_KEY` is not in `ServerEnv` yet: it is added with the
-  Trigger.dev plan.
+  `@t3-oss/env-nextjs`.

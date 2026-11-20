@@ -9,17 +9,17 @@ before touching its code, and update it in the same change.
 
 ## Module index
 
-| Spec                                   | Covers                                                               |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| [architecture.md](architecture.md)     | `_bff` layering, module map, tRPC, Effect, env, jobs, code placement |
-| [database.md](database.md)             | Supabase schema, enums, RLS, migrations                              |
-| [auth-security.md](auth-security.md)   | Login page, Supabase session, proxy, CSP, key usage                  |
-| [athlete-races.md](athlete-races.md)   | Starting point (profile, weekly availability) and races with goals   |
-| [manual-logging.md](manual-logging.md) | Station times, loads and strength sets entered by hand               |
-| [manual-upload.md](manual-upload.md)   | FIT, TCX and GPX upload from the dashboard, parsing, file storage    |
-| [coach.md](coach.md)                   | Sunday weekly report, 3-report memory, context, prompt, output       |
-| [plan.md](plan.md)                     | Rolling week from the report, periodization rules, matching          |
-| [ux-design.md](ux-design.md)           | Design system (from BrewStock), screens, calendar, states            |
+| Spec                                   | Covers                                                             |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| [architecture.md](architecture.md)     | `_bff` layering, module map, tRPC, Effect, env, code placement     |
+| [database.md](database.md)             | Supabase schema, enums, RLS, migrations                            |
+| [auth-security.md](auth-security.md)   | Login page, Supabase session, proxy, CSP, key usage                |
+| [athlete-races.md](athlete-races.md)   | Starting point (profile, weekly availability) and races with goals |
+| [manual-logging.md](manual-logging.md) | Station times, loads and strength sets entered by hand             |
+| [manual-upload.md](manual-upload.md)   | FIT, TCX and GPX upload from the dashboard, parsing, file storage  |
+| [coach.md](coach.md)                   | Sunday weekly report, 3-report memory, context, prompt, output     |
+| [plan.md](plan.md)                     | Rolling week from the report, periodization rules, matching        |
+| [ux-design.md](ux-design.md)           | Design system (from BrewStock), screens, calendar, states          |
 
 ## Decisions log
 
@@ -27,7 +27,7 @@ before touching its code, and update it in the same change.
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Users          | One athlete today, created by hand in Supabase (no sign-up, no password reset). The schema and queries are multi-user from day one: `user_id` on every table, composite foreign keys, explicit `userId` in every query |
 | Login          | Email and password only, one `/login` page, same Supabase implementation as BrewStock                                                                                                                                  |
-| Coach          | Weekly report every Sunday 20:00 Lisbon time, remembers the previous 3 reports. Inside the app (AI SDK + Anthropic), not MCP                                                                                           |
+| Coach          | Weekly report every Sunday 20:00 Lisbon time, remembers the previous 3 reports. Inside the app (AI SDK + Gemini), not MCP                                                                                              |
 | Feedback       | Only in the weekly report. No per-workout feedback                                                                                                                                                                     |
 | Data sources   | Manual upload and manual logging. No Strava (needs a paid plan), Garmin or Hevy in v1                                                                                                                                  |
 | Language       | UI copy and coach output in English. Code in English                                                                                                                                                                   |
@@ -51,7 +51,6 @@ before touching its code, and update it in the same change.
 1. Hyrox station loads per division. Store them in one constants file and verify against the
    official HYROX rules for the division you race in before first use.
 2. Manual upload: see [manual-upload.md](manual-upload.md) for the open questions.
-3. Trigger.dev project: reuse the BrewStock organization with a new project, or a new account.
 
 ## Suggested build order
 
