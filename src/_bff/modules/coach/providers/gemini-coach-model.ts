@@ -72,6 +72,9 @@ export const createGeminiCoachModel = ({
                 // The fallback list is the retry policy: no automatic retries, and no thinking
                 // level or thinking provider option (Gemini 3.8 Flash rejects `minimal`).
                 maxRetries: 0,
+                // The SDK default logs the whole error, whose fields carry the request body (system
+                // prompt, athlete context, history). The failure arrives as an `error` part instead.
+                onError: () => undefined,
             })
 
             for await (const part of result.fullStream) {

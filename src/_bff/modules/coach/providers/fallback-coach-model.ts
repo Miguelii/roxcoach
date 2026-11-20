@@ -8,6 +8,9 @@ type FailureKind = 'rate_limited' | 'unavailable'
 
 type Options = {
     onFallback?: (entry: { modelId: string; kind: FailureKind }) => void
+    // Total time after which no further model is started. A streaming model is never interrupted.
+    deadlineMs?: number
+    now?: () => number
 }
 
 // Tries the models in order. A model that fails before its first text is discarded and the next
@@ -17,17 +20,20 @@ export const createFallbackCoachModel = (
     models: CoachModel[],
     options: Options = {}
 ): CoachModel => {
+    const { deadlineMs, now = Date.now } = options
     const [first] = models
     if (first === undefined)
         throw new RangeError('createFallbackCoachModel needs at least one model')
 
     async function* stream(request: CoachModelRequest): AsyncGenerator<CoachStreamEvent> {
         const { signal } = request
+        const start = now()
         const failures: FailureKind[] = []
         let switchedFrom: string | null = null
 
-        for (const model of models) {
+        for (const [index, model] of models.entries()) {
             if (signal.aborted) return
+            if (index > 0 && deadlineMs !== undefined && now() - start >= deadlineMs) break
             let failure: FailureKind | null = null
             let committed = false
 

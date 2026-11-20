@@ -327,4 +327,81 @@ describe('createFallbackCoachModel', () => {
         }
         expect(cleaned).toEqual(['a', 'b'])
     })
+
+    describe('deadline', () => {
+        const clock = (...times: number[]) => {
+            let index = 0
+            return () => times[Math.min(index++, times.length - 1)] ?? 0
+        }
+
+        it('skips the remaining models once the budget is spent and emits one error', async () => {
+            const a = fake('a', events(RATE))
+            const b = fake('b', events(TEXT, DONE))
+            const c = fake('c', events(TEXT, DONE))
+            const out = await collect(
+                createFallbackCoachModel([a.model, b.model, c.model], {
+                    deadlineMs: 100,
+                    now: clock(0, 150),
+                })
+            )
+            expect(out).toEqual([RATE])
+            expect(b.requests).toHaveLength(0)
+            expect(c.requests).toHaveLength(0)
+        })
+
+        it('reports unavailable when any recorded failure was not rate limited', async () => {
+            const a = fake('a', events(UNAVAILABLE))
+            const b = fake('b', events(TEXT, DONE))
+            const out = await collect(
+                createFallbackCoachModel([a.model, b.model], {
+                    deadlineMs: 100,
+                    now: clock(0, 150),
+                })
+            )
+            expect(out).toEqual([UNAVAILABLE])
+            expect(b.requests).toHaveLength(0)
+        })
+
+        it('still falls back when the budget is not spent', async () => {
+            const a = fake('a', events(RATE))
+            const b = fake('b', events(TEXT, DONE))
+            const out = await collect(
+                createFallbackCoachModel([a.model, b.model], {
+                    deadlineMs: 100,
+                    now: clock(0, 50),
+                })
+            )
+            expect(out).toEqual([{ type: 'model', modelId: 'b', switchedFrom: 'a' }, TEXT, DONE])
+        })
+
+        it('never cuts a model that is already streaming', async () => {
+            let time = 0
+            const a = fake('a', async function* () {
+                yield TEXT
+                time = 1000
+                yield DONE
+            })
+            const out = await collect(
+                createFallbackCoachModel([a.model], { deadlineMs: 100, now: () => time })
+            )
+            expect(out).toEqual([{ type: 'model', modelId: 'a', switchedFrom: null }, TEXT, DONE])
+        })
+
+        it('keeps the abort rules: nothing is emitted when aborted before the deadline check', async () => {
+            const controller = new AbortController()
+            const a = fake('a', async function* () {
+                yield RATE
+            })
+            const b = fake('b', events(TEXT, DONE))
+            const out = await collect(
+                createFallbackCoachModel([a.model, b.model], {
+                    deadlineMs: 100,
+                    now: clock(0, 150),
+                    onFallback: () => controller.abort(),
+                }),
+                makeRequest(controller.signal)
+            )
+            expect(out).toEqual([])
+        })
+    })
 })

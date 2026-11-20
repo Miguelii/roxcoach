@@ -44,7 +44,7 @@ The dashboard has a chat with an AI coach (Google Gemini), described in
    Without the key the chat route answers 503 and the panel says the coach is not set up.
 2. Check the key against every listed model with `pnpm dlx tsx tools/gemini-smoke.ts` (or one
    model with `pnpm dlx tsx tools/gemini-smoke.ts <model-id>`), with the key loaded in the shell. It
-   prints one line per model, `<id>: OK` or `<id>: <status code>` (never the key or the response).
+   prints one line per model, `<id>: OK` or `<id>: <status>` (an HTTP status, `no-key` or `network`; never the key or the response).
    The key must not be pasted anywhere else.
 3. Apply migration `0009_coach_chat.sql` in the Supabase SQL editor (it creates
    `coach_conversations` and `coach_messages` and drops the old report and plan tables).

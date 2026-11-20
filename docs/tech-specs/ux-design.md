@@ -165,7 +165,7 @@ The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a clie
   model of its last assistant message with a stored model; a new conversation, or a history with
   no stored model, shows nothing. An error keeps the last known caption.
 - **Switch note**: when a reply came from a fallback model, a muted, small, centered line
-  (`coach-model-switch-note`) "<from> reached its limit. Answering with <to>." sits in the message
+  (`coach-model-switch-note`) "<from> is not available right now. Answering with <to>." sits in the message
   list right before that reply. It is in-session only (not stored, absent in reopened
   conversations), is not an alert and is not announced by the live region.
 - **States**: empty, loading history (skeleton), streaming, stopped or cut off (partial text kept

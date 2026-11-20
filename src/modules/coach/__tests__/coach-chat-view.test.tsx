@@ -413,13 +413,13 @@ describe('CoachChatView', () => {
             await sendOne()
             const note = screen.getByTestId('coach-model-switch-note')
             expect(note).toHaveTextContent(
-                'Gemini 4 Hydrogen reached its limit. Answering with Gemini 3.8 Flash.'
+                'Gemini 4 Hydrogen is not available right now. Answering with Gemini 3.8 Flash.'
             )
             expect(note).not.toHaveAttribute('role')
             expect(note.nextElementSibling).toBe(screen.getByTestId('coach-message-assistant'))
             const caption = screen.getByTestId('coach-model-caption')
             expect(caption).toHaveTextContent('Gemini 3.8 Flash')
-            expect(caption).not.toHaveTextContent('reached its limit')
+            expect(caption).not.toHaveTextContent('not available')
             expect(screen.getByTestId('coach-live-region')).not.toHaveTextContent('reached')
         })
 

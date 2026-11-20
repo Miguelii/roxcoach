@@ -25,7 +25,7 @@ answering and when it changed.
   the same request on the next model of the list, with no action needed from the athlete.
 - Show the model that is answering as a small caption under the message box.
 - When a reply comes from a fallback model, show a short, muted note in the conversation, right before
-  that reply, saying which model reached its limit and which one is answering.
+  that reply, saying which model is not available and which one is answering.
 - One place in the code defines the models and their order. No environment variable chooses a model.
 - The model that really answered is saved with the assistant message (the `model` column already
   exists) and returned with the conversation history.
@@ -145,8 +145,9 @@ already ignores unknown event types.
 
 The chat service saves the id of the model that answered in `coach_messages.model`: the id of the last
 `model` event of the reply, or the provider's own `modelId` when none was seen (a single model, no
-wrapper). `MessageDTO.model` is `string | null` (null for user messages and for replies saved before
-this change) and is returned with the conversation history.
+wrapper). `MessageDTO.model` is `string | null` (null for user messages and for any row without a model; older
+replies hold the id that was configured when they were saved, for example `gemini-2.5-flash`, which
+the caption shows through a small legacy label map outside the list, so the fallback never uses it) and is returned with the conversation history.
 
 ### What the chat shows
 
@@ -160,7 +161,7 @@ delta that follows the `model` event, so a reply that fails right after the even
 previous caption.
 
 **Switch note in the conversation.** A muted, small, centered line placed in the message list right
-before the reply that came from a fallback model, for example "Gemini 3.8 Flash reached its limit.
+before the reply that came from a fallback model, for example "Gemini 3.8 Flash is not available right now.
 Answering with Gemini 3 Flash." It is attached to the reply when the `model` event arrives with a
 non-null `switchedFrom`. It exists in the session where the switch happened only: it is not saved and
 does not appear when the conversation is reopened. It is not an alert and the live region does not
@@ -171,7 +172,7 @@ announce it.
  +------------------------------------------+
  | you: How is my training for Lisbon?      |
  |                                          |
- |  Gemini 3.8 Flash reached its limit.     |   <- switch note, muted
+ |  Gemini 3.8 Flash is not available now.  |   <- switch note, muted
  |  Answering with Gemini 3 Flash.          |
  | coach: You are 6 weeks from the race...  |
  +------------------------------------------+
@@ -244,9 +245,14 @@ is logged, as everywhere else in the chat.
 
 ## Cost and latency
 
-A skipped model adds one fast failed request before the next starts (a 429 answers quickly), so a
-fallback adds latency of roughly one round trip per skipped model, and at most the length of the list
-in the worst case. The daily cap and every other limit are unchanged. All listed models are free
+A 429 answers quickly, but a 503 or a hung connection can take many seconds, so a fallback adds roughly
+one failed request per skipped model. The chat route allows 60 s (`maxDuration`), so the chain has a
+time budget: `FALLBACK_DEADLINE_MS` (45 s). Before starting any model after the first, the wrapper
+checks the time since the stream began; once the budget is spent it starts no further model and emits
+the single aggregated `error` event (`rate_limited` only when every recorded failure was
+rate limited, otherwise `unavailable`), so the athlete sees the usual "The coach is busy" state with
+Retry instead of a stream cut by the platform. The budget never interrupts a model that is already
+streaming. The daily cap and every other limit are unchanged. All listed models are free
 tier; if the athlete later enables billing, models with paid usage must not be put in the list
 without a spend limit (not applicable to the free tier).
 

@@ -9,7 +9,8 @@ export function CoachModelSwitchNote({ from, to }: Props) {
             data-testid="coach-model-switch-note"
             className="text-center text-xs text-muted-foreground"
         >
-            {coachModelLabel(from)} reached its limit. Answering with {coachModelLabel(to)}.
+            {coachModelLabel(from)} is not available right now. Answering with {coachModelLabel(to)}
+            .
         </p>
     )
 }

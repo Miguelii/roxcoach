@@ -19,6 +19,9 @@ export const HISTORY_WINDOW = 20
 // Model steps per reply (tool rounds included).
 export const MAX_STEPS = 5
 
+// Time after which the model fallback chain starts no further model (route limit is 60 s).
+export const FALLBACK_DEADLINE_MS = 45_000
+
 // A conversation is titled with the start of its first message.
 export const TITLE_MAX_CHARS = 60
 

@@ -97,4 +97,16 @@ describe('buildCoachModels', () => {
             DONE,
         ])
     })
+
+    it('forwards the deadline to the fallback', async () => {
+        const { createModel } = setup({ a: events(RATE), b: events(TEXT, DONE) })
+        const model = buildCoachModels({
+            apiKey: API_KEY,
+            modelIds: ['a', 'b'],
+            createModel,
+            deadlineMs: 0,
+            log: () => {},
+        })
+        expect(await collect(model)).toEqual([RATE])
+    })
 })

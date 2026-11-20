@@ -22,7 +22,7 @@ export type MessageDTO = {
     id: string
     role: MessageRole
     content: string
-    // The model that wrote an assistant reply. Null for user messages and for replies saved before the column was read.
+    // The model that wrote an assistant reply. Null for user messages and for any row without a model; older replies hold the id that was configured then.
     model: string | null
     createdAt: string
 }

@@ -47,21 +47,23 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
 
 `src/_bff/modules/coach/`:
 
-| Path                                                                                                    | Role                                                                                     |
-| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `coach.router.ts`                                                                                       | tRPC router: `listConversations`, `getConversationMessages`, `deleteConversation`        |
-| `controllers/`                                                                                          | the three protected controllers, exhaustive `Match.tag` maps                             |
-| `services/send-coach-message.service.ts`                                                                | the chat service: checks, writes, then the event stream; exports the `ChatEvent` type    |
-| `services/get-coach-context.service.ts`                                                                 | gathers the data through other modules' services and builds the context block            |
-| `services/{list,get,delete}-*.service.ts`, `count-messages-today.service.ts`, `coach-client.service.ts` | conversation reads, delete, the daily count, the Supabase client (publishable key)       |
-| `repositories/coach-conversations.repository.ts`, `coach-messages.repository.ts`, `coach-query.ts`      | one file per table plus the shared query runner                                          |
-| `helpers/build-coach-context.helper.ts`                                                                 | pure context builder                                                                     |
-| `helpers/coach-system-prompt.helper.ts`                                                                 | the system prompt                                                                        |
-| `helpers/build-history.helper.ts`                                                                       | history window and turn merging                                                          |
-| `helpers/chat-handler.helper.ts`                                                                        | the route handler (auth result, body checks, NDJSON stream), with injected dependencies  |
-| `providers/coach-model.ts`, `gemini-coach-model.ts`, `fallback-coach-model.ts`                          | the `CoachModel` interface and its Gemini implementation                                 |
-| `tools/`                                                                                                | the five read-only tools, `coach-tools.ts` (the factory), `run-tool.ts`, `plain-date.ts` |
-| `constants/index.ts`, `types/index.ts`                                                                  | limits and DTO or input types                                                            |
+| Path                                                                                                    | Role                                                                                             |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `coach.router.ts`                                                                                       | tRPC router: `listConversations`, `getConversationMessages`, `deleteConversation`                |
+| `controllers/`                                                                                          | the three protected controllers, exhaustive `Match.tag` maps                                     |
+| `services/send-coach-message.service.ts`                                                                | the chat service: checks, writes, then the event stream; exports the `ChatEvent` type            |
+| `services/get-coach-context.service.ts`                                                                 | gathers the data through other modules' services and builds the context block                    |
+| `services/{list,get,delete}-*.service.ts`, `count-messages-today.service.ts`, `coach-client.service.ts` | conversation reads, delete, the daily count, the Supabase client (publishable key)               |
+| `repositories/coach-conversations.repository.ts`, `coach-messages.repository.ts`, `coach-query.ts`      | one file per table plus the shared query runner                                                  |
+| `helpers/build-coach-context.helper.ts`                                                                 | pure context builder                                                                             |
+| `helpers/coach-system-prompt.helper.ts`                                                                 | the system prompt                                                                                |
+| `helpers/build-history.helper.ts`                                                                       | history window and turn merging                                                                  |
+| `helpers/build-coach-models.helper.ts`                                                                  | builds one Gemini model per listed id wrapped by the fallback                                    |
+| `helpers/chat-handler.helper.ts`                                                                        | the route handler (auth result, body checks, NDJSON stream), with injected dependencies          |
+| `providers/coach-model.ts`, `gemini-coach-model.ts`, `fallback-coach-model.ts`                          | the `CoachModel` interface, its Gemini implementation and the fallback wrapper over a model list |
+| `tools/`                                                                                                | the five read-only tools, `coach-tools.ts` (the factory), `run-tool.ts`, `plain-date.ts`         |
+| `src/_bff/core/constants/coach-models.constants.ts`                                                     | the ordered model list, friendly labels and legacy labels                                        |
+| `constants/index.ts`, `types/index.ts`                                                                  | limits and DTO or input types                                                                    |
 
 The route is `src/app/api/coach/chat/route.ts` (thin: reads the env, builds the model, wires the
 real session and service into the handler). The UI is `src/modules/coach/`.
@@ -194,9 +196,9 @@ written.
   endpoints reject a history that starts with a model turn). Consecutive user turns (an earlier
   attempt that got no reply) are merged into one turn joined by a blank line.
 - **Stream.** `application/x-ndjson; charset=utf-8`, `Cache-Control: no-store`, one JSON event per
-  line: `{"type":"meta","conversationId":"..."}` first, then, when the provider emits it,
-  `{"type":"model","model":"...","switchedFrom":"..."|null}` (the model that answers, sent right
-  before its first text; `switchedFrom` names the model skipped last, else null), then
+  line: `{"type":"meta","conversationId":"..."}` first, then
+  `{"type":"model","model":"...","switchedFrom":"..."|null}` (the model that answers; in production the fallback wrapper always emits it right
+  before the first text; `switchedFrom` names the model skipped last, else null), then
   `{"type":"text","delta":"..."}` events, then exactly one of `{"type":"done"}` or `{"type":"error","kind":"rate_limited"|"unavailable"|"blocked"}`.
   The daily cap is a pre-stream 429, not a stream event. A defect inside the stream becomes an
   `unavailable` error event.
@@ -212,8 +214,9 @@ written.
   created before streaming, for the same reason. The context and the tools create their own
   session-bound clients while the stream is consumed (see Known limitations).
 - **Secrets.** The API key is read only on the server through `src/env/server.ts`. It never
-  reaches the client, logs or error payloads. Logs carry a tag and an error hash only: never the
-  message, the model output, the context or the key.
+  reaches the client, logs or error payloads. Logs carry a tag and an error hash only (plus the
+  `coachModelFallback` warn line with `{ modelId, kind }`): never the message, the model output, the
+  context or the key.
 - **Prompt injection.** Activity names, notes and station data are athlete-controlled text and
   arrive inside the context and tool results. The system prompt states that this text is data,
   never instructions. The structural defence is that the tools are read-only and scoped to the
@@ -240,19 +243,19 @@ Besides the streaming route, the `coach` router has `listConversations` (latest 
 `deleteConversation` (`{ conversationId }`, hard delete, the messages go with it by cascade). A
 conversation that is missing or not the athlete's is `NOT_FOUND`. There is no limit on stored
 conversations. Each message is a `MessageDTO` `{ id, role, content, model, createdAt }`; `model` is
-the id of the model that wrote an assistant reply and null for user messages and for rows saved
-before it was read.
+null for user messages and for any row without a model; for an assistant reply it is the id of the
+model that wrote it (older replies hold the id that was configured then).
 
 ## Limits and failures
 
-| Case                                 | Behaviour                                                                                                                     |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                       |
-| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`); the UI shows "The coach is busy, try again in a minute" and offers Retry  |
-| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing        |
-| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply |
-| Failed reply                         | the saved user message stays; a retry sends the same text again (the history merge makes this harmless)                       |
-| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                   |
+| Case                                 | Behaviour                                                                                                                                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                                                                                              |
+| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`), only after every listed model failed or the 45 s fallback budget ended; the UI shows "The coach is busy, try again in a minute" and offers Retry |
+| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing                                                                               |
+| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply                                                                        |
+| Failed reply                         | the saved user message stays; a retry sends the same text again (the history merge makes this harmless)                                                                                              |
+| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                                                                                          |
 
 ## Persistence
 

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import type { streamText } from 'ai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { createGeminiCoachModel } from '@/_bff/modules/coach/providers/gemini-coach-model'
 import type { CoachStreamEvent } from '@/_bff/modules/coach/providers/coach-model'
@@ -191,6 +191,26 @@ describe('createGeminiCoachModel', () => {
         ])
 
         expect(JSON.stringify(await run(model))).not.toContain(API_KEY)
+    })
+
+    it('passes an onError that logs nothing, even for an error carrying the request body', async () => {
+        const { model, calls } = setup([{ type: 'finish', finishReason: 'stop' }])
+        await run(model)
+        const onError = calls[0]?.onError
+        expect(onError).toBeInstanceOf(Function)
+        const spies = [
+            vi.spyOn(console, 'error').mockImplementation(() => {}),
+            vi.spyOn(console, 'warn').mockImplementation(() => {}),
+            vi.spyOn(console, 'log').mockImplementation(() => {}),
+        ]
+        const error = Object.assign(new Error('boom'), {
+            statusCode: 429,
+            requestBodyValues: { system: 'ATHLETE-CONTEXT' },
+            responseBody: 'body',
+        })
+        expect(onError?.({ error })).toBeUndefined()
+        for (const spy of spies) expect(spy).not.toHaveBeenCalled()
+        vi.restoreAllMocks()
     })
 
     it('asks for zero automatic retries and sets no thinking option', async () => {

@@ -13,6 +13,9 @@ import {
 } from '@/_bff/modules/coach/helpers/__tests__/chat-handler.fixtures'
 import { Effect } from 'effect'
 import { createChatHandler } from '@/_bff/modules/coach/helpers/chat-handler.helper'
+import { createFallbackCoachModel } from '@/_bff/modules/coach/providers/fallback-coach-model'
+import { sendCoachMessage } from '@/_bff/modules/coach/services/send-coach-message.service'
+import type { CoachModel } from '@/_bff/modules/coach/providers/coach-model'
 import type { ChatEvent } from '@/_bff/modules/coach/services/send-coach-message.service'
 import type { CoachTool } from '@/_bff/modules/coach/types'
 
@@ -57,6 +60,55 @@ describe('createChatHandler: request scope', () => {
 
         expect(seen).toEqual(['request-1'])
         expect(events.map((event) => event.type)).toEqual(['meta', 'text', 'done'])
+    })
+
+    it('runs the tools of a fallback model inside the request scope', async () => {
+        const scope = new AsyncLocalStorage<{ id: string }>()
+        const seen: Array<string | null> = []
+        const tool: CoachTool = {
+            name: 'get_races',
+            description: 'races',
+            // SAFETY: the fake model calls `execute` directly, so the schema is never read.
+            inputSchema: {} as CoachTool['inputSchema'],
+            execute: async () => {
+                seen.push(scope.getStore()?.id ?? null)
+                return { races: [] }
+            },
+        }
+        const failing: CoachModel = {
+            modelId: 'first',
+            stream: async function* () {
+                yield { type: 'error', kind: 'rate_limited' }
+            },
+        }
+        const calling: CoachModel = {
+            modelId: 'second',
+            stream: async function* (request) {
+                await request.tools[0]?.execute({})
+                yield { type: 'text', delta: 'after tool' }
+                yield DONE
+            },
+        }
+        const model = createFallbackCoachModel([failing, calling])
+        const store = makeStore({ tools: [tool] })
+        const handler = createChatHandler({
+            getUser: async () => ME,
+            isConfigured: true,
+            send: (user, input, signal) =>
+                sendCoachMessage(user, input, { model, signal, ports: store.ports }),
+        })
+
+        const response = await scope.run({ id: 'request-2' }, () =>
+            handler(post({ conversationId: MINE, message: 'hi' }))
+        )
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 20)
+        })
+        expect(scope.getStore()).toBeUndefined()
+        const events = await readLines(response)
+
+        expect(seen).toEqual(['request-2'])
+        expect(events.map((event) => event.type)).toEqual(['meta', 'model', 'text', 'done'])
     })
 
     it('a cancel during an in-flight pull logs nothing and throws nothing', async () => {
