@@ -48,6 +48,8 @@ export const parseClock = (text: string) => {
 
     const [, hours = '0', minutes = '0', seconds = '0'] = match
     if (Number(seconds) > 59) return null
+    // Minutes above 59 are only valid without hours (`90:00`), never in `1:75:00`.
+    if (match[1] !== undefined && Number(minutes) > 59) return null
 
     return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
 }

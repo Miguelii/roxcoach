@@ -2,8 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { HYROX_DIVISION_KEYS, type HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
-import { formatClock } from '@/_bff/core/utils/formatters.utils'
-import { parseRaceClock } from '@/modules/races/utils'
+import { formatClock, parseClock } from '@/_bff/core/utils/formatters.utils'
 import type { RaceDTO, RaceInput } from '@/_bff/modules/races/types'
 
 const RACE_TYPES = ['hyrox', 'running', 'other'] as const
@@ -14,9 +13,10 @@ const MAX_GOAL_S = 86400
 const MIN_DISTANCE_KM = 0.4
 const MAX_DISTANCE_KM = 200
 
-// `today` is the athlete's local date. Inputs hold strings: the distance is in km and the goal time is `h:mm:ss`. An empty division
-// means "not chosen".
-export const createRaceSchema = (today: string) =>
+// `today` is the athlete's local date. `originalDate` is the saved date when editing: keeping it
+// is allowed even if it has passed (the server does the same). Inputs hold strings: distance in
+// km, goal time `h:mm:ss`; an empty division means "not chosen".
+export const createRaceSchema = (today: string, originalDate?: string) =>
     z
         .object({
             name: z.string().trim().min(1, 'Enter a name').max(80, 'Use at most 80 characters'),
@@ -24,7 +24,10 @@ export const createRaceSchema = (today: string) =>
             raceDate: z
                 .string()
                 .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Choose a date')
-                .refine((value) => value > today, 'The date must be in the future'),
+                .refine(
+                    (value) => value > today || value === originalDate,
+                    'The date must be in the future'
+                ),
             location: z.string().max(80, 'Use at most 80 characters'),
             distanceKm: z.string(),
             hyroxDivision: z.union([z.literal(''), z.enum(HYROX_DIVISION_KEYS)]),
@@ -34,13 +37,9 @@ export const createRaceSchema = (today: string) =>
         })
         .superRefine((value, ctx) => {
             if (value.raceType === 'running') {
-                const km = Number(value.distanceKm.trim())
-                if (
-                    value.distanceKm.trim() === '' ||
-                    !Number.isFinite(km) ||
-                    km < MIN_DISTANCE_KM ||
-                    km > MAX_DISTANCE_KM
-                )
+                const text = value.distanceKm.trim()
+                const km = Number(text)
+                if (!/^\d+(\.\d+)?$/u.test(text) || km < MIN_DISTANCE_KM || km > MAX_DISTANCE_KM)
                     ctx.addIssue({
                         code: 'custom',
                         path: ['distanceKm'],
@@ -53,7 +52,7 @@ export const createRaceSchema = (today: string) =>
                     path: ['hyroxDivision'],
                     message: 'Choose a division',
                 })
-            const goal = parseRaceClock(value.targetTime)
+            const goal = parseClock(value.targetTime)
             if (goal === null || goal < MIN_GOAL_S || goal > MAX_GOAL_S)
                 ctx.addIssue({
                     code: 'custom',
@@ -100,13 +99,14 @@ export const toRaceInput = (values: RaceFormValues): RaceInput => ({
     distanceM: values.raceType === 'running' ? Math.round(Number(values.distanceKm) * 1000) : null,
     hyroxDivision:
         values.raceType === 'hyrox' && values.hyroxDivision !== '' ? values.hyroxDivision : null,
-    targetTimeS: parseRaceClock(values.targetTime) ?? 0,
+    targetTimeS: parseClock(values.targetTime) ?? 0,
     priority: values.priority,
     notes: values.notes.trim() === '' ? null : values.notes.trim(),
 })
 
-export const useRaceForm = (defaults: RaceFormValues, today: string) =>
+// Pass `originalDate` in edit mode.
+export const useRaceForm = (defaults: RaceFormValues, today: string, originalDate?: string) =>
     useForm<RaceFormValues>({
-        resolver: zodResolver(createRaceSchema(today)),
+        resolver: zodResolver(createRaceSchema(today, originalDate)),
         defaultValues: defaults,
     })

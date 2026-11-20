@@ -10,6 +10,8 @@ import {
     TODAY,
 } from '@/modules/races/__tests__/fixtures'
 
+const testIdOf = (node: Element) => (node instanceof HTMLElement ? node.dataset.testid : null)
+
 const setup = (races: RaceDTO[]) => {
     const handlers = {
         onCreate: vi.fn().mockResolvedValue(null),
@@ -35,9 +37,7 @@ describe('RacesList', () => {
     it('lists upcoming races by date', () => {
         setup([HYROX_RACE, RUN_RACE])
         expect(screen.queryByTestId('races-empty')).not.toBeInTheDocument()
-        const ids = screen
-            .getAllByTestId(/^race-card-/u)
-            .map((node) => node.getAttribute('data-testid'))
+        const ids = screen.getAllByTestId(/^race-card-/u).map((node) => testIdOf(node))
         expect(ids).toEqual(['race-card-r-run', 'race-card-r-hyrox'])
     })
 
@@ -47,7 +47,7 @@ describe('RacesList', () => {
         expect(history).not.toHaveAttribute('open')
         expect(history).toHaveTextContent('History (2)')
         const ids = Array.from(history.querySelectorAll('[data-testid^="race-card-"]')).map(
-            (node) => node.getAttribute('data-testid')
+            (node) => testIdOf(node)
         )
         expect(ids).toEqual(['race-card-r-cancelled', 'race-card-r-done'])
         expect(screen.getByTestId('races-upcoming')).not.toContainElement(
@@ -99,5 +99,19 @@ describe('RacesList', () => {
         fireEvent.click(screen.getByTestId('race-delete-r-cancelled'))
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-cancelled'))
         await waitFor(() => expect(handlers.onDelete).toHaveBeenCalledWith('r-cancelled'))
+    })
+
+    it('disables the card actions while a cancel is pending', async () => {
+        const deferred = Promise.withResolvers<void>()
+        const handlers = setup([RUN_RACE])
+        handlers.onCancel.mockReturnValue(deferred.promise)
+        fireEvent.click(screen.getByTestId('race-cancel-r-run'))
+        fireEvent.click(screen.getByTestId('race-confirm-yes-r-run'))
+        await waitFor(() => expect(screen.getByTestId('race-edit-r-run')).toBeDisabled())
+        expect(screen.getByTestId('race-complete-r-run')).toBeDisabled()
+        expect(screen.getByTestId('race-cancel-r-run')).toBeDisabled()
+        expect(screen.getByTestId('race-delete-r-run')).toBeDisabled()
+        deferred.resolve()
+        await waitFor(() => expect(screen.getByTestId('race-edit-r-run')).not.toBeDisabled())
     })
 })

@@ -57,7 +57,11 @@ const PRIORITY_OPTIONS = Object.entries(PRIORITY_LABELS).map(([value, label]) =>
 }))
 
 function RaceFormBody({ mode, defaults, today, defaultDivision, onSubmit, onClose }: BodyProps) {
-    const form = useRaceForm(defaults ?? emptyRaceFormValues(defaultDivision), today)
+    const form = useRaceForm(
+        defaults ?? emptyRaceFormValues(defaultDivision),
+        today,
+        mode === 'edit' ? defaults?.raceDate : undefined
+    )
     const raceType = form.watch('raceType')
 
     const submit = async (values: RaceFormValues) => {

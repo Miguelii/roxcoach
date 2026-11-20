@@ -20,6 +20,8 @@ import {
 type Props = {
     race: RaceDTO
     today: string
+    // True while a mutation for this race runs: the actions are disabled.
+    pending?: boolean
     onEdit: (race: RaceDTO) => void
     onComplete: (race: RaceDTO) => void
     onCancel: (race: RaceDTO) => Promise<void> | void
@@ -34,7 +36,15 @@ const typeText = (race: RaceDTO) => {
     return division ? `${base} (${division.label})` : base
 }
 
-export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDelete }: Props) {
+export function RaceCardView({
+    race,
+    today,
+    pending = false,
+    onEdit,
+    onComplete,
+    onCancel,
+    onDelete,
+}: Props) {
     const [confirming, setConfirming] = useState<Confirming>(null)
     const { id } = race
     const upcoming = race.status === 'upcoming'
@@ -84,11 +94,11 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                             Required pace {pace}
                         </p>
                     ) : null}
-                    {race.resultTimeS !== null ? (
+                    {race.resultTimeS === null ? null : (
                         <p data-testid={`race-result-${id}`}>
                             Result {formatClock(race.resultTimeS)}
                         </p>
-                    ) : null}
+                    )}
                     {delta ? (
                         <p data-testid={`race-delta-${id}`} className="text-muted-foreground">
                             {delta}
@@ -110,6 +120,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                         </p>
                         <div className="flex gap-2">
                             <Button
+                                disabled={pending}
                                 size="sm"
                                 variant="destructive"
                                 data-testid={`race-confirm-yes-${id}`}
@@ -122,6 +133,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                                 {confirming === 'cancel' ? 'Cancel race' : 'Delete race'}
                             </Button>
                             <Button
+                                disabled={pending}
                                 size="sm"
                                 variant="outline"
                                 data-testid={`race-confirm-no-${id}`}
@@ -136,6 +148,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                         {upcoming ? (
                             <>
                                 <Button
+                                    disabled={pending}
                                     size="sm"
                                     variant="outline"
                                     data-testid={`race-edit-${id}`}
@@ -144,6 +157,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                                     Edit
                                 </Button>
                                 <Button
+                                    disabled={pending}
                                     size="sm"
                                     variant="outline"
                                     data-testid={`race-complete-${id}`}
@@ -152,6 +166,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                                     Complete
                                 </Button>
                                 <Button
+                                    disabled={pending}
                                     size="sm"
                                     variant="outline"
                                     data-testid={`race-cancel-${id}`}
@@ -163,6 +178,7 @@ export function RaceCardView({ race, today, onEdit, onComplete, onCancel, onDele
                         ) : null}
                         {race.resultTimeS === null ? (
                             <Button
+                                disabled={pending}
                                 size="sm"
                                 variant="ghost"
                                 data-testid={`race-delete-${id}`}

@@ -47,11 +47,23 @@ describe('race form schema', () => {
         expect(firstError({ raceDate: '2026-11-21' })).toBeNull()
     })
 
+    it('allows an unchanged past date only in edit mode', () => {
+        const edit = createRaceSchema(TODAY, '2026-11-01')
+        const past = { ...HYROX_VALUES, raceDate: '2026-11-01' }
+        expect(edit.safeParse(past).success).toBe(true)
+        const changed = edit.safeParse({ ...past, raceDate: '2026-11-02' })
+        expect(changed.success).toBe(false)
+        expect(schema.safeParse(past).success).toBe(false)
+    })
+
     it('requires a distance for running, bounded 0.4 to 200 km', () => {
         const path = ['distanceKm']
         expect(firstError({ distanceKm: '' }, RUN_VALUES)?.path).toEqual(path)
         expect(firstError({ distanceKm: 'ten' }, RUN_VALUES)?.path).toEqual(path)
         expect(firstError({ distanceKm: '0.39' }, RUN_VALUES)?.path).toEqual(path)
+        expect(firstError({ distanceKm: '0x10' }, RUN_VALUES)?.path).toEqual(path)
+        expect(firstError({ distanceKm: '1e1' }, RUN_VALUES)?.path).toEqual(path)
+        expect(firstError({ distanceKm: '10.5' }, RUN_VALUES)).toBeNull()
         expect(firstError({ distanceKm: '0.4' }, RUN_VALUES)).toBeNull()
         expect(firstError({ distanceKm: '200' }, RUN_VALUES)).toBeNull()
         expect(firstError({ distanceKm: '200.1' }, RUN_VALUES)?.path).toEqual(path)

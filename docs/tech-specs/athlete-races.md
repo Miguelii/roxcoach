@@ -81,6 +81,9 @@ Behaviour:
   it in the weekly report if the race also exists as a synced activity (matched by `local_date`).
 - A division is only valid on a `hyrox` race (validation rejects it otherwise). Blank location and
   notes are stored as NULL.
+- The Races page offers Edit and Complete only for upcoming races. Cancel and Delete (Delete only
+  without a result) ask for an inline confirmation, and a card's actions are disabled while its
+  mutation runs. An upcoming race whose date has passed can still be edited if the date is kept.
 - Past dates are rejected on creation. Deleting a race with planned sessions detaches them
   (`race_id` set null) instead of deleting the sessions.
 

@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-    daysUntil,
-    parseRaceClock,
-    formatDaysToGo,
-    formatDelta,
-    formatRaceDate,
-} from '@/modules/races/utils'
+import { daysUntil, formatDaysToGo, formatDelta, formatRaceDate } from '@/modules/races/utils'
 
 describe('race utils', () => {
     it('counts whole days between plain dates, across a DST change', () => {
@@ -31,11 +25,5 @@ describe('race utils', () => {
         expect(formatDelta(2400, 2370)).toBe('0:30 faster than goal')
         expect(formatDelta(2400, 2400)).toBe('On goal')
         expect(formatDelta(2400, null)).toBeNull()
-    })
-
-    it('rejects minutes above 59 in h:mm:ss', () => {
-        expect(parseRaceClock('1:10:00')).toBe(4200)
-        expect(parseRaceClock('1:75:00')).toBeNull()
-        expect(parseRaceClock('90:00')).toBe(5400)
     })
 })

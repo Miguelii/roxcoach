@@ -37,12 +37,22 @@ export function RacesList({
     onCancel,
     onDelete,
 }: Props) {
+    const [pendingId, setPendingId] = useState<string | null>(null)
     const [dialog, setDialog] = useState<Dialog | null>(null)
     // Keeps the last dialog content mounted while the closing animation runs.
     const [last, setLast] = useState<Dialog>({ kind: 'create' })
     const open = (next: Dialog) => {
         setLast(next)
         setDialog(next)
+    }
+    // Disables the card's actions while its cancel or delete runs.
+    const withPending = async (id: string, action: (id: string) => Promise<void>) => {
+        setPendingId(id)
+        try {
+            await action(id)
+        } finally {
+            setPendingId(null)
+        }
     }
     const close = () => setDialog(null)
 
@@ -58,10 +68,11 @@ export function RacesList({
             key={race.id}
             race={race}
             today={today}
+            pending={pendingId === race.id}
             onEdit={(item) => open({ kind: 'edit', race: item })}
             onComplete={(item) => open({ kind: 'complete', race: item })}
-            onCancel={(item) => onCancel(item.id)}
-            onDelete={(item) => onDelete(item.id)}
+            onCancel={(item) => withPending(item.id, onCancel)}
+            onDelete={(item) => withPending(item.id, onDelete)}
         />
     )
 

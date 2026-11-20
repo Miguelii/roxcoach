@@ -1,4 +1,4 @@
-import { formatClock, parseClock } from '@/_bff/core/utils/formatters.utils'
+import { formatClock } from '@/_bff/core/utils/formatters.utils'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 
 export const PRIORITY_LABELS: Record<RaceDTO['priority'], string> = {
@@ -43,11 +43,4 @@ export const formatDelta = (goalS: number, resultS: number | null) => {
     const diff = resultS - goalS
     if (diff === 0) return 'On goal'
     return `${formatClock(Math.abs(diff))} ${diff > 0 ? 'slower' : 'faster'} than goal`
-}
-
-// `parseClock` that also rejects minutes above 59 when hours are given (`1:75:00`).
-export const parseRaceClock = (text: string) => {
-    const parts = text.trim().split(':')
-    if (parts.length === 3 && Number(parts[1]) > 59) return null
-    return parseClock(text)
 }
