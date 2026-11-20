@@ -39,6 +39,13 @@ export class RaceValidationError extends Data.TaggedError('RaceValidationError')
 export class RaceNotFoundError extends Data.TaggedError('RaceNotFoundError')<ServiceErrorFields> {}
 export class RaceStateError extends Data.TaggedError('RaceStateError')<ServiceErrorFields> {}
 
+// Coach
+export class CoachQueryError extends Data.TaggedError('CoachQueryError')<ServiceErrorFields> {}
+export class CoachWriteError extends Data.TaggedError('CoachWriteError')<ServiceErrorFields> {}
+export class ConversationNotFoundError extends Data.TaggedError(
+    'ConversationNotFoundError'
+)<ServiceErrorFields> {}
+
 // Training
 export class ActivityQueryError extends Data.TaggedError(
     'ActivityQueryError'

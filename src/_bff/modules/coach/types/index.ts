@@ -4,6 +4,32 @@ import type { AvailabilitySlotDTO, ProfileDTO } from '@/_bff/modules/athlete/typ
 import type { RaceDTO, RaceFilter } from '@/_bff/modules/races/types'
 import type { ActivityDTO, CalendarItem, LapDTO } from '@/_bff/modules/training/types'
 
+export type ConversationDTO = {
+    id: string
+    // Null until the first exchange names the conversation.
+    title: string | null
+    updatedAt: string
+}
+
+type MessageRole = 'user' | 'assistant'
+
+export type MessageDTO = {
+    id: string
+    role: MessageRole
+    content: string
+    createdAt: string
+}
+
+// A message to store. Model and token counts only exist on assistant replies.
+export type MessageInput = {
+    conversationId: string
+    role: MessageRole
+    content: string
+    model?: string | null
+    promptTokens?: number | null
+    completionTokens?: number | null
+}
+
 export type CoachContextInput = {
     // Plain `YYYY-MM-DD` in the athlete's timezone.
     today: string
