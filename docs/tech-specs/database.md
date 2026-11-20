@@ -126,6 +126,11 @@ The athlete's typical week. A slot says what happens or can happen on a weekday.
 
 Unique on `(user_id, weekday, session_kind)`. A `rest` slot marks a day with nothing allowed.
 
+Save strategy as built: the app upserts the new set on that unique key and then deletes the user's
+rows outside it. There is no transaction: a failed delete leaves stale extra slots until the next
+save, and two concurrent saves by the same user can race the delete. Every statement filters by
+`user_id`.
+
 ### `races`
 
 | Column           | Type            | Notes                                    |
@@ -143,6 +148,11 @@ Unique on `(user_id, weekday, session_kind)`. A `rest` slot marks a day with not
 | `notes`          | text null       |                                          |
 
 Index on `(user_id, race_date)`.
+
+Rules enforced by the app on top of the checks above: a `running` race has a distance (400 to
+200000 m), `hyrox` has a division and no distance, `other` has neither, and `running` carries no
+division. Blank `location` and `notes` are stored as NULL. `result_time_s` is set only by completing
+a race; a completed race cannot be cancelled and a race with a result cannot be deleted.
 
 ### `activities`
 

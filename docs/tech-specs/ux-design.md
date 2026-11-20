@@ -92,8 +92,9 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
 (time, sessions, run km and load ratio from the last 35 days of activities, zeros and
-"No history yet" without activities) and the calendar with completed activities only. Races are
-live on the calendar and as the `NextRace` card (see below). The "Latest report", "Log session"
+"No history yet" without activities, activities only), the calendar (activities plus upcoming and
+completed races, never cancelled; the week strip and week totals count activities only) and the
+`NextRace` card (see below). The "Latest report", "Log session"
 and "Add details" items below return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
 until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.

@@ -28,6 +28,13 @@ bucket exists and is private. The Supabase project is shared with another app: t
 are scoped to this bucket only and touch no other bucket. Details in
 `docs/tech-specs/manual-upload.md`.
 
+## Profile, availability and races
+
+Settings holds the athlete profile and the typical week of availability, and `/races` holds the
+races with their goals. The coach chat (`docs/tech-specs/coach-chat.md`, a later plan) will read
+the profile, the availability and the races through the `athlete` and `races` services. Rules in
+`docs/tech-specs/athlete-races.md`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

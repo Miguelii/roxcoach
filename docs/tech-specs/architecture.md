@@ -61,8 +61,16 @@ are all server-side).
 | `coach`    | Weekly report: context, memory, prompt, generation                                                 | [coach.md](coach.md)                   |
 
 Dependency direction: controller to service to (repository | processor | helper). Jobs call the
-services or processors of their own module. Cross-module imports only through `services/` or
-`processors/`, never another module's controller or repository.
+services or processors of their own module. Cross-module runtime imports only through `services/`
+or `processors/`, never another module's controller or repository. A type-only import between
+modules is allowed for shared DTOs (`training` imports `RaceDTO` from `races/types` to build
+`RaceSummaryDTO`).
+
+As built: `athlete` has the profile and availability controllers, services, validation helpers and
+two repositories, plus `getAthleteTimezone`, which `races` calls through its service. `races` has
+list, create, update, complete, cancel and delete controllers, the matching services, a
+`listRacesInRange` service used by the `training` calendar feed, one repository and a validation
+helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
 
 ## Layer rules
 
@@ -85,7 +93,8 @@ services or processors of their own module. Cross-module imports only through `s
 
 ## tRPC namespaces
 
-`auth`, `athlete`, `races`, `training`, `plan`, `coach`. Example client call:
+Built today: `auth`, `athlete`, `races`, `training` (composed in `src/_bff/trpc/router.ts`).
+`plan` and `coach` arrive with their plans. Example client call:
 `trpcClient.races.create.useMutation()`. Server Components use the server-side caller
 (`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
 `appRouter.createCaller`.
