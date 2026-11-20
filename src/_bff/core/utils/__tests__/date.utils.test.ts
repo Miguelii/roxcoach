@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { localDateIn, localDayBoundsUtc, todayIn } from '@/_bff/core/utils/date.utils'
+import {
+    localDateIn,
+    localDayBoundsUtc,
+    todayIn,
+    validTimezoneOrUtc,
+} from '@/_bff/core/utils/date.utils'
+
+describe('validTimezoneOrUtc', () => {
+    it('keeps a valid timezone and falls back to UTC otherwise', () => {
+        expect(validTimezoneOrUtc('Europe/Lisbon')).toBe('Europe/Lisbon')
+        expect(validTimezoneOrUtc('Mars/Olympus')).toBe('UTC')
+        expect(validTimezoneOrUtc('')).toBe('UTC')
+    })
+})
 
 describe('todayIn', () => {
     it('returns the calendar date in the given timezone, not in UTC', () => {

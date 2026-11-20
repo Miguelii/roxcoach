@@ -1,17 +1,21 @@
 import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
-import { Cause, Effect, Exit } from 'effect'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { Cause, Effect, Exit, Match } from 'effect'
 import { z } from 'zod'
 import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
 import { Logger } from '@/_bff/lib/server-logger'
 import { MESSAGE_MAX_CHARS } from '@/_bff/modules/coach/constants'
-import type { ChatEvent } from '@/_bff/modules/coach/services/send-coach-message.service'
+import type {
+    ChatEvent,
+    sendCoachMessage,
+} from '@/_bff/modules/coach/services/send-coach-message.service'
 
 type SendInput = { conversationId: string | null; message: string }
 
-// Any typed failure of the service: only `_tag` and `error_hash` are ever read.
-type SendFailure = { _tag: string; error_hash?: string }
+// The typed failures of the service, so a renamed tag fails compilation in the mapping below.
+type SendFailure = Effect.Error<ReturnType<typeof sendCoachMessage>>
 
 type ChatHandlerDeps = {
     getUser: () => Promise<User | null>
@@ -55,24 +59,34 @@ const encoder = new TextEncoder()
 const line = (event: ChatEvent) => encoder.encode(`${JSON.stringify(event)}\n`)
 
 // Turns the events into an NDJSON body. Cancelling the body (the client went away) aborts the
-// controller, which the model request carries as its signal.
-const toStream = (events: AsyncIterable<ChatEvent>, controller: AbortController) => {
+// controller, which the model request carries as its signal. Next pipes the body outside the
+// request scope (cookies() would throw there), so every step re-enters it through `inRequest`,
+// an AsyncLocalStorage snapshot taken while the handler still ran inside the request.
+const toStream = (
+    events: AsyncIterable<ChatEvent>,
+    controller: AbortController,
+    inRequest: <T>(run: () => T) => T
+) => {
     const iterator = events[Symbol.asyncIterator]()
+    let cancelled = false
     return new ReadableStream<Uint8Array>({
         async pull(out) {
             try {
-                const next = await iterator.next()
+                const next = await inRequest(() => iterator.next())
+                if (cancelled) return
                 if (next.done) out.close()
                 else out.enqueue(line(next.value))
             } catch {
+                if (cancelled) return
                 Logger({ level: 'error', prefix: 'coachChat', metadata: { tag: 'StreamDefect' } })
                 out.enqueue(line({ type: 'error', kind: 'unavailable' }))
                 out.close()
             }
         },
         async cancel() {
+            cancelled = true
             controller.abort()
-            await iterator.return?.()
+            await inRequest(() => iterator.return?.())
         },
     })
 }
@@ -116,11 +130,12 @@ export const createChatHandler =
         if (request.signal.aborted) controller.abort()
         else request.signal.addEventListener('abort', () => controller.abort(), { once: true })
 
+        const inRequest = AsyncLocalStorage.snapshot()
         const exit = await Effect.runPromiseExit(
             send(user, { conversationId: parsed.data.conversationId, message }, controller.signal)
         )
         if (Exit.isSuccess(exit)) {
-            return new Response(toStream(exit.value, controller), {
+            return new Response(toStream(exit.value, controller, inRequest), {
                 headers: {
                     'Content-Type': 'application/x-ndjson; charset=utf-8',
                     'Cache-Control': 'no-store',
@@ -129,14 +144,24 @@ export const createChatHandler =
         }
 
         const failure = exit.cause.reasons.find(Cause.isFailReason)
-        const tag = failure?.error._tag ?? 'Defect'
-        if (tag === 'ConversationNotFoundError') return fail(404, 'Conversation not found')
-        if (tag === 'DailyCapReachedError') return fail(429, "You reached today's message limit")
+        const mapped = failure
+            ? Match.value(failure.error).pipe(
+                  Match.tag('ConversationNotFoundError', () => fail(404, 'Conversation not found')),
+                  Match.tag('DailyCapReachedError', () =>
+                      fail(429, "You reached today's message limit")
+                  ),
+                  Match.orElse(() => null)
+              )
+            : null
+        if (mapped) return mapped
         Logger({
             level: 'error',
             prefix: 'coachChat',
             userId: user.id,
-            metadata: { tag, error_hash: failure?.error.error_hash },
+            metadata: {
+                tag: failure?.error._tag ?? 'Defect',
+                error_hash: failure?.error.error_hash,
+            },
         })
         return fail(500, GENERIC)
     }

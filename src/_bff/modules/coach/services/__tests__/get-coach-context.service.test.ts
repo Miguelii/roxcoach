@@ -85,6 +85,18 @@ const make = () => {
 }
 
 describe('getCoachContext', () => {
+    it('falls back to UTC for an invalid stored timezone instead of failing', async () => {
+        const { deps } = make()
+        const result = await Effect.runPromise(
+            getCoachContext(USER, {
+                ...deps,
+                getAthleteTimezone: () => Effect.succeed('Mars/Olympus'),
+            })
+        )
+        expect(result.timezone).toBe('UTC')
+        expect(result.context).toContain('timezone UTC')
+    })
+
     it('gathers the data for the user and renders the block', async () => {
         const { calls, deps } = make()
         const result = await Effect.runPromise(getCoachContext(USER, deps))

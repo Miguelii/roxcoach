@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
-import { todayIn } from '@/_bff/core/utils/date.utils'
+import { todayIn, validTimezoneOrUtc } from '@/_bff/core/utils/date.utils'
 import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
 import { getAvailability } from '@/_bff/modules/athlete/services/get-availability.service'
@@ -36,7 +36,7 @@ export const getCoachContext = Effect.fn('getCoachContext')(function* (
     user: User,
     deps: CoachContextDeps = REAL_DEPS
 ) {
-    const timezone = yield* deps.getAthleteTimezone(user)
+    const timezone = validTimezoneOrUtc(yield* deps.getAthleteTimezone(user))
     const today = todayIn(timezone, deps.now())
 
     const [profile, availability, races, calendar] = yield* Effect.all(

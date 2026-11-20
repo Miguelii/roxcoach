@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect, Exit } from 'effect'
-import { localDayBoundsUtc, todayIn } from '@/_bff/core/utils/date.utils'
+import { localDayBoundsUtc, todayIn, validTimezoneOrUtc } from '@/_bff/core/utils/date.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     ConversationNotFoundError,
@@ -102,17 +102,6 @@ const makeRealPorts = (supabase: CoachClient): CoachPorts => ({
     makeTools: (user) => makeCoachTools(user),
 })
 
-// An invalid stored timezone must not turn the cap into a defect: it counts in UTC instead.
-const safeTimezone = (timezone: string): string => {
-    try {
-        // Throws a RangeError for an unknown timezone.
-        Intl.DateTimeFormat('en-US', { timeZone: timezone })
-        return timezone
-    } catch {
-        return 'UTC'
-    }
-}
-
 const logTag = (tag: string, errorHash?: string) =>
     Logger({ level: 'error', prefix: 'coachChat', metadata: { tag, error_hash: errorHash } })
 
@@ -199,7 +188,7 @@ export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
         existingId = found.id
     }
 
-    const timezone = safeTimezone(yield* ports.getTimezone(user))
+    const timezone = validTimezoneOrUtc(yield* ports.getTimezone(user))
     const sentToday = yield* ports.countToday(user, timezone, now)
     if (sentToday >= DAILY_MESSAGE_CAP)
         return yield* new DailyCapReachedError({

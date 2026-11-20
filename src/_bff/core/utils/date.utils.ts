@@ -54,3 +54,14 @@ export const localDayBoundsUtc = (localDate: string, timezone: string) => {
         toIso: new Date(startOfLocalDayMs(nextDate, timezone)).toISOString(),
     }
 }
+
+/** The timezone when it is a valid IANA name, else `UTC`, so a bad stored value cannot throw later. */
+export const validTimezoneOrUtc = (timezone: string): string => {
+    try {
+        // Throws a RangeError for an unknown timezone.
+        getFormatter(timezone)
+        return timezone
+    } catch {
+        return 'UTC'
+    }
+}

@@ -50,4 +50,16 @@ describe('buildHistory', () => {
         expect(history[0]).toEqual({ role: 'user', content: 'm11' })
         expect(history.at(-1)).toEqual({ role: 'assistant', content: 'm30' })
     })
+
+    it('drops leading assistant messages left by the window', () => {
+        // 21 messages ending with a user turn: the window of 20 starts with an assistant turn.
+        const messages = Array.from({ length: 21 }, (_, i) =>
+            msg(i + 1, i % 2 === 0 ? 'user' : 'assistant')
+        )
+        expect(messages.slice(-20)[0]?.role).toBe('assistant')
+        const history = buildHistory(messages)
+        expect(history[0]).toEqual({ role: 'user', content: 'm3' })
+        expect(history).toHaveLength(19)
+        expect(history.at(-1)).toEqual({ role: 'user', content: 'm21' })
+    })
 })

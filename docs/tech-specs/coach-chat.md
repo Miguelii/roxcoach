@@ -203,7 +203,9 @@ the chat is useful. Plan 3 stays as written, minus anything that referred to the
   missing id, nothing written), daily cap (429, before any write or model call), then the new
   conversation (title: first 60 characters), the user message (saved on arrival, so cancelled and
   failed attempts count), the context, and the stream.
-- The cap uses the athlete's local day; an invalid stored timezone counts in UTC.
+- The cap uses the athlete's local day; an invalid stored timezone is read as UTC (the fallback is
+  applied where the timezone is first obtained, so the context and the cap agree). The cap is best
+  effort: two concurrent requests at 49 messages can both pass.
 - Stream: `application/x-ndjson`, one event per line: `meta`, `text` deltas, then exactly one of
   `done` or `error` (`rate_limited`, `unavailable`, `blocked`). `daily_cap` is a pre-stream 429, not
   a stream event.
@@ -212,6 +214,11 @@ the chat is useful. Plan 3 stays as written, minus anything that referred to the
   the athlete already saw the reply. A cancelled body aborts the model signal.
 - Unexpected failures are a fixed 500 `Something went wrong. Try again.`; logs carry tag and
   error_hash only.
+- Request scope: Next runs the handler inside its request store but pipes the response body
+  outside it, where `cookies()` (used by the tools through the Supabase client) throws. The handler
+  takes an `AsyncLocalStorage` snapshot before returning and runs every stream step (and the
+  cancel) through it. The history sent to the model starts with a user turn (leading assistant
+  messages of the 20-message window are dropped).
 
 ## Decisions made while checking the spec
 
