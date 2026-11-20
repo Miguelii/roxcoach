@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
 import { appRouter } from '@/_bff/trpc/router'
-import { ActivityQueryError, CreateSbClientError, InvalidDateRangeError } from '@/_bff/lib/errors'
+import {
+    ActivityQueryError,
+    CreateSbClientError,
+    InvalidDateRangeError,
+    RaceQueryError,
+} from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 
 const { getCalendarMock, getSessionMock } = vi.hoisted(() => ({
@@ -87,6 +92,16 @@ describe('GET_CALENDAR_PROTECTED_CONTROLLER', () => {
 
         expect(error.code).toBe('BAD_REQUEST')
         expect(error.message).toBe(ErrorCode.TRAINING_RANGE_INVALID)
+    })
+
+    it('maps RaceQueryError to INTERNAL_SERVER_ERROR', async () => {
+        getCalendarMock.mockReturnValueOnce(
+            Effect.fail(new RaceQueryError({ cause: 'x', error_hash: ErrorCode.RACES_SELECT_ERR }))
+        )
+
+        expect((await caught(caller.training.getCalendar(RANGE))).code).toBe(
+            'INTERNAL_SERVER_ERROR'
+        )
     })
 
     it('maps ActivityQueryError and CreateSbClientError to INTERNAL_SERVER_ERROR without the cause', async () => {

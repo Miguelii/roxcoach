@@ -92,9 +92,9 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
 (time, sessions, run km and load ratio from the last 35 days of activities, zeros and
-"No history yet" without activities) and the calendar with completed activities only. The
-planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
-return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
+"No history yet" without activities) and the calendar with completed activities only. Races are
+live on the calendar and as the `NextRace` card (see below). The "Latest report", "Log session"
+and "Add details" items below return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
 until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
@@ -104,29 +104,38 @@ that opens a right-hand drawer: an informational banner on accepted formats, a f
 uploading, error (message inside the drawer) and success (drawer closes, "Activity uploaded" toast,
 data refreshes). Full contract in [manual-upload.md](manual-upload.md). Components in
 `dashboard/`: `dashboard-content`, `week-strip`, `week-strip-view`, `upload-activity-drawer`,
-`use-upload-activity`.
+`use-upload-activity`, `next-race` and `next-race-view`.
 
 Target design, top to bottom:
 
 1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
    ratio with a plain-language label (for example "Balanced", "Ramping fast").
-2. **Next up**: the next planned session (title, description, target) and the next race with
-   days remaining and goal.
+2. **Next race** (`NextRace` server component in its own `Suspense`, `NextRaceView` for the markup):
+   the next upcoming race (date today or later) as an amber card with a flag icon: name, date, days
+   to go, goal time and priority (for example "A: Target race"), linking to `/races`. Hidden when
+   there is no upcoming race. The planned-session half of "Next up" returns with plan 5.
 3. **Calendar** (the main element), month view on desktop:
-    - Each day cell shows up to 3 chips: completed activities (filled, with duration), planned
-      sessions (outlined), races (amber flag). A "+N" overflow opens the day.
+    - Each day cell shows up to 3 chips: completed activities (filled, with duration) and races
+      (amber tone, flag icon, name and priority letter, linking to `/races`). Races never appear
+      when cancelled, are not hidden by the category filters and are ignored by the week totals,
+      the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
+      overflow opens the day.
     - Today is outlined with the ink token. Past planned sessions with no match show as missed.
     - Navigation: previous, next, today, and a month and week toggle.
     - Selecting a day opens a side panel (a bottom sheet on mobile) listing everything that day,
-      with "Log session" and a link into each activity.
+      with a link into each activity. A race shows as an amber card (flag, "Race", priority, name,
+      "Goal h:mm:ss") linking to `/races`.
     - Mobile defaults to a week agenda: one row per day, same chips, horizontally compact.
 4. **Latest report** card under the calendar: the headline of the last weekly report, its week, a
    link to `/coach` and when the next one arrives (Sunday 20:00).
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query. Target state: it
-returns activities, planned sessions and races for the visible range, typed as a discriminated
-union on `type` (`activity`, `planned`, `race`). Today `CalendarItem` has the `activity` member
-only; the `planned` member arrives with plan 5 and the `race` member with plan 3.
+returns activities and races for the visible range, typed as a discriminated union on `type`
+(`activity`, `race`; the race member carries a `RaceSummaryDTO`), merged and ordered by date. Races
+come from `listRacesInRange` (upcoming and completed, never cancelled). Every switch on `type` is
+exhaustive (`Match.exhaustive`). A `planned` member arrives with plan 5. After a races mutation the
+Races page invalidates `training.getCalendar` (`runRaceAction` with an injected `onChanged`), since
+`router.refresh()` does not reach the react-query calendar.
 
 ### Activity detail
 

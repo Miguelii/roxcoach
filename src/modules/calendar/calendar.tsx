@@ -52,7 +52,10 @@ export function Calendar({ today }: Props) {
         placeholderData: keepPreviousData,
     })
 
-    const items = (query.data ?? []).filter((item) => !hidden.has(item.activity.category))
+    const items = (query.data ?? []).filter(
+        // Races have no category: the filters only hide activities.
+        (item) => item.type === 'race' || !hidden.has(item.activity.category)
+    )
     const selectedItems = items.filter((item) => item.date === selectedDate)
 
     const days = weekDays(cursor)

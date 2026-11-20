@@ -1,4 +1,9 @@
-import type { ActivityDTO, CalendarItem, LapDTO } from '@/_bff/modules/training/types'
+import type {
+    ActivityDTO,
+    CalendarItem,
+    LapDTO,
+    RaceSummaryDTO,
+} from '@/_bff/modules/training/types'
 
 export const makeActivity = (overrides: Partial<ActivityDTO> = {}): ActivityDTO => ({
     id: 'act-1',
@@ -35,4 +40,18 @@ export const makeLap = (overrides: Partial<LapDTO> = {}): LapDTO => ({
 export const makeItem = (overrides: Partial<ActivityDTO> = {}): CalendarItem => {
     const activity = makeActivity(overrides)
     return { type: 'activity', date: activity.localDate, activity }
+}
+
+export const makeRaceItem = (overrides: Partial<RaceSummaryDTO> = {}): CalendarItem => {
+    const race: RaceSummaryDTO = {
+        id: 'race-1',
+        name: 'Hyrox Lisbon',
+        raceType: 'hyrox',
+        raceDate: '2026-11-19',
+        targetTimeS: 4200,
+        priority: 'A',
+        status: 'upcoming',
+        ...overrides,
+    }
+    return { type: 'race', date: race.raceDate, race }
 }

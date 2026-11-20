@@ -4,6 +4,7 @@ import { todayIn } from '@/_bff/core/utils/date.utils'
 import { createCaller } from '@/_bff/trpc/caller'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Calendar } from '@/modules/calendar/calendar'
+import { NextRace } from '@/modules/dashboard/next-race'
 import { UploadActivity } from '@/modules/dashboard/upload-activity'
 import { WeekStrip } from '@/modules/dashboard/week-strip'
 
@@ -21,6 +22,9 @@ export async function DashboardContent() {
             </div>
             <Suspense fallback={<WeekStripSkeleton />}>
                 <WeekStrip today={today} />
+            </Suspense>
+            <Suspense fallback={null}>
+                <NextRace today={today} />
             </Suspense>
             <Calendar today={today} />
         </>

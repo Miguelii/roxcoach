@@ -6,6 +6,7 @@ import type { HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import { trpcClient } from '@/lib/trpc'
 import { RacesList } from '@/modules/races/races-list'
+import { runRaceAction } from '@/modules/races/run-race-action'
 
 type Props = {
     races: RaceDTO[]
@@ -23,28 +24,27 @@ const quiet = (promise: Promise<void>) =>
 // RacesList; it only wires trpc.
 export function RacesManager({ races, today, defaultDivision }: Props) {
     const router = useRouter()
+    const utils = trpcClient.useUtils()
     const create = trpcClient.races.create.useMutation()
     const update = trpcClient.races.update.useMutation()
     const complete = trpcClient.races.complete.useMutation()
     const cancel = trpcClient.races.cancel.useMutation()
     const remove = trpcClient.races.delete.useMutation()
 
-    // Runs `action`, then toasts. A failure toasts the fixed error copy and rethrows so a dialog
-    // stays open.
-    const run = async <Result,>(
-        action: () => Promise<Result>,
-        success: string,
-        failure: string
-    ) => {
-        try {
-            await action()
-        } catch (error) {
-            toast.error(failure)
-            throw error
-        }
-        toast.success(success)
-        router.refresh()
-    }
+    // Runs `action` with the fixed copy; after a change the server components refresh and the client
+    // calendar query is invalidated (router.refresh() does not reach react-query).
+    const run = <Result,>(action: () => Promise<Result>, success: string, failure: string) =>
+        runRaceAction({
+            action,
+            success,
+            failure,
+            notifySuccess: (message) => toast.success(message),
+            notifyFailure: (message) => toast.error(message),
+            onChanged: () => {
+                router.refresh()
+                void utils.training.getCalendar.invalidate()
+            },
+        })
 
     return (
         <RacesList

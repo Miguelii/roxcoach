@@ -32,6 +32,21 @@ const DB_ROW = {
     notes: null,
 }
 
+const RACE_ROW = {
+    id: 'race-1',
+    name: 'Hyrox Lisbon',
+    race_type: 'hyrox',
+    race_date: '2026-11-17',
+    location: null,
+    distance_m: null,
+    hyrox_division: 'open_men',
+    target_time_s: 4200,
+    priority: 'A',
+    status: 'upcoming',
+    result_time_s: null,
+    notes: null,
+}
+
 const run = (from: string, to: string) => Effect.runPromiseExit(getCalendar(USER, { from, to }))
 
 describe('getCalendar', () => {
@@ -40,7 +55,10 @@ describe('getCalendar', () => {
     })
 
     it('reads the range as the signed-in user and returns one calendar item per activity', async () => {
-        const { chains, supabase } = makeFakeDb([{ data: [DB_ROW], error: null }])
+        const { chains, supabase } = makeFakeDb([
+            { data: [DB_ROW], error: null },
+            { data: [], error: null },
+        ])
         createDBServerClientMock.mockResolvedValue(supabase)
 
         const items = await Effect.runPromise(
@@ -50,10 +68,50 @@ describe('getCalendar', () => {
         expect(items).toHaveLength(1)
         expect(items[0]?.type).toBe('activity')
         expect(items[0]?.date).toBe('2026-11-18')
-        expect(items[0]?.activity.id).toBe(DB_ROW.id)
+        const first = items[0]
+        expect(first?.type === 'activity' && first.activity.id).toBe(DB_ROW.id)
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
         expect(chains[0]?.gte).toHaveBeenCalledWith('local_date', '2026-11-16')
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-22')
+    })
+
+    it('merges activities and races ordered by date and reads races as the user', async () => {
+        const { chains, supabase } = makeFakeDb([
+            { data: [DB_ROW], error: null },
+            {
+                data: [RACE_ROW, { ...RACE_ROW, id: 'race-2', race_date: '2026-11-19' }],
+                error: null,
+            },
+        ])
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        const items = await Effect.runPromise(
+            getCalendar(USER, { from: '2026-11-16', to: '2026-11-22' })
+        )
+
+        expect(items.map((item) => item.type)).toEqual(['race', 'activity', 'race'])
+        expect(items.map((item) => item.date)).toEqual(['2026-11-17', '2026-11-18', '2026-11-19'])
+        const race = items[0]
+        expect(race?.type === 'race' && race.race).toEqual({
+            id: 'race-1',
+            name: 'Hyrox Lisbon',
+            raceType: 'hyrox',
+            raceDate: '2026-11-17',
+            targetTimeS: 4200,
+            priority: 'A',
+            status: 'upcoming',
+        })
+        expect(chains[1]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(chains[1]?.in).toHaveBeenCalledWith('status', ['upcoming', 'completed'])
+        expect(chains[1]?.gte).toHaveBeenCalledWith('race_date', '2026-11-16')
+        expect(chains[1]?.lte).toHaveBeenCalledWith('race_date', '2026-11-22')
+    })
+
+    it('fails with RaceQueryError when the races read fails', async () => {
+        const { supabase } = makeFakeDb([{ data: [], error: null }, new Error('boom')])
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        expect(failureTag(await run('2026-11-16', '2026-11-22'))).toBe('RaceQueryError')
     })
 
     it('accepts a single-day range and a span of exactly 100 days', async () => {
