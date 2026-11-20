@@ -1,6 +1,5 @@
-import type { CalendarItem } from '@/_bff/modules/training/types'
-import { activityDurationS } from '@/modules/calendar/activity-time'
-import { addDays } from '@/modules/calendar/date-utils'
+import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
+import { addDays } from '@/_bff/core/utils/week-dates.utils'
 
 type WeekTotals = {
     doneMinutes: number
@@ -10,10 +9,21 @@ type WeekTotals = {
 
 type LoadLabel = 'Light' | 'Balanced' | 'Ramping fast' | 'Too high'
 
-type ActivityItem = Extract<CalendarItem, { type: 'activity' }>
+// Structural subset of the training `CalendarItem` (core cannot import module types).
+type StatsActivity = Parameters<typeof activityDurationS>[0] & {
+    category: string
+    distanceM: number | null
+}
+
+type StatsItem = { type: string; date: string } & (
+    | { type: 'activity'; activity: StatsActivity }
+    | { type: string; activity?: undefined }
+)
+
+type ActivityItem = { type: 'activity'; date: string; activity: StatsActivity }
 
 // Races are not training load: every stat here reads activities only.
-const activitiesIn = (items: CalendarItem[], from: string, to: string): ActivityItem[] =>
+const activitiesIn = (items: StatsItem[], from: string, to: string): ActivityItem[] =>
     items.filter(
         (item): item is ActivityItem =>
             item.type === 'activity' && item.date >= from && item.date <= to
@@ -22,7 +32,7 @@ const activitiesIn = (items: CalendarItem[], from: string, to: string): Activity
 const minutesOf = (item: ActivityItem) => (activityDurationS(item.activity) ?? 0) / 60
 
 /** Totals of the activities from `from` to `to` (inclusive). */
-export const computeTotals = (items: CalendarItem[], from: string, to: string): WeekTotals => {
+export const computeTotals = (items: StatsItem[], from: string, to: string): WeekTotals => {
     const totals: WeekTotals = { doneMinutes: 0, doneSessions: 0, runKm: 0 }
 
     for (const item of activitiesIn(items, from, to)) {
@@ -35,7 +45,7 @@ export const computeTotals = (items: CalendarItem[], from: string, to: string): 
 }
 
 /** Acute (last 7 days) to chronic (weekly average of the 28 days before) load ratio, or null without history. */
-export const computeLoadRatio = (items: CalendarItem[], today: string) => {
+export const computeLoadRatio = (items: StatsItem[], today: string) => {
     const minutesIn = (from: string, to: string) =>
         activitiesIn(items, from, to).reduce((sum, item) => sum + minutesOf(item), 0)
 

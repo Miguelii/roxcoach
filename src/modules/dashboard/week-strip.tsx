@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { trpcClient } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { DashboardQueryError } from '@/modules/dashboard/dashboard-query-error'
-import { addDays } from '@/modules/calendar/date-utils'
+import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { WeekStripView } from '@/modules/dashboard/week-strip-view'
 
 type Props = {

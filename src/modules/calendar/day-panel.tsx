@@ -12,7 +12,7 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer'
-import { activityDurationS } from '@/modules/calendar/activity-time'
+import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { getItemKey } from '@/modules/calendar/item-key'
 import { KINDS } from '@/modules/calendar/kinds'

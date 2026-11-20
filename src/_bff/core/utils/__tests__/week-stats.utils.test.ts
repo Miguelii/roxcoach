@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeLoadRatio, computeTotals, loadLabel } from '@/modules/calendar/week-stats'
+import { computeLoadRatio, computeTotals, loadLabel } from '@/_bff/core/utils/week-stats.utils'
 import { makeItem } from '@/modules/calendar/__tests__/fixtures'
 
 const run = (date: string, minutes: number, distanceM: number | null) =>

@@ -11,8 +11,8 @@ import { CalendarBody } from '@/modules/calendar/calendar-body'
 import { useCalendarUrlState } from '@/modules/calendar/use-calendar-url-state'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { DayPanel } from '@/modules/calendar/day-panel'
+import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import {
-    addDays,
     addMonths,
     monthGrid,
     monthLabel,
