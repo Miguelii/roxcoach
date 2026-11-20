@@ -15,6 +15,7 @@ type GrantRow = { table_name: string; anon: boolean; authenticated: boolean; ser
 
 const ROXCOACH_TABLES = [
     'activities',
+    'activity_files',
     'activity_laps',
     'athlete_profiles',
     'availability_slots',
@@ -32,6 +33,7 @@ const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migratio
 const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
 
 const UNIQUE_ERROR = /unique/u
+const CHECK_ERROR = /check constraint/u
 
 let testDb: TestDb
 
@@ -79,6 +81,7 @@ describe('schema layout', () => {
             '0005_coach_and_plan.sql',
             '0006_rls.sql',
             '0007_remove_strava.sql',
+            '0008_activity_files.sql',
         ])
     })
 
@@ -167,6 +170,55 @@ describe('unique constraints', () => {
         await insertActivity(testDb, userId)
 
         await expect(insertActivity(testDb, userId)).resolves.toBeDefined()
+    })
+})
+
+describe('activity_files', () => {
+    async function insertFile(
+        userId: string,
+        overrides: { sha256?: string; format?: string; status?: string; activityId?: string | null }
+    ): Promise<void> {
+        await testDb.db.query(
+            `insert into roxcoach.activity_files
+                (user_id, activity_id, format, storage_path, sha256, size_bytes, original_name, status)
+             values ($1, $2, $3, $1::uuid::text || '/' || gen_random_uuid()::text, $4, 10, 'a.fit', $5)`,
+            [
+                userId,
+                overrides.activityId ?? null,
+                overrides.format ?? 'fit',
+                overrides.sha256 ?? 'hash-1',
+                overrides.status ?? 'parsed',
+            ]
+        )
+    }
+
+    it('rejects a duplicate sha256 for one user and accepts it for another', async () => {
+        const userId = await createUser(testDb)
+        const other = await createUser(testDb)
+        await insertFile(userId, { sha256: 'same' })
+
+        await expect(insertFile(userId, { sha256: 'same' })).rejects.toThrow(UNIQUE_ERROR)
+        await expect(insertFile(other, { sha256: 'same' })).resolves.toBeUndefined()
+    })
+
+    it('rejects a format outside fit, tcx and gpx', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(insertFile(userId, { format: 'zip' })).rejects.toThrow(CHECK_ERROR)
+    })
+
+    it('rejects a status outside parsed and failed', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(insertFile(userId, { status: 'pending' })).rejects.toThrow(CHECK_ERROR)
+    })
+
+    it("rejects a file row that points at another user's activity", async () => {
+        const owner = await createUser(testDb)
+        const other = await createUser(testDb)
+        const activityId = await insertActivity(testDb, owner)
+
+        await expect(insertFile(other, { activityId })).rejects.toThrow(/foreign key/u)
     })
 })
 

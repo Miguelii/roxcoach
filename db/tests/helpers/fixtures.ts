@@ -81,6 +81,16 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
+        'activity_files',
+        (graph) => ({
+            sql: `insert into roxcoach.activity_files
+                    (user_id, activity_id, format, storage_path, sha256, size_bytes, original_name, status)
+                  values ($1::uuid, $2, 'fit', $1::uuid::text || '/' || gen_random_uuid()::text || '.fit',
+                          md5(random()::text) || md5(random()::text), 1024, 'run.fit', 'parsed')`,
+            params: [graph.userId, graph.activityId],
+        }),
+    ],
+    [
         'planned_sessions',
         (graph) => ({
             sql: `insert into roxcoach.planned_sessions
@@ -98,6 +108,7 @@ const GRAPH_CHILD_TABLES = [
     'activity_laps',
     'station_results',
     'strength_sets',
+    'activity_files',
     'planned_sessions',
 ]
 

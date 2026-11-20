@@ -172,6 +172,7 @@ describe('a user with access (A)', () => {
 
     it.each([
         ['activity_laps', 'activity_laps_activity_id_user_id_fkey', 'activityId'],
+        ['activity_files', 'activity_files_activity_id_user_id_fkey', 'activityId'],
         ['station_results', 'station_results_activity_id_user_id_fkey', 'activityId'],
         ['strength_sets', 'strength_sets_activity_id_user_id_fkey', 'activityId'],
         ['planned_sessions', 'planned_sessions_report_id_user_id_fkey', 'reportId'],

@@ -20,7 +20,7 @@ window. So the schema is exposed only at the end.
 
 3. Open the SQL editor and run each file that is not listed yet, one at a time, in filename order
    (`0001_schema_and_enums.sql`, `0002_athlete_and_races.sql`, `0003_strava.sql`,
-   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`, then later files). Paste the
+   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`, `0008_activity_files.sql`, then later files). Paste the
    whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its last
    statement.
 4. Run the files as the default `postgres` role of the SQL editor. `0001` sets default privileges
@@ -101,7 +101,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     where n.nspname = 'roxcoach' and c.relkind = 'r' and not c.relrowsecurity;
     ```
 
-- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0006`.
+- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0008`.
 
 ### Exposing the schema
 
@@ -145,6 +145,10 @@ Human checks, in order. Tick them off as you go; none of them is automated.
 JWT carries `app_metadata.roxcoach` as the JSON boolean `true`, so a signed-in user of the other
 app sees and writes nothing. `schema_migrations` has RLS on, no policies and no privileges for `authenticated` or `anon`:
 only the service role (which bypasses RLS) touches them.
+
+`0008_activity_files.sql` adds the table `activity_files` (same owner policies) and the private Storage
+bucket `activity-files` with select, insert and delete policies on `storage.objects`, scoped to that
+bucket and to the caller's own folder.
 
 ## Granting access to a user
 

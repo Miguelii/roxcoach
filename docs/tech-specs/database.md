@@ -192,6 +192,16 @@ Unique on `(user_id, activity_id, lap_index)`. Laps of an activity are replaced 
 the old rows and then inserting the new ones (not atomic: a failed insert leaves no laps until the
 replacement is retried).
 
+### `activity_files`
+
+Original uploaded files (FIT, TCX, GPX). Full contract in [manual-upload.md](manual-upload.md).
+`activity_id` is nullable with the composite foreign key `(activity_id, user_id)` to `activities`
+(on delete cascade). `format` is checked in `fit`, `tcx`, `gpx`, `status` in `parsed`, `failed`,
+and `unique (user_id, sha256)` blocks the same file twice. Standard owner policies apply. The bytes
+live in the private Storage bucket `activity-files` (10 MB limit), whose policies on
+`storage.objects` allow select, insert and delete only in the caller's own folder with
+`roxcoach.has_access()`. The PGlite helper stubs the `storage` schema.
+
 ### `station_results`
 
 Hand-entered Hyrox station data. See [manual-logging.md](manual-logging.md).
@@ -317,6 +327,7 @@ schema:
 | `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions`                               |
 | `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes |
 | `0007_remove_strava.sql`     | drops the Strava tables, `webhook_event_status` and `strava_id`    |
+| `0008_activity_files.sql`    | `activity_files`, private bucket `activity-files` and its policies |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

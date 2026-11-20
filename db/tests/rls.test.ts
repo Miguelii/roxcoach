@@ -23,6 +23,7 @@ const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
 // How PostgreSQL prints the owner check of every client policy.
 const OWNER_CHECK = '((user_id = auth.uid()) AND roxcoach.has_access())'
 
+const INSUFFICIENT_PRIVILEGE = '42501'
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 let testDb: TestDb
@@ -211,5 +212,33 @@ describe('self-grant attempts', () => {
         ["app_metadata.roxcoach = 'true'", { app_metadata: { roxcoach: 'true' } }],
     ] satisfies [string, Claims][])('sees zero rows with %s', async (_label, extra) => {
         expect(await visibleRows({ sub: ownerId, ...extra })).toBe(0)
+    })
+})
+
+describe('activity-files bucket policies', () => {
+    const insertObject = (userId: string, folder: string) =>
+        testDb.db.query(
+            `insert into storage.objects (bucket_id, name) values ('activity-files', $1 || '/a.fit')`,
+            [folder || userId]
+        )
+
+    it("a user cannot insert an object under another user's folder", async () => {
+        await testDb.asUser(USER_ID)
+
+        await expect(
+            testDb.db.query(
+                `insert into storage.objects (bucket_id, name) values ('activity-files', $1)`,
+                ['00000000-0000-4000-8000-000000000002/a.fit']
+            )
+        ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE })
+        await expect(insertObject(USER_ID, '')).resolves.toBeDefined()
+    })
+
+    it('an authenticated user without the access flag cannot insert at all', async () => {
+        await testDb.asUser(USER_ID, { access: false })
+
+        await expect(insertObject(USER_ID, '')).rejects.toMatchObject({
+            code: INSUFFICIENT_PRIVILEGE,
+        })
     })
 })
