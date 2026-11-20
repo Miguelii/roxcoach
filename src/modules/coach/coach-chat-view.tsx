@@ -1,11 +1,13 @@
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { CoachHistoryMenu, type ConversationSummary } from '@/modules/coach/coach-history-menu'
+import { CoachModelCaption } from '@/modules/coach/coach-model-caption'
+import { CoachModelSwitchNote } from '@/modules/coach/coach-model-switch-note'
 import { CoachMessage } from '@/modules/coach/coach-message'
 import { COACH_MESSAGE_MAX_CHARS } from '@/modules/coach/suggestions'
 import {
@@ -22,6 +24,7 @@ type Props = {
     status: ChatStatus
     errorKind: ChatErrorKind | null
     conversationId: string | null
+    modelId: string | null
     conversations: ConversationSummary[] | undefined
     chips: readonly string[]
     onSend: (text: string) => void
@@ -89,6 +92,7 @@ function PanelBody({
     status,
     errorKind,
     conversationId,
+    modelId,
     conversations,
     chips,
     onSend,
@@ -192,7 +196,15 @@ function PanelBody({
                     </div>
                 ) : null}
                 {messages.map((message) => (
-                    <CoachMessage key={message.id} message={message} />
+                    <Fragment key={message.id}>
+                        {message.switchNote ? (
+                            <CoachModelSwitchNote
+                                from={message.switchNote.from}
+                                to={message.switchNote.to}
+                            />
+                        ) : null}
+                        <CoachMessage message={message} />
+                    </Fragment>
                 ))}
                 {streaming && messages.at(-1)?.content === '' ? (
                     <p data-testid="coach-thinking" className="text-sm text-muted-foreground">
@@ -297,6 +309,7 @@ function PanelBody({
                     </Button>
                 </form>
             </Form>
+            <CoachModelCaption modelId={modelId} />
         </>
     )
 }

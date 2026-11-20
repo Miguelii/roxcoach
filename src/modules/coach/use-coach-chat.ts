@@ -8,6 +8,9 @@ export type ChatMessage = {
     content: string
     // True for a reply that was cut off (stopped, failed or the connection dropped).
     incomplete?: boolean
+    // Set on a reply that came from a fallback model: the list shows a note before it.
+    // In-session only, never stored.
+    switchNote?: { from: string; to: string }
 }
 
 export type ChatStatus = 'idle' | 'loading-history' | 'streaming' | 'error' | 'limit'
@@ -23,7 +26,12 @@ export type ChatErrorKind =
 
 export type SendBody = { conversationId: string | null; message: string }
 
-type StoredMessage = { id: string; role: 'user' | 'assistant'; content: string }
+type StoredMessage = {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    model: string | null
+}
 
 type Options = {
     send?: (body: SendBody, signal: AbortSignal) => Promise<Response>
@@ -34,6 +42,11 @@ type Options = {
 
 const eventSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('meta'), conversationId: z.string() }),
+    z.object({
+        type: z.literal('model'),
+        model: z.string(),
+        switchedFrom: z.string().nullable(),
+    }),
     z.object({ type: z.literal('text'), delta: z.string() }),
     z.object({ type: z.literal('done') }),
     z.object({
@@ -79,6 +92,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
     const [status, setStatus] = useState<ChatStatus>('idle')
     const [errorKind, setErrorKind] = useState<ChatErrorKind | null>(null)
     const [conversationId, setConversationId] = useState<string | null>(null)
+    const [modelId, setModelId] = useState<string | null>(null)
 
     const busyRef = useRef(false)
     const generationRef = useRef(0)
@@ -174,11 +188,32 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
             const decoder = new TextDecoder()
             let buffer = ''
             const outcome: Outcome = { end: null }
+            // The announced model becomes the caption once its first text arrives, so a
+            // stream that fails right after the event keeps the previous caption.
+            let pendingModel: string | null = null
             const handle = (line: string) => {
                 const event = parseLine(line)
                 if (!event || outcome.end) return
                 if (event.type === 'meta') setConversation(event.conversationId)
-                else if (event.type === 'text')
+                else if (event.type === 'model') {
+                    pendingModel = event.model
+                    const { switchedFrom } = event
+                    if (switchedFrom !== null)
+                        setMessages((current) =>
+                            current.map((message) =>
+                                message.id === assistantId
+                                    ? {
+                                          ...message,
+                                          switchNote: { from: switchedFrom, to: event.model },
+                                      }
+                                    : message
+                            )
+                        )
+                } else if (event.type === 'text') {
+                    if (pendingModel !== null) {
+                        setModelId(pendingModel)
+                        pendingModel = null
+                    }
                     setMessages((current) =>
                         current.map((message) =>
                             message.id === assistantId
@@ -186,7 +221,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
                                 : message
                         )
                     )
-                else outcome.end = event
+                } else outcome.end = event
             }
 
             try {
@@ -256,6 +291,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         setMessages([])
         setStatus('idle')
         setErrorKind(null)
+        setModelId(null)
         lastTextRef.current = null
     }
 
@@ -274,6 +310,10 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         try {
             const stored = await load(id)
             if (generationRef.current !== generation) return
+            setModelId(
+                stored.findLast((message) => message.role === 'assistant' && message.model !== null)
+                    ?.model ?? null
+            )
             setMessages(
                 stored.map(({ id: messageId, role, content }) => ({
                     id: messageId,
@@ -294,6 +334,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         status,
         errorKind,
         conversationId,
+        modelId,
         sendMessage,
         stop,
         newConversation,

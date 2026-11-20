@@ -14,7 +14,9 @@ type HarnessProps = {
     send?: (body: SendBody, signal: AbortSignal) => Promise<Response>
     loadMessages?: (
         id: string
-    ) => Promise<{ id: string; role: 'user' | 'assistant'; content: string }[]>
+    ) => Promise<
+        { id: string; role: 'user' | 'assistant'; content: string; model: string | null }[]
+    >
     conversations?: { id: string; title: string; updatedAt: string }[]
     onDelete?: (id: string) => void
     startOpen?: boolean
@@ -52,6 +54,7 @@ function HarnessView({
             status={chat.status}
             errorKind={chat.errorKind}
             conversationId={chat.conversationId}
+            modelId={chat.modelId}
             conversations={conversations}
             chips={COACH_SUGGESTIONS}
             onSend={chat.sendMessage}
@@ -309,7 +312,9 @@ describe('CoachChatView', () => {
         ]
 
         it('lists conversations and opens one, loading its messages with a skeleton', async () => {
-            let resolve!: (v: { id: string; role: 'user' | 'assistant'; content: string }[]) => void
+            let resolve!: (
+                v: { id: string; role: 'user' | 'assistant'; content: string; model: null }[]
+            ) => void
             const loadMessages = vi.fn().mockImplementation(() => new Promise((r) => (resolve = r)))
             render(<Harness conversations={conversations} loadMessages={loadMessages} />)
             fireEvent.click(screen.getByTestId('coach-menu-trigger'))
@@ -322,7 +327,7 @@ describe('CoachChatView', () => {
                 expect(screen.getByTestId('coach-history-skeleton')).toBeInTheDocument()
             )
             await act(async () =>
-                resolve([{ id: 'm1', role: 'assistant', content: 'Earlier answer' }])
+                resolve([{ id: 'm1', role: 'assistant', content: 'Earlier answer', model: null }])
             )
             expect(screen.getByTestId('coach-message-assistant')).toHaveTextContent(
                 'Earlier answer'
@@ -367,6 +372,144 @@ describe('CoachChatView', () => {
             expect(screen.getByTestId('coach-history-loading')).toBeInTheDocument()
             rerender(<Harness conversations={[]} />)
             expect(screen.getByTestId('coach-history-empty')).toBeInTheDocument()
+        })
+    })
+
+    describe('model caption and switch note', () => {
+        const M1 = 'gemini-4-hydrogen'
+        const M2 = 'gemini-3.8-flash'
+        const model = (id: string, from: string | null = null) => ({
+            type: 'model',
+            model: id,
+            switchedFrom: from,
+        })
+        const sendOne = async (...events: object[]) => {
+            type(' hi ')
+            fireEvent.click(screen.getByTestId('coach-send'))
+            await waitFor(() => expect(screen.queryByTestId('coach-stop')).toBeNull())
+            return events
+        }
+
+        it('shows no caption in a new conversation', () => {
+            render(<Harness />)
+            expect(screen.queryByTestId('coach-model-caption')).toBeNull()
+        })
+
+        it('shows the friendly name and no note for a plain reply', async () => {
+            const send = vi
+                .fn()
+                .mockResolvedValue(streamOf(ndjson(meta, model(M1), text('Hi'), done)))
+            render(<Harness send={send} />)
+            await sendOne()
+            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 4 Hydrogen')
+            expect(screen.queryByTestId('coach-model-switch-note')).toBeNull()
+        })
+
+        it('shows the note right before the switched reply and keeps it out of the caption', async () => {
+            const send = vi
+                .fn()
+                .mockResolvedValue(streamOf(ndjson(meta, model(M2, M1), text('Hi'), done)))
+            render(<Harness send={send} />)
+            await sendOne()
+            const note = screen.getByTestId('coach-model-switch-note')
+            expect(note).toHaveTextContent(
+                'Gemini 4 Hydrogen reached its limit. Answering with Gemini 3.8 Flash.'
+            )
+            expect(note).not.toHaveAttribute('role')
+            expect(note.nextElementSibling).toBe(screen.getByTestId('coach-message-assistant'))
+            const caption = screen.getByTestId('coach-model-caption')
+            expect(caption).toHaveTextContent('Gemini 3.8 Flash')
+            expect(caption).not.toHaveTextContent('reached its limit')
+            expect(screen.getByTestId('coach-live-region')).not.toHaveTextContent('reached')
+        })
+
+        it('shows the note only before the second of two replies', async () => {
+            const send = vi
+                .fn()
+                .mockResolvedValueOnce(streamOf(ndjson(meta, model(M1), text('A'), done)))
+                .mockResolvedValueOnce(streamOf(ndjson(meta, model(M2, M1), text('B'), done)))
+            render(<Harness send={send} />)
+            await sendOne()
+            await sendOne()
+            const assistants = screen.getAllByTestId('coach-message-assistant')
+            expect(assistants).toHaveLength(2)
+            expect(assistants[0]?.previousElementSibling?.getAttribute('data-testid')).not.toBe(
+                'coach-model-switch-note'
+            )
+            expect(assistants[1]?.previousElementSibling).toBe(
+                screen.getByTestId('coach-model-switch-note')
+            )
+        })
+
+        it('keeps the caption and shows the error copy when all models fail', async () => {
+            const send = vi
+                .fn()
+                .mockResolvedValueOnce(streamOf(ndjson(meta, model(M1), text('A'), done)))
+                .mockResolvedValueOnce(
+                    streamOf(ndjson(meta, { type: 'error', kind: 'unavailable' }))
+                )
+            render(<Harness send={send} />)
+            await sendOne()
+            fireEvent.change(screen.getByTestId('coach-input'), { target: { value: 'again' } })
+            fireEvent.click(screen.getByTestId('coach-send'))
+            await waitFor(() => expect(screen.getByTestId('coach-error')).toBeInTheDocument())
+            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 4 Hydrogen')
+        })
+
+        it('shows the raw id of an unknown model', async () => {
+            const send = vi
+                .fn()
+                .mockResolvedValue(streamOf(ndjson(meta, model('mystery-9'), text('Hi'), done)))
+            render(<Harness send={send} />)
+            await sendOne()
+            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('mystery-9')
+        })
+
+        it('uses the last assistant model of a reopened conversation, without a note', async () => {
+            const loadMessages = vi.fn().mockResolvedValue([
+                { id: 'u', role: 'user', content: 'q', model: null },
+                { id: 'a', role: 'assistant', content: 'r', model: M2 },
+            ])
+            render(
+                <Harness
+                    conversations={[{ id: 'c1', title: 'T', updatedAt: '2026-01-01T00:00:00Z' }]}
+                    loadMessages={loadMessages}
+                />
+            )
+            fireEvent.click(screen.getByTestId('coach-menu-trigger'))
+            fireEvent.click(
+                within(screen.getAllByTestId('coach-history-item')[0]!).getByTestId(
+                    'coach-history-open'
+                )
+            )
+            await waitFor(() =>
+                expect(screen.getByTestId('coach-model-caption')).toHaveTextContent(
+                    'Gemini 3.8 Flash'
+                )
+            )
+            expect(screen.queryByTestId('coach-model-switch-note')).toBeNull()
+        })
+
+        it('shows no caption and does not crash when stored models are null', async () => {
+            const loadMessages = vi
+                .fn()
+                .mockResolvedValue([{ id: 'a', role: 'assistant', content: 'r', model: null }])
+            render(
+                <Harness
+                    conversations={[{ id: 'c1', title: 'T', updatedAt: '2026-01-01T00:00:00Z' }]}
+                    loadMessages={loadMessages}
+                />
+            )
+            fireEvent.click(screen.getByTestId('coach-menu-trigger'))
+            fireEvent.click(
+                within(screen.getAllByTestId('coach-history-item')[0]!).getByTestId(
+                    'coach-history-open'
+                )
+            )
+            await waitFor(() =>
+                expect(screen.getByTestId('coach-message-assistant')).toBeInTheDocument()
+            )
+            expect(screen.queryByTestId('coach-model-caption')).toBeNull()
         })
     })
 })

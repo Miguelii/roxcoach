@@ -159,6 +159,15 @@ The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a clie
   athlete scrolled up. A screen-reader live region announces the finished reply once, not each delta.
 - **Input**: Enter sends, Shift+Enter adds a line; send is disabled while streaming, where a stop
   button appears. A hint shows near 2000 characters and sending is blocked above it. No microphone.
+- **Model caption**: a small muted line (`coach-model-caption`) under the message box, inside the
+  panel, naming the model that wrote the latest reply by its friendly name (an unknown id shows
+  the raw id). One line with an ellipsis in the narrow panel. A reopened conversation shows the
+  model of its last assistant message with a stored model; a new conversation, or a history with
+  no stored model, shows nothing. An error keeps the last known caption.
+- **Switch note**: when a reply came from a fallback model, a muted, small, centered line
+  (`coach-model-switch-note`) "<from> reached its limit. Answering with <to>." sits in the message
+  list right before that reply. It is in-session only (not stored, absent in reopened
+  conversations), is not an alert and is not announced by the live region.
 - **States**: empty, loading history (skeleton), streaming, stopped or cut off (partial text kept
   and labelled "Incomplete reply"), error with retry ("The coach is busy, try again in a minute",
   retry resends the same text), blocked ("The coach cannot answer that. Try rephrasing."), limit

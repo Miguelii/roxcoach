@@ -49,6 +49,7 @@ export function CoachChat() {
             status={chat.status}
             errorKind={chat.errorKind}
             conversationId={chat.conversationId}
+            modelId={chat.modelId}
             conversations={conversations.data}
             chips={COACH_SUGGESTIONS}
             onSend={chat.sendMessage}

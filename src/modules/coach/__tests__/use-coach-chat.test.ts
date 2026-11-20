@@ -248,17 +248,21 @@ describe('useCoachChat control', () => {
     })
 
     it('openConversation loads its messages; a newer open wins over a slow older one', async () => {
-        let resolveFirst!: (value: { id: string; role: 'user'; content: string }[]) => void
+        let resolveFirst!: (
+            value: { id: string; role: 'user'; content: string; model: null }[]
+        ) => void
         const loadMessages = vi
             .fn()
             .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
-            .mockResolvedValueOnce([{ id: 'b', role: 'assistant', content: 'second' }])
+            .mockResolvedValueOnce([{ id: 'b', role: 'assistant', content: 'second', model: null }])
         const { result } = setup(vi.fn(), { loadMessages })
         act(() => void result.current.openConversation('a'))
         expect(result.current.status).toBe('loading-history')
         await act(async () => result.current.openConversation('b'))
         expect(result.current.messages.map((m) => m.content)).toEqual(['second'])
-        await act(async () => resolveFirst([{ id: 'a1', role: 'user', content: 'first' }]))
+        await act(async () =>
+            resolveFirst([{ id: 'a1', role: 'user', content: 'first', model: null }])
+        )
         expect(result.current.messages.map((m) => m.content)).toEqual(['second'])
         expect(result.current.conversationId).toBe('b')
     })
@@ -277,5 +281,150 @@ describe('useCoachChat control', () => {
         act(() => result.current.sendMessage('   '))
         act(() => result.current.sendMessage('x'.repeat(2001)))
         expect(send).not.toHaveBeenCalled()
+    })
+})
+
+const modelEvent = (model: string, switchedFrom: string | null = null) => ({
+    type: 'model',
+    model,
+    switchedFrom,
+})
+const M1 = 'gemini-4-hydrogen'
+const M2 = 'gemini-3.8-flash'
+const stored = (id: string, role: 'user' | 'assistant', model: string | null) => ({
+    id,
+    role,
+    content: id,
+    model,
+})
+
+const reply = async (
+    result: { current: ReturnType<typeof useCoachChat> },
+    send: ReturnType<typeof vi.fn>,
+    ...events: object[]
+) => {
+    send.mockResolvedValueOnce(streamOf(ndjson(...events)))
+    act(() => result.current.sendMessage('hi'))
+    await waitFor(() => expect(result.current.status).not.toBe('streaming'))
+}
+
+describe('useCoachChat model caption and switch note', () => {
+    it('sets the model id from a model event without a note', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M1), text('a'), { type: 'done' })
+        expect(result.current.modelId).toBe(M1)
+        expect(result.current.messages.some((m) => m.switchNote)).toBe(false)
+    })
+
+    it('puts the note on the reply that switched and updates the caption', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M2, M1), text('a'), { type: 'done' })
+        expect(result.current.modelId).toBe(M2)
+        expect(result.current.messages[1]?.switchNote).toEqual({ from: M1, to: M2 })
+        expect(result.current.messages[0]?.switchNote).toBeUndefined()
+    })
+
+    it('only the switched reply carries a note', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M1), text('a'), { type: 'done' })
+        await reply(result, send, meta, modelEvent(M2, M1), text('b'), { type: 'done' })
+        expect(result.current.messages.map((m) => m.switchNote !== undefined)).toEqual([
+            false,
+            false,
+            false,
+            true,
+        ])
+        expect(result.current.modelId).toBe(M2)
+    })
+
+    it('a plain stream without a model event leaves the caption unchanged', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M1), text('a'), { type: 'done' })
+        await reply(result, send, meta, text('b'), { type: 'done' })
+        expect(result.current.modelId).toBe(M1)
+    })
+
+    it('keeps the previous caption when a model event is followed by an error', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M1), text('a'), { type: 'done' })
+        await reply(result, send, meta, modelEvent(M2, M1), { type: 'error', kind: 'unavailable' })
+        expect(result.current.status).toBe('error')
+        expect(result.current.modelId).toBe(M1)
+    })
+
+    it('an error alone keeps the last known caption', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M1), text('a'), { type: 'done' })
+        await reply(result, send, meta, { type: 'error', kind: 'unavailable' })
+        expect(result.current.errorKind).toBe('busy')
+        expect(result.current.modelId).toBe(M1)
+    })
+
+    it('newConversation clears the caption and the notes', async () => {
+        const send = vi.fn()
+        const { result } = setup(send)
+        await reply(result, send, meta, modelEvent(M2, M1), text('a'), { type: 'done' })
+        act(() => result.current.newConversation())
+        expect(result.current.modelId).toBeNull()
+        expect(result.current.messages).toEqual([])
+    })
+
+    it('openConversation uses the last assistant model and shows no note', async () => {
+        const loadMessages = vi
+            .fn()
+            .mockResolvedValue([
+                stored('u1', 'user', null),
+                stored('a1', 'assistant', M1),
+                stored('u2', 'user', null),
+                stored('a2', 'assistant', M2),
+                stored('u3', 'user', null),
+                stored('a3', 'assistant', null),
+            ])
+        const { result } = setup(vi.fn(), { loadMessages })
+        await act(async () => result.current.openConversation('c'))
+        expect(result.current.modelId).toBe(M2)
+        expect(result.current.messages.some((m) => m.switchNote)).toBe(false)
+    })
+
+    it('a history with only null models has no caption', async () => {
+        const loadMessages = vi
+            .fn()
+            .mockResolvedValue([stored('u1', 'user', null), stored('a1', 'assistant', null)])
+        const { result } = setup(vi.fn(), { loadMessages })
+        await act(async () => result.current.openConversation('c'))
+        expect(result.current.modelId).toBeNull()
+        expect(result.current.messages).toHaveLength(2)
+    })
+
+    it('ignores model events of a superseded request', async () => {
+        let deliver!: (result: { done: boolean; value?: Uint8Array }) => void
+        const reader = {
+            read: () => new Promise<{ done: boolean; value?: Uint8Array }>((r) => (deliver = r)),
+            cancel: () => Promise.resolve(),
+        }
+        const response = new Response(null, { status: 200 })
+        Object.defineProperty(response, 'body', { value: { getReader: () => reader } })
+        const send = vi.fn().mockResolvedValue(response)
+        const { result } = setup(send)
+        act(() => result.current.sendMessage('hi'))
+        await waitFor(() => expect(deliver).toBeDefined())
+        act(() => result.current.newConversation())
+        await act(async () => {
+            deliver({
+                done: false,
+                value: new TextEncoder().encode(
+                    ndjson(meta, modelEvent(M2, M1), text('late'), { type: 'done' })
+                ),
+            })
+            await new Promise((resolve) => setTimeout(resolve, 20))
+        })
+        expect(result.current.modelId).toBeNull()
+        expect(result.current.messages).toEqual([])
     })
 })
