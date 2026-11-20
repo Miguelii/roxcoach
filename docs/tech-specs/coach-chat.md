@@ -64,10 +64,9 @@ is told not to recompute it. Sections, in this order:
 
 The block has a size cap (a constant, about 3000 tokens as a starting point). When it would exceed
 the cap, the Recent list shrinks first, then the Last 4 weeks list. Goals and availability are never
-cut. The week totals and load ratio reuse the logic that exists today in
-`src/modules/calendar/week-stats.ts` (`computeTotals`, `computeLoadRatio`). That logic is a frontend
-file and `_bff` may not import from `src/modules`, so it moves to `src/_bff/core/utils/` (shared
-code rule) and the calendar imports it from there.
+cut. The week totals and load ratio reuse the shared logic in
+`src/_bff/core/utils/week-stats.utils.ts` (`computeTotals`, `computeLoadRatio`). It lives in core
+because `_bff` may not import from `src/modules`; the calendar imports it from there too.
 
 ### 2. Tools (called by the model when it needs detail)
 

@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { computeLoadRatio, computeTotals, loadLabel } from '@/_bff/core/utils/week-stats.utils'
-import { makeItem } from '@/modules/calendar/__tests__/fixtures'
+
+type Activity = {
+    id: string
+    localDate: string
+    category: string
+    distanceM: number | null
+    movingTimeS: number | null
+    elapsedTimeS: number | null
+}
+
+const makeItem = (overrides: Partial<Activity>) => {
+    const activity: Activity = {
+        id: 'act-1',
+        localDate: '2026-11-18',
+        category: 'run',
+        distanceM: 8000,
+        movingTimeS: 2700,
+        elapsedTimeS: 2800,
+        ...overrides,
+    }
+    return { type: 'activity' as const, date: activity.localDate, activity }
+}
 
 const run = (date: string, minutes: number, distanceM: number | null) =>
     makeItem({
