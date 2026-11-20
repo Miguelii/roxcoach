@@ -35,8 +35,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
    therefore cannot assume "a signed-in user is mine". Access is an explicit flag, described in
    [auth-security.md](auth-security.md) (`app_metadata.roxcoach = true`), and RLS checks it with
    `roxcoach.has_access()`.
-5. **Shared extensions and jobs.** `pg_cron`, `pg_net` and Vault already serve the whole database.
-   Roxcoach's jobs and secrets are named with the prefix `roxcoach-`.
+5. **Shared extensions.** `pg_cron`, `pg_net` and Vault already serve the whole database. Roxcoach
+   runs no database jobs; any it adds must be named with the prefix `roxcoach-`.
 6. **No change to the other app's objects**, auth settings that it depends on (sign-ups, email
    templates, providers) or its policies. Roxcoach migrations are independent and can be rolled
    back by dropping the `roxcoach` schema.
@@ -64,7 +64,7 @@ The app has one athlete today, but nothing in the schema or the queries may assu
 make a second user work with no migration:
 
 1. **`user_id` on every table, child tables included.** A child row (laps, station results, sets,
-   planned sessions) carries its own `user_id`, so every RLS policy is the same one-liner and no
+   messages) carries its own `user_id`, so every RLS policy is the same one-liner and no
    policy needs a join.
 2. **Composite foreign keys keep tenants apart.** Each parent table has `unique (id, user_id)`, and
    each child references `(parent_id, user_id)` instead of `parent_id` alone. A child can then never
@@ -131,19 +131,19 @@ save, and two concurrent saves by the same user can race the delete. Every state
 
 ### `races`
 
-| Column           | Type            | Notes                                    |
-| ---------------- | --------------- | ---------------------------------------- |
-| `name`           | text not null   | for example `S. Silvestre Guimaraes 10k` |
-| `race_type`      | `race_type`     |                                          |
-| `race_date`      | date not null   |                                          |
-| `location`       | text null       |                                          |
-| `distance_m`     | int null        | required for `running`, null for `hyrox` |
-| `hyrox_division` | text null       | required for `hyrox`                     |
-| `target_time_s`  | int not null    | the goal, for example 4200 for 1h10      |
-| `priority`       | `race_priority` | default `A`. See [plan.md](plan.md)      |
-| `status`         | `race_status`   | default `upcoming`                       |
-| `result_time_s`  | int null        | filled after the race                    |
-| `notes`          | text null       |                                          |
+| Column           | Type            | Notes                                                 |
+| ---------------- | --------------- | ----------------------------------------------------- |
+| `name`           | text not null   | for example `S. Silvestre Guimaraes 10k`              |
+| `race_type`      | `race_type`     |                                                       |
+| `race_date`      | date not null   |                                                       |
+| `location`       | text null       |                                                       |
+| `distance_m`     | int null        | required for `running`, null for `hyrox`              |
+| `hyrox_division` | text null       | required for `hyrox`                                  |
+| `target_time_s`  | int not null    | the goal, for example 4200 for 1h10                   |
+| `priority`       | `race_priority` | default `A`. See [athlete-races.md](athlete-races.md) |
+| `status`         | `race_status`   | default `upcoming`                                    |
+| `result_time_s`  | int null        | filled after the race                                 |
+| `notes`          | text null       |                                                       |
 
 Index on `(user_id, race_date)`.
 

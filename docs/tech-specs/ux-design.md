@@ -36,8 +36,7 @@ uses `--on-brand`. Never hardcode colors: use semantic tokens (`bg-primary`,
 | Cross-training | slate                          |
 | Race           | amber, always with a flag icon |
 | Rest           | slate-soft, no fill            |
-| Done, on plan  | green                          |
-| Missed         | amber-deep text on amber-soft  |
+| Done           | green                          |
 
 Color is never the only carrier of meaning. Every chip has an icon (Tabler icons, as in BrewStock)
 and a text label.
@@ -49,7 +48,7 @@ coach that respects your time.
 
 1. **Quiet authority.** Hierarchy, spacing and typography carry the design. No decoration.
 2. **One thing at a time.** Each screen has one job.
-3. **Show the work.** Reports name the numbers they are based on. Plans state why.
+3. **Show the work.** Coach answers quote the numbers they are based on.
 4. **Respect the decision.** No gamification: no streaks, no confetti, no badges.
 5. **Honest empty and error states.** Always say what happened and what to do next.
 
@@ -93,7 +92,7 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 "No history yet" without activities, activities only), the calendar (activities plus upcoming and
 completed races, never cancelled; the week strip and week totals count activities only) and the
 `NextRace` card (see below). The "Log session"
-and "Add details" items below return with the plans that own them. The `/coach` and `/plan` screens
+and "Add details" items below return with manual logging. The `/coach` and `/plan` screens
 no longer exist: the coach is the chat panel on the dashboard (see Coach chat below). `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
@@ -107,19 +106,18 @@ data refreshes). Full contract in [manual-upload.md](manual-upload.md). Componen
 
 Target design, top to bottom:
 
-1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
-   ratio with a plain-language label (for example "Balanced", "Ramping fast").
+1. **This week strip**: done sessions, total minutes, run km and the acute:chronic ratio with a
+   plain-language label (for example "Balanced", "Ramping fast").
 2. **Next race** (`NextRace` client query with `NextRaceView` for the markup):
    the next upcoming race (date today or later) as an amber card with a flag icon: name, date, days
    to go, goal time and priority (for example "A: Target race"), linking to `/races`. Hidden when
-   there is no upcoming race. The planned-session half of "Next up" returns with plan 5.
+   there is no upcoming race.
 3. **Calendar** (the main element), month view on desktop:
     - Each day cell shows up to 3 chips: completed activities (filled, with duration) and races
       (amber tone, flag icon, name and priority letter, linking to `/races`). Races never appear
       when cancelled and are ignored by the week totals,
-      the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
-      overflow opens the day.
-    - Today is outlined with the ink token. Past planned sessions with no match show as missed.
+      the load ratio and the week strip. A "+N" overflow opens the day.
+    - Today is outlined with the ink token.
     - Navigation: previous, next, today, and a month and week toggle. The dashboard URL stores
       the calendar cursor date (`date`) and selected view (`view`) with nuqs, so a refresh restores
       the same month or week. Mobile always renders the week agenda, regardless of the stored view.
@@ -134,7 +132,7 @@ The calendar is fed by `training.getCalendar({ from, to })`, a single query. Tar
 returns activities and races for the visible range, typed as a discriminated union on `type`
 (`activity`, `race`; the race member carries a `RaceSummaryDTO`), merged and ordered by date. Races
 come from `listRacesInRange` (upcoming and completed, never cancelled). Every switch on `type` is
-exhaustive (`Match.exhaustive`). A `planned` member arrives with plan 5. After a races mutation the
+exhaustive (`Match.exhaustive`). After a races mutation the
 Races page invalidates `training.getCalendar` and `races.list` (`runRaceAction` with an injected
 `onChanged`), since `router.refresh()` does not reach client queries.
 
@@ -194,8 +192,7 @@ wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toa
   `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
   delta shown while typing), Cancel and Delete. Complete shows a result dialog; Cancel and Delete
   show accessible confirmation dialogs with the race name and consequence. Delete is hidden once a
-  race has a result, and its confirmation explains that deletion is irreversible and linked
-  planned sessions remain without the race association.
+  race has a result, and its confirmation explains that deletion is irreversible and mentions linked planned sessions (stale copy, planned sessions no longer exist).
 - A collapsed history (`<details>`) with completed races (result and delta in plain text, for
   example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
 - Empty state: "No races yet. Add one to get a coach plan."
@@ -241,7 +238,7 @@ layout.
 ## States every screen must handle
 
 Loading (skeletons shaped like the final content), empty (explains why and offers the next
-action, for example "No races yet. Add one to get a plan."), error (what failed, one retry
+action, for example "No races yet. Add one to get a coach plan."), error (what failed, one retry
 action) and offline or stale (a muted "Updated 2 hours ago" line where sync matters).
 
 ## Copy rules

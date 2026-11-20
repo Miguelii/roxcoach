@@ -56,11 +56,9 @@ are all server-side).
 | `athlete`  | Profile and weekly availability                                                                    | [athlete-races.md](athlete-races.md)   |
 | `races`    | Races and goals                                                                                    | [athlete-races.md](athlete-races.md)   |
 | `training` | Activities, laps, manual sessions, calendar feed, file upload (`upload-activity` service, parsers) | [manual-logging.md](manual-logging.md) |
-| `plan`     | Planned sessions and activity matching                                                             | [plan.md](plan.md)                     |
-| `coach`    | Weekly report: context, memory, prompt, generation                                                 | [coach.md](coach.md)                   |
+| `coach`    | Chat with the AI coach: context block, read-only tools, Gemini provider, conversations             | [coach-chat.md](coach-chat.md)         |
 
-Dependency direction: controller to service to (repository | processor | helper). Jobs call the
-services or processors of their own module. Cross-module runtime imports only through `services/`
+Dependency direction: controller to service to (repository | processor | helper). Cross-module runtime imports only through `services/`
 or `processors/`, never another module's controller or repository. A type-only import between
 modules is allowed for shared DTOs (`training` imports `RaceDTO` from `races/types` to build
 `RaceSummaryDTO`).
@@ -69,7 +67,10 @@ As built: `athlete` has the profile and availability controllers, services, vali
 two repositories, plus `getAthleteTimezone`, which `races` calls through its service. `races` has
 list, create, update, complete, cancel and delete controllers, the matching services, a
 `listRacesInRange` service used by the `training` calendar feed, one repository and a validation
-helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
+helper. Rules and file lists are in [athlete-races.md](athlete-races.md). `coach` reads the other
+modules only through their services (`getProfile`, `getAvailability`, `getAthleteTimezone`,
+`listRaces`, `getCalendar`, `getActivity`); the week totals and load ratio it shares with the
+dashboard calendar live in `src/_bff/core/utils/week-stats.utils.ts` and `week-dates.utils.ts`.
 
 ## Layer rules
 
@@ -80,8 +81,8 @@ helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
   client and passes it to repositories. Chooses the publishable key or the service-role key.
 - **Repository**: exported `Effect.fn` functions, one file per table. First parameters are
   `supabase: SupabaseClient` and `userId: string`. **Every query filters by `user_id` and every
-  insert sets it**, even when RLS would also enforce it, because jobs run with the
-  service-role client, which bypasses RLS (see [database.md](database.md)). Every query checks
+  insert sets it**, even when RLS would also enforce it, because a service-role client
+  bypasses RLS (see [database.md](database.md)). Every query checks
   both the `Effect.tryPromise` catch and the returned `error`.
 - **Errors**: `Data.TaggedError` classes in `src/_bff/lib/errors.ts`, each with
   `cause: unknown` and `error_hash: ErrorCode`. Codes live in `src/_bff/lib/error-codes.ts`.
@@ -92,8 +93,9 @@ helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
 
 ## tRPC namespaces
 
-Built today: `auth`, `athlete`, `races`, `training` (composed in `src/_bff/trpc/router.ts`).
-`plan` and `coach` arrive with their plans. Example client call:
+`auth`, `athlete`, `races`, `training` and `coach` (composed in `src/_bff/trpc/router.ts`). The
+`coach` namespace has `listConversations`, `getConversationMessages` and `deleteConversation`; the
+chat itself is a route handler (below). Example client call:
 `trpcClient.races.create.useMutation()`. Server Components use the server-side caller
 (`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
 `appRouter.createCaller`.
@@ -103,8 +105,9 @@ Built today: `auth`, `athlete`, `races`, `training` (composed in `src/_bff/trpc/
 | Route                                    | Purpose                                                                                   |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `src/app/api/activities/upload/route.ts` | multipart activity upload, authenticates itself, delegates to the training upload service |
+| `src/app/api/coach/chat/route.ts`        | streaming coach chat (NDJSON), authenticates itself, delegates to the coach chat handler  |
 
-This is a plain route handler because tRPC does not carry multipart bodies. The proxy matcher excludes `api/`, so each route authenticates itself. See [manual-upload.md](manual-upload.md).
+These are plain route handlers because tRPC carries neither multipart bodies nor a streaming response. The proxy matcher excludes `api/`, so each route authenticates itself. There is no cron route. See [manual-upload.md](manual-upload.md) and [coach-chat.md](coach-chat.md).
 
 ## Background jobs
 
@@ -123,8 +126,7 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 | `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
-variables are optional at startup (the features that need them fail with a tagged
-error when they are missing), and an empty value reads as unset (`emptyStringAsUndefined`).
+variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
 `http://localhost:3000` when unset or empty. `.env.example` is maintained by the owner and must list the
 Gemini variable names. The repo rule is that `.env.example` lists every
@@ -155,7 +157,7 @@ color tokens, no em-dashes, `PageProps<'...'>` and `LayoutProps<'...'>` helpers,
 
 ## Testing
 
-Unit tests with `vp test run` for pure logic: pace and load math, lap-to-station mapping, plan
-periodization helpers, context builders. Services are tested with a fake Supabase client. Smoke
+Unit tests with `vp test run` for pure logic: pace and load math, lap-to-station mapping, the
+coach context builder and tools. Services are tested with a fake Supabase client. Smoke
 tests (Playwright) are added once the login and dashboard exist; read the e2e conventions ported
 from BrewStock first.

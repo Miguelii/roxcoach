@@ -31,9 +31,25 @@ are scoped to this bucket only and touch no other bucket. Details in
 ## Profile, availability and races
 
 Settings holds the athlete profile and the typical week of availability, and `/races` holds the
-races with their goals. The coach chat (`docs/tech-specs/coach-chat.md`, a later plan) will read
+races with their goals. The coach chat (`docs/tech-specs/coach-chat.md`) reads
 the profile, the availability and the races through the `athlete` and `races` services. Rules in
 `docs/tech-specs/athlete-races.md`.
+
+## Coach chat
+
+The dashboard has a chat with an AI coach (Google Gemini), described in
+`docs/tech-specs/coach-chat.md`.
+
+1. Set `NEXT_GEMINI_API_KEY` and `NEXT_COACH_MODEL` in the app environment. Without the key the
+   chat route answers 503 and the panel says the coach is not set up.
+2. Check the key and the model with `pnpm dlx tsx tools/gemini-smoke.ts`, with both variables
+   loaded in the shell. It prints `OK` on success, or only a status code (never the key or the
+   response). The key must not be pasted anywhere else.
+3. Apply migration `0009_coach_chat.sql` in the Supabase SQL editor (it creates
+   `coach_conversations` and `coach_messages` and drops the old report and plan tables).
+4. The Gemini free tier is not offered in every region (the EEA, the UK and Switzerland are
+   restricted at the time of writing) and its terms allow Google to use requests to improve its
+   products. Check the current terms for your region before relying on it.
 
 ## Learn More
 

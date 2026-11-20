@@ -1,7 +1,7 @@
 # Athlete and races
 
 Two small modules (`athlete`, `races`) that capture the athlete's starting point and the races
-that drive the plan. The coach chat (a later plan, see [coach-chat.md](coach-chat.md)) will read
+that the coach works from. The coach chat (see [coach-chat.md](coach-chat.md)) reads
 these inputs through the services of each module: `getProfile`, `getAvailability` and `listRaces`.
 
 ## Athlete profile
@@ -91,7 +91,7 @@ ranges).
 Goal examples that must be expressible: "Hyrox in 1h10" (target `1:10:00`) and "S. Silvestre 10k
 sub 40 min" (target `0:39:59`). The app always shows the stored time, never rewrites it as "sub".
 
-Priority meaning (used by the coach, see [plan.md](plan.md)):
+Priority meaning (the coach reads it from the race goals, see [coach-chat.md](coach-chat.md)):
 
 | Priority | Treated as                                                 |
 | -------- | ---------------------------------------------------------- |
@@ -129,7 +129,7 @@ Behaviour in the UI:
   interactive inside the modal drawer. Complete opens a result dialog;
   Cancel and Delete (Delete only without a result) open contextual confirmation dialogs. Delete
   explains that it is irreversible and that linked planned sessions remain without the race
-  association. A card's actions are disabled while its mutation runs.
+  association (copy kept from the dialog; planned sessions no longer exist). A card's actions are disabled while its mutation runs.
 - Completing a race shows goal versus result.
 - After any mutation the page refreshes, and the react-query calendar feed and dashboard race query
   are invalidated.

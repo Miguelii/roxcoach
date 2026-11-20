@@ -56,7 +56,7 @@ athlete's previous exercises.
   Only effort, notes, station results, strength sets and lap station tags are editable on them.
 - Deleting a manual session deletes its station results and sets (cascade). An uploaded activity
   cannot be deleted from the app.
-- A manual session is read by the next weekly report, same as an uploaded activity.
+- A manual session is read by the coach chat, same as an uploaded activity.
 
 ## Backend
 
