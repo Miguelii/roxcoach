@@ -61,7 +61,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Layout
 
-- App shell: top bar with the logo, primary nav (Dashboard, Coach, Plan, Races, Settings) and a user menu
+- App shell: top bar with the logo, primary nav (Dashboard, Races, Settings) and a user menu
   with logout. On mobile the nav becomes a bottom bar.
 - Page container: `main-container` (max-w-5xl) for reading pages, `main-container-lg` for the
   dashboard calendar.
@@ -70,15 +70,13 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Screens
 
-| Route              | Access    | Job                                            |
-| ------------------ | --------- | ---------------------------------------------- |
-| `/login`           | public    | sign in                                        |
-| `/dashboard`       | protected | the calendar and this week at a glance         |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results    |
-| `/coach`           | protected | the weekly reports and the coach's memory      |
-| `/plan`            | protected | next sessions and the outlook toward each race |
-| `/races`           | protected | list, create, edit races and goals             |
-| `/settings`        | protected | profile, weekly availability                   |
+| Route              | Access    | Job                                         |
+| ------------------ | --------- | ------------------------------------------- |
+| `/login`           | public    | sign in                                     |
+| `/dashboard`       | protected | the calendar and this week at a glance      |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results |
+| `/races`           | protected | list, create, edit races and goals          |
+| `/settings`        | protected | profile, weekly availability                |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -94,9 +92,9 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 (time, sessions, run km and load ratio from the last 35 days of activities, zeros and
 "No history yet" without activities, activities only), the calendar (activities plus upcoming and
 completed races, never cancelled; the week strip and week totals count activities only) and the
-`NextRace` card (see below). The "Latest report", "Log session"
-and "Add details" items below return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
-until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
+`NextRace` card (see below). The "Log session"
+and "Add details" items below return with the plans that own them. The `/coach` and `/plan` screens
+no longer exist: the coach is the chat panel on the dashboard (see Coach chat below). `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
@@ -129,8 +127,8 @@ Target design, top to bottom:
       with a link into each activity. A race shows as an amber card (flag, "Race", priority, name,
       "Goal h:mm:ss") linking to `/races`.
     - Mobile defaults to a week agenda: one row per day, same chips, horizontally compact.
-4. **Latest report** card under the calendar: the headline of the last weekly report, its week, a
-   link to `/coach` and when the next one arrives (Sunday 20:00).
+4. **Coach chat**: a launcher bar fixed at the bottom of the viewport (see Coach chat below). The
+   dashboard content has bottom padding so the last calendar row stays reachable.
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query. Target state: it
 returns activities and races for the visible range, typed as a discriminated union on `type`
@@ -154,26 +152,29 @@ client query cache is cleared on logout.
 - Station results and strength sets when present, plus "Add details" (see
   [manual-logging.md](manual-logging.md)).
 
-### Coach
+### Coach chat
 
-The one place the coach speaks. See [coach.md](coach.md).
+The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a client island
+(`CoachChat`) mounted in `DashboardContent`; there are no `/coach` or `/plan` routes.
 
-- **Header**: when the next report arrives ("Sunday 22 Nov, 20:00"), and "Generate now".
-- **Latest report** expanded: headline, week numbers (time, sessions, run km, load), summary,
-  went well, watch out, **follow-ups** (earlier concerns with a status chip: resolved, open,
-  worse), next week focus, a link to the plan, and the goal check when present.
-- **Memory panel**: which previous reports feed the next one (up to 3), shown as small chips with
-  the week and headline. It makes the "remembers 3 weeks" behaviour visible.
-- **Earlier reports**: collapsed list, one entry per week, opening to the same layout.
-- States: no report yet (explains the Sunday schedule), generating (skeleton), failed (what
-  happened and a retry).
-
-### Plan
-
-See [plan.md](plan.md). A header with the latest report headline and a link to `/coach`, the
-current and next week as sections with per-session rows (mark done, skip, move), an "Outlook"
-section with one card per upcoming race, and a note when a race or availability change came after
-the last report.
+- **Launcher**: a bar fixed at the bottom ("Ask your coach...", above the mobile bottom nav) that
+  opens the panel. The panel is a full-height container on narrow screens and a fixed bottom-right
+  panel (26rem wide) from the `md` breakpoint (a CSS-only switch, no portal). Escape or the close
+  button returns to the launcher. Focus moves to the input on open.
+- **Header**: the coach title, a conversations menu (new conversation, past conversations with
+  open, delete with an inline "Delete this conversation?" confirmation) and close. The panel opens
+  on the latest conversation once, unless the athlete already started one.
+- **Empty state**: greeting and three chips ("How is my training going?", "Am I on track for my
+  next race?", "What should I do this week?"); a chip sends its text.
+- **Messages**: user text is plain text; assistant text is markdown (`react-markdown`, no raw HTML,
+  no images, links filtered and opened with `noopener`). The list follows new text unless the
+  athlete scrolled up. A screen-reader live region announces the finished reply once, not each delta.
+- **Input**: Enter sends, Shift+Enter adds a line; send is disabled while streaming, where a stop
+  button appears. A hint shows near 2000 characters and sending is blocked above it. No microphone.
+- **States**: empty, loading history (skeleton), streaming, stopped or cut off (partial text kept
+  and labelled "Incomplete reply"), error with retry ("The coach is busy, try again in a minute",
+  retry resends the same text), blocked ("The coach cannot answer that. Try rephrasing."), limit
+  ("You reached today's message limit"), sign-in again (401, 403), not set up (503).
 
 ### Races
 
@@ -229,14 +230,13 @@ Cancel plus the primary action in a fixed footer. Footer actions stack verticall
 mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
 layout.
 
-| Component   | Purpose                                    |
-| ----------- | ------------------------------------------ |
-| `calendar/` | month grid, week agenda, day panel, chips  |
-| `activity/` | metrics row, laps table, details dialog    |
-| `coach/`    | report view, follow-up chips, memory panel |
-| `plan/`     | week section, session row                  |
-| `races/`    | race card, race form                       |
-| `settings/` | profile form, availability editor          |
+| Component   | Purpose                                   |
+| ----------- | ----------------------------------------- |
+| `calendar/` | month grid, week agenda, day panel, chips |
+| `activity/` | metrics row, laps table, details dialog   |
+| `coach/`    | chat panel, history menu, message, chips  |
+| `races/`    | race card, race form                      |
+| `settings/` | profile form, availability editor         |
 
 ## States every screen must handle
 

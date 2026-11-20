@@ -3,6 +3,7 @@
 import { todayIn } from '@/_bff/core/utils/date.utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { trpcClient } from '@/lib/trpc'
+import { CoachChat } from '@/modules/coach/coach-chat'
 import { Calendar } from '@/modules/calendar/calendar'
 import { DashboardQueryError } from '@/modules/dashboard/dashboard-query-error'
 import { NextRace } from '@/modules/dashboard/next-race'
@@ -25,13 +26,15 @@ export function DashboardContent() {
     const today = todayIn(timezone.data)
 
     return (
-        <div className="space-y-6">
+        // Bottom padding keeps the last calendar row clear of the fixed chat launcher.
+        <div className="space-y-6 pb-24">
             <div className="flex justify-end">
                 <UploadActivity />
             </div>
             <WeekStrip today={today} />
             <NextRace today={today} />
             <Calendar today={today} />
+            <CoachChat />
         </div>
     )
 }

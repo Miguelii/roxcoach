@@ -2,15 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-    IconCalendar,
-    IconClipboardText,
-    IconFlag,
-    IconListDetails,
-    IconLogout,
-    IconSettings,
-    type Icon,
-} from '@tabler/icons-react'
+import { IconCalendar, IconFlag, IconLogout, IconSettings, type Icon } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -36,8 +28,6 @@ type Props = {
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', Icon: IconCalendar },
-    { href: '/coach', label: 'Coach', Icon: IconClipboardText },
-    { href: '/plan', label: 'Plan', Icon: IconListDetails },
     { href: '/races', label: 'Races', Icon: IconFlag },
     { href: '/settings', label: 'Settings', Icon: IconSettings },
 ]
@@ -70,7 +60,11 @@ export function AppShell({ children }: Props) {
                         Roxcoach
                     </Link>
 
-                    <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
+                    <nav
+                        aria-label="Primary"
+                        data-testid="nav-desktop"
+                        className="hidden items-center gap-1 md:flex"
+                    >
                         {NAV_ITEMS.map(({ href, label, Icon }) => (
                             <Link
                                 key={href}
@@ -125,7 +119,8 @@ export function AppShell({ children }: Props) {
 
             <nav
                 aria-label="Primary"
-                className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-hairline bg-paper/95 backdrop-blur md:hidden"
+                data-testid="nav-mobile"
+                className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-hairline bg-paper/95 backdrop-blur md:hidden"
             >
                 {NAV_ITEMS.map(({ href, label, Icon }) => (
                     <Link

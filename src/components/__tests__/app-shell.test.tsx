@@ -75,3 +75,21 @@ describe('AppShell logout', () => {
         queryClient.clear()
     })
 })
+
+describe('AppShell navigation', () => {
+    it('lists Dashboard, Races and Settings only (no Coach or Plan screens)', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+        for (const id of ['nav-desktop', 'nav-mobile']) {
+            const nav = screen.getByTestId(id)
+            expect(nav).toHaveTextContent('Dashboard')
+            expect(nav).toHaveTextContent('Races')
+            expect(nav).toHaveTextContent('Settings')
+            expect(nav).not.toHaveTextContent('Coach')
+            expect(nav).not.toHaveTextContent('Plan')
+        }
+    })
+})
