@@ -6,7 +6,7 @@ import { failureTag } from '@/_bff/lib/tests-utils'
 import { getAvailability } from '@/_bff/modules/athlete/services/get-availability.service'
 import { saveAvailability } from '@/_bff/modules/athlete/services/save-availability.service'
 import type { AvailabilitySlotDTO } from '@/_bff/modules/athlete/types'
-import { makeFakeAdminDb, ok } from '@/_bff/modules/strava/services/__tests__/fake-admin-db'
+import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 
 const { createDBServerClientMock } = vi.hoisted(() => ({ createDBServerClientMock: vi.fn() }))
 

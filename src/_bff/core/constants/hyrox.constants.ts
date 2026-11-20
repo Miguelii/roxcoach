@@ -31,11 +31,6 @@ export const HYROX_STATION_ORDER: HyroxStation[] = [
     'wall_balls',
 ]
 
-export const HYROX_STATIONS = HYROX_STATION_ORDER.map((key) => ({
-    key,
-    label: HYROX_STATION_LABELS[key],
-}))
-
 export const HYROX_DIVISION_KEYS = [
     'open_men',
     'open_women',

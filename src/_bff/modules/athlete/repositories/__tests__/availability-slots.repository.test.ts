@@ -7,7 +7,7 @@ import {
     upsertSlots,
 } from '@/_bff/modules/athlete/repositories/availability-slots.repository'
 import type { AvailabilitySlotDTO } from '@/_bff/modules/athlete/types'
-import { makeFakeAdminDb, ok } from '@/_bff/modules/strava/services/__tests__/fake-admin-db'
+import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 
 const ROW = {
     weekday: 2,
