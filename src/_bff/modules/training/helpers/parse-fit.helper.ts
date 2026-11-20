@@ -76,7 +76,7 @@ function fromRecords(records: FitMessage[]) {
         startedAt: first,
         elapsedTimeS: elapsed,
         avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
-        maxHr: hrs.length ? Math.max(...hrs) : null,
+        maxHr: hrs.length ? hrs.reduce((a, b) => Math.max(a, b), -Infinity) : null,
     }
 }
 
@@ -127,7 +127,7 @@ function build(messages: FitMessages): ParsedActivity | null {
 export function parseFit(bytes: Uint8Array) {
     return Effect.try({
         try: () => {
-            const decoder = new Decoder(Stream.fromByteArray(Array.from(bytes)))
+            const decoder = new Decoder(Stream.fromByteArray(bytes))
             if (!decoder.isFIT() || !decoder.checkIntegrity()) throw new Error('invalid fit')
             const { messages, errors } = decoder.read()
             if (errors.length > 0) throw new Error('fit decode errors')

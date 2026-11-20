@@ -8,7 +8,7 @@ export function detectActivityFormat(bytes: Uint8Array): ActivityFormat | null {
         const signature = String.fromCharCode(...bytes.slice(8, 12))
         if (signature === FIT_SIGNATURE) return 'fit'
     }
-    const head = new TextDecoder('utf-8').decode(bytes.slice(0, 512)).replace(/^﻿/, '')
+    const head = new TextDecoder('utf-8').decode(bytes.slice(0, 2048)).replace(/^﻿/, '')
     if (/<TrainingCenterDatabase[\s>]/.test(head)) return 'tcx'
     if (/<gpx[\s>]/.test(head)) return 'gpx'
     return null

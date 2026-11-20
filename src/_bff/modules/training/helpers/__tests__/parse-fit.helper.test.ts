@@ -43,9 +43,16 @@ describe('parseFit failures', () => {
         if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
     })
 
+    it('fails on empty input', () => {
+        const result = run(new Uint8Array())
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
+    })
+
     it('fails on plain text', () => {
         const result = run(new TextEncoder().encode('not a fit file at all'))
         expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
     })
 })
 
@@ -80,7 +87,21 @@ describe('parseFit without a session message', () => {
     })
 
     it('fails with neither records nor session', () => {
-        expect(Result.isFailure(run(buildFit([])))).toBe(true)
+        const result = run(buildFit([]))
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) expect(result.failure._tag).toBe('ActivityFileParseError')
+    })
+
+    it('handles a large record list without failing', () => {
+        const start = Date.parse('2026-01-01T10:00:00Z')
+        const records = Array.from({ length: 200000 }, (_, i) => ({
+            timestamp: new Date(start + i * 1000),
+            heartRate: 100 + (i % 60),
+        }))
+        const result = run(buildFit(records))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.maxHr).toBe(159)
+        expect(result.success.elapsedTimeS).toBe(199999)
     })
 })
 
@@ -88,6 +109,21 @@ describe('parseActivityFile', () => {
     it('dispatches FIT', () => {
         const result = Effect.runSync(Effect.result(parseActivityFile(real())))
         expect(Result.isSuccess(result)).toBe(true)
+    })
+
+    it('parses real FIT bytes regardless of any label', () => {
+        const labelled = { name: 'activity.gpx', bytes: real() }
+        const result = Effect.runSync(Effect.result(parseActivityFile(labelled.bytes)))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.format).toBe('fit')
+    })
+
+    it('rejects text bytes under a .fit name as unsupported', () => {
+        const labelled = { name: 'activity.fit', bytes: new TextEncoder().encode('plain text') }
+        const result = Effect.runSync(Effect.result(parseActivityFile(labelled.bytes)))
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result))
+            expect(result.failure._tag).toBe('UnsupportedActivityFileError')
     })
 
     it('rejects unknown content as unsupported', () => {

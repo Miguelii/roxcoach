@@ -30,9 +30,4 @@ describe('detectActivityFormat', () => {
         expect(detectActivityFormat(text('hello world'))).toBeNull()
         expect(detectActivityFormat(new Uint8Array())).toBeNull()
     })
-
-    it('ignores the file name: FIT bytes stay fit', () => {
-        const trackGpx = read('zepp-hyrox-test.fit')
-        expect(detectActivityFormat(trackGpx)).toBe('fit')
-    })
 })
