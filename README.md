@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Activity upload
+
+Migration `0008_activity_files.sql` creates the private Storage bucket `activity-files` and the
+table `activity_files`. After applying it, confirm in the Supabase dashboard (Storage) that the
+bucket exists and is private. The Supabase project is shared with another app: the storage policies
+are scoped to this bucket only and touch no other bucket. Details in
+`docs/tech-specs/manual-upload.md`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

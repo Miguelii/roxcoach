@@ -51,14 +51,14 @@ are all server-side).
 
 ## Backend modules
 
-| Module     | Responsibility                                     | Spec                                   |
-| ---------- | -------------------------------------------------- | -------------------------------------- |
-| `auth`     | Login, logout, session and claims                  | [auth-security.md](auth-security.md)   |
-| `athlete`  | Profile and weekly availability                    | [athlete-races.md](athlete-races.md)   |
-| `races`    | Races and goals                                    | [athlete-races.md](athlete-races.md)   |
-| `training` | Activities, laps, manual sessions, calendar feed   | [manual-logging.md](manual-logging.md) |
-| `plan`     | Planned sessions and activity matching             | [plan.md](plan.md)                     |
-| `coach`    | Weekly report: context, memory, prompt, generation | [coach.md](coach.md)                   |
+| Module     | Responsibility                                                                                     | Spec                                   |
+| ---------- | -------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `auth`     | Login, logout, session and claims                                                                  | [auth-security.md](auth-security.md)   |
+| `athlete`  | Profile and weekly availability                                                                    | [athlete-races.md](athlete-races.md)   |
+| `races`    | Races and goals                                                                                    | [athlete-races.md](athlete-races.md)   |
+| `training` | Activities, laps, manual sessions, calendar feed, file upload (`upload-activity` service, parsers) | [manual-logging.md](manual-logging.md) |
+| `plan`     | Planned sessions and activity matching                                                             | [plan.md](plan.md)                     |
+| `coach`    | Weekly report: context, memory, prompt, generation                                                 | [coach.md](coach.md)                   |
 
 Dependency direction: controller to service to (repository | processor | helper). Jobs call the
 services or processors of their own module. Cross-module imports only through `services/` or
@@ -92,11 +92,12 @@ services or processors of their own module. Cross-module imports only through `s
 
 ## Non-tRPC entry points
 
-| Route                                      | Purpose                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------ |
-| `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet) |
+| Route                                      | Purpose                                                                                   |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet)            |
+| `src/app/api/activities/upload/route.ts`   | multipart activity upload, authenticates itself, delegates to the training upload service |
 
-These are plain route handlers because `pg_cron` calls them, not the browser app.
+These are plain route handlers: `pg_cron` calls the first, and tRPC does not carry multipart bodies for the second. The proxy matcher excludes `api/`, so each route authenticates itself. See [manual-upload.md](manual-upload.md).
 
 ## Trigger.dev jobs
 

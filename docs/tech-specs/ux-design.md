@@ -99,6 +99,14 @@ until their backend ships; `/settings` shows only a title (profile and availabil
 with a later plan). "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
+The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
+that opens a right-hand drawer: an informational banner on accepted formats, a file input, a
+"This is a Hyrox session" checkbox (hidden for GPX) and an Upload button. States are idle,
+uploading, error (message inside the drawer) and success (drawer closes, "Activity uploaded" toast,
+data refreshes). Full contract in [manual-upload.md](manual-upload.md). Components in
+`dashboard/`: `dashboard-content`, `week-strip`, `week-strip-view`, `upload-activity-drawer`,
+`use-upload-activity`.
+
 Target design, top to bottom:
 
 1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
