@@ -9,10 +9,6 @@ export const failureTag = <E>(exit: Exit.Exit<unknown, E>): string | null => {
     return Option.isSome(failure) ? (failure.value as { _tag: string })._tag : null
 }
 
-// The value of a successful Exit, or null when the effect failed.
-export const successValue = <A>(exit: Exit.Exit<A, unknown>): A | null =>
-    Exit.isSuccess(exit) ? exit.value : null
-
 // Wraps a fake query chain (or a whole fake client) into the Supabase client type repositories take.
 export const asClient = <Fake extends { from: (table: string) => object }>(
     fake: Fake

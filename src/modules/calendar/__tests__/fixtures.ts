@@ -2,8 +2,7 @@ import type { ActivityDTO, CalendarItem, LapDTO } from '@/_bff/modules/training/
 
 export const makeActivity = (overrides: Partial<ActivityDTO> = {}): ActivityDTO => ({
     id: 'act-1',
-    source: 'strava',
-    stravaId: 123456,
+    source: 'manual',
     category: 'run',
     name: 'Easy run',
     startedAt: '2026-11-18T07:30:00+00:00',

@@ -8,7 +8,6 @@ import {
 } from '@/_bff/modules/training/repositories/__tests__/activity-fixtures'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 import {
-    countStravaActivities,
     selectActivitiesInRange,
     selectActivityById,
 } from '@/_bff/modules/training/repositories/activities.repository'
@@ -50,7 +49,6 @@ describe('selectActivitiesInRange', () => {
                 {
                     ...DB_ROW,
                     distance_m: '10000.5',
-                    strava_id: null,
                     source: 'manual',
                     perceived_effort: 7,
                     notes: 'felt good',
@@ -63,7 +61,6 @@ describe('selectActivitiesInRange', () => {
         )
 
         expect(activity?.distanceM).toBe(10000.5)
-        expect(activity?.stravaId).toBeNull()
         expect(activity?.maxHr).toBeNull()
         expect(activity?.perceivedEffort).toBe(7)
         expect(activity?.notes).toBe('felt good')
@@ -128,41 +125,6 @@ describe('selectActivityById', () => {
                 await Effect.runPromiseExit(
                     selectActivityById(returned.supabase, USER_ID, ACTIVITY_ID)
                 )
-            )
-        ).toBe('ActivityQueryError')
-    })
-})
-
-describe('countStravaActivities', () => {
-    it('counts the user strava activities that are not soft-deleted', async () => {
-        const { chains, supabase } = makeFakeDb([{ count: 42, error: null }])
-
-        const count = await Effect.runPromise(countStravaActivities(supabase, USER_ID))
-
-        expect(count).toBe(42)
-        const chain = chains[0]
-        expect(chain?.select).toHaveBeenCalledWith('id', { count: 'exact', head: true })
-        expect(chain?.eq).toHaveBeenCalledWith('user_id', USER_ID)
-        expect(chain?.not).toHaveBeenCalledWith('strava_id', 'is', null)
-        expect(chain?.is).toHaveBeenCalledWith('deleted_at', null)
-    })
-
-    it('counts zero when no count is returned', async () => {
-        const { supabase } = makeFakeDb([{ count: null, error: null }])
-
-        expect(await Effect.runPromise(countStravaActivities(supabase, USER_ID))).toBe(0)
-    })
-
-    it('maps thrown and returned errors to ActivityQueryError', async () => {
-        const thrown = makeFakeDb([new Error('boom')])
-        const returned = makeFakeDb([{ error: failed }])
-
-        expect(
-            failureTag(await Effect.runPromiseExit(countStravaActivities(thrown.supabase, USER_ID)))
-        ).toBe('ActivityQueryError')
-        expect(
-            failureTag(
-                await Effect.runPromiseExit(countStravaActivities(returned.supabase, USER_ID))
             )
         ).toBe('ActivityQueryError')
     })

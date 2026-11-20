@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { HYROX_STATION_LABELS } from '@/_bff/core/constants/hyrox.constants'
 import {
     formatClock,
@@ -25,7 +25,7 @@ type Metric = {
 
 const DASH = '-'
 
-// Prefers the speed Strava reports, else derives it from distance and time.
+// Prefers the stored speed, else derives it from distance and time.
 const paceOf = (speed: number | null, distanceM: number | null, timeS: number | null) =>
     formatPace(speed ?? (distanceM && timeS ? distanceM / timeS : null))
 
@@ -80,19 +80,6 @@ export function ActivityView({ activity, laps }: Props) {
                 <h1 data-testid="activity-name" className="display display-section">
                     {activity.name}
                 </h1>
-                {activity.source === 'strava' && activity.stravaId !== null ? (
-                    <a
-                        data-testid="strava-link"
-                        href={`https://www.strava.com/activities/${activity.stravaId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
-                    >
-                        View on Strava <IconExternalLink className="size-3.5" />
-                    </a>
-                ) : (
-                    <p className="text-sm text-muted-foreground">Logged by hand</p>
-                )}
             </header>
 
             <dl

@@ -6,7 +6,7 @@ import {
     replaceLaps,
     selectLaps,
 } from '@/_bff/modules/training/repositories/activity-laps.repository'
-import type { LapRow } from '@/_bff/modules/strava/helpers/map-strava-activity.helper'
+import type { LapRow } from '@/_bff/modules/training/types'
 
 const USER_ID = 'user-1'
 const ACTIVITY_ID = '7a1f0f4e-3b0e-4c53-9a0a-6a3a3d2f9c11'

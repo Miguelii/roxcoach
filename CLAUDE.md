@@ -105,3 +105,9 @@ Logic lives in a hook, UI in the component.
 - Unit tests (`pnpm test`, vite-plus) cover pure logic and services with a fake Supabase client. Knip treats test files as usage.
 - Every element used in tests carries a `data-testid`. Locate by test id only: never by role, label, text, placeholder, CSS, tag or id. Verify copy with `getByTestId(...)` plus `toHaveText` / `toContainText`.
 - Never mock modules in application tests when a fake dependency can be passed in.
+
+<!-- TRIGGER.DEV SKILLS START -->
+## Trigger.dev agent skills
+
+This project has Trigger.dev agent skills installed in `.claude/skills/`. Before writing or changing Trigger.dev code (background tasks, scheduled tasks, realtime, or chat.agent AI agents), load the most relevant skill: `trigger-authoring-tasks`.
+<!-- TRIGGER.DEV SKILLS END -->

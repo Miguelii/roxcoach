@@ -17,3 +17,7 @@ const getFormatter = (timezone: string) => {
 /** The calendar date (`YYYY-MM-DD`) of `now` in the given IANA timezone. */
 export const todayIn = (timezone: string, now: Date = new Date()) =>
     getFormatter(timezone).format(now)
+
+/** The calendar date (`YYYY-MM-DD`) of an ISO instant in the given IANA timezone. */
+export const localDateIn = (isoInstant: string, timezone: string) =>
+    getFormatter(timezone).format(new Date(isoInstant))

@@ -120,7 +120,7 @@ export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
                     data-testid="month-empty"
                     className="border-t border-hairline p-4 text-sm text-muted-foreground"
                 >
-                    No activities in this period. Synced Strava activities appear here.
+                    No activities in this period. Uploaded activities appear here.
                 </p>
             )}
         </div>

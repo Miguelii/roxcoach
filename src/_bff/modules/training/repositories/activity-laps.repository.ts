@@ -5,8 +5,7 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
-import type { LapRow } from '@/_bff/modules/strava/helpers/map-strava-activity.helper'
-import type { LapDTO, TrainingClient } from '@/_bff/modules/training/types'
+import type { LapDTO, LapRow, TrainingClient } from '@/_bff/modules/training/types'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
@@ -53,7 +52,7 @@ const writeError = (error: ReturnedError, error_hash: ErrorCode) =>
     new ActivityWriteError({ cause: `${error.code}: ${error.message}`, error_hash })
 
 // Delete then insert, not atomic: if the insert fails the activity is left without laps, and the
-// sync that called this fails and is retried, which rewrites them. An empty list only deletes.
+// caller fails and may retry, which rewrites them. An empty list only deletes.
 export const replaceLaps = Effect.fn('replaceLaps')(function* (
     supabase: TrainingClient,
     userId: string,

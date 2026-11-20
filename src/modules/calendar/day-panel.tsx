@@ -78,7 +78,7 @@ export function DayPanel({ date, items, onClose }: Props) {
                     ))}
                     {items.length === 0 && (
                         <p className="rounded-2xl border border-dashed border-hairline-strong p-4 text-sm text-muted-foreground">
-                            Rest day. Activities synced from Strava show up here.
+                            Rest day. Uploaded activities show up here.
                         </p>
                     )}
                 </div>

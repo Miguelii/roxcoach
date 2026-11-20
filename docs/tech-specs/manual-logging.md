@@ -1,8 +1,8 @@
 # Manual logging
 
-Strava captures time, distance and heart rate. It does not capture Hyrox station results, loads or
+An uploaded file captures time, distance and heart rate. It does not capture Hyrox station results, loads or
 strength sessions in a useful way. Manual logging fills that gap, and is also the way to record a
-workout that never reached Strava.
+workout that has no file.
 
 ## What can be logged
 
@@ -11,18 +11,18 @@ workout that never reached Strava.
 | A whole manual session           | `activities` with `source = 'manual'`             | name, date, category, duration, optional distance and heart rate |
 | Hyrox station results            | `station_results`                                 | station, time, load, reps, distance                              |
 | Strength sets                    | `strength_sets`                                   | exercise, set index, reps, load, RPE                             |
-| Effort and notes on any activity | `activities.perceived_effort`, `activities.notes` | works on Strava activities too                                   |
+| Effort and notes on any activity | `activities.perceived_effort`, `activities.notes` | works on uploaded activities too                                 |
 
-Manual sessions appear in the calendar and are visible to the coach exactly like synced ones.
+Manual sessions appear in the calendar and are visible to the coach exactly like uploaded ones.
 
 ## Entry points
 
 1. **Calendar, "Log session"** on a day: a dialog to create a manual `activities` row.
 2. **Activity detail, "Add details"**: attach station results, strength sets, effort and notes to
-   any activity (Strava or manual).
-3. **Station tagging**: on a Strava activity with laps, the athlete can mark which laps are which
+   any activity (uploaded or manual).
+3. **Station tagging**: on an uploaded activity with laps, the athlete can mark which laps are which
    stations. This writes `activity_laps.station` and is used when automatic detection did not apply
-   (see [strava.md](strava.md)).
+   .
 
 ## Forms
 
@@ -52,11 +52,11 @@ athlete's previous exercises.
 ## Rules
 
 - Saving replaces the full set of station results or sets for that activity in one transaction.
-- Editing a Strava activity never changes Strava-sourced columns (distance, times, heart rate).
+- Editing an uploaded activity never changes file-sourced columns (distance, times, heart rate).
   Only effort, notes, station results, strength sets and lap station tags are editable on them.
-- Deleting a manual session deletes its station results and sets (cascade). A Strava activity
+- Deleting a manual session deletes its station results and sets (cascade). An uploaded activity
   cannot be deleted from the app.
-- A manual session is read by the next weekly report, same as a synced activity.
+- A manual session is read by the next weekly report, same as an uploaded activity.
 
 ## Backend
 
@@ -73,4 +73,4 @@ Module `training`:
 ## Tests
 
 Unit tests for the totals helper, the form schemas (invalid times, negative loads, future dates)
-and the rule that Strava-sourced columns are never written by the update service.
+and the rule that file-sourced columns are never written by the update service.

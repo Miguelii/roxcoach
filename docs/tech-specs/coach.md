@@ -78,7 +78,7 @@ Model: Anthropic through the AI SDK. The model id is one constant in
 row together with `prompt_version`.
 
 All computation is done in code. The model receives numbers that are already calculated (paces,
-weekly totals, ratios) and is told not to recompute them. It never sees raw Strava JSON.
+weekly totals, ratios) and is told not to recompute them. It never sees raw activity files.
 
 ## Context blocks
 

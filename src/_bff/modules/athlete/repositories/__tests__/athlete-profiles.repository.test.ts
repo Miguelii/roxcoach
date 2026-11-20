@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { selectTimezone } from '@/_bff/modules/athlete/repositories/athlete-profiles.repository'
-import { makeFakeAdminDb, ok } from '@/_bff/modules/strava/services/__tests__/fake-admin-db'
+import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 
 describe('selectTimezone', () => {
     it('returns the profile timezone, filtered by user_id', async () => {
