@@ -10,17 +10,18 @@ before touching its code, and update it in the same change.
 
 ## Module index
 
-| Spec                                   | Covers                                                             |
-| -------------------------------------- | ------------------------------------------------------------------ |
-| [architecture.md](architecture.md)     | `_bff` layering, module map, tRPC, Effect, env, code placement     |
-| [database.md](database.md)             | Supabase schema, enums, RLS, migrations                            |
-| [auth-security.md](auth-security.md)   | Login page, Supabase session, proxy, CSP, key usage                |
-| [athlete-races.md](athlete-races.md)   | Starting point (profile, weekly availability) and races with goals |
-| [manual-logging.md](manual-logging.md) | Station times, loads and strength sets entered by hand             |
-| [manual-upload.md](manual-upload.md)   | FIT, TCX and GPX upload from the dashboard, parsing, file storage  |
-| [lyfta.md](lyfta.md)                   | Manual Lyfta workout sync, credentials, import and storage         |
-| [coach-chat.md](coach-chat.md)         | Dashboard chat with the AI coach: context, tools, route, storage   |
-| [ux-design.md](ux-design.md)           | Design system (from BrewStock), screens, calendar, states          |
+| Spec                                               | Covers                                                                                                                 |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [architecture.md](architecture.md)                 | `_bff` layering, module map, tRPC, Effect, env, code placement                                                         |
+| [database.md](database.md)                         | Supabase schema, enums, RLS, migrations                                                                                |
+| [auth-security.md](auth-security.md)               | Login page, Supabase session, proxy, CSP, key usage                                                                    |
+| [athlete-races.md](athlete-races.md)               | Starting point (profile, weekly availability) and races with goals                                                     |
+| [manual-logging.md](manual-logging.md)             | Station times, loads and strength sets entered by hand                                                                 |
+| [manual-upload.md](manual-upload.md)               | FIT, TCX and GPX upload from the dashboard, parsing, file storage                                                      |
+| [lyfta.md](lyfta.md)                               | Manual Lyfta workout sync, credentials, import and storage                                                             |
+| [coach-chat.md](coach-chat.md)                     | Dashboard chat with the AI coach: context, tools, route, storage                                                       |
+| [coach-model-fallback.md](coach-model-fallback.md) | Ordered list of Gemini models, automatic retry on the next one when a model is rate limited, model caption in the chat |
+| [ux-design.md](ux-design.md)                       | Design system (from BrewStock), screens, calendar, states                                                              |
 
 ## Decisions log
 
