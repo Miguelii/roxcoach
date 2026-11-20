@@ -8,6 +8,7 @@ export type CoachStreamEvent =
           type: 'done'
           usage: { promptTokens: number | null; completionTokens: number | null }
       }
+    | { type: 'model'; modelId: string; switchedFrom: string | null }
     | { type: 'error'; kind: 'rate_limited' | 'unavailable' | 'blocked' }
 
 export type CoachModelRequest = {

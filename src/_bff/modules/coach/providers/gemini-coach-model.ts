@@ -69,6 +69,9 @@ export const createGeminiCoachModel = ({
                 tools: toTools(tools),
                 stopWhen: isStepCount(maxSteps),
                 abortSignal: signal,
+                // The fallback list is the retry policy: no automatic retries, and no thinking
+                // level or thinking provider option (Gemini 3.8 Flash rejects `minimal`).
+                maxRetries: 0,
             })
 
             for await (const part of result.fullStream) {

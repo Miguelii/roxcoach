@@ -192,4 +192,15 @@ describe('createGeminiCoachModel', () => {
 
         expect(JSON.stringify(await run(model))).not.toContain(API_KEY)
     })
+
+    it('asks for zero automatic retries and sets no thinking option', async () => {
+        const { model, calls } = setup([{ type: 'finish', finishReason: 'stop' }])
+        await run(model)
+        const options = calls[0]
+        expect(options?.maxRetries).toBe(0)
+        const serialized = JSON.stringify(options?.providerOptions ?? {}).toLowerCase()
+        expect(serialized).not.toContain('thinking')
+        expect(options && 'reasoning' in options).toBe(false)
+        expect(options?.providerOptions).toBeUndefined()
+    })
 })

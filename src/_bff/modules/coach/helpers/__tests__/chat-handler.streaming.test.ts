@@ -82,6 +82,19 @@ describe('createChatHandler: the stream', () => {
         })
     })
 
+    it('ignores a model event: meta, text, done and the reply is saved', async () => {
+        const { handler, store } = setup(
+            script(
+                { type: 'model', modelId: 'fake-model', switchedFrom: null },
+                { type: 'text', delta: 'Hi' },
+                DONE
+            )
+        )
+        const events = await readLines(await handler(post({ conversationId: MINE, message: 'hi' })))
+        expect(events.map((e) => e.type)).toEqual(['meta', 'text', 'done'])
+        expect(store.messages.filter((m) => m.role === 'assistant')).toHaveLength(1)
+    })
+
     it('saves no assistant message for an empty reply but still ends with done', async () => {
         const { handler, store } = setup(script(DONE))
         const events = await readLines(await handler(post({ conversationId: MINE, message: 'hi' })))

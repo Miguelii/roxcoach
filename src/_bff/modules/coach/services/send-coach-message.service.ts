@@ -149,6 +149,9 @@ async function* streamReply(
             } else if (event.type === 'error') {
                 yield event
                 return
+            } else if (event.type === 'model') {
+                // Ignored for now: the next task forwards it to the client.
+                continue
             } else {
                 if (text.length > 0)
                     await saveReply(user, conversationId, model, text, event.usage, ports)
