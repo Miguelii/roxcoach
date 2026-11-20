@@ -222,7 +222,9 @@ Feature drawers use this default instead of checking the viewport themselves. An
 direction is available only when a drawer intentionally needs different behavior.
 
 Form drawers share `DrawerFormLayout`: a bold title and close control, a scrollable body, and
-Cancel plus the primary action in a fixed footer. Race forms and activity upload use this layout.
+Cancel plus the primary action in a fixed footer. Footer actions stack vertically at full width on
+mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
+layout.
 
 | Component   | Purpose                                    |
 | ----------- | ------------------------------------------ |

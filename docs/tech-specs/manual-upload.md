@@ -106,8 +106,10 @@ Contents, top to bottom:
 3. File input (`accept=".fit,.tcx,.gpx"`), showing the chosen file name and size.
 4. Checkbox "This is a Hyrox session". Unchecked by default, checked automatically when a TCX
    `Notes` text contains "HYROX". Hidden for GPX, which has no laps.
-5. Footer with Cancel and Submit ("Upload"). Submit is disabled until a valid file is chosen and
-   shows a loading state during upload. Both dismissal buttons are disabled while uploading.
+5. Footer with Cancel and Submit ("Upload"). On mobile they stack vertically at full width; on
+   desktop they sit side by side and each fills half the footer. Submit is disabled until a valid
+   file is chosen and shows a loading state during upload. Both dismissal buttons are disabled
+   while uploading.
 
 States: idle, uploading (button disabled, drawer stays open), error (message from the tagged error
 class, shown inside the drawer, the file stays selected), success (the drawer closes, a plain toast

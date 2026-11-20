@@ -54,6 +54,14 @@ describe('UploadActivityDrawer', () => {
         expect(screen.getByTestId('upload-close')).toBeInTheDocument()
         expect(screen.getByTestId('upload-cancel')).toBeInTheDocument()
         expect(screen.getByTestId('upload-submit')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer-form-footer')).toHaveClass('flex-col', 'md:flex-row')
+        expect(screen.getByTestId('drawer-form-footer')).toHaveClass('w-full')
+        expect(screen.getByTestId('upload-cancel')).toHaveClass('w-full', 'md:flex-1')
+        expect(screen.getByTestId('drawer-form-primary-action')).toHaveClass(
+            'w-full',
+            'md:flex-1',
+            '[&>button]:w-full'
+        )
     })
 
     it('closes from the header close control', async () => {

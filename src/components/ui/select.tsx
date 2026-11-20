@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { Select as SelectPrimitive } from '@base-ui/react/select'
 
+import { useDrawerPortalContainer } from '@/components/ui/drawer-portal-context'
 import { cn } from '@/lib/utils'
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from 'lucide-react'
 
@@ -76,8 +77,13 @@ function SelectContent({
         | 'alignItemWithTrigger'
         | 'collisionPadding'
     >) {
+    const drawerPortalContainer = useDrawerPortalContainer()
+    const stopDrawerSwipe = drawerPortalContainer
+        ? (event: React.PointerEvent<HTMLElement>) => event.stopPropagation()
+        : undefined
+
     return (
-        <SelectPrimitive.Portal>
+        <SelectPrimitive.Portal container={drawerPortalContainer ?? undefined}>
             <SelectPrimitive.Positioner
                 side={side}
                 sideOffset={sideOffset}
@@ -86,6 +92,7 @@ function SelectContent({
                 alignItemWithTrigger={alignItemWithTrigger}
                 collisionPadding={collisionPadding}
                 className="isolate z-50 w-max max-w-(--available-width)"
+                onPointerDown={stopDrawerSwipe}
             >
                 <SelectPrimitive.Popup
                     data-slot="select-content"

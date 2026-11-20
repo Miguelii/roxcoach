@@ -96,7 +96,13 @@ export function RaceFormFields({ form, defaultDivision, raceType }: Props) {
                         <FormItem>
                             <FormLabel>Date</FormLabel>
                             <FormControl>
-                                <Input type="date" data-testid="race-form-date" {...field} />
+                                <Input
+                                    type="date"
+                                    data-testid="race-form-date"
+                                    data-vaul-no-drag
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    {...field}
+                                />
                             </FormControl>
                             <FormMessage data-testid="race-form-date-error" />
                         </FormItem>

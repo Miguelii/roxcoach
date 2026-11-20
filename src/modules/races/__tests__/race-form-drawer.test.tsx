@@ -41,6 +41,12 @@ describe('RaceFormDrawer', () => {
         )
         expect(screen.getByTestId('race-form-name')).toHaveValue('')
         expect(screen.getByTestId('race-form-division')).toHaveTextContent('Pro Men')
+        expect(() =>
+            fireEvent.pointerDown(screen.getByTestId('race-form-date'), {
+                pointerId: 1,
+                pointerType: 'mouse',
+            })
+        ).not.toThrow()
         expect(screen.queryByTestId('race-form-distance')).not.toBeInTheDocument()
         expect(screen.getByTestId('race-form-submit')).toHaveTextContent('Add race')
     })
@@ -60,6 +66,8 @@ describe('RaceFormDrawer', () => {
 
         const type = screen.getByTestId('race-form-type')
         fireEvent.click(type)
+        const runningOption = await screen.findByTestId('race-form-type-option-running')
+        expect(screen.getByTestId('race-form-drawer')).toContainElement(runningOption)
         await selectOption('race-form-type-option-running')
         await waitFor(() => expect(type).toHaveTextContent('Running'))
         expect(screen.queryByTestId('race-form-division')).not.toBeInTheDocument()

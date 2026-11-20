@@ -55,17 +55,26 @@ export function DrawerFormLayout({
                 </div>
             </DrawerHeader>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">{children}</div>
-            <div className="mt-0 flex shrink-0 justify-end gap-2 border-t border-hairline bg-paper p-4 sm:p-6">
+            <div
+                data-testid="drawer-form-footer"
+                className="mt-0 flex w-full shrink-0 flex-col gap-2 border-t border-hairline bg-paper p-4 md:flex-row md:items-center sm:p-6"
+            >
                 <Button
                     type="button"
                     variant="outline"
+                    className="w-full md:flex-1"
                     data-testid={cancelTestId}
                     disabled={closeDisabled}
                     onClick={onDismiss}
                 >
                     Cancel
                 </Button>
-                {primaryAction}
+                <div
+                    data-testid="drawer-form-primary-action"
+                    className="w-full md:flex-1 [&>button]:w-full"
+                >
+                    {primaryAction}
+                </div>
             </div>
         </>
     )
