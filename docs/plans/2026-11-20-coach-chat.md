@@ -59,7 +59,7 @@ Inputs and failure modes the spec implies but no single task would pin; each is 
 
 **Interfaces:**
 
-- Produces: `ServerEnv.NEXT_GEMINI_API_KEY` and `ServerEnv.NEXT_COACH_MODEL` (both optional strings, `emptyStringAsUndefined` stays); `NEXT_ANTHROPIC_AI_KEY`, `NEXT_CRON_SECRET` and `TRIGGER_SECRET_KEY` are removed. `runGeminiSmoke(options: { apiKey: string | undefined; model: string | undefined; fetch?: typeof fetch }): Promise<'ok' | { status: number | 'no-key' | 'network' }>` in `tools/gemini-smoke.ts`; the script's `main` reads the two variables from `process.env` and prints only `OK` or the status code, never the key, the response body or the prompt text.
+- Produces: `ServerEnv.NEXT_GEMINI_API_KEY` and `ServerEnv.NEXT_COACH_MODEL` (both optional strings, `emptyStringAsUndefined` stays); `NEXT_ANTHROPIC_AI_KEY`, and `TRIGGER_SECRET_KEY` are removed. `runGeminiSmoke(options: { apiKey: string | undefined; model: string | undefined; fetch?: typeof fetch }): Promise<'ok' | { status: number | 'no-key' | 'network' }>` in `tools/gemini-smoke.ts`; the script's `main` reads the two variables from `process.env` and prints only `OK` or the status code, never the key, the response body or the prompt text.
 
 - [ ] **Step 1: Write the failing test** `gemini-smoke.test.ts` with a fake `fetch`: a 200 gives `'ok'`; a 429, 403 and 400 give `{ status }`; a thrown fetch gives `{ status: 'network' }`; a missing key gives `{ status: 'no-key' }` without calling fetch; the request goes to the Google generative language endpoint with the key in a header (not the URL) and the model name from the argument; assert the key string never appears in the returned value.
 - [ ] **Step 2: Run `pnpm test`.** Expected: FAIL (module missing).
