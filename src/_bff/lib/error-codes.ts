@@ -38,6 +38,10 @@ export enum ErrorCode {
     TRAINING_RANGE_INVALID = 't3vf1ezs',
     TRAINING_RANGE_TOO_LONG = 'jqc9i19q',
 
+    // Training - Activity files
+    TRAINING_FILE_UNSUPPORTED = 'u4f7n2xc',
+    TRAINING_FILE_PARSE = 'p9k3w6ze',
+
     // Athlete - Profiles repository
     ATHLETE_PROFILE_SELECT = '9l42kdu7',
     ATHLETE_PROFILE_SELECT_ERR = 'v141ij6l',
