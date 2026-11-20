@@ -10,7 +10,7 @@
 
 **Spec:** `docs/tech-specs/athlete-races.md` (binding), plus `docs/tech-specs/database.md` (the three tables and their checks), `docs/tech-specs/ux-design.md`, `docs/tech-specs/architecture.md`. The specs win over this plan; Task 7 updates the spec text for the decisions below.
 
-This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly report, plan and cron.
+This is plan 3 of the series. Later plans: manual upload (done), manual logging, then the coach chat (docs/tech-specs/coach-chat.md), which reads the profile, availability and races built here.
 
 ## Global Constraints
 
@@ -29,7 +29,7 @@ This is plan 3 of the series. Later plans: 4 manual logging; 5 coach weekly repo
 - Races with `race_type = 'other'` have no distance or division requirement.
 - "Cancel race" sets `status = 'cancelled'`; "Delete" is a hard delete reserved for races the athlete created by mistake. The Races page offers Cancel and Complete; Delete is offered only for races without a result.
 - The calendar shows `upcoming` and `completed` races, not cancelled ones.
-- No plan regeneration is triggered by these mutations (the next Sunday report reads them).
+- The coach chat (a later plan) reads the profile, availability and races through the services built here; nothing is regenerated when they change.
 
 ## Review Focus
 

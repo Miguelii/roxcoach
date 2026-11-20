@@ -1,5 +1,6 @@
 import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import type { HyroxStation } from '@/_bff/core/constants/hyrox.constants'
+import type { RaceDTO } from '@/_bff/modules/races/types'
 
 export type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
 
@@ -125,4 +126,11 @@ export type LapDTO = {
     station: HyroxStation | null
 }
 
-export type CalendarItem = { type: 'activity'; date: string; activity: ActivityDTO }
+export type RaceSummaryDTO = Pick<
+    RaceDTO,
+    'id' | 'name' | 'raceType' | 'raceDate' | 'targetTimeS' | 'priority' | 'status'
+>
+
+export type CalendarItem =
+    | { type: 'activity'; date: string; activity: ActivityDTO }
+    | { type: 'race'; date: string; race: RaceSummaryDTO }

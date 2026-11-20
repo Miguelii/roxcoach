@@ -1,8 +1,8 @@
 # Roxcoach Specs
 
 Roxcoach is a personal training assistant for Hyrox and running. It takes workouts from
-manual upload and manual logging, and uses an AI coach that writes a weekly report every Sunday night
-and proposes the next week toward each upcoming race.
+manual upload and manual logging, and is meant to use an AI coach (a later plan) that reads the
+profile, the weekly availability and the races to advise toward each upcoming race.
 
 This folder is the source of truth for what gets built. One file per module. Read the module spec
 before touching its code, and update it in the same change.

@@ -13,6 +13,7 @@ export const GET_CALENDAR_PROTECTED_CONTROLLER = protectedProcedure
                 Match.tag('InvalidDateRangeError', () => 'BAD_REQUEST' as const),
                 Match.tag('CreateSbClientError', () => 'INTERNAL_SERVER_ERROR' as const),
                 Match.tag('ActivityQueryError', () => 'INTERNAL_SERVER_ERROR' as const),
+                Match.tag('RaceQueryError', () => 'INTERNAL_SERVER_ERROR' as const),
                 Match.exhaustive
             )
         )

@@ -5,6 +5,7 @@ import { Effect } from 'effect'
 import { createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError, InvalidDateRangeError } from '@/_bff/lib/errors'
+import { listRacesInRange } from '@/_bff/modules/races/services/list-races-in-range.service'
 import { selectActivitiesInRange } from '@/_bff/modules/training/repositories/activities.repository'
 import type { CalendarItem } from '@/_bff/modules/training/types'
 
@@ -50,11 +51,35 @@ export const getCalendar = Effect.fn('getCalendar')(function* (user: User, range
             new CreateSbClientError({ cause, error_hash: ErrorCode.TRAINING_SB_CLIENT }),
     })
 
-    const activities = yield* selectActivitiesInRange(supabase, user.id, range.from, range.to)
+    const [activities, races] = yield* Effect.all(
+        [
+            selectActivitiesInRange(supabase, user.id, range.from, range.to),
+            listRacesInRange(user, range.from, range.to),
+        ],
+        { concurrency: 2 }
+    )
 
-    return activities.map((activity): CalendarItem => ({
-        type: 'activity',
-        date: activity.localDate,
-        activity,
-    }))
+    const items: CalendarItem[] = [
+        ...activities.map((activity): CalendarItem => ({
+            type: 'activity',
+            date: activity.localDate,
+            activity,
+        })),
+        ...races.map((race): CalendarItem => ({
+            type: 'race',
+            date: race.raceDate,
+            race: {
+                id: race.id,
+                name: race.name,
+                raceType: race.raceType,
+                raceDate: race.raceDate,
+                targetTimeS: race.targetTimeS,
+                priority: race.priority,
+                status: race.status,
+            },
+        })),
+    ]
+
+    // Stable sort: on the same day activities keep their order and come before races.
+    return items.toSorted((a, b) => a.date.localeCompare(b.date))
 })

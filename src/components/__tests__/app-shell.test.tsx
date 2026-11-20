@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/app-shell'
 
 const mocks = vi.hoisted(() => ({
@@ -24,8 +25,12 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
-const clickLogout = async () => {
-    render(<AppShell>content</AppShell>)
+const clickLogout = async (queryClient: QueryClient) => {
+    render(
+        <QueryClientProvider client={queryClient}>
+            <AppShell>content</AppShell>
+        </QueryClientProvider>
+    )
     fireEvent.click(screen.getByTestId('account-menu-trigger'))
     fireEvent.click(await screen.findByTestId('logout-button'))
 }
@@ -37,12 +42,15 @@ describe('AppShell logout', () => {
 
     it('calls the logout mutation, then replaces to /login and refreshes', async () => {
         mocks.mutateAsync.mockResolvedValue({ status: 200 })
+        const queryClient = new QueryClient()
+        queryClient.setQueryData(['private-data'], 'sensitive')
 
-        await clickLogout()
+        await clickLogout(queryClient)
 
         await waitFor(() => {
             expect(mocks.refresh).toHaveBeenCalledTimes(1)
         })
+        expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
         expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
         expect(mocks.replace).toHaveBeenCalledWith('/login')
         expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(
@@ -53,13 +61,17 @@ describe('AppShell logout', () => {
 
     it('shows a toast and does not navigate when the logout fails', async () => {
         mocks.mutateAsync.mockRejectedValue(new Error('hash_auth_logout_sign_out'))
+        const queryClient = new QueryClient()
+        queryClient.setQueryData(['private-data'], 'sensitive')
 
-        await clickLogout()
+        await clickLogout(queryClient)
 
         await waitFor(() => {
             expect(mocks.toastError).toHaveBeenCalledWith('Could not log out. Please try again.')
         })
         expect(mocks.replace).not.toHaveBeenCalled()
         expect(mocks.refresh).not.toHaveBeenCalled()
+        expect(queryClient.getQueryData(['private-data'])).toBe('sensitive')
+        queryClient.clear()
     })
 })

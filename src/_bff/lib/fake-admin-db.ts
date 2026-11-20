@@ -69,6 +69,22 @@ export const makeFakeAdminDb = (handler: (call: Call) => QueryResult | Error) =>
                 return chain
             }),
             is: filter,
+            neq: vi.fn((column: string, value: Json) => {
+                call.filters.push([`${column}:neq`, value])
+                return chain
+            }),
+            gte: vi.fn((column: string, value: Json) => {
+                call.filters.push([`${column}:gte`, value])
+                return chain
+            }),
+            lte: vi.fn((column: string, value: Json) => {
+                call.filters.push([`${column}:lte`, value])
+                return chain
+            }),
+            order: vi.fn((column: string) => {
+                call.filters.push([`order:${column}`, true])
+                return chain
+            }),
             not: vi.fn((column: string, operator: string, value: Json) => {
                 call.filters.push([`${column}:not:${operator}`, value])
                 return chain

@@ -10,18 +10,22 @@ type WeekTotals = {
 
 type LoadLabel = 'Light' | 'Balanced' | 'Ramping fast' | 'Too high'
 
-const inRange = (item: CalendarItem, from: string, to: string) =>
-    item.date >= from && item.date <= to
+type ActivityItem = Extract<CalendarItem, { type: 'activity' }>
 
-const minutesOf = (item: CalendarItem) => (activityDurationS(item.activity) ?? 0) / 60
+// Races are not training load: every stat here reads activities only.
+const activitiesIn = (items: CalendarItem[], from: string, to: string): ActivityItem[] =>
+    items.filter(
+        (item): item is ActivityItem =>
+            item.type === 'activity' && item.date >= from && item.date <= to
+    )
+
+const minutesOf = (item: ActivityItem) => (activityDurationS(item.activity) ?? 0) / 60
 
 /** Totals of the activities from `from` to `to` (inclusive). */
 export const computeTotals = (items: CalendarItem[], from: string, to: string): WeekTotals => {
     const totals: WeekTotals = { doneMinutes: 0, doneSessions: 0, runKm: 0 }
 
-    for (const item of items) {
-        if (!inRange(item, from, to)) continue
-
+    for (const item of activitiesIn(items, from, to)) {
         totals.doneMinutes += minutesOf(item)
         totals.doneSessions += 1
         if (item.activity.category === 'run') totals.runKm += (item.activity.distanceM ?? 0) / 1000
@@ -33,7 +37,7 @@ export const computeTotals = (items: CalendarItem[], from: string, to: string): 
 /** Acute (last 7 days) to chronic (weekly average of the 28 days before) load ratio, or null without history. */
 export const computeLoadRatio = (items: CalendarItem[], today: string) => {
     const minutesIn = (from: string, to: string) =>
-        items.reduce((sum, item) => (inRange(item, from, to) ? sum + minutesOf(item) : sum), 0)
+        activitiesIn(items, from, to).reduce((sum, item) => sum + minutesOf(item), 0)
 
     const acute = minutesIn(addDays(today, -6), today)
     const chronic = minutesIn(addDays(today, -34), addDays(today, -7)) / 4

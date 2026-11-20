@@ -12,6 +12,7 @@ import {
     type Icon,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell({ children }: Props) {
     const pathname = usePathname()
     const router = useRouter()
+    const queryClient = useQueryClient()
     const logout = trpcClient.auth.logout.useMutation()
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -55,6 +57,7 @@ export function AppShell({ children }: Props) {
             toast.error('Could not log out. Please try again.')
             return
         }
+        queryClient.clear()
         router.replace('/login')
         router.refresh()
     }

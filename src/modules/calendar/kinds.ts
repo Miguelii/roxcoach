@@ -27,4 +27,4 @@ export const KINDS: Record<Category, KindConfig> = {
     other: { label: 'Other', tone: 'slate', Icon: IconActivity },
 }
 
-export const CATEGORIES: Category[] = ['run', 'hyrox', 'strength', 'cross', 'other']
+//export const CATEGORIES: Category[] = ['run', 'hyrox', 'strength', 'cross', 'other']

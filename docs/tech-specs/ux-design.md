@@ -92,11 +92,11 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
 (time, sessions, run km and load ratio from the last 35 days of activities, zeros and
-"No history yet" without activities) and the calendar with completed activities only. The
-planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
-return with the plans that own them. `/plan`, `/races` and `/coach` render a "coming soon" page
-until their backend ships; `/settings` shows only a title (profile and availability return
-with a later plan). "Today" comes
+"No history yet" without activities, activities only), the calendar (activities plus upcoming and
+completed races, never cancelled; the week strip and week totals count activities only) and the
+`NextRace` card (see below). The "Latest report", "Log session"
+and "Add details" items below return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
+until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
@@ -105,29 +105,46 @@ that opens a right-hand drawer: an informational banner on accepted formats, a f
 uploading, error (message inside the drawer) and success (drawer closes, "Activity uploaded" toast,
 data refreshes). Full contract in [manual-upload.md](manual-upload.md). Components in
 `dashboard/`: `dashboard-content`, `week-strip`, `week-strip-view`, `upload-activity-drawer`,
-`use-upload-activity`.
+`use-upload-activity`, `next-race` and `next-race-view`.
 
 Target design, top to bottom:
 
 1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
    ratio with a plain-language label (for example "Balanced", "Ramping fast").
-2. **Next up**: the next planned session (title, description, target) and the next race with
-   days remaining and goal.
+2. **Next race** (`NextRace` client query with `NextRaceView` for the markup):
+   the next upcoming race (date today or later) as an amber card with a flag icon: name, date, days
+   to go, goal time and priority (for example "A: Target race"), linking to `/races`. Hidden when
+   there is no upcoming race. The planned-session half of "Next up" returns with plan 5.
 3. **Calendar** (the main element), month view on desktop:
-    - Each day cell shows up to 3 chips: completed activities (filled, with duration), planned
-      sessions (outlined), races (amber flag). A "+N" overflow opens the day.
+    - Each day cell shows up to 3 chips: completed activities (filled, with duration) and races
+      (amber tone, flag icon, name and priority letter, linking to `/races`). Races never appear
+      when cancelled and are ignored by the week totals,
+      the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
+      overflow opens the day.
     - Today is outlined with the ink token. Past planned sessions with no match show as missed.
-    - Navigation: previous, next, today, and a month and week toggle.
+    - Navigation: previous, next, today, and a month and week toggle. The dashboard URL stores
+      the calendar cursor date (`date`) and selected view (`view`) with nuqs, so a refresh restores
+      the same month or week. Mobile always renders the week agenda, regardless of the stored view.
     - Selecting a day opens a side panel (a bottom sheet on mobile) listing everything that day,
-      with "Log session" and a link into each activity.
+      with a link into each activity. A race shows as an amber card (flag, "Race", priority, name,
+      "Goal h:mm:ss") linking to `/races`.
     - Mobile defaults to a week agenda: one row per day, same chips, horizontally compact.
 4. **Latest report** card under the calendar: the headline of the last weekly report, its week, a
    link to `/coach` and when the next one arrives (Sunday 20:00).
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query. Target state: it
-returns activities, planned sessions and races for the visible range, typed as a discriminated
-union on `type` (`activity`, `planned`, `race`). Today `CalendarItem` has the `activity` member
-only; the `planned` member arrives with plan 5 and the `race` member with plan 3.
+returns activities and races for the visible range, typed as a discriminated union on `type`
+(`activity`, `race`; the race member carries a `RaceSummaryDTO`), merged and ordered by date. Races
+come from `listRacesInRange` (upcoming and completed, never cancelled). Every switch on `type` is
+exhaustive (`Match.exhaustive`). A `planned` member arrives with plan 5. After a races mutation the
+Races page invalidates `training.getCalendar` and `races.list` (`runRaceAction` with an injected
+`onChanged`), since `router.refresh()` does not reach client queries.
+
+The dashboard loads its timezone, 35-day week strip, upcoming races and calendar through tRPC
+client queries. React Query retains their results while navigating between routes and revalidates
+them after 30 seconds; uploads and race or profile mutations invalidate the relevant queries.
+Cached results render immediately on return while stale results refresh in the background. The
+client query cache is cleared on logout.
 
 ### Activity detail
 
@@ -160,22 +177,57 @@ the last report.
 
 ### Races
 
-A list of upcoming races as cards (name, date, days to go, type, goal time, priority chip), a
-"New race" button opening a dialog form, and collapsed history. Completed races show goal versus
-result with the delta in plain text.
+`/races` is a server component (`RacesView`, inside `Suspense`) that reads the races, the profile
+division and the athlete timezone through `createCaller()`, then hands them to the thin client
+wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toast and
+`router.refresh()`). `RacesList` renders:
+
+- A "New race" button (`race-new`) opening `RaceFormDrawer` (create and edit), right-side on
+  desktop and a bottom sheet on mobile. Fields: name, type, date (must be after the athlete's
+  today), location, distance in km (running only), division (Hyrox only, defaults to the profile
+  division), goal time `h:mm:ss`, priority and notes. The form sends no distance unless the race is
+  running and no division unless it is Hyrox. Blank location and notes are stored as NULL.
+- Upcoming races sorted by date as cards (`RaceCardView`): name, date, days to go (from the
+  athlete's today), type (with the division), location, goal time, priority chip (A: Target race,
+  B: Tune-up, C: Training race) and, for running races, the required pace (`requiredPaceMps` through
+  `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
+  delta shown while typing), Cancel and Delete. Complete shows a result dialog; Cancel and Delete
+  show accessible confirmation dialogs with the race name and consequence. Delete is hidden once a
+  race has a result, and its confirmation explains that deletion is irreversible and linked
+  planned sessions remain without the race association.
+- A collapsed history (`<details>`) with completed races (result and delta in plain text, for
+  example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
+- Empty state: "No races yet. Add one to get a coach plan."
 
 ### Settings
 
-Target: two sections: Profile and Weekly availability (7-column editor).
+Two tabs (`SettingsTabs`, default Profile), both fed by `trpcClient.athlete.*` through thin wrappers
+(`ProfileTab`, `AvailabilityTab`) with skeletons, an error state with retry, and toasts on save.
 
-Current state: the page shows only the title. The Strava card was removed together with the Strava
-sync.
+- **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
+  the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
+  hours cap and notes for the coach. Number fields are entered as text and converted; an empty
+  optional field is saved as null. Ranges come from `PROFILE_LIMITS`
+  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server.
+- **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
+  7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
+  kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to
+  H h". A rest day is exclusive; the same kind cannot be added twice on a day.
 
 ## Components
 
 Reuse shadcn components on base-ui only: Button, Card, Dialog, Sheet, Form, Input, Select, Tabs,
 Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (label from
 `SelectValue` children). New project-specific components live in `src/modules/<feature>/`:
+
+The shared `Drawer` component opens from the right on desktop and from the bottom on mobile.
+Feature drawers use this default instead of checking the viewport themselves. An explicit
+direction is available only when a drawer intentionally needs different behavior.
+
+Form drawers share `DrawerFormLayout`: a bold title and close control, a scrollable body, and
+Cancel plus the primary action in a fixed footer. Footer actions stack vertically at full width on
+mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
+layout.
 
 | Component   | Purpose                                    |
 | ----------- | ------------------------------------------ |
@@ -184,7 +236,7 @@ Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (
 | `coach/`    | report view, follow-up chips, memory panel |
 | `plan/`     | week section, session row                  |
 | `races/`    | race card, race form                       |
-| `settings/` | availability editor                        |
+| `settings/` | profile form, availability editor          |
 
 ## States every screen must handle
 

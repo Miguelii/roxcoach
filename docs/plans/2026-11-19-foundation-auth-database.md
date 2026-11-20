@@ -48,7 +48,7 @@ This is plan 1 of 6. Later plans, each producing working software on its own: 2 
 
 **Interfaces:**
 
-- Produces: `ServerEnv` (`src/env/server.ts`) with required `NEXT_SUPABASE_URL`, `NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY` and optional `NEXT_ANTHROPIC_AI_KEY`, `NEXT_STRAVA_CLIENT_ID`, `NEXT_STRAVA_CLIENT_SECRET`, `NEXT_STRAVA_WEBHOOK_VERIFY_TOKEN`, `NEXT_CRON_SECRET`; `ClientEnv` with `NEXT_PUBLIC_WEBSITE_URL`; `normalizeWebsiteUrl(url?: string): string`.
+- Produces: `ServerEnv` (`src/env/server.ts`) with required `NEXT_SUPABASE_URL`, `NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY`, `NEXT_CRON_SECRET`; `ClientEnv` with `NEXT_PUBLIC_WEBSITE_URL`; `normalizeWebsiteUrl(url?: string): string`.
 
 - [ ] **Step 1: Write the failing test** `url.utils.test.ts`: `normalizeWebsiteUrl()` returns `http://localhost:3000`; `normalizeWebsiteUrl('https://roxcoach.app/')` returns `https://roxcoach.app`; `normalizeWebsiteUrl('https://roxcoach.app')` is unchanged.
 - [ ] **Step 2: Run** `pnpm test url.utils` and confirm it fails (module missing).

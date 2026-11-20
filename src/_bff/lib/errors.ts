@@ -18,6 +18,26 @@ export class LogoutError extends Data.TaggedError('LogoutError')<ServiceErrorFie
 
 // Athlete
 export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}
+// `field` names the profile field that failed validation.
+export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<
+    ServiceErrorFields & { field: string }
+> {}
+export class AvailabilityQueryError extends Data.TaggedError(
+    'AvailabilityQueryError'
+)<ServiceErrorFields> {}
+// `reason` is a stable code for the rule that failed (never free text).
+export class AvailabilityValidationError extends Data.TaggedError('AvailabilityValidationError')<
+    ServiceErrorFields & { reason: string }
+> {}
+
+// Races
+export class RaceQueryError extends Data.TaggedError('RaceQueryError')<ServiceErrorFields> {}
+// `field` names the race field that failed validation.
+export class RaceValidationError extends Data.TaggedError('RaceValidationError')<
+    ServiceErrorFields & { field: string }
+> {}
+export class RaceNotFoundError extends Data.TaggedError('RaceNotFoundError')<ServiceErrorFields> {}
+export class RaceStateError extends Data.TaggedError('RaceStateError')<ServiceErrorFields> {}
 
 // Training
 export class ActivityQueryError extends Data.TaggedError(

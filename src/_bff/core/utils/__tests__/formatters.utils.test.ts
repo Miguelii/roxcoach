@@ -54,5 +54,7 @@ describe('parseClock', () => {
     it('rejects invalid text and seconds above 59', () => {
         expect(parseClock('abc')).toBeNull()
         expect(parseClock('10:75')).toBeNull()
+        expect(parseClock('1:75:00')).toBeNull()
+        expect(parseClock('90:00')).toBe(5400)
     })
 })
