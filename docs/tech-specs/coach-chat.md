@@ -53,14 +53,14 @@ A pure function `buildCoachContext(input): string` in the `coach` module builds 
 goes into the system prompt on every request. Everything numeric is computed in code and the model
 is told not to recompute it. Sections, in this order:
 
-| Section      | Content                                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------------------- |
-| Today        | today's date and weekday in the athlete's timezone, the timezone                                                |
-| Athlete      | max and resting heart rate, Hyrox division, weekly hours cap, free-text notes (injuries, limits). No name       |
-| Goals        | every `upcoming` race by date: name, type, date, days to go, target time, priority, distance or division, notes |
-| Availability | the typical week: per weekday the slots, fixed or open, max minutes                                             |
-| Last 4 weeks | per ISO week: total time, session count, run km, and the acute to chronic load ratio for the latest week        |
-| Recent       | the last 10 activities: date, name, category, distance, time, average heart rate, perceived effort              |
+| Section      | Content                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Today        | today's date and weekday in the athlete's timezone, the timezone                                                              |
+| Athlete      | max and resting heart rate, Hyrox division, weekly hours cap, free-text notes (injuries, limits). No name                     |
+| Goals        | every `upcoming` race by date: name, type, date, days to go, target time, priority, distance or division, notes               |
+| Availability | the typical week: per weekday the slots, fixed or open, max minutes                                                           |
+| Last 4 weeks | per ISO week: total time, session count, run km, and the load ratio (last 7 days to the weekly average of the 28 days before) |
+| Recent       | the last 10 activities: date, name, category, distance, time, average heart rate, perceived effort                            |
 
 The block has a size cap (a constant, about 3000 tokens as a starting point). When it would exceed
 the cap, the Recent list shrinks first, then the Last 4 weeks list. Goals and availability are never
@@ -73,13 +73,13 @@ because `_bff` may not import from `src/modules`; the calendar imports it from t
 Read-only functions, executed on the server for the signed-in user only. Each has a zod input
 schema and returns plain JSON with the same field names as the app's types.
 
-| Tool               | Input                                                            | Returns                             |
-| ------------------ | ---------------------------------------------------------------- | ----------------------------------- |
-| `getRaces`         | `status?` (`upcoming`, `completed`, `cancelled`)                 | races with goals and results        |
-| `getAvailability`  | none                                                             | the weekly slots                    |
-| `getActivities`    | `from`, `to` (plain `YYYY-MM-DD`, at most 100 days), `category?` | activities in the range             |
-| `getActivity`      | `id`                                                             | one activity with laps and stations |
-| `getWeeklySummary` | `weekStart` (a Monday, `YYYY-MM-DD`)                             | totals for that week                |
+| Tool               | Input                                                            | Returns                                                                         |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `getRaces`         | `status?` (`upcoming`, `completed`, `cancelled`)                 | races with goals and results                                                    |
+| `getAvailability`  | none                                                             | the weekly slots                                                                |
+| `getActivities`    | `from`, `to` (plain `YYYY-MM-DD`, at most 100 days), `category?` | activities in the range, newest first, at most 50 (`truncated` counts the rest) |
+| `getActivity`      | `id`                                                             | one activity with laps and stations                                             |
+| `getWeeklySummary` | `weekStart` (a Monday, `YYYY-MM-DD`)                             | totals for that week                                                            |
 
 Limits: at most 5 tool steps per user message, each result capped in size (rows beyond the cap are
 dropped and the result says how many were left out). A tool failure is returned to the model as a

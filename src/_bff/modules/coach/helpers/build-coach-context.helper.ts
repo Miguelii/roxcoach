@@ -53,13 +53,16 @@ const athleteSection = ({ profile }: CoachContextInput): Section => {
     return { title: 'Athlete', lines: lines.length > 0 ? lines : ['No details saved yet.'] }
 }
 
+// Locale-independent ordering (plain code unit comparison).
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
 const daysBetween = (from: string, to: string) =>
     Math.round((parseIsoDate(to).getTime() - parseIsoDate(from).getTime()) / DAY_MS)
 
 const goalsSection = ({ races, today }: CoachContextInput): Section => {
     const upcoming = races
         .filter((race) => race.status === 'upcoming')
-        .toSorted((a, b) => a.raceDate.localeCompare(b.raceDate) || a.name.localeCompare(b.name))
+        .toSorted((a, b) => compareText(a.raceDate, b.raceDate) || compareText(a.name, b.name))
 
     if (upcoming.length === 0) return { title: 'Goals', lines: ['No upcoming races.'] }
 
@@ -67,7 +70,7 @@ const goalsSection = ({ races, today }: CoachContextInput): Section => {
         const days = daysBetween(today, race.raceDate)
         const parts = [
             `${race.raceDate} ${race.name} (${race.raceType}, priority ${race.priority})`,
-            `${days} days to go`,
+            days < 0 ? '(date passed)' : `${days} days to go`,
             `target ${formatClock(race.targetTimeS)}`,
         ]
         if (race.hyroxDivision) parts.push(divisionLabel(race.hyroxDivision))
@@ -128,7 +131,9 @@ const weeksSection = (input: CoachContextInput, shown: number): Section => {
     const ratio = computeLoadRatio(items, input.today)
     const label = loadLabel(ratio)
     if (ratio != null && label)
-        lines.push(`Load ratio (acute to chronic, latest week): ${ratio.toFixed(2)} (${label})`)
+        lines.push(
+            `Load ratio (last 7 days to weekly average of the 28 days before): ${ratio.toFixed(2)} (${label})`
+        )
 
     return { title: 'Last 4 weeks', lines: [...lines, ...omittedNote(WEEKS_SHOWN - shown)] }
 }

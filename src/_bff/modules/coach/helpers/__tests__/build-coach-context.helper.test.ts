@@ -173,7 +173,7 @@ Week of 2026-11-16: 2h 05m, 2 sessions, 10.0 km run
 Week of 2026-11-09: 1h 50m, 1 sessions, 20.0 km run
 Week of 2026-11-02: 30m, 1 sessions, 5.0 km run
 Week of 2026-10-26: 1h 00m, 1 sessions, 0.0 km run
-Load ratio (acute to chronic, latest week): 2.50 (Too high)
+Load ratio (last 7 days to weekly average of the 28 days before): 2.50 (Too high)
 
 Recent
 - 2026-11-19 | Tempo run | run | 10.0 km at 5:00 /km | 50m | avg HR 160 | effort 7
@@ -249,7 +249,11 @@ No activities in the last 35 days.`)
 
     it('shrinks Recent then Last 4 weeks and never cuts the other sections', () => {
         const full = buildCoachContext(FULL)
-        const mid = buildCoachContext(FULL, full.length - 10)
+        const cap = full.length - 2
+        const mid = buildCoachContext(FULL, cap)
+
+        expect(mid.length).toBeLessThanOrEqual(cap)
+        expect(mid.match(/^- \S+ \| /gmu)).toHaveLength(4)
 
         expect(mid).toContain('Tempo run')
         expect(mid).not.toContain('Gym')
@@ -263,7 +267,7 @@ No activities in the last 35 days.`)
         expect(tiny).toContain(TODAY_SECTION)
         expect(tiny).toContain('Notes: Left knee sensitive')
         expect(tiny).toContain(`Last 4 weeks
-Load ratio (acute to chronic, latest week): 2.50 (Too high)
+Load ratio (last 7 days to weekly average of the 28 days before): 2.50 (Too high)
 (4 older entries omitted for length)
 
 Recent
@@ -300,6 +304,75 @@ Recent
         expect(text).toContain(
             'Week of 2026-11-16: 30m, 2 sessions, 0.0 km run\nWeek of 2026-11-09: 0s, 0 sessions'
         )
+    })
+
+    it('shows the 10 newest of 12 unsorted activities, tie-broken by startedAt', () => {
+        const days = [5, 12, 1, 9, 3, 11, 7, 2, 10, 4, 8, 6]
+        const activities = days.map((day) =>
+            activity({
+                id: `d${day}`,
+                name: `Day ${day}`,
+                startedAt: `2026-11-${String(day).padStart(2, '0')}T07:00:00Z`,
+                localDate: `2026-11-${String(day).padStart(2, '0')}`,
+            })
+        )
+        activities.push(
+            activity({
+                id: 'late',
+                name: 'Evening',
+                startedAt: '2026-11-12T19:00:00Z',
+                localDate: '2026-11-12',
+            })
+        )
+        const recent = buildCoachContext({ ...FULL, activities }).split('\n\nRecent\n')[1]
+        const names = recent.split('\n').map((line) => line.split(' | ')[1])
+
+        expect(names).toEqual([
+            'Evening',
+            'Day 12',
+            'Day 11',
+            'Day 10',
+            'Day 9',
+            'Day 8',
+            'Day 7',
+            'Day 6',
+            'Day 5',
+            'Day 4',
+        ])
+    })
+
+    it('orders goals on the same date by name', () => {
+        const races = [
+            race({ id: 'z', name: 'Zeta 5k', raceDate: '2026-12-06' }),
+            race({ id: 'a', name: 'Alpha 5k', raceDate: '2026-12-06' }),
+        ]
+        const text = buildCoachContext({ ...FULL, races })
+
+        expect(text.indexOf('Alpha 5k')).toBeLessThan(text.indexOf('Zeta 5k'))
+    })
+
+    it('counts days to go across a month end and a leap day', () => {
+        const text = buildCoachContext({
+            ...FULL,
+            today: '2028-02-27',
+            races: [
+                race({ raceDate: '2028-02-29' }),
+                race({ id: 'r9', name: 'March', raceDate: '2028-03-01' }),
+            ],
+        })
+
+        expect(text).toContain('2028-02-29 Race (running, priority B), 2 days to go')
+        expect(text).toContain('2028-03-01 March (running, priority B), 3 days to go')
+    })
+
+    it('marks an upcoming race with a past date instead of a negative count', () => {
+        const text = buildCoachContext({
+            ...FULL,
+            races: [race({ raceDate: '2026-11-10' })],
+        })
+
+        expect(text).toContain('2026-11-10 Race (running, priority B), (date passed), target')
+        expect(text).not.toContain('-10 days')
     })
 
     it('never contains the display name or an em-dash', () => {
