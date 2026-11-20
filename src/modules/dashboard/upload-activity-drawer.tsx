@@ -31,15 +31,25 @@ const formatSize = (bytes: number) =>
 export function UploadActivityDrawer({ upload }: Props) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
-    const { form, file, submit, selectFile, status, errorMessage, showHyroxOption } =
-        useUploadActivity({
-            upload,
-            onSuccess: () => {
-                setOpen(false)
-                toast.success('Activity uploaded')
-                router.refresh()
-            },
-        })
+    const {
+        form,
+        file,
+        submit,
+        selectFile,
+        setHyrox,
+        reset,
+        inputKey,
+        status,
+        errorMessage,
+        showHyroxOption,
+    } = useUploadActivity({
+        upload,
+        onSuccess: () => {
+            setOpen(false)
+            toast.success('Activity uploaded')
+            router.refresh()
+        },
+    })
     const uploading = status === 'uploading'
 
     return (
@@ -48,6 +58,7 @@ export function UploadActivityDrawer({ upload }: Props) {
             open={open}
             onOpenChange={(next) => {
                 if (uploading) return
+                if (!next) reset()
                 setOpen(next)
             }}
         >
@@ -75,13 +86,17 @@ export function UploadActivityDrawer({ upload }: Props) {
                         <FormField
                             control={form.control}
                             name="file"
-                            render={() => (
+                            render={({ field }) => (
                                 <FormItem>
                                     <FormControl>
                                         <Input
+                                            key={inputKey}
                                             type="file"
                                             accept=".fit,.tcx,.gpx"
                                             data-testid="upload-file-input"
+                                            name={field.name}
+                                            ref={field.ref}
+                                            onBlur={field.onBlur}
                                             onChange={(event) =>
                                                 void selectFile(event.target.files?.[0])
                                             }
@@ -104,13 +119,19 @@ export function UploadActivityDrawer({ upload }: Props) {
                                 control={form.control}
                                 name="hyrox"
                                 render={({ field }) => (
-                                    <FormItem className="flex-row items-center gap-2">
-                                        <Checkbox
-                                            data-testid="upload-hyrox-checkbox"
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                        <span className="text-sm">This is a Hyrox session</span>
+                                    <FormItem>
+                                        <FormControl>
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    data-testid="upload-hyrox-checkbox"
+                                                    checked={field.value}
+                                                    onCheckedChange={setHyrox}
+                                                />
+                                                <span data-testid="upload-hyrox-label">
+                                                    This is a Hyrox session
+                                                </span>
+                                            </label>
+                                        </FormControl>
                                     </FormItem>
                                 )}
                             />

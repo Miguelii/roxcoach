@@ -155,4 +155,43 @@ describe('UploadActivityDrawer', () => {
         await waitFor(() => expect(upload).toHaveBeenCalled())
         expect(upload.mock.calls[0]![0].get('hyrox')).toBe('true')
     })
+
+    it('toggles the checkbox from its label text', async () => {
+        await open()
+        await choose(fit())
+        fireEvent.click(screen.getByTestId('upload-hyrox-label'))
+        expect(screen.getByTestId('upload-hyrox-checkbox')).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('shows the generic error when the upload rejects', async () => {
+        const upload = vi.fn(async () => {
+            throw new Error('offline')
+        })
+        await open({ upload })
+        await choose(fit())
+        fireEvent.click(screen.getByTestId('upload-submit'))
+        expect(await screen.findByTestId('upload-error')).toHaveTextContent(
+            'Something went wrong. Try again.'
+        )
+    })
+
+    it('starts clean after closing with an error', async () => {
+        const upload = vi.fn(async () => json({ error: 'Duplicate file' }, 409))
+        await open({ upload })
+        await choose(fit())
+        fireEvent.click(screen.getByTestId('upload-submit'))
+        await screen.findByTestId('upload-error')
+        fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+        await waitFor(() =>
+            expect(screen.getByTestId('upload-activity-button')).toHaveAttribute(
+                'data-state',
+                'closed'
+            )
+        )
+        fireEvent.click(screen.getByTestId('upload-activity-button'))
+        await screen.findByTestId('upload-format-banner')
+        expect(screen.queryByTestId('upload-error')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('upload-file-name')).not.toBeInTheDocument()
+        expect(screen.getByTestId('upload-submit')).toBeDisabled()
+    })
 })

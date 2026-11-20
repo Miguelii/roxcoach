@@ -1,7 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+
+type Status = 'idle' | 'uploading' | 'error' | 'success'
+
+type Options = { upload?: (form: FormData) => Promise<Response>; onSuccess?: () => void }
 
 const MAX_BYTES = 10 * 1024 * 1024
 const EXTENSIONS = new Set(['fit', 'tcx', 'gpx'])
@@ -18,11 +22,7 @@ const uploadSchema = z.object({
     hyrox: z.boolean(),
 })
 
-export type FormValues = z.infer<typeof uploadSchema>
-
-type Status = 'idle' | 'uploading' | 'error' | 'success'
-
-type Options = { upload?: (form: FormData) => Promise<Response>; onSuccess?: () => void }
+type FormValues = z.infer<typeof uploadSchema>
 
 const defaultUpload = (body: FormData) => fetch('/api/activities/upload', { method: 'POST', body })
 
@@ -38,12 +38,17 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         defaultValues: { file: undefined, hyrox: false },
     })
 
+    const uploadingRef = useRef(false)
+    const hyroxTouchedRef = useRef(false)
+    const [inputKey, setInputKey] = useState(0)
+
     const file = useWatch({ control: form.control, name: 'file' })
     const showHyroxOption = !(file && extensionOf(file.name) === 'gpx')
 
     const selectFile = async (next: File | undefined) => {
         setStatus('idle')
         setErrorMessage(null)
+        hyroxTouchedRef.current = false
         form.setValue('hyrox', false)
         if (!next) {
             form.reset()
@@ -52,11 +57,28 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         form.setValue('file', next, { shouldValidate: true })
         if (extensionOf(next.name) === 'tcx') {
             const head = await next.slice(0, 4096).text()
+            // Ignore a late read when the file changed or the user already chose a value.
+            if (form.getValues('file') !== next || hyroxTouchedRef.current) return
             if (detectHyroxHint(head)) form.setValue('hyrox', true)
         }
     }
 
-    const submit = form.handleSubmit(async (values) => {
+    const setHyrox = (value: boolean) => {
+        hyroxTouchedRef.current = true
+        form.setValue('hyrox', value)
+    }
+
+    const reset = () => {
+        form.reset()
+        hyroxTouchedRef.current = false
+        setStatus('idle')
+        setErrorMessage(null)
+        setInputKey((key) => key + 1)
+    }
+
+    const run = async (values: FormValues) => {
+        if (uploadingRef.current) return
+        uploadingRef.current = true
         setStatus('uploading')
         setErrorMessage(null)
         const body = new FormData()
@@ -66,7 +88,7 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
             const response = await upload(body)
             if (response.ok) {
                 setStatus('success')
-                form.reset()
+                reset()
                 onSuccess?.()
                 return
             }
@@ -78,8 +100,23 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         } catch {
             setErrorMessage(GENERIC_ERROR)
             setStatus('error')
+        } finally {
+            uploadingRef.current = false
         }
-    })
+    }
 
-    return { form, file, submit, selectFile, status, errorMessage, showHyroxOption }
+    const submit = (event?: React.BaseSyntheticEvent) => form.handleSubmit(run)(event)
+
+    return {
+        form,
+        file,
+        submit,
+        selectFile,
+        setHyrox,
+        reset,
+        inputKey,
+        status,
+        errorMessage,
+        showHyroxOption,
+    }
 }
