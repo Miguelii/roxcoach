@@ -56,6 +56,11 @@ describe('validateProfile', () => {
         expect(fieldOf({ restingHr: 121, maxHr: 230 })).toBe('restingHr')
     })
 
+    it('rejects non-integer heart rates', () => {
+        expect(fieldOf({ maxHr: 190.5 })).toBe('maxHr')
+        expect(fieldOf({ restingHr: 50.5 })).toBe('restingHr')
+    })
+
     it('requires resting below max when both are set', () => {
         expect(fieldOf({ maxHr: 120, restingHr: 120 })).toBe('restingHr')
         expect(fieldOf({ maxHr: 120, restingHr: 119 })).toBeNull()

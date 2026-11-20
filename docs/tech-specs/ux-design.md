@@ -95,8 +95,7 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 "No history yet" without activities) and the calendar with completed activities only. The
 planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
 return with the plans that own them. `/plan`, `/races` and `/coach` render a "coming soon" page
-until their backend ships; `/settings` shows only a title (profile and availability return
-with a later plan). "Today" comes
+until their backend ships; `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
@@ -166,10 +165,18 @@ result with the delta in plain text.
 
 ### Settings
 
-Target: two sections: Profile and Weekly availability (7-column editor).
+Two tabs (`SettingsTabs`, default Profile), both fed by `trpcClient.athlete.*` through thin wrappers
+(`ProfileTab`, `AvailabilityTab`) with skeletons, an error state with retry, and toasts on save.
 
-Current state: the page shows only the title. The Strava card was removed together with the Strava
-sync.
+- **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
+  the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
+  hours cap and notes for the coach. Number fields are entered as text and converted; an empty
+  optional field is saved as null. Ranges come from `PROFILE_LIMITS`
+  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server.
+- **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
+  7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
+  kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to
+  H h". A rest day is exclusive; the same kind cannot be added twice on a day.
 
 ## Components
 
@@ -184,7 +191,7 @@ Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (
 | `coach/`    | report view, follow-up chips, memory panel |
 | `plan/`     | week section, session row                  |
 | `races/`    | race card, race form                       |
-| `settings/` | availability editor                        |
+| `settings/` | profile form, availability editor          |
 
 ## States every screen must handle
 

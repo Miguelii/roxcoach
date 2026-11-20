@@ -28,7 +28,12 @@ export const updateProfile = Effect.fn('updateProfile')(function* (
             new CreateSbClientError({ cause, error_hash: ErrorCode.ATHLETE_SB_CLIENT }),
     })
 
-    const saved: ProfileDTO = { ...input, displayName: input.displayName.trim() }
+    // An empty notes string is stored as NULL.
+    const saved: ProfileDTO = {
+        ...input,
+        displayName: input.displayName.trim(),
+        notes: input.notes === '' ? null : input.notes,
+    }
     yield* upsertProfile(supabase, user.id, saved)
     return saved
 })

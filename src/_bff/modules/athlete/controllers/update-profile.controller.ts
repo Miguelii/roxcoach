@@ -1,5 +1,6 @@
 import { Match } from 'effect'
 import { z } from 'zod'
+import { PROFILE_LIMITS } from '@/_bff/core/constants/athlete.constants'
 import { HYROX_DIVISION_KEYS } from '@/_bff/core/constants/hyrox.constants'
 import { protectedProcedure } from '@/_bff/trpc/server'
 import { runEffect } from '@/_bff/trpc/utils'
@@ -7,13 +8,18 @@ import { updateProfile } from '@/_bff/modules/athlete/services/update-profile.se
 
 // Same ranges as validateProfile (which also checks the timezone and resting < max).
 const PROFILE_INPUT = z.object({
-    displayName: z.string().trim().min(1).max(60),
+    displayName: z.string().trim().min(1).max(PROFILE_LIMITS.nameMaxLength),
     timezone: z.string().min(1),
-    maxHr: z.number().int().min(120).max(230).nullable(),
-    restingHr: z.number().int().min(30).max(120).nullable(),
+    maxHr: z.number().int().min(PROFILE_LIMITS.minMaxHr).max(PROFILE_LIMITS.maxMaxHr).nullable(),
+    restingHr: z
+        .number()
+        .int()
+        .min(PROFILE_LIMITS.minRestingHr)
+        .max(PROFILE_LIMITS.maxRestingHr)
+        .nullable(),
     hyroxDivision: z.enum(HYROX_DIVISION_KEYS).nullable(),
-    weeklyHoursCap: z.number().gt(0).max(40).nullable(),
-    notes: z.string().max(1000).nullable(),
+    weeklyHoursCap: z.number().gt(0).max(PROFILE_LIMITS.weeklyHoursCapMax).nullable(),
+    notes: z.string().max(PROFILE_LIMITS.notesMaxLength).nullable(),
 })
 
 export const UPDATE_PROFILE_PROTECTED_CONTROLLER = protectedProcedure

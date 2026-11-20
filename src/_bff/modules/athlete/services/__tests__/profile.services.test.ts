@@ -86,6 +86,16 @@ describe('updateProfile', () => {
         expect(calls[0]?.payload).toMatchObject({ user_id: 'user-1', display_name: 'Ana' })
     })
 
+    it('stores an empty notes string as null', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok())
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        const saved = await Effect.runPromise(updateProfile(USER, { ...INPUT, notes: '' }))
+
+        expect(saved.notes).toBeNull()
+        expect(calls[0]?.payload).toMatchObject({ notes: null })
+    })
+
     it('fails with ProfileQueryError when the write fails', async () => {
         const { supabase } = makeFakeAdminDb(() => new Error('down'))
         createDBServerClientMock.mockResolvedValue(supabase)
