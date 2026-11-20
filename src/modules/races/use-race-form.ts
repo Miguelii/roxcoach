@@ -5,6 +5,8 @@ import { HYROX_DIVISION_KEYS, type HyroxDivision } from '@/_bff/core/constants/h
 import { formatClock, parseClock } from '@/_bff/core/utils/formatters.utils'
 import type { RaceDTO, RaceInput } from '@/_bff/modules/races/types'
 
+export type RaceFormValues = z.infer<ReturnType<typeof createRaceSchema>>
+
 const RACE_TYPES = ['hyrox', 'running', 'other'] as const
 const PRIORITIES = ['A', 'B', 'C'] as const
 
@@ -60,8 +62,6 @@ export const createRaceSchema = (today: string, originalDate?: string) =>
                     message: 'Enter a goal time such as 1:10:00 (1 minute to 24 hours)',
                 })
         })
-
-export type RaceFormValues = z.infer<ReturnType<typeof createRaceSchema>>
 
 // Values for a new race; the division starts as the profile division.
 export const emptyRaceFormValues = (defaultDivision: HyroxDivision | null): RaceFormValues => ({

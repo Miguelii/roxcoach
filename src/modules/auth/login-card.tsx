@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { safeReturnTo } from '@/_bff/core/helpers/safe-redirect.helper'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ const LOGIN_ERROR_COPY = 'Invalid email or password'
 
 export function LoginCard({ returnTo }: Props) {
     const router = useRouter()
+    const queryClient = useQueryClient()
     const form = useLoginForm()
     const login = trpcClient.auth.login.useMutation()
     const [failed, setFailed] = useState(false)
@@ -40,6 +42,8 @@ export function LoginCard({ returnTo }: Props) {
             setFailed(true)
             return
         }
+        // Drop any data cached for a previous session before the next user lands on the app.
+        queryClient.clear()
         router.replace(safeReturnTo(returnTo))
         router.refresh()
     }

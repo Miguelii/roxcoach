@@ -51,9 +51,13 @@ export const getCalendar = Effect.fn('getCalendar')(function* (user: User, range
             new CreateSbClientError({ cause, error_hash: ErrorCode.TRAINING_SB_CLIENT }),
     })
 
-    const activities = yield* selectActivitiesInRange(supabase, user.id, range.from, range.to)
-
-    const races = yield* listRacesInRange(user, range.from, range.to)
+    const [activities, races] = yield* Effect.all(
+        [
+            selectActivitiesInRange(supabase, user.id, range.from, range.to),
+            listRacesInRange(user, range.from, range.to),
+        ],
+        { concurrency: 2 }
+    )
 
     const items: CalendarItem[] = [
         ...activities.map((activity): CalendarItem => ({

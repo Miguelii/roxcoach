@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
 import { LoginCard } from '@/modules/auth/login-card'
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +22,11 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
 }))
 
+let queryClient: QueryClient
+
+const render = (ui: ReactElement) =>
+    rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+
 const GENERIC_ERROR = 'Invalid email or password'
 
 const fill = (email: string, password: string) => {
@@ -32,6 +39,7 @@ const submit = () => fireEvent.click(screen.getByTestId('login-submit'))
 describe('LoginCard', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        queryClient = new QueryClient()
     })
 
     it('renders the card with credential attributes', () => {
@@ -61,6 +69,7 @@ describe('LoginCard', () => {
         ['a server failure', new Error('hash_internal')],
         ['a non-error rejection', 'boom'],
     ])('shows the same fixed message for %s', async (_label, failure) => {
+        const clearSpy = vi.spyOn(queryClient, 'clear')
         mocks.mutateAsync.mockRejectedValue(failure)
         render(<LoginCard />)
         fill('coach@example.com', 'secret')
@@ -71,6 +80,7 @@ describe('LoginCard', () => {
         expect(screen.getByTestId('login-error').textContent).toBe(GENERIC_ERROR)
         expect(mocks.replace).not.toHaveBeenCalled()
         expect(mocks.refresh).not.toHaveBeenCalled()
+        expect(clearSpy).not.toHaveBeenCalled()
     })
 
     it('sends the credentials, redirects to a safe returnTo and refreshes', async () => {
@@ -88,6 +98,21 @@ describe('LoginCard', () => {
         expect(mocks.refresh).toHaveBeenCalledTimes(1)
         expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(
             mocks.refresh.mock.invocationCallOrder[0]
+        )
+    })
+
+    it('clears the query cache before navigating on a successful login', async () => {
+        const clearSpy = vi.spyOn(queryClient, 'clear')
+        mocks.mutateAsync.mockResolvedValue({ status: 200 })
+        render(<LoginCard />)
+        fill('coach@example.com', 'secret')
+        submit()
+        await waitFor(() => {
+            expect(mocks.replace).toHaveBeenCalled()
+        })
+        expect(clearSpy).toHaveBeenCalledTimes(1)
+        expect(clearSpy.mock.invocationCallOrder[0]).toBeLessThan(
+            mocks.replace.mock.invocationCallOrder[0]
         )
     })
 

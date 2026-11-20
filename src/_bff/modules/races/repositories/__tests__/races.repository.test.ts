@@ -251,6 +251,7 @@ describe('setRaceStatus', () => {
         expect(calls[0]?.filters).toEqual([
             ['id', ID],
             ['user_id', 'user-1'],
+            ['status:neq', 'completed'],
         ])
         expect(other).toBeNull()
     })

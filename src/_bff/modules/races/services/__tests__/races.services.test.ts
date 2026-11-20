@@ -172,6 +172,28 @@ describe('races services', () => {
         )
     })
 
+    it('cancelRace maps a lost race against completion to RaceStateError', async () => {
+        let selects = 0
+        const db = makeFakeAdminDb((call: Call) => {
+            if (call.op === 'update') return ok(null)
+            selects += 1
+            return ok(selects === 1 ? row() : row({ status: 'completed', result_time_s: 4000 }))
+        })
+        createDBServerClientMock.mockResolvedValue(db.supabase)
+        expect(failureTag(await Effect.runPromiseExit(cancelRace(USER, ID)))).toBe('RaceStateError')
+
+        selects = 0
+        const gone = makeFakeAdminDb((call: Call) => {
+            if (call.op === 'update') return ok(null)
+            selects += 1
+            return ok(selects === 1 ? row() : null)
+        })
+        createDBServerClientMock.mockResolvedValue(gone.supabase)
+        expect(failureTag(await Effect.runPromiseExit(cancelRace(USER, ID)))).toBe(
+            'RaceNotFoundError'
+        )
+    })
+
     it('deleteRace removes an upcoming race and refuses a completed one', async () => {
         const first = setup()
         expect(await Effect.runPromise(deleteRace(USER, ID))).toEqual({ id: ID })

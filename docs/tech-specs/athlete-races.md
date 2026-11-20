@@ -48,6 +48,8 @@ Rules (all validated server-side, the first problem is returned as a reason code
 
 - The same `(weekday, session_kind)` pair cannot appear twice.
 - A weekday has at most 4 slots.
+- The editor does not set a minutes limit yet: new slots are saved with `max_minutes` null (the API
+  accepts 15 to 360). The weekly summary adds up only slots that have a value.
 - A `rest` slot cannot be fixed and has no max minutes, and a weekday with a `rest` slot cannot
   have other slots.
 - Fixed slots are meant to be planned as-is, with the coach adapting the load around them. Open
@@ -119,7 +121,8 @@ Behaviour in the UI:
 
 - The Races page lists upcoming races sorted by date with days remaining, then a collapsed
   history of completed and cancelled ones.
-- The card offers Edit and Complete only for upcoming races. New and Edit open a drawer (right side
+- The card offers Edit for upcoming races, and Complete only for upcoming races dated today or
+  earlier (the server is permissive and accepts a result for a future-dated race; the UI hides it). New and Edit open a drawer (right side
   on desktop, bottom sheet on mobile) with the shared form layout: a bold title and close control,
   scrollable fields, then Cancel and submit actions in the footer. Footer actions stack at full
   width on mobile and sit side by side at equal widths on desktop. Dropdown and date controls remain

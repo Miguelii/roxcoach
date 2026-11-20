@@ -56,7 +56,7 @@ describe('AvailabilityEditorView', () => {
         fireEvent.click(screen.getByTestId('availability-add-2'))
         fireEvent.click(await screen.findByTestId('availability-add-2-open-run'))
         expect(onChange).toHaveBeenCalledWith([
-            { weekday: 2, sessionKind: 'run', isFixed: false, maxMinutes: 60, notes: null },
+            { weekday: 2, sessionKind: 'run', isFixed: false, maxMinutes: null, notes: null },
         ])
     })
 
@@ -65,9 +65,7 @@ describe('AvailabilityEditorView', () => {
             <AvailabilityEditorView slots={[]} onChange={vi.fn()} onSave={vi.fn()} saving={false} />
         )
         expect(screen.getByTestId('availability-empty')).toBeInTheDocument()
-        expect(screen.getByTestId('availability-summary')).toHaveTextContent(
-            '0 sessions per week, up to 0 h'
-        )
+        expect(screen.getByTestId('availability-summary')).toHaveTextContent('0 sessions per week')
     })
 
     it('save calls onSave and is disabled while saving', () => {

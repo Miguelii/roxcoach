@@ -69,11 +69,18 @@ describe('RaceCardView', () => {
     })
 
     it('calls Edit and Complete directly', () => {
-        const handlers = setup(HYROX_RACE)
+        const raced = { ...HYROX_RACE, raceDate: TODAY }
+        const handlers = setup(raced)
         fireEvent.click(screen.getByTestId('race-edit-r-hyrox'))
         fireEvent.click(screen.getByTestId('race-complete-r-hyrox'))
-        expect(handlers.onEdit).toHaveBeenCalledWith(HYROX_RACE)
-        expect(handlers.onComplete).toHaveBeenCalledWith(HYROX_RACE)
+        expect(handlers.onEdit).toHaveBeenCalledWith(raced)
+        expect(handlers.onComplete).toHaveBeenCalledWith(raced)
+    })
+
+    it('offers Complete only when the race date is today or earlier', () => {
+        setup(HYROX_RACE)
+        expect(screen.getByTestId('race-edit-r-hyrox')).toBeInTheDocument()
+        expect(screen.queryByTestId('race-complete-r-hyrox')).not.toBeInTheDocument()
     })
 
     it('asks before cancelling with context, and keeping it does nothing', () => {

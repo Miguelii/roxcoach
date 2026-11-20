@@ -118,7 +118,7 @@ Target design, top to bottom:
 3. **Calendar** (the main element), month view on desktop:
     - Each day cell shows up to 3 chips: completed activities (filled, with duration) and races
       (amber tone, flag icon, name and priority letter, linking to `/races`). Races never appear
-      when cancelled, are not hidden by the category filters and are ignored by the week totals,
+      when cancelled and are ignored by the week totals,
       the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
       overflow opens the day.
     - Today is outlined with the ink token. Past planned sessions with no match show as missed.

@@ -2,6 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { trpcClient } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { DashboardQueryError } from '@/modules/dashboard/dashboard-query-error'
+import { pickNextRace } from '@/modules/dashboard/pick-next-race'
 import { NextRaceView } from '@/modules/dashboard/next-race-view'
 
 type Props = {
@@ -25,8 +26,7 @@ export function NextRace({ today }: Props) {
             />
         )
 
-    // Ordered by date: the first one not in the past is the next race.
-    const next = query.data.find((race) => race.raceDate >= today) ?? null
+    const next = pickNextRace(query.data, today)
 
     return (
         <>

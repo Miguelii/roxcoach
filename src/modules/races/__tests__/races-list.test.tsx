@@ -104,7 +104,7 @@ describe('RacesList', () => {
     })
 
     it('completes a race through the dialog', async () => {
-        const handlers = setup([RUN_RACE])
+        const handlers = setup([{ ...RUN_RACE, raceDate: TODAY }])
         fireEvent.click(screen.getByTestId('race-complete-r-run'))
         fireEvent.change(await screen.findByTestId('complete-result'), {
             target: { value: '39:30' },
@@ -135,7 +135,7 @@ describe('RacesList', () => {
 
     it('disables the card actions while a cancel is pending', async () => {
         const deferred = Promise.withResolvers<void>()
-        const handlers = setup([RUN_RACE])
+        const handlers = setup([{ ...RUN_RACE, raceDate: TODAY }])
         handlers.onCancel.mockReturnValue(deferred.promise)
         fireEvent.click(screen.getByTestId('race-cancel-r-run'))
         fireEvent.click(screen.getByTestId('race-confirm-yes-r-run'))

@@ -14,6 +14,8 @@ type Props = {
     defaultDivision: HyroxDivision | null
 }
 
+const BAD_REQUEST_COPY = 'Check the race details and try again'
+
 // The failure was already toasted; card actions have no dialog to keep open.
 const quiet = (promise: Promise<void>) =>
     promise.catch(() => {
@@ -37,6 +39,7 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
             action,
             success,
             failure,
+            badRequest: BAD_REQUEST_COPY,
             notifySuccess: (message) => toast.success(message),
             notifyFailure: (message) => toast.error(message),
             onChanged: () => {

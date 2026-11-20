@@ -3,6 +3,12 @@ import { z } from 'zod'
 import { PROFILE_LIMITS } from '@/_bff/core/constants/athlete.constants'
 import { HYROX_DIVISION_KEYS } from '@/_bff/core/constants/hyrox.constants'
 
+// What the inputs hold: numbers are strings, "not set" is an empty string.
+export type ProfileFormValues = z.input<typeof profileSchema>
+
+// What the server receives: numbers are numbers, "not set" is null.
+export type ProfileValues = z.output<typeof profileSchema>
+
 type ParseResult =
     | { success: true; values: ProfileValues }
     | { success: false; errors: Partial<Record<keyof ProfileFormValues, string>> }
@@ -73,12 +79,6 @@ const profileSchema = z
                 message: 'Resting heart rate must be below max heart rate',
             })
     })
-
-// What the inputs hold: numbers are strings, "not set" is an empty string.
-export type ProfileFormValues = z.input<typeof profileSchema>
-
-// What the server receives: numbers are numbers, "not set" is null.
-export type ProfileValues = z.output<typeof profileSchema>
 
 // Validates and converts the raw form values; errors hold the first message per field.
 export const parseProfileValues = (raw: ProfileFormValues): ParseResult => {

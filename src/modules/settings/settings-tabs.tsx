@@ -19,8 +19,13 @@ export function SettingsTabs({ profile, availability }: Props) {
                     Weekly availability
                 </TabsTrigger>
             </TabsList>
-            <TabsContent value="profile">{profile}</TabsContent>
-            <TabsContent value="availability">{availability}</TabsContent>
+            {/* Both panels stay mounted so unsaved edits survive switching tabs. */}
+            <TabsContent value="profile" keepMounted>
+                {profile}
+            </TabsContent>
+            <TabsContent value="availability" keepMounted>
+                {availability}
+            </TabsContent>
         </Tabs>
     )
 }

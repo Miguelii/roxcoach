@@ -56,7 +56,15 @@ export const cancelRace = Effect.fn('cancelRace')(function* (user: User, id: str
             error_hash: ErrorCode.RACES_STATE_COMPLETED,
         })
 
+    // The update is guarded against completed rows: when it matches nothing, the race changed (or
+    // vanished) after the read above, so re-read to report the right error.
     const updated = yield* setRaceStatus(supabase, user.id, id, 'cancelled')
-    if (updated === null) return yield* notFound()
-    return updated
+    if (updated !== null) return updated
+    const current = yield* selectRaceById(supabase, user.id, id)
+    if (current?.status === 'completed')
+        return yield* new RaceStateError({
+            cause: 'A completed race cannot be cancelled',
+            error_hash: ErrorCode.RACES_STATE_COMPLETED,
+        })
+    return yield* notFound()
 })

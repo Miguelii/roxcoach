@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
 import { DayPanel } from '@/modules/calendar/day-panel'
@@ -16,6 +16,10 @@ describe('race calendar items', () => {
         }))
     })
 
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
     it('renders a race chip with the priority letter linking to /races', () => {
         render(<CalendarChip item={makeRaceItem({ id: 'r1', priority: 'B' })} />)
 
@@ -23,7 +27,7 @@ describe('race calendar items', () => {
         expect(chip).toHaveAttribute('href', '/races')
         expect(chip).toHaveAttribute('data-tone', 'amber')
         expect(chip).toHaveTextContent('Hyrox Lisbon')
-        expect(screen.getByTestId('calendar-race-chip-r1-priority')).toHaveTextContent('B')
+        expect(screen.getByTestId('calendar-race-chip-r1-priority').textContent).toBe('B')
     })
 
     it('still renders an activity chip as before', () => {
@@ -49,7 +53,7 @@ describe('race calendar items', () => {
 
         expect(screen.getByTestId('day-panel-race-r1')).toHaveAttribute('href', '/races')
         expect(screen.getByTestId('day-panel-race-r1-goal')).toHaveTextContent('Goal 1:10:00')
-        expect(screen.getByTestId('day-panel-race-r1-priority')).toHaveTextContent('A')
+        expect(screen.getByTestId('day-panel-race-r1-priority').textContent).toBe('Priority A')
     })
 
     it('ignores races in the totals and the load ratio', () => {

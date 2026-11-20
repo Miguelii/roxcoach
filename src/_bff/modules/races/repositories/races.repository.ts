@@ -244,6 +244,7 @@ export const setRaceStatus = Effect.fn('setRaceStatus')(function* (
                 .update({ status })
                 .eq('id', id)
                 .eq('user_id', userId)
+                .neq('status', 'completed')
                 .select(COLUMNS)
                 .maybeSingle(),
         STATUS_CODES,

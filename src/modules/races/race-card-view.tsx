@@ -125,15 +125,17 @@ export function RaceCardView({
                             >
                                 Edit
                             </Button>
-                            <Button
-                                disabled={pending}
-                                size="sm"
-                                variant="outline"
-                                data-testid={`race-complete-${id}`}
-                                onClick={() => onComplete(race)}
-                            >
-                                Complete
-                            </Button>
+                            {race.raceDate <= today ? (
+                                <Button
+                                    disabled={pending}
+                                    size="sm"
+                                    variant="outline"
+                                    data-testid={`race-complete-${id}`}
+                                    onClick={() => onComplete(race)}
+                                >
+                                    Complete
+                                </Button>
+                            ) : null}
                             <Button
                                 disabled={pending}
                                 size="sm"

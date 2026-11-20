@@ -14,7 +14,7 @@ const slot = (
 describe('addSlot', () => {
     it('adds open and fixed slots', () => {
         const open = addSlot([], 1, 'run', false)
-        expect(open).toEqual([slot(1, 'run', false, 60)])
+        expect(open).toEqual([slot(1, 'run', false, null)])
         const fixed = addSlot(open, 1, 'hyrox', true)
         expect(fixed).toHaveLength(2)
         expect(fixed[1]).toMatchObject({ weekday: 1, sessionKind: 'hyrox', isFixed: true })
@@ -35,7 +35,7 @@ describe('addSlot', () => {
 
     it('adding a slot to a rest day replaces the rest', () => {
         const rest = addSlot([], 5, 'rest', false)
-        expect(addSlot(rest, 5, 'run', false)).toEqual([slot(5, 'run')])
+        expect(addSlot(rest, 5, 'run', false)).toEqual([slot(5, 'run', false, null)])
     })
 
     it('ignores a fifth slot on one day', () => {
@@ -64,7 +64,11 @@ describe('summarize', () => {
         expect(summarize(slots)).toEqual({ sessions: 2, hours: 1.6 })
     })
 
-    it('treats a missing duration as zero', () => {
-        expect(summarize([slot(1, 'run', false, null)])).toEqual({ sessions: 1, hours: 0 })
+    it('counts only slots with a duration and reports no hours when none has one', () => {
+        expect(summarize([slot(1, 'run', false, null)])).toEqual({ sessions: 1, hours: null })
+        expect(summarize([slot(1, 'run', false, 90), slot(2, 'run', false, null)])).toEqual({
+            sessions: 2,
+            hours: 1.5,
+        })
     })
 })

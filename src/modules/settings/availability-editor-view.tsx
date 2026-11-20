@@ -157,7 +157,8 @@ export function AvailabilityEditorView({ slots, onChange, onSave, saving }: Prop
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p data-testid="availability-summary" className="text-sm text-muted-foreground">
-                    {sessions} {sessions === 1 ? 'session' : 'sessions'} per week, up to {hours} h
+                    {sessions} {sessions === 1 ? 'session' : 'sessions'} per week
+                    {hours === null ? '' : `, up to ${hours} h`}
                 </p>
                 <Button
                     type="button"
