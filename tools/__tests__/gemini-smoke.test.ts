@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { runGeminiSmoke } from '../gemini-smoke'
+import { COACH_MODELS } from '@/_bff/core/constants/coach-models.constants'
+import { runGeminiSmoke, runModelChecks } from '../gemini-smoke'
 
 type Call = { url: string; init: RequestInit | undefined }
 
@@ -56,10 +57,74 @@ describe('runGeminiSmoke', () => {
         expect(new Headers(call.init?.headers).get('x-goog-api-key')).toBe(KEY)
         expect(JSON.stringify(result)).not.toContain(KEY)
     })
+})
 
-    it('falls back to the default model when none is given', async () => {
+describe('runModelChecks', () => {
+    const ids = COACH_MODELS.map((m) => m.id)
+
+    it('checks every listed model in order, one line each', async () => {
         const calls: Call[] = []
-        await runGeminiSmoke({ apiKey: KEY, model: undefined, fetch: fakeFetch(200, calls) })
-        expect(calls[0].url).toMatch(/models\/[\w.-]+:generateContent/)
+        const lines: string[] = []
+        const ok = await runModelChecks({
+            apiKey: KEY,
+            fetch: fakeFetch(200, calls),
+            print: (l) => lines.push(l),
+        })
+        expect(ok).toBe(true)
+        expect(lines).toEqual(ids.map((id) => `${id}: OK`))
+        expect(calls.map((c) => c.url)).toEqual(
+            ids.map((id) => expect.stringContaining(`${id}:generateContent`))
+        )
+    })
+
+    it('checks only the id given as an argument', async () => {
+        const calls: Call[] = []
+        const lines: string[] = []
+        await runModelChecks({
+            apiKey: KEY,
+            modelId: 'gemini-3.8-flash',
+            fetch: fakeFetch(200, calls),
+            print: (l) => lines.push(l),
+        })
+        expect(calls).toHaveLength(1)
+        expect(lines).toEqual(['gemini-3.8-flash: OK'])
+    })
+
+    it('prints each model its own status', async () => {
+        const lines: string[] = []
+        const perModel: typeof fetch = async (input) =>
+            new Response('{}', { status: String(input).includes(ids[0]) ? 429 : 200 })
+        const ok = await runModelChecks({
+            apiKey: KEY,
+            fetch: perModel,
+            print: (l) => lines.push(l),
+        })
+        expect(ok).toBe(false)
+        expect(lines[0]).toBe(`${ids[0]}: 429`)
+        expect(lines[1]).toBe(`${ids[1]}: OK`)
+    })
+
+    it('prints no-key per model without calling fetch and never prints the key', async () => {
+        const calls: Call[] = []
+        const lines: string[] = []
+        await runModelChecks({
+            apiKey: undefined,
+            fetch: fakeFetch(200, calls),
+            print: (l) => lines.push(l),
+        })
+        expect(calls).toHaveLength(0)
+        expect(lines).toEqual(ids.map((id) => `${id}: no-key`))
+    })
+
+    it('never prints the key or a response body', async () => {
+        const lines: string[] = []
+        await runModelChecks({
+            apiKey: KEY,
+            fetch: fakeFetch(403),
+            print: (l) => lines.push(l),
+        })
+        const out = lines.join('\n')
+        expect(out).not.toContain(KEY)
+        expect(out).not.toContain('secret')
     })
 })
