@@ -79,6 +79,8 @@ Behaviour:
   immediately with "Generate now".
 - Completing a race records `result_time_s`, shows goal versus result, and the coach comments on
   it in the weekly report if the race also exists as a synced activity (matched by `local_date`).
+- A division is only valid on a `hyrox` race (validation rejects it otherwise). Blank location and
+  notes are stored as NULL.
 - Past dates are rejected on creation. Deleting a race with planned sessions detaches them
   (`race_id` set null) instead of deleting the sessions.
 

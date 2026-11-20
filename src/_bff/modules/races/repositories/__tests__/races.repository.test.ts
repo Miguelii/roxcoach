@@ -166,6 +166,20 @@ describe('insertRace', () => {
         })
     })
 
+    it('stores blank location and notes as null and trims text', async () => {
+        const blank = makeFakeAdminDb(() => ok(ROW))
+        await Effect.runPromise(
+            insertRace(blank.supabase, 'user-1', { ...INPUT, location: '  ', notes: '' })
+        )
+        expect(blank.calls[0]?.payload).toMatchObject({ location: null, notes: null })
+
+        const text = makeFakeAdminDb(() => ok(ROW))
+        await Effect.runPromise(
+            insertRace(text.supabase, 'user-1', { ...INPUT, location: ' Lisbon ', notes: ' Hi ' })
+        )
+        expect(text.calls[0]?.payload).toMatchObject({ location: 'Lisbon', notes: 'Hi' })
+    })
+
     it('fails with RaceQueryError when the insert errors or returns nothing', async () => {
         const failing = makeFakeAdminDb(() => DENIED)
         const empty = makeFakeAdminDb(() => ok(null))

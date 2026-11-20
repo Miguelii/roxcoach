@@ -12,6 +12,10 @@ type RacesClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>
 
+type QueryOutcome = { data: unknown; error: { code: string; message: string } | null }
+
+type RaceRow = z.infer<typeof raceRowSchema>
+
 type Codes = { call: ErrorCode; returned: ErrorCode; parse: ErrorCode }
 
 const TABLE = 'races'
@@ -32,8 +36,6 @@ const raceRowSchema = z.object({
     result_time_s: z.number().int().nullable(),
     notes: z.string().nullable(),
 })
-
-type RaceRow = z.infer<typeof raceRowSchema>
 
 const SELECT_CODES: Codes = {
     call: ErrorCode.RACES_SELECT,
@@ -81,19 +83,23 @@ const toDTO = (row: RaceRow): RaceDTO => ({
     notes: row.notes,
 })
 
+// Trims; empty or whitespace-only text is stored as NULL.
+const blankToNull = (value: string | null) => {
+    const text = value?.trim() ?? ''
+    return text === '' ? null : text
+}
+
 const toColumns = (input: RaceInput) => ({
     name: input.name.trim(),
     race_type: input.raceType,
     race_date: input.raceDate,
-    location: input.location,
+    location: blankToNull(input.location),
     distance_m: input.distanceM,
     hyrox_division: input.hyroxDivision,
     target_time_s: input.targetTimeS,
     priority: input.priority,
-    notes: input.notes,
+    notes: blankToNull(input.notes),
 })
-
-type QueryOutcome = { data: unknown; error: { code: string; message: string } | null }
 
 // Runs one query, turns thrown and returned failures into RaceQueryError and parses the data
 // with `schema` at the boundary.

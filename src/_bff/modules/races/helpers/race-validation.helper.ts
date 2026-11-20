@@ -40,6 +40,8 @@ export const validateRace = (
         if (distance === null || !Number.isInteger(distance) || distance < 400 || distance > 200000)
             return fail('distanceM', 'Distance must be 400 to 200000 meters')
     }
+    if (input.raceType !== 'hyrox' && input.hyroxDivision !== null)
+        return fail('hyroxDivision', 'Only Hyrox races have a division')
     if (input.raceType === 'hyrox') {
         if (
             input.hyroxDivision === null ||

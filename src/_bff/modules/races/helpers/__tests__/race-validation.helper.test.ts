@@ -75,6 +75,16 @@ describe('validateRace', () => {
         })
     })
 
+    it('rejects a division on a race that is not hyrox', () => {
+        expect(check({ hyroxDivision: 'open_men' })).toMatchObject({
+            ok: false,
+            field: 'hyroxDivision',
+        })
+        expect(
+            check({ raceType: 'other', distanceM: null, hyroxDivision: 'open_men' })
+        ).toMatchObject({ ok: false, field: 'hyroxDivision' })
+    })
+
     it('bounds the target time at 60 and 86400 s', () => {
         expect(check({ targetTimeS: 59 })).toMatchObject({ ok: false, field: 'targetTimeS' })
         expect(check({ targetTimeS: 60 })).toEqual({ ok: true })

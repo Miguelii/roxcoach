@@ -94,8 +94,8 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 (time, sessions, run km and load ratio from the last 35 days of activities, zeros and
 "No history yet" without activities) and the calendar with completed activities only. The
 planned-session and race chips, "Next up", "Latest report", "Log session" and "Add details" below
-return with the plans that own them. `/plan`, `/races` and `/coach` render a "coming soon" page
-until their backend ships; `/settings` holds the profile and availability tabs. "Today" comes
+return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
+until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
@@ -159,9 +159,25 @@ the last report.
 
 ### Races
 
-A list of upcoming races as cards (name, date, days to go, type, goal time, priority chip), a
-"New race" button opening a dialog form, and collapsed history. Completed races show goal versus
-result with the delta in plain text.
+`/races` is a server component (`RacesView`, inside `Suspense`) that reads the races, the profile
+division and the athlete timezone through `createCaller()`, then hands them to the thin client
+wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toast and
+`router.refresh()`). `RacesList` renders:
+
+- A "New race" button (`race-new`) opening `RaceFormDialog` (create and edit). Fields: name, type,
+  date (must be after the athlete's today), location, distance in km (running only), division
+  (Hyrox only, defaults to the profile division), goal time `h:mm:ss`, priority and notes. The
+  form sends no distance unless the race is running and no division unless it is Hyrox. Blank
+  location and notes are stored as NULL.
+- Upcoming races sorted by date as cards (`RaceCardView`): name, date, days to go (from the
+  athlete's today), type (with the division), location, goal time, priority chip (A: Target race,
+  B: Tune-up, C: Training race) and, for running races, the required pace (`requiredPaceMps` through
+  `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
+  delta shown while typing), Cancel and Delete, each of the last two behind an inline confirmation.
+  Delete is hidden once a race has a result.
+- A collapsed history (`<details>`) with completed races (result and delta in plain text, for
+  example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
+- Empty state: "No races yet. Add one to get a coach plan."
 
 ### Settings
 
