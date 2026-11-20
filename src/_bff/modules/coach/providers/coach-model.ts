@@ -1,6 +1,6 @@
 import type { CoachTool } from '@/_bff/modules/coach/types'
 
-type CoachMessage = { role: 'user' | 'assistant'; content: string }
+export type CoachMessage = { role: 'user' | 'assistant'; content: string }
 
 export type CoachStreamEvent =
     | { type: 'text'; delta: string }

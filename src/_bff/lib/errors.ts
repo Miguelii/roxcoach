@@ -42,6 +42,9 @@ export class RaceStateError extends Data.TaggedError('RaceStateError')<ServiceEr
 // Coach
 export class CoachQueryError extends Data.TaggedError('CoachQueryError')<ServiceErrorFields> {}
 export class CoachWriteError extends Data.TaggedError('CoachWriteError')<ServiceErrorFields> {}
+export class DailyCapReachedError extends Data.TaggedError(
+    'DailyCapReachedError'
+)<ServiceErrorFields> {}
 export class ConversationNotFoundError extends Data.TaggedError(
     'ConversationNotFoundError'
 )<ServiceErrorFields> {}

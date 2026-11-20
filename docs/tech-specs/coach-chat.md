@@ -195,6 +195,24 @@ the chat is useful. Plan 3 stays as written, minus anything that referred to the
 - Manual checklist at the end: ask five real questions against real data (goal check, last long
   run, week comparison, a Hyrox session with stations, a question with no data) and read the answers.
 
+## Chat route behaviour (implemented)
+
+- Check order: session (500 on a failed lookup, 401), strict access flag (403), key configured
+  (503), body (content-length over 16 KiB is 413; invalid JSON, bad shape, empty or over 2000
+  characters after trimming is 422), conversation ownership (404 identical for a foreign and a
+  missing id, nothing written), daily cap (429, before any write or model call), then the new
+  conversation (title: first 60 characters), the user message (saved on arrival, so cancelled and
+  failed attempts count), the context, and the stream.
+- The cap uses the athlete's local day; an invalid stored timezone counts in UTC.
+- Stream: `application/x-ndjson`, one event per line: `meta`, `text` deltas, then exactly one of
+  `done` or `error` (`rate_limited`, `unavailable`, `blocked`). `daily_cap` is a pre-stream 429, not
+  a stream event.
+- The assistant message is saved only on `done` with non-empty text and a request that was not
+  aborted. If that save fails it is logged (tag and error_hash) and `done` is still emitted, since
+  the athlete already saw the reply. A cancelled body aborts the model signal.
+- Unexpected failures are a fixed 500 `Something went wrong. Try again.`; logs carry tag and
+  error_hash only.
+
 ## Decisions made while checking the spec
 
 These were open after a read-through by someone who had not seen the conversation. Each is the

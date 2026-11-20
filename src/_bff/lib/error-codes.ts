@@ -133,6 +133,7 @@ export enum ErrorCode {
     COACH_MESSAGES_COUNT_ERR = 'mc7t9u2h',
     COACH_MESSAGES_COUNT_PARSE = 'mc3x2y4k',
     COACH_CONVERSATION_NOT_FOUND = 'cn1v5w8j',
+    COACH_DAILY_CAP_REACHED = 'dc6k2m9p',
 
     // Athlete - Queries
     ATHLETE_SB_CLIENT = 'xq3k7m2d',
