@@ -52,6 +52,49 @@ export type TrainingClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>
 
+// Insert shape of a manually uploaded activity (source is always 'manual').
+export type NewActivityRow = {
+    sport_type: string | null
+    category: ActivityCategory
+    name: string
+    started_at: string
+    local_date: string
+    distance_m: number | null
+    moving_time_s: number | null
+    elapsed_time_s: number | null
+    elevation_gain_m: number | null
+    avg_hr: number | null
+    max_hr: number | null
+    avg_speed_mps: number | null
+    calories: number | null
+}
+
+export type NewActivityFileRow = {
+    id: string
+    activity_id: string
+    format: ActivityFormat
+    storage_path: string
+    sha256: string
+    size_bytes: number
+    original_name: string
+    status: 'parsed' | 'failed'
+    error_code: string | null
+}
+
+// The part of the Supabase client the storage repository touches.
+export type StorageClient = {
+    storage: {
+        from(bucket: string): {
+            upload(
+                path: string,
+                body: Uint8Array,
+                options: { contentType: string; upsert: boolean }
+            ): PromiseLike<{ error: { message: string } | null }>
+            remove(paths: string[]): PromiseLike<{ error: { message: string } | null }>
+        }
+    }
+}
+
 export type ActivityDTO = {
     id: string
     source: 'strava' | 'manual'

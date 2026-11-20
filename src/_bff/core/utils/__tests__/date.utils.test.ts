@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { todayIn } from '@/_bff/core/utils/date.utils'
+import { localDateIn, todayIn } from '@/_bff/core/utils/date.utils'
 
 describe('todayIn', () => {
     it('returns the calendar date in the given timezone, not in UTC', () => {
@@ -13,5 +13,12 @@ describe('todayIn', () => {
 
     it('defaults to the current time', () => {
         expect(todayIn('UTC')).toMatch(/^\d{4}-\d{2}-\d{2}$/u)
+    })
+})
+
+describe('localDateIn', () => {
+    it('keeps the UTC date in Lisbon winter and moves it forward in Tokyo', () => {
+        expect(localDateIn('2026-11-20T23:30:00Z', 'Europe/Lisbon')).toBe('2026-11-20')
+        expect(localDateIn('2026-11-20T23:30:00Z', 'Asia/Tokyo')).toBe('2026-11-21')
     })
 })

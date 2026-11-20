@@ -17,6 +17,10 @@ export enum ErrorCode {
     // Training - Activities repository
     TRAINING_ACTIVITY_INSERT = 'ljlybdci',
     TRAINING_ACTIVITY_INSERT_ERR = 'krro5o2k',
+    TRAINING_ACTIVITY_START_LOOKUP = 'c7m2x9qd',
+    TRAINING_ACTIVITY_START_LOOKUP_ERR = 'f4t8v1ne',
+    TRAINING_ACTIVITY_DELETE = 'b2k6y3wr',
+    TRAINING_ACTIVITY_DELETE_ERR = 'j9h5s7ua',
     TRAINING_ACTIVITY_RANGE = 'v51nvm93',
     TRAINING_ACTIVITY_RANGE_ERR = 'h8q3b2t2',
     TRAINING_ACTIVITY_RANGE_PARSE = 'fouue0tt',
@@ -41,6 +45,16 @@ export enum ErrorCode {
     // Training - Activity files
     TRAINING_FILE_UNSUPPORTED = 'u4f7n2xc',
     TRAINING_FILE_PARSE = 'p9k3w6ze',
+    TRAINING_FILE_DUPLICATE = 'd3n8r5kz',
+    TRAINING_FILE_TOO_LARGE = 'x6q1m4ph',
+    TRAINING_FILE_STORAGE_PUT = 'g8w2e7bt',
+    TRAINING_FILE_STORAGE_PUT_ERR = 'y5c9l3vs',
+    TRAINING_FILE_STORAGE_REMOVE = 'a1z7o4mj',
+    TRAINING_FILE_STORAGE_REMOVE_ERR = 'u2i6d8fx',
+    TRAINING_FILE_ROW_INSERT = 'k7r3t9nq',
+    TRAINING_FILE_ROW_INSERT_ERR = 'e4p1h6cw',
+    TRAINING_FILE_HASH_LOOKUP = 'm9s5b2gy',
+    TRAINING_FILE_HASH_LOOKUP_ERR = 'q8v4j7la',
 
     // Athlete - Profiles repository
     ATHLETE_PROFILE_SELECT = '9l42kdu7',

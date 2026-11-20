@@ -32,6 +32,15 @@ export class UnsupportedActivityFileError extends Data.TaggedError(
 export class ActivityFileParseError extends Data.TaggedError(
     'ActivityFileParseError'
 )<ServiceErrorFields> {}
+export class DuplicateActivityFileError extends Data.TaggedError(
+    'DuplicateActivityFileError'
+)<ServiceErrorFields> {}
+export class ActivityFileTooLargeError extends Data.TaggedError(
+    'ActivityFileTooLargeError'
+)<ServiceErrorFields> {}
+export class ActivityFileStorageError extends Data.TaggedError(
+    'ActivityFileStorageError'
+)<ServiceErrorFields> {}
 export class InvalidDateRangeError extends Data.TaggedError(
     'InvalidDateRangeError'
 )<ServiceErrorFields> {}
