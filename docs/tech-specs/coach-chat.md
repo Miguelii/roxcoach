@@ -236,9 +236,17 @@ author's call unless marked as the athlete's.
   or an event, these outcomes: stream finished, incomplete (connection lost), daily cap (429),
   provider busy (503 or an error event), and unauthorized. If the AI SDK `useChat` is used, the
   client sends only the new message plus `conversationId` (the server loads the history itself).
-- **Trigger.dev.** Only `trigger.config.ts` and the two scripts use it today, so once the report
-  job is gone nothing does. Removal of the SDK, scripts and config is listed as the athlete's
-  decision below.
+- **Trigger.dev.** Removed in the chat change (the athlete's decision): the SDK, the `trigger:*`
+  scripts and `trigger.config.ts` go, because nothing else uses them.
+- **Library and wire format (the athlete chose the Vercel AI SDK).** The Vercel AI SDK (`ai` and
+  `@ai-sdk/google`) is used on the server only, inside `GeminiCoachModel`. The browser never sees
+  the SDK: the route streams its own small NDJSON events (`meta`, `text`, `done`, `error`) and the
+  client reads them with a custom hook, so the provider interface stays honest and `useChat` is not
+  needed.
+- **Model.** A fast, low-cost Gemini model (Flash class) by default, id in `NEXT_COACH_MODEL`,
+  verified at plan time.
+- **Key check.** `tools/gemini-smoke.ts` makes one call and prints only `OK` or a status code; the
+  athlete runs it, the key never goes through the chat.
 
 ## Left to the builder
 
@@ -248,13 +256,9 @@ the exact tool result shapes.
 
 ## Open questions
 
-1. **Gemini free tier in the athlete's region (go or no-go).** The pricing page restricts free use in
+1. **Gemini free tier in the athlete's region (go or no-go), checked with the smoke script.** The pricing page restricts free use in
    the EEA, UK and Switzerland. The athlete created a key; the first task of the plan is a one-call
    smoke test with it (run by the athlete, the key never pasted in chat). If the call is refused, the
    provider or billing changes, the rest of the spec stands because of the provider interface.
 2. Whether the chosen free model follows tool calls reliably enough. Settle with the manual
    checklist; if not, switch the model id or the provider behind the interface.
-3. **Trigger.dev removal (the athlete's decision).** Remove `@trigger.dev/sdk`, the `trigger:*`
-   scripts and `trigger.config.ts` in the chat change, or keep them for a future background job.
-   Knip rejects an unused dependency at commit time, so keeping them needs either a use or an
-   ignore entry.
