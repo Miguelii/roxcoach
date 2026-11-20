@@ -1,9 +1,9 @@
 # Roxcoach Specs
 
-Roxcoach is a personal training assistant for Hyrox and running. It takes workouts from
-manual upload and manual logging, and has an AI coach: a chat on the dashboard (Google Gemini) that
-answers from the profile, the weekly availability, the races and the recent activities. There is
-no weekly report and no stored plan.
+Roxcoach is a personal training assistant for Hyrox and running. It takes workouts from manual
+upload, manual logging and manual Lyfta sync, and has an AI coach: a chat on the dashboard
+(Google Gemini) that answers from the profile, the weekly availability, the races and the recent
+activities. There is no weekly report and no stored plan.
 
 This folder is the source of truth for what gets built. One file per module. Read the module spec
 before touching its code, and update it in the same change.
@@ -18,6 +18,7 @@ before touching its code, and update it in the same change.
 | [athlete-races.md](athlete-races.md)   | Starting point (profile, weekly availability) and races with goals |
 | [manual-logging.md](manual-logging.md) | Station times, loads and strength sets entered by hand             |
 | [manual-upload.md](manual-upload.md)   | FIT, TCX and GPX upload from the dashboard, parsing, file storage  |
+| [lyfta.md](lyfta.md)                   | Manual Lyfta workout sync, credentials, import and storage         |
 | [coach-chat.md](coach-chat.md)         | Dashboard chat with the AI coach: context, tools, route, storage   |
 | [ux-design.md](ux-design.md)           | Design system (from BrewStock), screens, calendar, states          |
 
@@ -29,7 +30,7 @@ before touching its code, and update it in the same change.
 | Login          | Email and password only, one `/login` page, same Supabase implementation as BrewStock                                                                                                                                  |
 | Coach          | A chat on the dashboard, grounded in the athlete's data (context block plus read-only tools), with saved conversations. Inside the app (AI SDK + Gemini free tier, behind a provider interface), not MCP               |
 | Feedback       | Only when the athlete asks in the chat. No automatic or per-workout feedback                                                                                                                                           |
-| Data sources   | Manual upload and manual logging. No Strava sync (removed: it needs a paid plan), Garmin or Hevy in v1                                                                                                                 |
+| Data sources   | Manual upload and manual logging, plus read-only manual Lyfta workout sync. No Strava sync, Garmin or Hevy                                                                                                             |
 | Language       | UI copy and coach output in English. Code in English                                                                                                                                                                   |
 | Races          | One or many. Each has its own goal (target time). Hyrox and running races supported                                                                                                                                    |
 | Design         | Exactly BrewStock's design system (tokens, fonts, shadcn base-ui components)                                                                                                                                           |
@@ -42,6 +43,7 @@ before touching its code, and update it in the same change.
 - A second athlete's sign-up and invitation flow, billing, public pages, SEO (the data model already supports more users)
 - MCP server (the coach is the in-app chat)
 - A weekly report, a stored plan and any scheduled job
+- Automatic or background Lyfta sync
 - Push notifications
 - Garmin, Apple Health, Hevy integrations
 - Rate limiting beyond what Supabase Auth already enforces and the chat's daily message cap
@@ -62,3 +64,10 @@ before touching its code, and update it in the same change.
 5. `ux-design` calendar and activity detail on top of real data
 6. `manual-logging`
 7. `coach-chat` (migration `0009`, the `coach` module, the dashboard panel)
+8. `lyfta` (migrations `0010` and `0011`, manual read-only workout sync; no background job)
+
+## Implementation plans
+
+| Plan                                                | Covers                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| [2026-11-20-lyfta.md](../plans/2026-11-20-lyfta.md) | Lyfta API, encrypted credentials, manual sync and Settings UI |

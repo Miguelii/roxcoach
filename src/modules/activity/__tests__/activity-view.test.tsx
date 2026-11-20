@@ -6,7 +6,11 @@ import { makeActivity, makeLap } from '@/modules/calendar/__tests__/fixtures'
 describe('ActivityView', () => {
     it('shows the metrics that are present and omits the null ones', () => {
         render(
-            <ActivityView activity={makeActivity({ avgHr: 150, perceivedEffort: 7 })} laps={[]} />
+            <ActivityView
+                activity={makeActivity({ avgHr: 150, perceivedEffort: 7 })}
+                laps={[]}
+                strengthSets={[]}
+            />
         )
 
         expect(screen.getByTestId('activity-name')).toHaveTextContent('Easy run')
@@ -27,6 +31,7 @@ describe('ActivityView', () => {
                     makeLap({ lapIndex: 1, movingTimeS: 295, distanceM: 1000 }),
                     makeLap({ lapIndex: 2, station: 'ski_erg', movingTimeS: 240 }),
                 ]}
+                strengthSets={[]}
             />
         )
 
@@ -39,8 +44,44 @@ describe('ActivityView', () => {
     })
 
     it('omits the laps section without laps', () => {
-        render(<ActivityView activity={makeActivity()} laps={[]} />)
+        render(<ActivityView activity={makeActivity()} laps={[]} strengthSets={[]} />)
 
         expect(screen.queryByTestId('laps-table')).toBeNull()
+    })
+
+    it('renders imported strength sets as read-only data', () => {
+        render(
+            <ActivityView
+                activity={makeActivity({ category: 'strength', source: 'lyfta' })}
+                laps={[]}
+                strengthSets={[
+                    {
+                        exercise: 'Bench Press',
+                        sourceExerciseId: '501',
+                        setIndex: 1,
+                        reps: 5,
+                        loadKg: 80,
+                        rir: 2,
+                        rpe: null,
+                    },
+                    {
+                        exercise: 'Deadlift',
+                        sourceExerciseId: '502',
+                        setIndex: 2,
+                        reps: null,
+                        loadKg: null,
+                        rir: null,
+                        rpe: null,
+                    },
+                ]}
+            />
+        )
+
+        expect(screen.getByTestId('strength-sets-table')).toBeTruthy()
+        expect(screen.getByTestId('strength-set-1-exercise')).toHaveTextContent('Bench Press')
+        expect(screen.getByTestId('strength-set-1-reps')).toHaveTextContent('5')
+        expect(screen.getByTestId('strength-set-1-load')).toHaveTextContent('80 kg')
+        expect(screen.getByTestId('strength-set-2-reps')).toHaveTextContent('-')
+        expect(screen.getByTestId('strength-set-2-load')).toHaveTextContent('-')
     })
 })

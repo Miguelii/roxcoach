@@ -3,6 +3,39 @@ import type { HyroxStation } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 
 export type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
+type ActivitySource = 'strava' | 'manual' | 'lyfta'
+
+export type LyftaActivityRow = {
+    source_id: string
+    category: 'strength'
+    sport_type: 'strength'
+    name: string
+    started_at: string
+    local_date: string
+    elapsed_time_s: number | null
+    body_weight_kg: number | null
+    lyfta_total_volume_kg_reps: number | null
+}
+
+export type NewStrengthSetRow = {
+    exercise: string
+    source_exercise_id?: string | null
+    set_index: number
+    reps: number | null
+    load_kg: number | null
+    rir?: number | null
+    rpe: null
+}
+
+export type StrengthSetDTO = {
+    exercise: string
+    sourceExerciseId: string | null
+    setIndex: number
+    reps: number | null
+    loadKg: number | null
+    rir: number | null
+    rpe: number | null
+}
 
 export type LapRow = {
     lap_index: number
@@ -98,7 +131,7 @@ export type StorageClient = {
 
 export type ActivityDTO = {
     id: string
-    source: 'strava' | 'manual'
+    source: ActivitySource
     category: ActivityCategory
     name: string
     startedAt: string
@@ -111,6 +144,8 @@ export type ActivityDTO = {
     maxHr: number | null
     avgSpeedMps: number | null
     calories: number | null
+    bodyWeightKg: number | null
+    lyftaTotalVolumeKgReps: number | null
     perceivedEffort: number | null
     notes: string | null
 }

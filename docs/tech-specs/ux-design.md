@@ -69,13 +69,13 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Screens
 
-| Route              | Access    | Job                                         |
-| ------------------ | --------- | ------------------------------------------- |
-| `/login`           | public    | sign in                                     |
-| `/dashboard`       | protected | the calendar and this week at a glance      |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results |
-| `/races`           | protected | list, create, edit races and goals          |
-| `/settings`        | protected | profile, weekly availability                |
+| Route              | Access    | Job                                                            |
+| ------------------ | --------- | -------------------------------------------------------------- |
+| `/login`           | public    | sign in                                                        |
+| `/dashboard`       | protected | the calendar and this week at a glance                         |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
+| `/races`           | protected | list, create, edit races and goals                             |
+| `/settings`        | protected | profile, weekly availability, Lyfta connection and manual sync |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -93,7 +93,7 @@ Current state (plan 2): the mocks are gone. The dashboard shows only real data: 
 completed races, never cancelled; the week strip and week totals count activities only) and the
 `NextRace` card (see below). The "Log session"
 and "Add details" items below return with manual logging. The `/coach` and `/plan` screens
-no longer exist: the coach is the chat panel on the dashboard (see Coach chat below). `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
+no longer exist: the coach is the chat panel on the dashboard (see Coach chat below). `/races` is live (see Races below); `/settings` holds profile, availability and Lyfta tabs. "Today" comes
 from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
 
 The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
@@ -199,8 +199,11 @@ wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toa
 
 ### Settings
 
-Two tabs (`SettingsTabs`, default Profile), both fed by `trpcClient.athlete.*` through thin wrappers
-(`ProfileTab`, `AvailabilityTab`) with skeletons, an error state with retry, and toasts on save.
+Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
+`trpcClient.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+`trpcClient.lyfta.*` for credential management and manual workout sync. All tabs have loading and
+error states; profile and availability show toasts on save. Lyfta connection and sync states are
+specified in [lyfta.md](lyfta.md).
 
 - **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
   the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
@@ -227,13 +230,13 @@ Cancel plus the primary action in a fixed footer. Footer actions stack verticall
 mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
 layout.
 
-| Component   | Purpose                                   |
-| ----------- | ----------------------------------------- |
-| `calendar/` | month grid, week agenda, day panel, chips |
-| `activity/` | metrics row, laps table, details dialog   |
-| `coach/`    | chat panel, history menu, message, chips  |
-| `races/`    | race card, race form                      |
-| `settings/` | profile form, availability editor         |
+| Component   | Purpose                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `calendar/` | month grid, week agenda, day panel, chips                    |
+| `activity/` | metrics row, laps table, details dialog                      |
+| `coach/`    | chat panel, history menu, message, chips                     |
+| `races/`    | race card, race form                                         |
+| `settings/` | profile form, availability editor, Lyfta connection and sync |
 
 ## States every screen must handle
 

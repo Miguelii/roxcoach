@@ -125,13 +125,13 @@ when the tools are built, no tool input carries a user id. Each has a zod input 
 plain JSON with the app's field names. Activity ids and race ids are returned as is (the model
 needs an activity id to call `getActivity`).
 
-| Tool               | Input                                                                                                                                        | Returns                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `getRaces`         | `status?`: `upcoming`, `completed` or `cancelled`                                                                                            | `{ races }` with goals and results                                                     |
-| `getAvailability`  | none                                                                                                                                         | the weekly slots                                                                       |
-| `getActivities`    | `from`, `to` (real `YYYY-MM-DD` dates, `from` not after `to`, at most 100 days), `category?`: `run`, `hyrox`, `strength`, `cross` or `other` | `{ activities, truncated }`: newest first, at most 50, `truncated` counts the rest     |
-| `getActivity`      | `id` (uuid)                                                                                                                                  | `{ activity, laps }` (Hyrox stations when known), or `{ error: 'activity not found' }` |
-| `getWeeklySummary` | `weekStart`: a Monday, `YYYY-MM-DD`                                                                                                          | `{ weekStart, weekEnd, doneMinutes, doneSessions, runKm }` (activities only)           |
+| Tool               | Input                                                                                                                                        | Returns                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `getRaces`         | `status?`: `upcoming`, `completed` or `cancelled`                                                                                            | `{ races }` with goals and results                                                                   |
+| `getAvailability`  | none                                                                                                                                         | the weekly slots                                                                                     |
+| `getActivities`    | `from`, `to` (real `YYYY-MM-DD` dates, `from` not after `to`, at most 100 days), `category?`: `run`, `hyrox`, `strength`, `cross` or `other` | `{ activities, truncated }`: newest first, at most 50, `truncated` counts the rest                   |
+| `getActivity`      | `id` (uuid)                                                                                                                                  | `{ activity, laps, strengthSets }` (Hyrox stations when known), or `{ error: 'activity not found' }` |
+| `getWeeklySummary` | `weekStart`: a Monday, `YYYY-MM-DD`                                                                                                          | `{ weekStart, weekEnd, doneMinutes, doneSessions, runKm }` (activities only)                         |
 
 Ranges and weeks filter on the activity's `local_date` (a plain date computed in the athlete's
 timezone at upload), with no timestamp conversion. At most 5 model steps per user message

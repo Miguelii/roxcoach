@@ -46,11 +46,14 @@ describe('GET_ACTIVITY_PROTECTED_CONTROLLER', () => {
     })
 
     it('passes the signed-in user and the id to the service and returns its result', async () => {
-        getActivityMock.mockReturnValue(Effect.succeed({ activity: { id: ID }, laps: [] }))
+        getActivityMock.mockReturnValue(
+            Effect.succeed({ activity: { id: ID }, laps: [], strengthSets: [] })
+        )
 
         await expect(caller.training.getActivity({ id: ID })).resolves.toEqual({
             activity: { id: ID },
             laps: [],
+            strengthSets: [],
         })
         expect(getActivityMock).toHaveBeenCalledWith(USER, ID)
     })

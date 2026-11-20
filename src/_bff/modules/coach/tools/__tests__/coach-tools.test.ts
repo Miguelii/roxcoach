@@ -24,6 +24,8 @@ const activity = (overrides: Partial<ActivityDTO>): ActivityDTO => ({
     maxHr: null,
     avgSpeedMps: null,
     calories: null,
+    bodyWeightKg: null,
+    lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
     ...overrides,
@@ -174,9 +176,15 @@ describe('makeCoachTools', () => {
         }
         const a = activity({ id: ID })
         // SAFETY: the lap literal matches LapDTO.
-        const found = setup({ getActivity: async () => ({ activity: a, laps: [lap] as never }) })
+        const found = setup({
+            getActivity: async () => ({ activity: a, laps: [lap] as never, strengthSets: [] }),
+        })
 
-        expect(await found.run('getActivity', { id: ID })).toEqual({ activity: a, laps: [lap] })
+        expect(await found.run('getActivity', { id: ID })).toEqual({
+            activity: a,
+            laps: [lap],
+            strengthSets: [],
+        })
 
         const missing = setup()
         expect(await missing.run('getActivity', { id: ID })).toEqual({

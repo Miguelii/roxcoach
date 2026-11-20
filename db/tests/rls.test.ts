@@ -18,7 +18,7 @@ type AccessRow = { has_access: boolean }
 type CountRow = { count: number }
 
 // RLS on, no policies: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
 // How PostgreSQL prints the owner check of every client policy.
 const OWNER_CHECK = '((user_id = auth.uid()) AND roxcoach.has_access())'

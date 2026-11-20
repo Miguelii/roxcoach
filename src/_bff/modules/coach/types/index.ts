@@ -2,7 +2,12 @@ import type { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
 import type { AvailabilitySlotDTO, ProfileDTO } from '@/_bff/modules/athlete/types'
 import type { RaceDTO, RaceFilter } from '@/_bff/modules/races/types'
-import type { ActivityDTO, CalendarItem, LapDTO } from '@/_bff/modules/training/types'
+import type {
+    ActivityDTO,
+    CalendarItem,
+    LapDTO,
+    StrengthSetDTO,
+} from '@/_bff/modules/training/types'
 
 export type ConversationDTO = {
     id: string
@@ -60,5 +65,5 @@ export type CoachToolDeps = {
     getActivity: (
         user: User,
         id: string
-    ) => Promise<{ activity: ActivityDTO; laps: LapDTO[] } | null>
+    ) => Promise<{ activity: ActivityDTO; laps: LapDTO[]; strengthSets: StrengthSetDTO[] } | null>
 }

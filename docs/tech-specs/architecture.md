@@ -56,6 +56,7 @@ are all server-side).
 | `athlete`  | Profile and weekly availability                                                                    | [athlete-races.md](athlete-races.md)   |
 | `races`    | Races and goals                                                                                    | [athlete-races.md](athlete-races.md)   |
 | `training` | Activities, laps, manual sessions, calendar feed, file upload (`upload-activity` service, parsers) | [manual-logging.md](manual-logging.md) |
+| `lyfta`    | Lyfta API key connection and manual workout import into `training`                                 | [lyfta.md](lyfta.md)                   |
 | `coach`    | Chat with the AI coach: context block, read-only tools, Gemini provider, conversations             | [coach-chat.md](coach-chat.md)         |
 
 Dependency direction: controller to service to (repository | processor | helper). Cross-module runtime imports only through `services/`
@@ -93,9 +94,11 @@ dashboard calendar live in `src/_bff/core/utils/week-stats.utils.ts` and `week-d
 
 ## tRPC namespaces
 
-`auth`, `athlete`, `races`, `training` and `coach` (composed in `src/_bff/trpc/router.ts`). The
-`coach` namespace has `listConversations`, `getConversationMessages` and `deleteConversation`; the
-chat itself is a route handler (below). Example client call:
+`auth`, `athlete`, `races`, `training`, `lyfta` and `coach` (composed in
+`src/_bff/trpc/router.ts`). The `lyfta` namespace handles connection status, credential
+management and manual workout sync (see [lyfta.md](lyfta.md)). The `coach` namespace has
+`listConversations`, `getConversationMessages` and `deleteConversation`; the chat itself is a route
+handler (below). Example client call:
 `trpcClient.races.create.useMutation()`. Server Components use the server-side caller
 (`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
 `appRouter.createCaller`.
@@ -123,10 +126,13 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 | `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                    |
 | `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                |
 | `NEXT_COACH_MODEL`               | server | coach model id                |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption      |
 | `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
+`NEXT_LYFTA_ENCRYPTION_KEY` is also optional at startup, but must be a valid base64-encoded
+32-byte key when set. Lyfta connection and sync operations fail explicitly when it is absent.
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
 `http://localhost:3000` when unset or empty. `.env.example` is maintained by the owner and must list the
 Gemini variable names. The repo rule is that `.env.example` lists every

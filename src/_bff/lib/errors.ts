@@ -74,3 +74,37 @@ export class ActivityFileStorageError extends Data.TaggedError(
 export class InvalidDateRangeError extends Data.TaggedError(
     'InvalidDateRangeError'
 )<ServiceErrorFields> {}
+
+// Lyfta
+export class LyftaConfigurationError extends Data.TaggedError(
+    'LyftaConfigurationError'
+)<ServiceErrorFields> {}
+export class LyftaCredentialError extends Data.TaggedError(
+    'LyftaCredentialError'
+)<ServiceErrorFields> {}
+export class LyftaConnectionNotFoundError extends Data.TaggedError(
+    'LyftaConnectionNotFoundError'
+)<ServiceErrorFields> {}
+export class LyftaConnectionQueryError extends Data.TaggedError(
+    'LyftaConnectionQueryError'
+)<ServiceErrorFields> {}
+export class LyftaConnectionWriteError extends Data.TaggedError(
+    'LyftaConnectionWriteError'
+)<ServiceErrorFields> {}
+export class LyftaConnectionParseError extends Data.TaggedError(
+    'LyftaConnectionParseError'
+)<ServiceErrorFields> {}
+export class LyftaApiRequestError extends Data.TaggedError(
+    'LyftaApiRequestError'
+)<ServiceErrorFields> {}
+export class LyftaRateLimitError extends Data.TaggedError(
+    'LyftaRateLimitError'
+)<ServiceErrorFields> {}
+export class LyftaApiError extends Data.TaggedError('LyftaApiError')<ServiceErrorFields> {}
+export class LyftaResponseError extends Data.TaggedError(
+    'LyftaResponseError'
+)<ServiceErrorFields> {}
+export class LyftaImportError extends Data.TaggedError('LyftaImportError')<ServiceErrorFields> {}
+export class LyftaCheckpointError extends Data.TaggedError(
+    'LyftaCheckpointError'
+)<ServiceErrorFields> {}

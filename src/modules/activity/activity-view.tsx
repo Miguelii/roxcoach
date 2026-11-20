@@ -7,7 +7,7 @@ import {
     formatKm,
     formatPace,
 } from '@/_bff/core/utils/formatters.utils'
-import type { ActivityDTO, LapDTO } from '@/_bff/modules/training/types'
+import type { ActivityDTO, LapDTO, StrengthSetDTO } from '@/_bff/modules/training/types'
 import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
@@ -15,6 +15,7 @@ import { KINDS } from '@/modules/calendar/kinds'
 type Props = {
     activity: ActivityDTO
     laps: LapDTO[]
+    strengthSets: StrengthSetDTO[]
 }
 
 type Metric = {
@@ -29,7 +30,7 @@ const DASH = '-'
 const paceOf = (speed: number | null, distanceM: number | null, timeS: number | null) =>
     formatPace(speed ?? (distanceM && timeS ? distanceM / timeS : null))
 
-export function ActivityView({ activity, laps }: Props) {
+export function ActivityView({ activity, laps, strengthSets }: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
 
@@ -162,6 +163,57 @@ export function ActivityView({ activity, laps }: Props) {
                                         </tr>
                                     )
                                 })}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            )}
+
+            {strengthSets.length > 0 && (
+                <section aria-label="Strength sets" className="space-y-3">
+                    <h2 className="display text-3xl">Strength sets</h2>
+                    <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card">
+                        <table data-testid="strength-sets-table" className="w-full text-sm">
+                            <thead className="eyebrow text-left text-muted-foreground">
+                                <tr>
+                                    <th className="px-4 py-2">Exercise</th>
+                                    <th className="px-4 py-2">Set</th>
+                                    <th className="px-4 py-2">Reps</th>
+                                    <th className="px-4 py-2">Load</th>
+                                </tr>
+                            </thead>
+                            <tbody className="font-mono">
+                                {strengthSets.map((set, index) => (
+                                    <tr
+                                        key={`${set.exercise}-${set.setIndex}-${index}`}
+                                        className="border-t border-hairline"
+                                    >
+                                        <td
+                                            data-testid={`strength-set-${index + 1}-exercise`}
+                                            className="px-4 py-2 font-sans"
+                                        >
+                                            {set.exercise}
+                                        </td>
+                                        <td
+                                            data-testid={`strength-set-${index + 1}-index`}
+                                            className="px-4 py-2"
+                                        >
+                                            {set.setIndex}
+                                        </td>
+                                        <td
+                                            data-testid={`strength-set-${index + 1}-reps`}
+                                            className="px-4 py-2"
+                                        >
+                                            {set.reps ?? DASH}
+                                        </td>
+                                        <td
+                                            data-testid={`strength-set-${index + 1}-load`}
+                                            className="px-4 py-2"
+                                        >
+                                            {set.loadKg === null ? DASH : `${set.loadKg} kg`}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>

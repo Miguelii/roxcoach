@@ -5,14 +5,19 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
-import type { ActivityDTO, NewActivityRow, TrainingClient } from '@/_bff/modules/training/types'
+import type {
+    ActivityDTO,
+    LyftaActivityRow,
+    NewActivityRow,
+    TrainingClient,
+} from '@/_bff/modules/training/types'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
 const TABLE = 'activities'
 
 const COLUMNS =
-    'id, source, category, name, started_at, local_date, distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, avg_hr, max_hr, avg_speed_mps, calories, perceived_effort, notes'
+    'id, source, category, name, started_at, local_date, distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, avg_hr, max_hr, avg_speed_mps, calories, body_weight_kg, lyfta_total_volume_kg_reps, perceived_effort, notes'
 
 // PostgREST serializes numeric and bigint as JSON numbers, but a string is accepted too.
 const numeric = z
@@ -27,7 +32,7 @@ const numeric = z
 
 const activityRowSchema = z.object({
     id: z.string(),
-    source: z.enum(['strava', 'manual']),
+    source: z.enum(['strava', 'manual', 'lyfta']),
     category: z.enum(['run', 'hyrox', 'strength', 'cross', 'other']),
     name: z.string(),
     started_at: z.string(),
@@ -40,6 +45,8 @@ const activityRowSchema = z.object({
     max_hr: numeric,
     avg_speed_mps: numeric,
     calories: numeric,
+    body_weight_kg: numeric,
+    lyfta_total_volume_kg_reps: numeric,
     perceived_effort: numeric,
     notes: z.string().nullable(),
 })
@@ -64,6 +71,8 @@ const toDTO = (row: z.infer<typeof activityRowSchema>): ActivityDTO => ({
     maxHr: row.max_hr,
     avgSpeedMps: row.avg_speed_mps,
     calories: row.calories,
+    bodyWeightKg: row.body_weight_kg,
+    lyftaTotalVolumeKgReps: row.lyfta_total_volume_kg_reps,
     perceivedEffort: row.perceived_effort,
     notes: row.notes,
 })
@@ -169,6 +178,77 @@ export const insertActivity = Effect.fn('insertActivity')(function* (
         })
 
     return data.id
+})
+
+export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    row: LyftaActivityRow
+) {
+    const { data: existing, error: lookupError } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id')
+                .eq('user_id', userId)
+                .eq('source', 'lyfta')
+                .eq('source_id', row.source_id)
+                .maybeSingle(),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT,
+            }),
+    })
+
+    if (lookupError)
+        return yield* new ActivityQueryError({
+            cause: `${lookupError.code}: ${lookupError.message}`,
+            error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT_ERR,
+        })
+
+    const writeRow = {
+        ...row,
+        user_id: userId,
+        source: 'lyfta' as const,
+        distance_m: null,
+        moving_time_s: null,
+        elevation_gain_m: null,
+        avg_hr: null,
+        max_hr: null,
+        avg_speed_mps: null,
+        calories: null,
+    }
+
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .upsert(writeRow, {
+                    onConflict: 'user_id,source,source_id',
+                    defaultToNull: false,
+                })
+                .select('id')
+                .single(),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT,
+            }),
+    })
+
+    if (error)
+        return yield* new ActivityWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
+        })
+    if (data === null)
+        return yield* new ActivityWriteError({
+            cause: 'Lyfta activity upsert returned no row',
+            error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
+        })
+
+    return { activityId: data.id, created: existing === null }
 })
 
 // The id of the user's non-deleted activity that started at that instant, or null.

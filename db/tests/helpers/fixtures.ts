@@ -97,6 +97,14 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
             params: [graph.userId, graph.conversationId],
         }),
     ],
+    [
+        'lyfta_connections',
+        (graph) => ({
+            sql: `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+                  values ($1, 'encrypted-test-fixture')`,
+            params: [graph.userId],
+        }),
+    ],
 ])
 
 // Seeded after the parents, in this order (coach_messages needs the conversation).
@@ -108,6 +116,7 @@ const GRAPH_CHILD_TABLES = [
     'strength_sets',
     'activity_files',
     'coach_messages',
+    'lyfta_connections',
 ]
 
 // Inserts an auth user as the superuser, then hands control back to the service role.

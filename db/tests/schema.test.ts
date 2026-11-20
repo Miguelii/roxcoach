@@ -22,6 +22,7 @@ const ROXCOACH_TABLES = [
     'availability_slots',
     'coach_conversations',
     'coach_messages',
+    'lyfta_connections',
     'races',
     'schema_migrations',
     'station_results',
@@ -30,8 +31,8 @@ const ROXCOACH_TABLES = [
 
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
 
-// Tables only the service role may touch: 0006 revokes every privilege on them from authenticated.
-const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
+// Tables only the service role may touch: 0006 and 0010 revoke client privileges.
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
 const UNIQUE_ERROR = /unique/u
 const CHECK_ERROR = /check constraint/u
@@ -84,6 +85,8 @@ describe('schema layout', () => {
             '0007_remove_strava.sql',
             '0008_activity_files.sql',
             '0009_coach_chat.sql',
+            '0010_lyfta.sql',
+            '0011_lyfta_progress_metrics.sql',
         ])
     })
 
@@ -108,15 +111,38 @@ describe('schema layout', () => {
         )
     })
 
-    it('lets authenticated write user tables but not the migration log', async () => {
+    it('lets authenticated write user tables but not service-only tables', async () => {
         await testDb.asSuperuser()
-        const result = await testDb.db.query<{ activities: boolean; migrations: boolean }>(
+        const result = await testDb.db.query<{
+            activities: boolean
+            lyftaConnections: boolean
+            migrations: boolean
+        }>(
             `select
                 has_table_privilege('authenticated', 'roxcoach.activities', 'insert, update, delete') as activities,
+                has_table_privilege('authenticated', 'roxcoach.lyfta_connections', 'select, insert, update, delete') as "lyftaConnections",
                 has_table_privilege('authenticated', 'roxcoach.schema_migrations', 'insert, update, delete') as migrations`
         )
 
-        expect(result.rows[0]).toEqual({ activities: true, migrations: false })
+        expect(result.rows[0]).toEqual({
+            activities: true,
+            lyftaConnections: false,
+            migrations: false,
+        })
+    })
+
+    it('retains the old activity source labels and adds lyfta', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query<{ enumlabel: string }>(
+            `select e.enumlabel
+             from pg_enum e
+             join pg_type t on t.oid = e.enumtypid
+             join pg_namespace n on n.oid = t.typnamespace
+             where n.nspname = 'roxcoach' and t.typname = 'activity_source'
+             order by e.enumsortorder`
+        )
+
+        expect(result.rows.map((row) => row.enumlabel)).toEqual(['strava', 'manual', 'lyfta'])
     })
 
     it('defaults user_id to auth.uid() for a signed-in user', async () => {
@@ -163,6 +189,101 @@ describe('unique constraints', () => {
         await insertActivity(testDb, userId)
 
         await expect(insertActivity(testDb, userId)).resolves.toBeDefined()
+    })
+
+    it('uniquely identifies Lyfta workouts per user and allows null source ids', async () => {
+        const userId = await createUser(testDb)
+        const otherUserId = await createUser(testDb)
+        const insert = (ownerId: string, sourceId: string | null) =>
+            testDb.db.query(
+                `insert into roxcoach.activities
+                    (user_id, source, source_id, category, name, started_at, local_date)
+                 values ($1, 'lyfta', $2, 'strength', 'Gym workout', now(), current_date)`,
+                [ownerId, sourceId]
+            )
+
+        await insert(userId, '501')
+        await expect(insert(userId, '501')).rejects.toThrow(UNIQUE_ERROR)
+        await expect(insert(otherUserId, '501')).resolves.toBeDefined()
+        await expect(insert(userId, null)).resolves.toBeDefined()
+        await expect(insert(userId, null)).resolves.toBeDefined()
+    })
+})
+
+describe('Lyfta connections', () => {
+    it('keeps Lyfta credentials service-only and maintains updated_at', async () => {
+        const userId = await createUser(testDb)
+
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+             values ($1, 'encrypted-fixture')`,
+            [userId]
+        )
+        await testDb.asUser(userId)
+        await expect(
+            testDb.db.query('select * from roxcoach.lyfta_connections')
+        ).rejects.toMatchObject({ code: '42501' })
+        await expect(
+            testDb.db.query(
+                `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+                 values ($1, 'not-client-writable')`,
+                [userId]
+            )
+        ).rejects.toMatchObject({ code: '42501' })
+    })
+
+    describe('Lyfta progress metrics', () => {
+        it('stores source exercise IDs, RIR and workout metrics in kilograms', async () => {
+            const userId = await createUser(testDb)
+            const activityId = await insertActivity(testDb, userId)
+
+            await testDb.db.query(
+                `update roxcoach.activities
+                 set body_weight_kg = 72.5, lyfta_total_volume_kg_reps = 1840
+                 where id = $1 and user_id = $2`,
+                [activityId, userId]
+            )
+            await testDb.db.query(
+                `insert into roxcoach.strength_sets
+                    (user_id, activity_id, exercise, source_exercise_id, set_index, reps, load_kg, rir)
+                 values ($1, $2, 'Bench Press', '501', 1, 5, 80, 2)`,
+                [userId, activityId]
+            )
+
+            const result = await testDb.db.query<{
+                source_exercise_id: string
+                load_kg: string
+                rir: number
+                body_weight_kg: string
+                lyfta_total_volume_kg_reps: string
+            }>(
+                `select s.source_exercise_id, s.load_kg, s.rir,
+                        a.body_weight_kg, a.lyfta_total_volume_kg_reps
+                 from roxcoach.strength_sets s
+                 join roxcoach.activities a on a.id = s.activity_id and a.user_id = s.user_id
+                 where s.user_id = $1`,
+                [userId]
+            )
+
+            expect(result.rows).toEqual([
+                {
+                    source_exercise_id: '501',
+                    load_kg: '80',
+                    rir: 2,
+                    body_weight_kg: '72.5',
+                    lyfta_total_volume_kg_reps: '1840',
+                },
+            ])
+            await expect(
+                testDb.db.query(
+                    `insert into roxcoach.strength_sets
+                        (user_id, activity_id, exercise, source_exercise_id, set_index, rir)
+                     values ($1, $2, 'Bench Press', '501', 2, -1)`,
+                    [userId, activityId]
+                )
+            ).rejects.toThrow(CHECK_ERROR)
+        })
     })
 })
 

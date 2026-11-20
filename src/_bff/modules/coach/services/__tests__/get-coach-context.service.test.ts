@@ -24,6 +24,8 @@ const ACTIVITY: ActivityDTO = {
     maxHr: null,
     avgSpeedMps: null,
     calories: null,
+    bodyWeightKg: null,
+    lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
 }

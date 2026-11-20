@@ -14,7 +14,7 @@ type NameRow = { name: string }
 type StaleRow = { stale: boolean }
 
 // RLS on, no policies, no privileges for authenticated: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
 const INSUFFICIENT_PRIVILEGE = '42501'
 const FOREIGN_KEY_VIOLATION = '23503'

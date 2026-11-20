@@ -7,6 +7,7 @@ import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError } from '@/_bff/lib/errors'
 import { selectActivityById } from '@/_bff/modules/training/repositories/activities.repository'
 import { selectLaps } from '@/_bff/modules/training/repositories/activity-laps.repository'
+import { selectStrengthSets } from '@/_bff/modules/training/repositories/strength-sets.repository'
 
 // Runs as the signed-in user (publishable key). Returns null when the activity does not exist, is
 // soft-deleted or belongs to someone else.
@@ -21,5 +22,6 @@ export const getActivity = Effect.fn('getActivity')(function* (user: User, id: s
     if (activity === null) return null
 
     const laps = yield* selectLaps(supabase, user.id, id)
-    return { activity, laps }
+    const strengthSets = yield* selectStrengthSets(supabase, user.id, id)
+    return { activity, laps, strengthSets }
 })

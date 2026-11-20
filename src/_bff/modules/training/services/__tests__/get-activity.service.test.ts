@@ -29,6 +29,8 @@ const DB_ROW = {
     max_hr: null,
     avg_speed_mps: null,
     calories: null,
+    body_weight_kg: null,
+    lyfta_total_volume_kg_reps: null,
     perceived_effort: null,
     notes: null,
 }
@@ -44,6 +46,16 @@ const DB_LAP = {
     station: 'ski_erg',
 }
 
+const DB_STRENGTH_SET = {
+    exercise: 'Bench Press',
+    source_exercise_id: '501',
+    set_index: 1,
+    reps: 5,
+    load_kg: 80,
+    rir: 2,
+    rpe: null,
+}
+
 describe('getActivity', () => {
     beforeEach(() => {
         createDBServerClientMock.mockReset()
@@ -53,6 +65,7 @@ describe('getActivity', () => {
         const { chains, from, supabase } = makeFakeDb([
             { data: DB_ROW, error: null },
             { data: [DB_LAP], error: null },
+            { data: [DB_STRENGTH_SET], error: null },
         ])
         createDBServerClientMock.mockResolvedValue(supabase)
 
@@ -61,9 +74,26 @@ describe('getActivity', () => {
         expect(result?.activity.id).toBe(ID)
         expect(result?.laps).toHaveLength(1)
         expect(result?.laps[0]?.station).toBe('ski_erg')
-        expect(from.mock.calls.map(([table]) => table)).toEqual(['activities', 'activity_laps'])
+        expect(result?.strengthSets).toEqual([
+            {
+                exercise: 'Bench Press',
+                sourceExerciseId: '501',
+                setIndex: 1,
+                reps: 5,
+                loadKg: 80,
+                rir: 2,
+                rpe: null,
+            },
+        ])
+        expect(from.mock.calls.map(([table]) => table)).toEqual([
+            'activities',
+            'activity_laps',
+            'strength_sets',
+        ])
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
         expect(chains[1]?.eq).toHaveBeenCalledWith('activity_id', ID)
+        expect(chains[2]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(chains[2]?.eq).toHaveBeenCalledWith('activity_id', ID)
     })
 
     it('returns null for a missing (or soft-deleted) id without reading laps', async () => {
@@ -93,7 +123,16 @@ describe('getActivity', () => {
         createDBServerClientMock.mockResolvedValue(lapsFail.supabase)
         const second = await Effect.runPromiseExit(getActivity(USER, ID))
 
+        const setsFail = makeFakeDb([
+            { data: DB_ROW, error: null },
+            { data: [DB_LAP], error: null },
+            new Error('boom'),
+        ])
+        createDBServerClientMock.mockResolvedValue(setsFail.supabase)
+        const third = await Effect.runPromiseExit(getActivity(USER, ID))
+
         expect(failureTag(first)).toBe('ActivityQueryError')
         expect(failureTag(second)).toBe('ActivityQueryError')
+        expect(failureTag(third)).toBe('ActivityQueryError')
     })
 })

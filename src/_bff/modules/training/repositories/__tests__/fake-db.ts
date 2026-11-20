@@ -34,7 +34,8 @@ const makeChain = (item: QueryResult | Error) => {
     })
     const chain = Object.assign(settled, {
         select: vi.fn(() => chain),
-        insert: vi.fn(() => chain),
+        insert: vi.fn((_values: FakeRow | FakeRow[]) => chain),
+        upsert: vi.fn((_values: FakeRow) => chain),
         update: vi.fn(() => chain),
         delete: vi.fn(() => chain),
         eq: vi.fn(() => chain),
