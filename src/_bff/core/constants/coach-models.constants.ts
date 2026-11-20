@@ -2,7 +2,7 @@ type CoachModelEntry = { id: string; label: string }
 
 // Ordered best first. Position 0 is tried first by the coach fallback chain.
 export const COACH_MODELS: ReadonlyArray<CoachModelEntry> = [
-    { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen' },
+    //{ id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen' },
     { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
     { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
     { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
