@@ -14,12 +14,13 @@ import type { MessageDTO, MessageInput } from '@/_bff/modules/coach/types'
 type MessageRow = z.infer<typeof messageRowSchema>
 
 const TABLE = 'coach_messages'
-const COLUMNS = 'id, role, content, created_at'
+const COLUMNS = 'id, role, content, model, created_at'
 
 const messageRowSchema = z.object({
     id: z.string(),
     role: z.enum(['user', 'assistant']),
     content: z.string(),
+    model: z.string().nullable(),
     created_at: z.string(),
 })
 
@@ -38,6 +39,7 @@ const toDTO = (row: MessageRow): MessageDTO => ({
     id: row.id,
     role: row.role,
     content: row.content,
+    model: row.model,
     createdAt: row.created_at,
 })
 

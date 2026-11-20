@@ -82,17 +82,97 @@ describe('createChatHandler: the stream', () => {
         })
     })
 
-    it('ignores a model event: meta, text, done and the reply is saved', async () => {
+    it('forwards the model event as one exact NDJSON line and saves the answering model', async () => {
         const { handler, store } = setup(
             script(
-                { type: 'model', modelId: 'fake-model', switchedFrom: null },
+                { type: 'model', modelId: 'm2', switchedFrom: 'm1' },
                 { type: 'text', delta: 'Hi' },
                 DONE
             )
         )
+        const response = await handler(post({ conversationId: MINE, message: 'hi' }))
+        const lines = (await response.text()).split('\n').filter((l) => l !== '')
+        expect(lines[1]).toBe('{"type":"model","model":"m2","switchedFrom":"m1"}')
+        expect(lines.map((l) => /"type":"(\w+)"/u.exec(l)?.[1])).toEqual([
+            'meta',
+            'model',
+            'text',
+            'done',
+        ])
+        expect(store.messages.find((m) => m.role === 'assistant')?.model).toBe('m2')
+    })
+
+    it('a model event with no switch has switchedFrom null on the wire', async () => {
+        const { handler } = setup(
+            script(
+                { type: 'model', modelId: 'm1', switchedFrom: null },
+                { type: 'text', delta: 'Hi' },
+                DONE
+            )
+        )
+        const response = await handler(post({ conversationId: MINE, message: 'hi' }))
+        expect((await response.text()).split('\n')[1]).toBe(
+            '{"type":"model","model":"m1","switchedFrom":null}'
+        )
+    })
+
+    it('saves the fake model own id when the provider emits no model event', async () => {
+        const { handler, store } = setup(script({ type: 'text', delta: 'Hi' }, DONE))
         const events = await readLines(await handler(post({ conversationId: MINE, message: 'hi' })))
         expect(events.map((e) => e.type)).toEqual(['meta', 'text', 'done'])
-        expect(store.messages.filter((m) => m.role === 'assistant')).toHaveLength(1)
+        expect(store.messages.find((m) => m.role === 'assistant')?.model).toBe('fake-model')
+    })
+
+    it('an error after a model event saves nothing and ends with the error', async () => {
+        const { handler, store } = setup(
+            script(
+                { type: 'model', modelId: 'm2', switchedFrom: 'm1' },
+                { type: 'text', delta: 'half' },
+                { type: 'error', kind: 'unavailable' }
+            )
+        )
+        const events = await readLines(await handler(post({ conversationId: MINE, message: 'hi' })))
+        expect(events.at(-1)).toEqual({ type: 'error', kind: 'unavailable' })
+        expect(events.some((e) => e.type === 'done')).toBe(false)
+        expect(store.messages.some((m) => m.role === 'assistant')).toBe(false)
+    })
+
+    it('an error before any model event emits no model event', async () => {
+        const { handler } = setup(script({ type: 'error', kind: 'unavailable' }))
+        const events = await readLines(await handler(post({ conversationId: MINE, message: 'hi' })))
+        expect(events.map((e) => e.type)).toEqual(['meta', 'error'])
+    })
+
+    it('an abort after a model event saves nothing and emits no done', async () => {
+        const controller = new AbortController()
+        let release: () => void = () => undefined
+        const gate = new Promise<void>((resolve) => {
+            release = resolve
+        })
+        const { handler, store } = setup(async function* () {
+            yield { type: 'model', modelId: 'm2', switchedFrom: 'm1' }
+            yield { type: 'text', delta: 'partial' }
+            await gate
+            yield DONE
+        })
+        const response = await handler(
+            post({ conversationId: MINE, message: 'hi' }, { signal: controller.signal })
+        )
+        const reader = response.body!.getReader()
+        await reader.read() // meta
+        await reader.read() // model
+        await reader.read() // partial
+        controller.abort()
+        release()
+        const rest = await reader.read()
+        expect(rest.done || rest.value === undefined).toBe(true)
+        expect(store.messages.some((m) => m.role === 'assistant')).toBe(false)
+    })
+
+    it('history DTOs carry model null for user messages', async () => {
+        const { store } = setup(script(DONE))
+        const out = await Effect.runPromise(store.ports.latestMessages(ME, MINE, 10))
+        expect(out.every((m) => m.model === null)).toBe(true)
     })
 
     it('saves no assistant message for an empty reply but still ends with done', async () => {

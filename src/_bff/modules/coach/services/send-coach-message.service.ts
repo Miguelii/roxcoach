@@ -51,6 +51,7 @@ import type {
 // The wire events of the chat stream. A daily cap is a 429 before the stream, not an event.
 export type ChatEvent =
     | { type: 'meta'; conversationId: string }
+    | { type: 'model'; model: string; switchedFrom: string | null }
     | { type: 'text'; delta: string }
     | { type: 'done' }
     | { type: 'error'; kind: 'rate_limited' | 'unavailable' | 'blocked' }
@@ -109,7 +110,7 @@ const logTag = (tag: string, errorHash?: string) =>
 const saveReply = async (
     user: User,
     conversationId: string,
-    model: CoachModel,
+    answeredBy: string,
     text: string,
     usage: { promptTokens: number | null; completionTokens: number | null },
     ports: CoachPorts
@@ -120,7 +121,7 @@ const saveReply = async (
                 conversationId,
                 role: 'assistant',
                 content: text,
-                model: model.modelId,
+                model: answeredBy,
                 promptTokens: usage.promptTokens,
                 completionTokens: usage.completionTokens,
             })
@@ -140,6 +141,8 @@ async function* streamReply(
 ): AsyncGenerator<ChatEvent> {
     yield { type: 'meta', conversationId }
     let text = ''
+    // The model that produced the reply: the last `model` event, else the provider's own id.
+    let answeredBy = model.modelId
     try {
         for await (const event of model.stream(request)) {
             if (request.signal.aborted) return
@@ -150,11 +153,11 @@ async function* streamReply(
                 yield event
                 return
             } else if (event.type === 'model') {
-                // Ignored for now: the next task forwards it to the client.
-                continue
+                answeredBy = event.modelId
+                yield { type: 'model', model: event.modelId, switchedFrom: event.switchedFrom }
             } else {
                 if (text.length > 0)
-                    await saveReply(user, conversationId, model, text, event.usage, ports)
+                    await saveReply(user, conversationId, answeredBy, text, event.usage, ports)
                 yield { type: 'done' }
                 return
             }

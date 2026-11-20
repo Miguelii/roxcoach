@@ -134,6 +134,7 @@ export const makeStore = (options: { timezone?: string; tools?: CoachTool[] } = 
                     id: stored.id,
                     role: stored.role,
                     content: stored.content,
+                    model: stored.model,
                     createdAt: stored.createdAt,
                 }
             }),
@@ -146,6 +147,7 @@ export const makeStore = (options: { timezone?: string; tools?: CoachTool[] } = 
                         id: m.id,
                         role: m.role,
                         content: m.content,
+                        model: m.model,
                         createdAt: m.createdAt,
                     }))
             ),

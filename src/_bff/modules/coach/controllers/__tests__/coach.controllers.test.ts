@@ -57,7 +57,13 @@ describe('coach controllers', () => {
 
     it('list, get and delete call their services with the user and return the result', async () => {
         const conversation = { id: ID, title: 'Hi', updatedAt: '2026-11-20T10:00:00Z' }
-        const message = { id: 'm1', role: 'user', content: 'a', createdAt: '2026-11-20T10:00:00Z' }
+        const message = {
+            id: 'm1',
+            role: 'user',
+            content: 'a',
+            model: null,
+            createdAt: '2026-11-20T10:00:00Z',
+        }
         mocks.listConversations.mockReturnValue(Effect.succeed([conversation]))
         mocks.getConversationMessages.mockReturnValue(Effect.succeed([message]))
         mocks.deleteConversation.mockReturnValue(Effect.succeed({ id: ID }))

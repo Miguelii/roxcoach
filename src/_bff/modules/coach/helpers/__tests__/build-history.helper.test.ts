@@ -7,6 +7,7 @@ const msg = (index: number, role: MessageDTO['role'], content = `m${index}`): Me
     id: `id-${index}`,
     role,
     content,
+    model: null,
     createdAt: `2026-11-20T10:${String(index % 60).padStart(2, '0')}:00Z`,
 })
 

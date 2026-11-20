@@ -194,11 +194,13 @@ written.
   endpoints reject a history that starts with a model turn). Consecutive user turns (an earlier
   attempt that got no reply) are merged into one turn joined by a blank line.
 - **Stream.** `application/x-ndjson; charset=utf-8`, `Cache-Control: no-store`, one JSON event per
-  line: `{"type":"meta","conversationId":"..."}` first, then `{"type":"text","delta":"..."}` events,
-  then exactly one of `{"type":"done"}` or `{"type":"error","kind":"rate_limited"|"unavailable"|"blocked"}`.
+  line: `{"type":"meta","conversationId":"..."}` first, then, when the provider emits it,
+  `{"type":"model","model":"...","switchedFrom":"..."|null}` (the model that answers, sent right
+  before its first text; `switchedFrom` names the model it replaced, else null), then
+  `{"type":"text","delta":"..."}` events, then exactly one of `{"type":"done"}` or `{"type":"error","kind":"rate_limited"|"unavailable"|"blocked"}`.
   The daily cap is a pre-stream 429, not a stream event. A defect inside the stream becomes an
   `unavailable` error event.
-- **Saving the reply.** The assistant message (text, model id, token counts) is saved only on
+- **Saving the reply.** The assistant message (text, the id of the model that answered, token counts; the last `model` event of the reply, else the provider's own id) is saved only on
   `done` with non-empty text and a request that was not aborted. If that save fails it is logged
   (tag and error hash) and `done` is still emitted, since the athlete already saw the reply. A
   cancelled body aborts the model signal and no assistant message is saved.
@@ -236,7 +238,9 @@ Besides the streaming route, the `coach` router has `listConversations` (latest 
 `getConversationMessages` (`{ conversationId }`, the latest 200 messages, oldest first) and
 `deleteConversation` (`{ conversationId }`, hard delete, the messages go with it by cascade). A
 conversation that is missing or not the athlete's is `NOT_FOUND`. There is no limit on stored
-conversations.
+conversations. Each message is a `MessageDTO` `{ id, role, content, model, createdAt }`; `model` is
+the id of the model that wrote an assistant reply and null for user messages and for rows saved
+before it was read.
 
 ## Limits and failures
 

@@ -22,6 +22,8 @@ export type MessageDTO = {
     id: string
     role: MessageRole
     content: string
+    // The model that wrote an assistant reply. Null for user messages and for replies saved before the column was read.
+    model: string | null
     createdAt: string
 }
 

@@ -21,10 +21,11 @@ const OTHER_ID = '22222222-2222-4222-8222-222222222222'
 const DENIED = { data: null, error: { code: '42501', message: 'denied' } }
 
 const CONVERSATION_ROW = { id: ID, title: 'Hello', updated_at: '2026-11-20T10:00:00Z' }
-const message = (id: string, createdAt: string, role = 'user') => ({
+const message = (id: string, createdAt: string, role = 'user', model: string | null = null) => ({
     id,
     role,
     content: `text ${id}`,
+    model,
     created_at: createdAt,
 })
 
@@ -182,6 +183,7 @@ describe('coach messages repository', () => {
             id: 'm1',
             role: 'user',
             content: 'text m1',
+            model: null,
             createdAt: '2026-11-20T10:01:00Z',
         })
         const [call] = calls
@@ -190,6 +192,18 @@ describe('coach messages repository', () => {
         expect(filterValue(call!, 'user_id')).toBe('user-1')
         expect(has(call!, 'order:created_at:desc')).toBe(true)
         expect(filterValue(call!, 'limit')).toBe(200)
+    })
+
+    it('selectLatestMessages selects the model column and maps it, null for old rows', async () => {
+        const rows = [
+            message('m2', '2026-11-20T10:02:00Z', 'assistant', 'gemini-b'),
+            message('m1', '2026-11-20T10:01:00Z', 'assistant'),
+        ]
+        const { supabase } = makeFakeAdminDb(() => ok(rows))
+
+        const out = await Effect.runPromise(selectLatestMessages(supabase, 'user-1', ID, 200))
+
+        expect(out.map((row) => row.model)).toEqual([null, 'gemini-b'])
     })
 
     it('selectLatestMessages is empty for another athlete conversation id', async () => {
