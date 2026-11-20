@@ -7,14 +7,17 @@ import {
     formatKm,
     formatPace,
 } from '@/_bff/core/utils/formatters.utils'
-import type { ActivityDTO, LapDTO } from '@/_bff/modules/training/types'
-import { activityDurationS } from '@/modules/calendar/activity-time'
+import type { ActivityDTO, LapDTO, StrengthSetDTO } from '@/_bff/modules/training/types'
+import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
+import { cn } from '@/lib/utils'
+import { StrengthExercises } from '@/modules/activity/strength-exercises'
 
 type Props = {
     activity: ActivityDTO
     laps: LapDTO[]
+    strengthSets: StrengthSetDTO[]
 }
 
 type Metric = {
@@ -24,23 +27,67 @@ type Metric = {
 }
 
 const DASH = '-'
+const STRENGTH_NUMBER_FORMATTER = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+})
 
 // Prefers the stored speed, else derives it from distance and time.
 const paceOf = (speed: number | null, distanceM: number | null, timeS: number | null) =>
     formatPace(speed ?? (distanceM && timeS ? distanceM / timeS : null))
 
-export function ActivityView({ activity, laps }: Props) {
+function calculateTotalVolumeKgReps(sets: StrengthSetDTO[]): number | null {
+    if (sets.length === 0) return null
+
+    let total = 0
+    for (const set of sets) {
+        if (set.reps === null || set.loadKg === null) return null
+        total += set.reps * set.loadKg
+    }
+    return total
+}
+
+const formatStrengthNumber = (value: number) => STRENGTH_NUMBER_FORMATTER.format(value)
+
+export function ActivityView({ activity, laps, strengthSets }: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
+    const isStrengthActivity = activity.category === 'strength'
+    const totalVolumeKgReps =
+        activity.lyftaTotalVolumeKgReps ?? calculateTotalVolumeKgReps(strengthSets)
 
     const metrics: Metric[] = [
-        { id: 'time', label: 'Time', value: formatDuration(timeS) },
-        { id: 'distance', label: 'Distance', value: formatKm(activity.distanceM) },
         {
-            id: 'pace',
-            label: 'Avg pace',
-            value: paceOf(activity.avgSpeedMps, activity.distanceM, timeS),
+            id: 'time',
+            label: isStrengthActivity ? 'Duration' : 'Time',
+            value: formatDuration(timeS),
         },
+        ...(isStrengthActivity
+            ? [
+                  {
+                      id: 'volume',
+                      label: 'Total volume',
+                      value:
+                          totalVolumeKgReps === null
+                              ? null
+                              : `${formatStrengthNumber(totalVolumeKgReps)} kg x reps`,
+                  },
+                  {
+                      id: 'body-weight',
+                      label: 'Body weight',
+                      value:
+                          activity.bodyWeightKg === null
+                              ? null
+                              : `${formatStrengthNumber(activity.bodyWeightKg)} kg`,
+                  },
+              ]
+            : [
+                  { id: 'distance', label: 'Distance', value: formatKm(activity.distanceM) },
+                  {
+                      id: 'pace',
+                      label: 'Avg pace',
+                      value: paceOf(activity.avgSpeedMps, activity.distanceM, timeS),
+                  },
+              ]),
         {
             id: 'avg-hr',
             label: 'Avg heart rate',
@@ -62,7 +109,8 @@ export function ActivityView({ activity, laps }: Props) {
     return (
         <>
             <Link
-                href="/dashboard"
+                href="/calendar"
+                data-testid="activity-back-to-calendar"
                 className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
                 <IconArrowLeft className="size-4" /> Back to calendar
@@ -84,17 +132,28 @@ export function ActivityView({ activity, laps }: Props) {
 
             <dl
                 data-testid="activity-metrics"
-                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+                className={cn(
+                    'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5',
+                    isStrengthActivity &&
+                        'gap-x-6 gap-y-4 border-y border-hairline py-4 sm:grid-cols-3'
+                )}
             >
                 {present.map((metric) => (
                     <div
                         key={metric.id}
-                        className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4"
+                        className={cn(
+                            'rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4',
+                            isStrengthActivity && 'rounded-none border-0 bg-transparent p-0'
+                        )}
                     >
                         <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
                         <dd
                             data-testid={`metric-${metric.id}-value`}
-                            className="display mt-1 text-2xl"
+                            className={cn(
+                                isStrengthActivity
+                                    ? 'mt-1 font-mono text-lg'
+                                    : 'display mt-1 text-2xl'
+                            )}
                         >
                             {metric.value}
                         </dd>
@@ -166,6 +225,61 @@ export function ActivityView({ activity, laps }: Props) {
                         </table>
                     </div>
                 </section>
+            )}
+
+            {isStrengthActivity ? (
+                <StrengthExercises strengthSets={strengthSets} />
+            ) : (
+                strengthSets.length > 0 && (
+                    <section aria-label="Strength sets" className="space-y-3">
+                        <h2 className="display text-3xl">Strength sets</h2>
+                        <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card">
+                            <table data-testid="strength-sets-table" className="w-full text-sm">
+                                <thead className="eyebrow text-left text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-2">Exercise</th>
+                                        <th className="px-4 py-2">Set</th>
+                                        <th className="px-4 py-2">Reps</th>
+                                        <th className="px-4 py-2">Load</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="font-mono">
+                                    {strengthSets.map((set, index) => (
+                                        <tr
+                                            key={`${set.exercise}-${set.setIndex}-${index}`}
+                                            className="border-t border-hairline"
+                                        >
+                                            <td
+                                                data-testid={`strength-set-${index + 1}-exercise`}
+                                                className="px-4 py-2 font-sans"
+                                            >
+                                                {set.exercise}
+                                            </td>
+                                            <td
+                                                data-testid={`strength-set-${index + 1}-index`}
+                                                className="px-4 py-2"
+                                            >
+                                                {set.setIndex}
+                                            </td>
+                                            <td
+                                                data-testid={`strength-set-${index + 1}-reps`}
+                                                className="px-4 py-2"
+                                            >
+                                                {set.reps ?? DASH}
+                                            </td>
+                                            <td
+                                                data-testid={`strength-set-${index + 1}-load`}
+                                                className="px-4 py-2"
+                                            >
+                                                {set.loadKg === null ? DASH : `${set.loadKg} kg`}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )
             )}
         </>
     )

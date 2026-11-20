@@ -69,6 +69,10 @@ export const makeFakeAdminDb = (handler: (call: Call) => QueryResult | Error) =>
                 return chain
             }),
             is: filter,
+            or: vi.fn((expression: string) => {
+                call.filters.push(['or', expression])
+                return chain
+            }),
             neq: vi.fn((column: string, value: Json) => {
                 call.filters.push([`${column}:neq`, value])
                 return chain
@@ -81,8 +85,17 @@ export const makeFakeAdminDb = (handler: (call: Call) => QueryResult | Error) =>
                 call.filters.push([`${column}:lte`, value])
                 return chain
             }),
-            order: vi.fn((column: string) => {
+            order: vi.fn((column: string, options?: { ascending?: boolean }) => {
                 call.filters.push([`order:${column}`, true])
+                if (options?.ascending === false) call.filters.push([`order:${column}:desc`, true])
+                return chain
+            }),
+            limit: vi.fn((count: number) => {
+                call.filters.push(['limit', count])
+                return chain
+            }),
+            lt: vi.fn((column: string, value: Json) => {
+                call.filters.push([`${column}:lt`, value])
                 return chain
             }),
             not: vi.fn((column: string, operator: string, value: Json) => {

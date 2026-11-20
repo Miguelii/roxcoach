@@ -15,6 +15,8 @@ export const DB_ROW = {
     max_hr: null,
     avg_speed_mps: 3.33,
     calories: null,
+    body_weight_kg: null,
+    lyfta_total_volume_kg_reps: null,
     perceived_effort: null,
     notes: null,
 }
@@ -34,6 +36,8 @@ export const DTO = {
     maxHr: null,
     avgSpeedMps: 3.33,
     calories: null,
+    bodyWeightKg: null,
+    lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
 }

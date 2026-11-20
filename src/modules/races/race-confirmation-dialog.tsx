@@ -50,7 +50,7 @@ export function RaceConfirmationDialog({ race, action, open, onOpenChange, onCon
                 role="alertdialog"
                 showCloseButton={!submitting}
                 data-testid={`race-confirm-dialog-${race.id}`}
-                className="sm:max-w-md"
+                className="md:max-w-md"
             >
                 <DialogHeader>
                     <DialogTitle>
@@ -58,7 +58,7 @@ export function RaceConfirmationDialog({ race, action, open, onOpenChange, onCon
                     </DialogTitle>
                     <DialogDescription>
                         {deleting
-                            ? 'This permanently removes the race. Planned sessions linked to it will remain, but will no longer be linked to this race.'
+                            ? 'This permanently removes the race. Your coach will no longer see it. This cannot be undone.'
                             : 'This moves the race to your history. It will not be deleted.'}
                     </DialogDescription>
                 </DialogHeader>

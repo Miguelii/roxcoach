@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
@@ -25,7 +24,6 @@ const quiet = (promise: Promise<void>) =>
 // Thin wrapper: runs each mutation, toasts and refreshes the server data. Covered through
 // RacesList; it only wires trpc.
 export function RacesManager({ races, today, defaultDivision }: Props) {
-    const router = useRouter()
     const utils = trpcClient.useUtils()
     const create = trpcClient.races.create.useMutation()
     const update = trpcClient.races.update.useMutation()
@@ -43,7 +41,6 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
             notifySuccess: (message) => toast.success(message),
             notifyFailure: (message) => toast.error(message),
             onChanged: () => {
-                router.refresh()
                 void utils.training.getCalendar.invalidate()
                 void utils.races.list.invalidate()
             },

@@ -20,9 +20,12 @@ window. So the schema is exposed only at the end.
 
 3. Open the SQL editor and run each file that is not listed yet, one at a time, in filename order
    (`0001_schema_and_enums.sql`, `0002_athlete_and_races.sql`, `0003_strava.sql`,
-   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`, `0008_activity_files.sql`, then later files). Paste the
-   whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its last
-   statement.
+   `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`,
+   `0008_activity_files.sql`, `0009_coach_chat.sql`, `0010_lyfta.sql`,
+   `0011_lyfta_progress_metrics.sql`, `0012_strength_exercise_order.sql`,
+   `0013_strength_exercise_images.sql`, `0014_coach_usage.sql`, then later files). Paste
+   the whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its
+   last statement.
 4. Run the files as the default `postgres` role of the SQL editor. `0001` sets default privileges
    `for role postgres`, so they apply only to tables that role creates.
 5. Run the verification queries of the rollout checklist ("After the last file"). Only when they
@@ -75,8 +78,10 @@ Human checks, in order. Tick them off as you go; none of them is automated.
         (select count(*) from roxcoach.activity_laps) as activity_laps,
         (select count(*) from roxcoach.station_results) as station_results,
         (select count(*) from roxcoach.strength_sets) as strength_sets,
-        (select count(*) from roxcoach.weekly_reports) as weekly_reports,
-        (select count(*) from roxcoach.planned_sessions) as planned_sessions;
+        (select count(*) from roxcoach.activity_files) as activity_files,
+        (select count(*) from roxcoach.coach_conversations) as coach_conversations,
+        (select count(*) from roxcoach.coach_messages) as coach_messages,
+        (select count(*) from roxcoach.lyfta_connections) as lyfta_connections;
     ```
 
 - [ ] Grants and RLS. Run these four queries:
@@ -90,7 +95,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     -- 2. No privilege for authenticated on the service-only tables: must return no rows.
     select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'roxcoach'
-      and c.relname in ('schema_migrations')
+      and c.relname in ('schema_migrations', 'lyfta_connections')
       and has_table_privilege('authenticated', c.oid, 'select, insert, update, delete, truncate, references, trigger');
 
     -- 3. anon has no usage on the schema: must return false.
@@ -102,7 +107,7 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     ```
 
 - [ ] Before applying `0008`: `select id, public from storage.buckets where id = 'activity-files';` returns no rows (the migration fails loudly otherwise), and the output of `select policyname, cmd, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects';` is reviewed: permissive policies of the other app with no `bucket_id` filter would also grant access to this bucket.
-- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0008`.
+- [ ] `select filename from roxcoach.schema_migrations order by filename;` lists `0001` to `0014`.
 
 ### Exposing the schema
 
@@ -150,6 +155,12 @@ only the service role (which bypasses RLS) touches them.
 `0008_activity_files.sql` adds the table `activity_files` (same owner policies) and the private Storage
 bucket `activity-files` with select, insert and delete policies on `storage.objects`, scoped to that
 bucket and to the caller's own folder.
+
+`0009_coach_chat.sql` drops `planned_sessions`, `weekly_reports` and the enum types `report_status` and
+`planned_session_status`, and adds `coach_conversations` and `coach_messages` (same owner policies).
+
+`0010_lyfta.sql` adds the `lyfta` activity source, provider source IDs and the service-only
+`lyfta_connections` table. It enables RLS with no authenticated policies or table privileges.
 
 ## Granting access to a user
 

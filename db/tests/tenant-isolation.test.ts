@@ -14,7 +14,7 @@ type NameRow = { name: string }
 type StaleRow = { stale: boolean }
 
 // RLS on, no policies, no privileges for authenticated: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
 const INSUFFICIENT_PRIVILEGE = '42501'
 const FOREIGN_KEY_VIOLATION = '23503'
@@ -43,10 +43,13 @@ async function countOwnedEverywhere(userId: string): Promise<number[]> {
 }
 
 // True when none of the user's rows in the table was ever updated (the trigger moves updated_at).
+// Tables without an updated_at column (coach_messages is append-only) count as untouched.
 async function untouched(table: string, userId: string): Promise<boolean> {
     await testDb.asService()
     const result = await testDb.db.query<StaleRow>(
-        `select bool_and(updated_at = created_at) as stale from roxcoach.${table} where user_id = $1`,
+        `select coalesce(bool_and(coalesce(t.updated_at, t.created_at) = t.created_at), true) as stale
+         from (select to_jsonb(r) ->> 'updated_at' as updated_at, to_jsonb(r) ->> 'created_at' as created_at
+               from roxcoach.${table} r where user_id = $1) t`,
         [userId]
     )
     return result.rows[0].stale
@@ -175,9 +178,7 @@ describe('a user with access (A)', () => {
         ['activity_files', 'activity_files_activity_id_user_id_fkey', 'activityId'],
         ['station_results', 'station_results_activity_id_user_id_fkey', 'activityId'],
         ['strength_sets', 'strength_sets_activity_id_user_id_fkey', 'activityId'],
-        ['planned_sessions', 'planned_sessions_report_id_user_id_fkey', 'reportId'],
-        ['planned_sessions', 'planned_sessions_race_id_user_id_fkey', 'raceId'],
-        ['planned_sessions', 'planned_sessions_matched_activity_id_user_id_fkey', 'activityId'],
+        ['coach_messages', 'coach_messages_conversation_id_user_id_fkey', 'conversationId'],
     ] as const)('cannot attach a %s row to a B parent (%s)', async (table, constraint, parent) => {
         // A's own user_id passes the policy: only the one parent id points at B.
         const graph: UserGraph = { ...userA, [parent]: userB[parent] }

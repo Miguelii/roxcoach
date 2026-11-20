@@ -28,6 +28,8 @@ const DB_ROW = {
     max_hr: null,
     avg_speed_mps: null,
     calories: null,
+    body_weight_kg: null,
+    lyfta_total_volume_kg_reps: null,
     perceived_effort: null,
     notes: null,
 }

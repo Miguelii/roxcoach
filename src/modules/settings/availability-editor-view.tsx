@@ -161,6 +161,7 @@ export function AvailabilityEditorView({ slots, onChange, onSave, saving }: Prop
                     {hours === null ? '' : `, up to ${hours} h`}
                 </p>
                 <Button
+                    className="w-full md:max-w-37.5"
                     type="button"
                     data-testid="availability-save"
                     disabled={saving}

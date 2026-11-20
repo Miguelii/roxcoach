@@ -12,8 +12,8 @@ repositories on top of Supabase.
 | Language          | TypeScript, all code and identifiers in English                              |
 | Backend style     | tRPC controllers, Effect v4 services, Supabase repositories                  |
 | Database and auth | Supabase, an existing project shared with another app, own schema `roxcoach` |
-| Background work   | Trigger.dev v4                                                               |
-| AI                | AI SDK with `@ai-sdk/anthropic`                                              |
+| Background work   | None (no job runner)                                                         |
+| AI                | AI SDK with `@ai-sdk/google` (Gemini), added with the coach chat             |
 | UI                | Tailwind v4, shadcn on `base-ui` (never Radix), nuqs for URL-backed UI state |
 | Env               | `@t3-oss/env-nextjs` in `src/env/server.ts` and `src/env/client.ts`          |
 | Tooling           | pnpm, vite-plus (`vp lint`, `vp fmt`, `vp test`), knip, husky, anti-slop     |
@@ -32,7 +32,6 @@ src/
       services/<name>.service.ts
       repositories/<table>.repository.ts
       processors/<name>.processor.ts
-      jobs/<name>.job.ts
       helpers/<name>.helper.ts
       constants/index.ts
       types/index.ts
@@ -57,11 +56,10 @@ are all server-side).
 | `athlete`  | Profile and weekly availability                                                                    | [athlete-races.md](athlete-races.md)   |
 | `races`    | Races and goals                                                                                    | [athlete-races.md](athlete-races.md)   |
 | `training` | Activities, laps, manual sessions, calendar feed, file upload (`upload-activity` service, parsers) | [manual-logging.md](manual-logging.md) |
-| `plan`     | Planned sessions and activity matching                                                             | [plan.md](plan.md)                     |
-| `coach`    | Weekly report: context, memory, prompt, generation                                                 | [coach.md](coach.md)                   |
+| `lyfta`    | Lyfta API key connection and manual workout import into `training`                                 | [lyfta.md](lyfta.md)                   |
+| `coach`    | Chat with the AI coach: context block, read-only tools, Gemini provider, conversations             | [coach-chat.md](coach-chat.md)         |
 
-Dependency direction: controller to service to (repository | processor | helper). Jobs call the
-services or processors of their own module. Cross-module runtime imports only through `services/`
+Dependency direction: controller to service to (repository | processor | helper). Cross-module runtime imports only through `services/`
 or `processors/`, never another module's controller or repository. A type-only import between
 modules is allowed for shared DTOs (`training` imports `RaceDTO` from `races/types` to build
 `RaceSummaryDTO`).
@@ -70,7 +68,11 @@ As built: `athlete` has the profile and availability controllers, services, vali
 two repositories, plus `getAthleteTimezone`, which `races` calls through its service. `races` has
 list, create, update, complete, cancel and delete controllers, the matching services, a
 `listRacesInRange` service used by the `training` calendar feed, one repository and a validation
-helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
+helper. Rules and file lists are in [athlete-races.md](athlete-races.md). `coach` reads the other
+modules only through their services (`getProfile`, `getAvailability`, `getAthleteTimezone`,
+`listRaces`, `getCalendar`, `getActivity`); the week totals and load ratio it shares with the
+dashboard summary and calendar page live in `src/_bff/core/utils/week-stats.utils.ts` and
+`week-dates.utils.ts`.
 
 ## Layer rules
 
@@ -81,8 +83,8 @@ helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
   client and passes it to repositories. Chooses the publishable key or the service-role key.
 - **Repository**: exported `Effect.fn` functions, one file per table. First parameters are
   `supabase: SupabaseClient` and `userId: string`. **Every query filters by `user_id` and every
-  insert sets it**, even when RLS would also enforce it, because jobs run with the
-  service-role client, which bypasses RLS (see [database.md](database.md)). Every query checks
+  insert sets it**, even when RLS would also enforce it, because a service-role client
+  bypasses RLS (see [database.md](database.md)). Every query checks
   both the `Effect.tryPromise` catch and the returned `error`.
 - **Errors**: `Data.TaggedError` classes in `src/_bff/lib/errors.ts`, each with
   `cause: unknown` and `error_hash: ErrorCode`. Codes live in `src/_bff/lib/error-codes.ts`.
@@ -93,57 +95,47 @@ helper. Rules and file lists are in [athlete-races.md](athlete-races.md).
 
 ## tRPC namespaces
 
-Built today: `auth`, `athlete`, `races`, `training` (composed in `src/_bff/trpc/router.ts`).
-`plan` and `coach` arrive with their plans. Example client call:
+`auth`, `athlete`, `races`, `training`, `lyfta` and `coach` (composed in
+`src/_bff/trpc/router.ts`). The `lyfta` namespace handles connection status, credential
+management and manual workout sync (see [lyfta.md](lyfta.md)). The `coach` namespace has
+`listConversations`, `getConversationMessages` and `deleteConversation`; the chat itself is a route
+handler (below). Example client call:
 `trpcClient.races.create.useMutation()`. Server Components use the server-side caller
 (`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
 `appRouter.createCaller`.
 
 ## Non-tRPC entry points
 
-| Route                                      | Purpose                                                                                   |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `src/app/api/cron/weekly-reports/route.ts` | called by `pg_cron`, fans out one report job per user (planned, not built yet)            |
-| `src/app/api/activities/upload/route.ts`   | multipart activity upload, authenticates itself, delegates to the training upload service |
+| Route                                    | Purpose                                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/app/api/activities/upload/route.ts` | multipart activity upload, authenticates itself, delegates to the training upload service |
+| `src/app/api/coach/chat/route.ts`        | streaming coach chat (NDJSON), authenticates itself, delegates to the coach chat handler  |
 
-These are plain route handlers: `pg_cron` calls the first, and tRPC does not carry multipart bodies for the second. The proxy matcher excludes `api/`, so each route authenticates itself. See [manual-upload.md](manual-upload.md).
+These are plain route handlers because tRPC carries neither multipart bodies nor a streaming response. The proxy matcher excludes `api/`, so each route authenticates itself. There is no cron route. See [manual-upload.md](manual-upload.md) and [coach-chat.md](coach-chat.md).
 
-## Trigger.dev jobs
+## Background jobs
 
-| Job                      | Module  | Trigger                                                                                |
-| ------------------------ | ------- | -------------------------------------------------------------------------------------- |
-| `generate-weekly-report` | `coach` | `pg_cron` Sunday 20:00 Europe/Lisbon via `/api/cron/weekly-reports`, or "Generate now" |
-
-Jobs run in Trigger.dev's cloud, so they need their own environment variables, set in the
-Trigger.dev dashboard for each environment (dev and prod): `NEXT_SUPABASE_URL`,
-`NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY` (required by `@/env/server` at
-import time through `core/db`). The jobs do not read `NEXT_PUBLIC_WEBSITE_URL`. The app's
-`TRIGGER_SECRET_KEY` is different for the dev and prod Trigger.dev environments.
-
-Every `jobs/` directory is listed in `trigger.config.ts` `dirs` (none exists today, the Strava jobs were removed). The
-Trigger.dev project ref is set directly in `trigger.config.ts`, not read from an environment
-variable, and `build.conditions: ['react-server']` lets the jobs import services that start with
-`import 'server-only'`. Jobs are idempotent: running a
-job twice for the same activity or report week must not duplicate rows.
+There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach runs inside the app
+(see [coach-chat.md](coach-chat.md)).
 
 ## Environment variables
 
-| Name                             | Scope  | Used by                                                    |
-| -------------------------------- | ------ | ---------------------------------------------------------- |
-| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                       |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                       |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | jobs                                                       |
-| `NEXT_ANTHROPIC_AI_KEY`          | server | coach                                                      |
-| `NEXT_CRON_SECRET`               | server | bearer token `pg_cron` sends to `/api/cron/weekly-reports` |
-| `TRIGGER_SECRET_KEY`             | server | Trigger.dev, triggers jobs from the app                    |
-| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                              |
+| Name                             | Scope  | Used by                       |
+| -------------------------------- | ------ | ----------------------------- |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients          |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client          |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                    |
+| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption      |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect |
 
-In `src/env/server.ts` only the three Supabase variables are required. The Anthropic, cron
-and Trigger.dev variables are optional at startup (the features that need them fail with a tagged
-error when they are missing), and an empty value reads as unset (`emptyStringAsUndefined`).
+In `src/env/server.ts` only the three Supabase variables are required. The Gemini
+variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
+`NEXT_LYFTA_ENCRYPTION_KEY` is also optional at startup, but must be a valid base64-encoded
+32-byte key when set. Lyfta connection and sync operations fail explicitly when it is absent.
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
-`http://localhost:3000` when unset or empty. `.env.example` currently lists only
-`NEXT_ANTHROPIC_AI_KEY` and `NEXT_CRON_SECRET`. The repo rule is that `.env.example` lists every
+`http://localhost:3000` when unset or empty. `.env.example` is maintained by the owner and must list the
+Gemini variable names. The repo rule is that `.env.example` lists every
 variable, and the current file does not: the maintainer must reconcile it with the table above.
 
 ## Code placement
@@ -171,7 +163,7 @@ color tokens, no em-dashes, `PageProps<'...'>` and `LayoutProps<'...'>` helpers,
 
 ## Testing
 
-Unit tests with `vp test run` for pure logic: pace and load math, lap-to-station mapping, plan
-periodization helpers, context builders. Services are tested with a fake Supabase client. Smoke
+Unit tests with `vp test run` for pure logic: pace and load math, lap-to-station mapping, the
+coach context builder and tools. Services are tested with a fake Supabase client. Smoke
 tests (Playwright) are added once the login and dashboard exist; read the e2e conventions ported
 from BrewStock first.

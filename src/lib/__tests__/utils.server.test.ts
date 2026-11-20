@@ -71,7 +71,7 @@ describe('sbProxy', () => {
     it('redirects to /login when the flag is not the strict boolean', async () => {
         mockClient({ sub: 'user-1', app_metadata: { roxcoach: 'true' } })
 
-        const response = await sbProxy(request('/coach'))
+        const response = await sbProxy(request('/calendar'))
 
         expect(response.headers.get('location')).toBe('https://roxcoach.test/login')
     })
@@ -103,10 +103,10 @@ describe('sbProxy', () => {
         expect(response.headers.get('x-middleware-next')).toBe('1')
     })
 
-    it('does not treat /plans-extra as protected', async () => {
+    it('does not treat /calendarx as protected', async () => {
         mockClient(null)
 
-        const response = await sbProxy(request('/plans-extra'))
+        const response = await sbProxy(request('/calendarx'))
 
         expect(response.headers.get('location')).toBeNull()
     })

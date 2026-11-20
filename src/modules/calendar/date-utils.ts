@@ -1,23 +1,17 @@
-const DAY_MS = 86_400_000
+import {
+    addDays,
+    DAY_MS,
+    formatIsoDate as format,
+    parseIsoDate as parse,
+    isoWeekday,
+    startOfWeek,
+} from '@/_bff/core/utils/week-dates.utils'
 
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
-
-const parse = (iso: string) => new Date(`${iso}T00:00:00Z`)
-
-const format = (date: Date) => date.toISOString().slice(0, 10)
-
-/** Adds whole days to an ISO date (`YYYY-MM-DD`). */
-export const addDays = (iso: string, days: number) =>
-    format(new Date(parse(iso).getTime() + days * DAY_MS))
 
 /** Whole days from `from` to `to`, negative when `to` is earlier. */
 export const daysBetween = (from: string, to: string) =>
     Math.round((parse(to).getTime() - parse(from).getTime()) / DAY_MS)
-
-/** ISO weekday, 1 = Monday to 7 = Sunday. */
-export const isoWeekday = (iso: string) => parse(iso).getUTCDay() || 7
-
-export const startOfWeek = (iso: string) => addDays(iso, 1 - isoWeekday(iso))
 
 const startOfMonth = (iso: string) => `${iso.slice(0, 7)}-01`
 

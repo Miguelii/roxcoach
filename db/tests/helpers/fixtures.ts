@@ -9,7 +9,7 @@ export type UserGraph = {
     userId: string
     activityId: string
     raceId: string
-    reportId: string
+    conversationId: string
 }
 
 export type Statement = { sql: string; params: unknown[] }
@@ -31,14 +31,6 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         (graph) => ({
             sql: `insert into roxcoach.races (user_id, name, race_type, race_date, distance_m, target_time_s)
                   values ($1, '5k', 'running', current_date + 60, 5000, 1500)`,
-            params: [graph.userId],
-        }),
-    ],
-    [
-        'weekly_reports',
-        (graph) => ({
-            sql: `insert into roxcoach.weekly_reports (user_id, week_start, status, model, prompt_version)
-                  values ($1, '2026-11-23', 'generating', 'test-model', 'v1')`,
             params: [graph.userId],
         }),
     ],
@@ -91,17 +83,39 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
-        'planned_sessions',
+        'coach_conversations',
         (graph) => ({
-            sql: `insert into roxcoach.planned_sessions
-                    (user_id, report_id, race_id, matched_activity_id, planned_date, session_kind, title, description)
-                  values ($1, $2, $3, $4, current_date, 'run', 'Tempo', 'Run 20 minutes at tempo')`,
-            params: [graph.userId, graph.reportId, graph.raceId, graph.activityId],
+            sql: `insert into roxcoach.coach_conversations (user_id, title) values ($1, 'Another chat')`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'coach_messages',
+        (graph) => ({
+            sql: `insert into roxcoach.coach_messages (user_id, conversation_id, role, content)
+                  values ($1, $2, 'user', 'How was my week?')`,
+            params: [graph.userId, graph.conversationId],
+        }),
+    ],
+    [
+        'coach_usage',
+        (graph) => ({
+            sql: `insert into roxcoach.coach_usage (user_id, day, message_count)
+                  values ($1, current_date, 1)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
+        'lyfta_connections',
+        (graph) => ({
+            sql: `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+                  values ($1, 'encrypted-test-fixture')`,
+            params: [graph.userId],
         }),
     ],
 ])
 
-// Seeded after the parents, in this order (planned_sessions needs the report, race and activity).
+// Seeded after the parents, in this order (coach_messages needs the conversation).
 const GRAPH_CHILD_TABLES = [
     'athlete_profiles',
     'availability_slots',
@@ -109,7 +123,9 @@ const GRAPH_CHILD_TABLES = [
     'station_results',
     'strength_sets',
     'activity_files',
-    'planned_sessions',
+    'coach_messages',
+    'coach_usage',
+    'lyfta_connections',
 ]
 
 // Inserts an auth user as the superuser, then hands control back to the service role.
@@ -147,43 +163,37 @@ export async function insertRace(testDb: TestDb, userId: string): Promise<string
     )
 }
 
-export async function insertReport(
-    testDb: TestDb,
-    userId: string,
-    weekStart = '2026-11-16'
-): Promise<string> {
+export async function insertConversation(testDb: TestDb, userId: string): Promise<string> {
     return insertId(
         testDb,
-        `insert into roxcoach.weekly_reports (user_id, week_start, status, model, prompt_version)
-         values ($1, $2, 'generating', 'test-model', 'v1') returning id`,
-        [userId, weekStart]
+        `insert into roxcoach.coach_conversations (user_id, title) values ($1, 'Weekly review')
+         returning id`,
+        [userId]
     )
 }
 
-export async function insertPlannedSession(
+export async function insertMessage(
     testDb: TestDb,
     userId: string,
-    reportId: string,
-    raceId: string | null,
-    activityId: string | null
+    conversationId: string,
+    role = 'user'
 ): Promise<string> {
     return insertId(
         testDb,
-        `insert into roxcoach.planned_sessions
-            (user_id, report_id, race_id, matched_activity_id, planned_date, session_kind, title, description)
-         values ($1, $2, $3, $4, current_date, 'run', 'Tempo', 'Run 20 minutes at tempo') returning id`,
-        [userId, reportId, raceId, activityId]
+        `insert into roxcoach.coach_messages (user_id, conversation_id, role, content)
+         values ($1, $2, $3, 'Hello coach') returning id`,
+        [userId, conversationId, role]
     )
 }
 
-// Inserts the parents (activity, race, report), then one row in every other user-owned table, so
+// Inserts the parents (activity, race, conversation), then one row in every other user-owned table, so
 // the user owns exactly one row per table..
 export async function seedUserGraph(testDb: TestDb, userId: string): Promise<UserGraph> {
     const graph: UserGraph = {
         userId,
         activityId: await insertActivity(testDb, userId),
         raceId: await insertRace(testDb, userId),
-        reportId: await insertReport(testDb, userId),
+        conversationId: await insertConversation(testDb, userId),
     }
     for (const table of GRAPH_CHILD_TABLES) {
         const statement = rowInsert(table, graph)

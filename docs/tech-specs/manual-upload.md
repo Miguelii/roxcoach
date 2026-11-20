@@ -1,11 +1,12 @@
 # Manual upload
 
 The athlete adds an activity by uploading the file exported from Strava (or any device). This
-replaces the removed Strava sync. Status: implemented (migration `0008`, route, service, parsers, dashboard drawer).
+replaces the removed Strava sync. Status: implemented (migration `0008`, route, service, parsers, calendar drawer).
 
 ## Goal and scope
 
-- A button on the dashboard opens an upload drawer. One file per upload: `.fit`, `.tcx` or `.gpx`.
+- An "Upload activity" button on Dashboard and Calendar opens an upload drawer. One file per
+  upload: `.fit`, `.tcx` or `.gpx`.
 - The server validates and parses the file, creates one `activities` row (plus `activity_laps`
   when the file has laps), and stores the original file.
 - Out of scope for v1: bulk upload, `.fit.gz` or `.zip` archives, editing the parsed
@@ -86,14 +87,16 @@ see Known limitations).
 ## Upload drawer
 
 Component `UploadActivityDrawer` in `src/modules/dashboard/upload-activity-drawer.tsx` (rendered by
-`dashboard-content.tsx`). It opens from the right on desktop and from the bottom on mobile, using
+the shared `ActivityActions` component on Dashboard and Calendar). It opens from the right on
+desktop and from the bottom on mobile, using
 the shared `Drawer` default. Its title, close control, scrollable form body, Cancel button and
 Upload action use `DrawerFormLayout`, the same layout as the race form. The form logic lives in
 `use-upload-activity.ts` next to it (react-hook-form, zod schema, `detectHyroxHint`). Test ids:
 `upload-activity-button`, `upload-activity-drawer`, `upload-close`, `upload-cancel`,
 `upload-format-banner`,
 `upload-file-input`, `upload-file-name`, `upload-file-error`, `upload-hyrox-checkbox`,
-`upload-hyrox-label`, `upload-error`, `upload-submit`. Opened by an "Upload activity" button on the dashboard.
+`upload-hyrox-label`, `upload-error`, `upload-submit`. Opened by an "Upload activity" button on
+Dashboard and Calendar.
 
 Contents, top to bottom:
 
@@ -121,8 +124,8 @@ readable. Client-side checks
 
 ## Upload flow
 
-1. The dashboard button "Upload activity" opens a drawer (`src/components/ui/drawer.tsx`). See
-   "Upload drawer" above.
+1. The shared "Upload activity" action on Dashboard or Calendar opens a drawer
+   (`src/components/ui/drawer.tsx`). See "Upload drawer" above.
 2. The browser posts `FormData` to a route handler `src/app/api/activities/upload/route.ts`. tRPC
    does not carry multipart bodies, so this is the one non-tRPC entry point. The handler only
    checks the session and the access flag itself (the proxy matcher excludes `api/`), reads the
@@ -281,7 +284,8 @@ and the original name never reach logs or error payloads.
   failure leaves nothing stored, database failure removes the object.
 - Route handler: unauthenticated, no access flag, missing or oversized content-length, oversized file, error mapping.
 - DB suites (`db/tests`): `activity_files` isolation, composite key, unique `(user_id, sha256)`.
-- UI: drawer opens from the dashboard button, banner text, form states (idle, uploading, error, success), all located by `data-testid`.
+- UI: drawer opens from the Dashboard and Calendar action group, banner text, form states (idle,
+  uploading, error, success), all located by `data-testid`.
 
 ## Open questions
 

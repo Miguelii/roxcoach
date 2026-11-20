@@ -1,6 +1,6 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
-    "entry": ["trigger.config.ts"],
+    "entry": ["tools/gemini-smoke.ts"],
     "tags": ["-lintignore"],
     "ignore": ["src/env/client.ts", "src/components/ui/**", "tools/oxlint/anti-slop/**"]
 }

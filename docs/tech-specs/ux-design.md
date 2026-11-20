@@ -36,8 +36,7 @@ uses `--on-brand`. Never hardcode colors: use semantic tokens (`bg-primary`,
 | Cross-training | slate                          |
 | Race           | amber, always with a flag icon |
 | Rest           | slate-soft, no fill            |
-| Done, on plan  | green                          |
-| Missed         | amber-deep text on amber-soft  |
+| Done           | green                          |
 
 Color is never the only carrier of meaning. Every chip has an icon (Tabler icons, as in BrewStock)
 and a text label.
@@ -49,7 +48,7 @@ coach that respects your time.
 
 1. **Quiet authority.** Hierarchy, spacing and typography carry the design. No decoration.
 2. **One thing at a time.** Each screen has one job.
-3. **Show the work.** Reports name the numbers they are based on. Plans state why.
+3. **Show the work.** Coach answers quote the numbers they are based on.
 4. **Respect the decision.** No gamification: no streaks, no confetti, no badges.
 5. **Honest empty and error states.** Always say what happened and what to do next.
 
@@ -61,24 +60,26 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Layout
 
-- App shell: top bar with the logo, primary nav (Dashboard, Coach, Plan, Races, Settings) and a user menu
-  with logout. On mobile the nav becomes a bottom bar.
+- App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
+  plus an account menu for logout. On mobile use a compact top bar and a floating bottom
+  navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
+  `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
+  filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.
 - Page container: `main-container` (max-w-5xl) for reading pages, `main-container-lg` for the
-  dashboard calendar.
+  dashboard and calendar.
 - Light and dark themes through `next-themes`, as in BrewStock.
 - Mobile first: the athlete will mostly check this on a phone.
 
 ## Screens
 
-| Route              | Access    | Job                                            |
-| ------------------ | --------- | ---------------------------------------------- |
-| `/login`           | public    | sign in                                        |
-| `/dashboard`       | protected | the calendar and this week at a glance         |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results    |
-| `/coach`           | protected | the weekly reports and the coach's memory      |
-| `/plan`            | protected | next sessions and the outlook toward each race |
-| `/races`           | protected | list, create, edit races and goals             |
-| `/settings`        | protected | profile, weekly availability                   |
+| Route              | Access    | Job                                                            |
+| ------------------ | --------- | -------------------------------------------------------------- |
+| `/login`           | public    | sign in                                                        |
+| `/dashboard`       | protected | training progress overview                                     |
+| `/calendar`        | protected | activity and race calendar, activity upload                    |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
+| `/races`           | protected | list, create, edit races and goals                             |
+| `/settings`        | protected | profile, weekly availability, Lyfta connection and manual sync |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -90,97 +91,104 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 ### Dashboard
 
-Current state (plan 2): the mocks are gone. The dashboard shows only real data: the week strip
-(time, sessions, run km and load ratio from the last 35 days of activities, zeros and
-"No history yet" without activities, activities only), the calendar (activities plus upcoming and
-completed races, never cancelled; the week strip and week totals count activities only) and the
-`NextRace` card (see below). The "Latest report", "Log session"
-and "Add details" items below return with the plans that own them. `/plan` and `/coach` render a "coming soon" page
-until their backend ships; `/races` is live (see Races below); `/settings` holds the profile and availability tabs. "Today" comes
-from `athlete.getTimezone` (`todayIn(timezone)`), never from the browser clock.
+The dashboard is focused on training progress, not the calendar. It currently shows the real-data
+weekly summary: time, sessions, run km and the acute:chronic load ratio from the last 35 days of
+activities, with zeros and "No history yet" when there is no history. Charts and deeper progress
+trends are a follow-up. "Today" comes from `athlete.getTimezone` (`todayIn(timezone)`), never from
+the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
+and manual Lyfta sync.
 
-The dashboard header has an "Upload activity" button (`UploadActivityDrawer`, `src/modules/dashboard/`)
-that opens a right-hand drawer: an informational banner on accepted formats, a file input, a
-"This is a Hyrox session" checkbox (hidden for GPX) and an Upload button. States are idle,
-uploading, error (message inside the drawer) and success (drawer closes, "Activity uploaded" toast,
-data refreshes). Full contract in [manual-upload.md](manual-upload.md). Components in
-`dashboard/`: `dashboard-content`, `week-strip`, `week-strip-view`, `upload-activity-drawer`,
-`use-upload-activity`, `next-race` and `next-race-view`.
+The dashboard loads its timezone and 35-day summary through tRPC client queries. React Query
+retains the summary while navigating between routes and revalidates it after 30 seconds. Uploads
+invalidate the calendar query, which refreshes both the calendar and summary. The client query
+cache is cleared on logout.
 
-Target design, top to bottom:
+### Calendar
 
-1. **This week strip**: planned versus done sessions, total minutes versus the plan, acute:chronic
-   ratio with a plain-language label (for example "Balanced", "Ramping fast").
-2. **Next race** (`NextRace` client query with `NextRaceView` for the markup):
-   the next upcoming race (date today or later) as an amber card with a flag icon: name, date, days
-   to go, goal time and priority (for example "A: Target race"), linking to `/races`. Hidden when
-   there is no upcoming race. The planned-session half of "Next up" returns with plan 5.
-3. **Calendar** (the main element), month view on desktop:
-    - Each day cell shows up to 3 chips: completed activities (filled, with duration) and races
-      (amber tone, flag icon, name and priority letter, linking to `/races`). Races never appear
-      when cancelled and are ignored by the week totals,
-      the load ratio and the week strip. Planned sessions (outlined) return with plan 5. A "+N"
-      overflow opens the day.
-    - Today is outlined with the ink token. Past planned sessions with no match show as missed.
-    - Navigation: previous, next, today, and a month and week toggle. The dashboard URL stores
-      the calendar cursor date (`date`) and selected view (`view`) with nuqs, so a refresh restores
-      the same month or week. Mobile always renders the week agenda, regardless of the stored view.
-    - Selecting a day opens a side panel (a bottom sheet on mobile) listing everything that day,
-      with a link into each activity. A race shows as an amber card (flag, "Race", priority, name,
-      "Goal h:mm:ss") linking to `/races`.
-    - Mobile defaults to a week agenda: one row per day, same chips, horizontally compact.
-4. **Latest report** card under the calendar: the headline of the last weekly report, its week, a
-   link to `/coach` and when the next one arrives (Sunday 20:00).
+The `/calendar` page owns the activity calendar. Dashboard and Calendar share an action group with
+"Upload activity" and "Sync Lyfta". Upload opens the existing drawer with its idle, uploading,
+error and success states; Lyfta sync is manual and uses the connection and feedback behavior in
+[lyfta.md](lyfta.md). See [manual-upload.md](manual-upload.md) for upload details.
 
-The calendar is fed by `training.getCalendar({ from, to })`, a single query. Target state: it
-returns activities and races for the visible range, typed as a discriminated union on `type`
-(`activity`, `race`; the race member carries a `RaceSummaryDTO`), merged and ordered by date. Races
-come from `listRacesInRange` (upcoming and completed, never cancelled). Every switch on `type` is
-exhaustive (`Match.exhaustive`). A `planned` member arrives with plan 5. After a races mutation the
-Races page invalidates `training.getCalendar` and `races.list` (`runRaceAction` with an injected
-`onChanged`), since `router.refresh()` does not reach client queries.
+The calendar is fed by `training.getCalendar({ from, to })`, a single query, returning activities
+and upcoming or completed races for the visible range, never cancelled races. Items are typed as a
+discriminated union on `type` (`activity`, `race`; the race member carries a `RaceSummaryDTO`),
+merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaustive`).
 
-The dashboard loads its timezone, 35-day week strip, upcoming races and calendar through tRPC
-client queries. React Query retains their results while navigating between routes and revalidates
-them after 30 seconds; uploads and race or profile mutations invalidate the relevant queries.
-Cached results render immediately on return while stale results refresh in the background. The
-client query cache is cleared on logout.
+- Desktop defaults to a month grid; mobile always shows a week agenda.
+- Navigation supports previous, next, Today, and a month/week toggle. The URL stores the cursor
+  date (`date`) and selected view (`view`) with nuqs, so refresh restores the same calendar view.
+- Each day shows up to three activity or race chips. A "+N" overflow opens the day panel. Races
+  link to `/races` and do not count as training activity or load.
+- Selecting a day opens a side panel, or a bottom sheet on mobile, with links to its activities.
+- The calendar page uses the athlete timezone from `athlete.getTimezone`, never the browser clock.
+- After a race mutation, the Races page invalidates `training.getCalendar` and `races.list`
+  (`runRaceAction` with an injected `onChanged`), since `router.refresh()` does not reach client
+  queries.
 
 ### Activity detail
 
-- Header: name, date, category chip.
+- Header: name, date, category chip. The document title uses the activity name, followed by the
+  root title template (`| Roxcoach`).
 - Key numbers: distance, time, average pace, average and max heart rate, effort.
 - Laps table with pace per lap and station tags (Hyrox).
-- Station results and strength sets when present, plus "Add details" (see
+- Strength activities show duration, total volume and body weight when available. Lyfta's total
+  volume is preferred; otherwise it is calculated only when every set has reps and load. Exercise
+  groups follow the stored workout order and show the name with Lyfta's optional image. Sets appear
+  in set order as a numbered list with reps, load in kg and RIR when any set has it. Do not show
+  rest timers. Legacy sets without exercise order fall back to exercise name; missing images or
+  values remain honest. An activity without sets gets an empty state.
+- Station results and other activity details when present, plus "Add details" (see
   [manual-logging.md](manual-logging.md)).
 
-### Coach
+### Coach chat
 
-The one place the coach speaks. See [coach.md](coach.md).
+The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a client island
+(`CoachChat`) mounted in the authenticated app layout, available across app pages; there are no
+`/coach` or `/plan` routes.
 
-- **Header**: when the next report arrives ("Sunday 22 Nov, 20:00"), and "Generate now".
-- **Latest report** expanded: headline, week numbers (time, sessions, run km, load), summary,
-  went well, watch out, **follow-ups** (earlier concerns with a status chip: resolved, open,
-  worse), next week focus, a link to the plan, and the goal check when present.
-- **Memory panel**: which previous reports feed the next one (up to 3), shown as small chips with
-  the week and headline. It makes the "remembers 3 weeks" behaviour visible.
-- **Earlier reports**: collapsed list, one entry per week, opening to the same layout.
-- States: no report yet (explains the Sunday schedule), generating (skeleton), failed (what
-  happened and a retry).
-
-### Plan
-
-See [plan.md](plan.md). A header with the latest report headline and a link to `/coach`, the
-current and next week as sections with per-session rows (mark done, skip, move), an "Outlook"
-section with one card per upcoming race, and a note when a race or availability change came after
-the last report.
+- **Launcher**: from `md` up, a bar fixed at the bottom ("Ask your coach...") that opens the panel.
+  On mobile there is no bar: the centered coach button in the bottom nav opens it (the open state
+  is shared through `CoachPanelProvider`).
+  The desktop bar has an X that hides it (with a toast saying where to bring it back). The desktop
+  sidebar has a "Coach" row with a switch that shows or hides the bar. The preference lives in the
+  `coach_enabled` cookie (`"0"` = hidden, written by the client, 1 year) rather than localStorage,
+  so the server layout reads it (`cookies()` inside a `Suspense`, as the app uses
+  `cacheComponents`) and the first paint is already correct, with no flash. It only controls the
+  desktop bar: the mobile nav button always opens the coach. The panel is a full-height container on narrow screens and a fixed bottom-right
+  panel (26rem wide) from the `md` breakpoint (a CSS-only switch, no portal). Escape or the close
+  button returns to the launcher. Focus moves to the input on open.
+- **Header**: the coach title, a conversations menu (new conversation, past conversations with
+  open, delete with an inline "Delete this conversation?" confirmation) and close. The panel opens
+  on the latest conversation once, unless the athlete already started one.
+- **Empty state**: greeting and three chips ("How is my training going?", "Am I on track for my
+  next race?", "What should I do this week?"); a chip sends its text.
+- **Messages**: user text is plain text; assistant text is markdown (`react-markdown`, no raw HTML,
+  no images, links filtered and opened with `noopener`). The list follows new text unless the
+  athlete scrolled up. A screen-reader live region announces the finished reply once, not each delta.
+- **Input**: Enter sends, Shift+Enter adds a line; send is disabled while streaming, where a stop
+  button appears. A hint shows near 2000 characters and sending is blocked above it. No microphone.
+- **Model caption**: a small muted line (`coach-model-caption`) under the message box, inside the
+  panel, naming the model that wrote the latest reply by its friendly name (an unknown id shows
+  the raw id). One line with an ellipsis in the narrow panel. A reopened conversation shows the
+  model of its last assistant message with a stored model; a new conversation, or a history with
+  no stored model, shows nothing. An error keeps the last known caption.
+- **Switch note**: when a reply came from a fallback model, a muted, small, centered line
+  (`coach-model-switch-note`) "<from> is not available right now. Answering with <to>." sits in the message
+  list right before that reply. It is in-session only (not stored, absent in reopened
+  conversations), is not an alert and is not announced by the live region.
+- **States**: empty, loading history (skeleton), streaming, stopped or cut off (partial text kept
+  and labelled "Incomplete reply"), error with retry ("The coach is busy, try again in a minute",
+  retry resends the same text), blocked ("The coach cannot answer that. Try rephrasing."), limit
+  ("You reached today's message limit"), sign-in again (401, 403), not set up (503).
 
 ### Races
 
-`/races` is a server component (`RacesView`, inside `Suspense`) that reads the races, the profile
-division and the athlete timezone through `createCaller()`, then hands them to the thin client
-wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toast and
-`router.refresh()`). `RacesList` renders:
+`/races` loads the races, profile division and athlete timezone through tRPC client queries in
+`RacesView`. Their 30-second stale time lets the shared QueryClient keep data across navigation;
+cached results remain visible during background refetches. Initial loading and query errors have
+their own skeleton and retry state. Mutations in `RacesManager` invalidate `races.list` and
+`training.getCalendar` without refreshing the page. `RacesList` renders:
 
 - A "New race" button (`race-new`) opening `RaceFormDrawer` (create and edit), right-side on
   desktop and a bottom sheet on mobile. Fields: name, type, date (must be after the athlete's
@@ -193,16 +201,18 @@ wrapper `RacesManager` (mutations through `trpcClient.races.*`, a fixed-copy toa
   `formatPace`). Actions: Edit, Complete (`CompleteRaceDialog`: result time with the goal and the
   delta shown while typing), Cancel and Delete. Complete shows a result dialog; Cancel and Delete
   show accessible confirmation dialogs with the race name and consequence. Delete is hidden once a
-  race has a result, and its confirmation explains that deletion is irreversible and linked
-  planned sessions remain without the race association.
+  race has a result, and its confirmation explains that deletion is irreversible and the coach will no longer see the race.
 - A collapsed history (`<details>`) with completed races (result and delta in plain text, for
   example "1:42 slower than goal") and cancelled races (marked Cancelled, Delete only).
-- Empty state: "No races yet. Add one to get a coach plan."
+- Empty state: "No races yet. Add one so your coach knows your goal."
 
 ### Settings
 
-Two tabs (`SettingsTabs`, default Profile), both fed by `trpcClient.athlete.*` through thin wrappers
-(`ProfileTab`, `AvailabilityTab`) with skeletons, an error state with retry, and toasts on save.
+Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
+`trpcClient.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+`trpcClient.lyfta.*` for credential management and manual workout sync. All tabs have loading and
+error states; profile and availability show toasts on save. Lyfta connection and sync states are
+specified in [lyfta.md](lyfta.md).
 
 - **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
   the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
@@ -220,6 +230,8 @@ Reuse shadcn components on base-ui only: Button, Card, Dialog, Sheet, Form, Inpu
 Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (label from
 `SelectValue` children). New project-specific components live in `src/modules/<feature>/`:
 
+Dialogs are centered on desktop and open as bottom sheets on mobile, using the shared `Dialog`
+component. Dialogs inherit this behavior without page-specific positioning.
 The shared `Drawer` component opens from the right on desktop and from the bottom on mobile.
 Feature drawers use this default instead of checking the viewport themselves. An explicit
 direction is available only when a drawer intentionally needs different behavior.
@@ -229,19 +241,18 @@ Cancel plus the primary action in a fixed footer. Footer actions stack verticall
 mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
 layout.
 
-| Component   | Purpose                                    |
-| ----------- | ------------------------------------------ |
-| `calendar/` | month grid, week agenda, day panel, chips  |
-| `activity/` | metrics row, laps table, details dialog    |
-| `coach/`    | report view, follow-up chips, memory panel |
-| `plan/`     | week section, session row                  |
-| `races/`    | race card, race form                       |
-| `settings/` | profile form, availability editor          |
+| Component   | Purpose                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `calendar/` | month grid, week agenda, day panel, chips                    |
+| `activity/` | metrics row, laps table, details dialog                      |
+| `coach/`    | chat panel, history menu, message, chips                     |
+| `races/`    | race card, race form                                         |
+| `settings/` | profile form, availability editor, Lyfta connection and sync |
 
 ## States every screen must handle
 
 Loading (skeletons shaped like the final content), empty (explains why and offers the next
-action, for example "No races yet. Add one to get a plan."), error (what failed, one retry
+action, for example "No races yet. Add one so your coach knows your goal."), error (what failed, one retry
 action) and offline or stale (a muted "Updated 2 hours ago" line where sync matters).
 
 ## Copy rules

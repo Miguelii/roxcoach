@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
 import { DayPanel } from '@/modules/calendar/day-panel'
 import { getItemKey } from '@/modules/calendar/item-key'
-import { computeLoadRatio, computeTotals } from '@/modules/calendar/week-stats'
+import { computeLoadRatio, computeTotals } from '@/_bff/core/utils/week-stats.utils'
 import { makeItem, makeRaceItem } from '@/modules/calendar/__tests__/fixtures'
 
 describe('race calendar items', () => {

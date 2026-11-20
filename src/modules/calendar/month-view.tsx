@@ -3,7 +3,7 @@ import type { CalendarItem } from '@/_bff/modules/training/types'
 import { getItemKey } from '@/modules/calendar/item-key'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
 import { dayOfMonth, isoWeekNumber, WEEKDAY_LABELS } from '@/modules/calendar/date-utils'
-import { computeTotals } from '@/modules/calendar/week-stats'
+import { computeTotals } from '@/_bff/core/utils/week-stats.utils'
 import { cn } from '@/lib/utils'
 
 type Props = {

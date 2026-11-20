@@ -6,9 +6,8 @@ describe('decideAuthRedirect', () => {
     it('exposes the protected paths', () => {
         expect(PROTECTED_PATHS).toEqual([
             '/dashboard',
-            '/coach',
+            '/calendar',
             '/activities',
-            '/plan',
             '/races',
             '/settings',
         ])
@@ -30,6 +29,14 @@ describe('decideAuthRedirect', () => {
         expect(decideAuthRedirect({ pathname: `${path}/nested`, hasAccess: true })).toBeNull()
     })
 
+    it('protects /calendar: signed out and no flag go to /login, the flag passes', () => {
+        expect(decideAuthRedirect({ pathname: '/calendar', hasAccess: false })).toBe('/login')
+        expect(decideAuthRedirect({ pathname: '/calendar/2026-11', hasAccess: false })).toBe(
+            '/login'
+        )
+        expect(decideAuthRedirect({ pathname: '/calendar', hasAccess: true })).toBeNull()
+    })
+
     it('sends /login to /dashboard with access', () => {
         expect(decideAuthRedirect({ pathname: '/login', hasAccess: true })).toBe('/dashboard')
     })
@@ -42,15 +49,19 @@ describe('decideAuthRedirect', () => {
         expect(decideAuthRedirect({ pathname: '/', hasAccess })).toBeNull()
     })
 
-    it.each(['/plans-extra', '/dashboarding', '/coaches', '/loginx', '/settings-public'])(
-        'only matches on a path-segment boundary: %s',
-        (pathname) => {
-            expect(decideAuthRedirect({ pathname, hasAccess: false })).toBeNull()
-            expect(decideAuthRedirect({ pathname, hasAccess: true })).toBeNull()
-        }
-    )
+    it.each([
+        '/calendarx',
+        '/calendars',
+        '/races-extra',
+        '/dashboarding',
+        '/loginx',
+        '/settings-public',
+    ])('only matches on a path-segment boundary: %s', (pathname) => {
+        expect(decideAuthRedirect({ pathname, hasAccess: false })).toBeNull()
+        expect(decideAuthRedirect({ pathname, hasAccess: true })).toBeNull()
+    })
 
-    it.each(['/%64ashboard', '/dashboard%2Fx', '/%70lan'])(
+    it.each(['/%64ashboard', '/dashboard%2Fx', '/%63alendar'])(
         'matches percent-encoded protected paths: %s',
         (pathname) => {
             expect(decideAuthRedirect({ pathname, hasAccess: false })).toBe('/login')

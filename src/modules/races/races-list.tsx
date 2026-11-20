@@ -82,7 +82,11 @@ export function RacesList({
     return (
         <div className="space-y-6">
             <div className="flex justify-end">
-                <Button data-testid="race-new" onClick={() => open({ kind: 'create' })}>
+                <Button
+                    className="w-full md:max-w-37.5"
+                    data-testid="race-new"
+                    onClick={() => open({ kind: 'create' })}
+                >
                     <PlusIcon />
                     New race
                 </Button>
@@ -90,7 +94,7 @@ export function RacesList({
 
             {races.length === 0 ? (
                 <p data-testid="races-empty" className="text-sm text-muted-foreground">
-                    No races yet. Add one to get a coach plan.
+                    No races yet. Add one so your coach knows your goal.
                 </p>
             ) : null}
 

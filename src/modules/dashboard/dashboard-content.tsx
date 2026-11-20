@@ -1,12 +1,10 @@
 'use client'
 
 import { todayIn } from '@/_bff/core/utils/date.utils'
+import { ActivityActions } from '@/components/activity-actions'
+import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { trpcClient } from '@/lib/trpc'
-import { Calendar } from '@/modules/calendar/calendar'
-import { DashboardQueryError } from '@/modules/dashboard/dashboard-query-error'
-import { NextRace } from '@/modules/dashboard/next-race'
-import { UploadActivity } from '@/modules/dashboard/upload-activity'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
 
 export function DashboardContent() {
@@ -15,7 +13,7 @@ export function DashboardContent() {
     if (timezone.isPending && timezone.data === undefined) return <DashboardSkeleton />
     if (timezone.data === undefined)
         return (
-            <DashboardQueryError
+            <QueryError
                 message="Could not load your timezone."
                 onRetry={() => void timezone.refetch()}
                 testId="dashboard-timezone-error"
@@ -25,25 +23,31 @@ export function DashboardContent() {
     const today = todayIn(timezone.data)
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-end">
-                <UploadActivity />
-            </div>
+        <div data-testid="dashboard-content" className="space-y-6">
+            <header className="flex flex-wrap items-end justify-between gap-4">
+                <div className="space-y-2">
+                    <h1 data-testid="dashboard-title" className="display text-4xl">
+                        Progress
+                    </h1>
+                    <p className="max-w-[65ch] text-sm text-muted-foreground">
+                        A clear view of your recent training and how it is building over time.
+                    </p>
+                </div>
+                <ActivityActions />
+            </header>
             <WeekStrip today={today} />
-            <NextRace today={today} />
-            <Calendar today={today} />
         </div>
     )
 }
 
 function DashboardSkeleton() {
     return (
-        <div className="space-y-6">
-            <div className="flex justify-end">
-                <Skeleton className="h-10 w-40 rounded-full" />
+        <div data-testid="dashboard-skeleton" className="space-y-6">
+            <div className="space-y-2">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-4 w-72 max-w-full" />
             </div>
             <WeekStripSkeleton />
-            <Skeleton className="h-[36rem] rounded-[var(--radius-surface)]" />
         </div>
     )
 }

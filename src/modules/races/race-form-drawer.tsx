@@ -71,7 +71,7 @@ function RaceFormBody({
             >
                 <DrawerFormLayout
                     title={mode === 'create' ? 'New race' : 'Edit race'}
-                    description="Set the race date, goal time and priority for your training plan."
+                    description="Set the race date, goal time and priority so your coach knows your goal."
                     closeLabel="Close race form"
                     closeTestId="race-form-close"
                     cancelTestId="race-form-cancel"

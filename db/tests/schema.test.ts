@@ -4,8 +4,9 @@ import {
     countRows,
     createUser,
     insertActivity,
+    insertConversation,
+    insertMessage,
     insertRace,
-    insertReport,
     seedUserGraph,
 } from '@db/tests/helpers/fixtures'
 import { createTestDb, type TestDb } from '@db/tests/helpers/pglite'
@@ -19,18 +20,20 @@ const ROXCOACH_TABLES = [
     'activity_laps',
     'athlete_profiles',
     'availability_slots',
-    'planned_sessions',
+    'coach_conversations',
+    'coach_messages',
+    'coach_usage',
+    'lyfta_connections',
     'races',
     'schema_migrations',
     'station_results',
     'strength_sets',
-    'weekly_reports',
 ]
 
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
 
-// Tables only the service role may touch: 0006 revokes every privilege on them from authenticated.
-const SERVICE_ONLY_TABLES = new Set(['schema_migrations'])
+// Tables only the service role may touch: 0006 and 0010 revoke client privileges.
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
 
 const UNIQUE_ERROR = /unique/u
 const CHECK_ERROR = /check constraint/u
@@ -82,6 +85,12 @@ describe('schema layout', () => {
             '0006_rls.sql',
             '0007_remove_strava.sql',
             '0008_activity_files.sql',
+            '0009_coach_chat.sql',
+            '0010_lyfta.sql',
+            '0011_lyfta_progress_metrics.sql',
+            '0012_strength_exercise_order.sql',
+            '0013_strength_exercise_images.sql',
+            '0014_coach_usage.sql',
         ])
     })
 
@@ -106,15 +115,38 @@ describe('schema layout', () => {
         )
     })
 
-    it('lets authenticated write user tables but not the migration log', async () => {
+    it('lets authenticated write user tables but not service-only tables', async () => {
         await testDb.asSuperuser()
-        const result = await testDb.db.query<{ activities: boolean; migrations: boolean }>(
+        const result = await testDb.db.query<{
+            activities: boolean
+            lyftaConnections: boolean
+            migrations: boolean
+        }>(
             `select
                 has_table_privilege('authenticated', 'roxcoach.activities', 'insert, update, delete') as activities,
+                has_table_privilege('authenticated', 'roxcoach.lyfta_connections', 'select, insert, update, delete') as "lyftaConnections",
                 has_table_privilege('authenticated', 'roxcoach.schema_migrations', 'insert, update, delete') as migrations`
         )
 
-        expect(result.rows[0]).toEqual({ activities: true, migrations: false })
+        expect(result.rows[0]).toEqual({
+            activities: true,
+            lyftaConnections: false,
+            migrations: false,
+        })
+    })
+
+    it('retains the old activity source labels and adds lyfta', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query<{ enumlabel: string }>(
+            `select e.enumlabel
+             from pg_enum e
+             join pg_type t on t.oid = e.enumtypid
+             join pg_namespace n on n.oid = t.typnamespace
+             where n.nspname = 'roxcoach' and t.typname = 'activity_source'
+             order by e.enumsortorder`
+        )
+
+        expect(result.rows.map((row) => row.enumlabel)).toEqual(['strava', 'manual', 'lyfta'])
     })
 
     it('defaults user_id to auth.uid() for a signed-in user', async () => {
@@ -156,20 +188,121 @@ describe('unique constraints', () => {
         await expect(testDb.db.query(sql, [other])).resolves.toBeDefined()
     })
 
-    it('rejects a duplicate weekly report and accepts it for another user', async () => {
-        const userId = await createUser(testDb)
-        const other = await createUser(testDb)
-        await insertReport(testDb, userId, '2026-11-09')
-
-        await expect(insertReport(testDb, userId, '2026-11-09')).rejects.toThrow(UNIQUE_ERROR)
-        await expect(insertReport(testDb, other, '2026-11-09')).resolves.toBeDefined()
-    })
-
     it('accepts many manual activities for one user', async () => {
         const userId = await createUser(testDb)
         await insertActivity(testDb, userId)
 
         await expect(insertActivity(testDb, userId)).resolves.toBeDefined()
+    })
+
+    it('uniquely identifies Lyfta workouts per user and allows null source ids', async () => {
+        const userId = await createUser(testDb)
+        const otherUserId = await createUser(testDb)
+        const insert = (ownerId: string, sourceId: string | null) =>
+            testDb.db.query(
+                `insert into roxcoach.activities
+                    (user_id, source, source_id, category, name, started_at, local_date)
+                 values ($1, 'lyfta', $2, 'strength', 'Gym workout', now(), current_date)`,
+                [ownerId, sourceId]
+            )
+
+        await insert(userId, '501')
+        await expect(insert(userId, '501')).rejects.toThrow(UNIQUE_ERROR)
+        await expect(insert(otherUserId, '501')).resolves.toBeDefined()
+        await expect(insert(userId, null)).resolves.toBeDefined()
+        await expect(insert(userId, null)).resolves.toBeDefined()
+    })
+})
+
+describe('Lyfta connections', () => {
+    it('keeps Lyfta credentials service-only and maintains updated_at', async () => {
+        const userId = await createUser(testDb)
+
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+             values ($1, 'encrypted-fixture')`,
+            [userId]
+        )
+        await testDb.asUser(userId)
+        await expect(
+            testDb.db.query('select * from roxcoach.lyfta_connections')
+        ).rejects.toMatchObject({ code: '42501' })
+        await expect(
+            testDb.db.query(
+                `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key)
+                 values ($1, 'not-client-writable')`,
+                [userId]
+            )
+        ).rejects.toMatchObject({ code: '42501' })
+    })
+
+    describe('Lyfta progress metrics', () => {
+        it('stores exercise order, image URL, source IDs, RIR and workout metrics', async () => {
+            const userId = await createUser(testDb)
+            const activityId = await insertActivity(testDb, userId)
+
+            await testDb.db.query(
+                `update roxcoach.activities
+                 set body_weight_kg = 72.5, lyfta_total_volume_kg_reps = 1840
+                 where id = $1 and user_id = $2`,
+                [activityId, userId]
+            )
+            await testDb.db.query(
+                `insert into roxcoach.strength_sets
+                    (user_id, activity_id, exercise, exercise_index, exercise_image_url,
+                     source_exercise_id, set_index, reps, load_kg, rir)
+                 values ($1, $2, 'Bench Press', 2, 'https://lyfta.app/images/exercises/00251101.png',
+                         '501', 1, 5, 80, 2)`,
+                [userId, activityId]
+            )
+
+            const result = await testDb.db.query<{
+                source_exercise_id: string
+                exercise_index: number
+                exercise_image_url: string
+                load_kg: string
+                rir: number
+                body_weight_kg: string
+                lyfta_total_volume_kg_reps: string
+            }>(
+                `select s.exercise_index, s.exercise_image_url, s.source_exercise_id, s.load_kg, s.rir,
+                        a.body_weight_kg, a.lyfta_total_volume_kg_reps
+                 from roxcoach.strength_sets s
+                 join roxcoach.activities a on a.id = s.activity_id and a.user_id = s.user_id
+                 where s.user_id = $1`,
+                [userId]
+            )
+
+            expect(result.rows).toEqual([
+                {
+                    source_exercise_id: '501',
+                    exercise_index: 2,
+                    exercise_image_url: 'https://lyfta.app/images/exercises/00251101.png',
+                    load_kg: '80',
+                    rir: 2,
+                    body_weight_kg: '72.5',
+                    lyfta_total_volume_kg_reps: '1840',
+                },
+            ])
+            await expect(
+                testDb.db.query(
+                    `insert into roxcoach.strength_sets
+                        (user_id, activity_id, exercise, exercise_index, source_exercise_id,
+                         set_index, rir)
+                     values ($1, $2, 'Bench Press', 2, '501', 2, -1)`,
+                    [userId, activityId]
+                )
+            ).rejects.toThrow(CHECK_ERROR)
+            await expect(
+                testDb.db.query(
+                    `insert into roxcoach.strength_sets
+                        (user_id, activity_id, exercise, exercise_index, set_index)
+                     values ($1, $2, 'Bench Press', 0, 3)`,
+                    [userId, activityId]
+                )
+            ).rejects.toThrow(CHECK_ERROR)
+        })
     })
 })
 
@@ -219,6 +352,168 @@ describe('activity_files', () => {
         const activityId = await insertActivity(testDb, owner)
 
         await expect(insertFile(other, { activityId })).rejects.toThrow(/foreign key/u)
+    })
+})
+
+describe('coach chat tables', () => {
+    it('rejects a role outside user and assistant', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+
+        await expect(insertMessage(testDb, userId, conversationId, 'system')).rejects.toThrow(
+            CHECK_ERROR
+        )
+        await expect(
+            insertMessage(testDb, userId, conversationId, 'assistant')
+        ).resolves.toBeDefined()
+    })
+
+    it('deletes the messages of a deleted conversation', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+        await insertMessage(testDb, userId, conversationId)
+        await insertMessage(testDb, userId, conversationId, 'assistant')
+
+        await testDb.db.query('delete from roxcoach.coach_conversations where id = $1', [
+            conversationId,
+        ])
+
+        expect(await countRows(testDb, 'coach_messages', userId)).toBe(0)
+    })
+
+    it('no longer has the report and plan tables or their enum types', async () => {
+        await testDb.asSuperuser()
+        const types = await testDb.db.query<{ typname: string }>(
+            `select t.typname from pg_type t join pg_namespace n on n.oid = t.typnamespace
+             where n.nspname = 'roxcoach' and t.typname in ('report_status', 'planned_session_status')`
+        )
+
+        expect(types.rows).toEqual([])
+        expect(ROXCOACH_TABLES).not.toContain('weekly_reports')
+        expect(ROXCOACH_TABLES).not.toContain('planned_sessions')
+    })
+})
+
+describe('coach usage counter', () => {
+    const takeSlot = async (day: string, cap = 50): Promise<boolean> => {
+        const result = await testDb.db.query<{ taken: boolean }>(
+            'select roxcoach.coach_take_message_slot($1::date, $2) as taken',
+            [day, cap]
+        )
+        return result.rows[0].taken
+    }
+
+    const readCount = async (userId: string, day: string): Promise<number | null> => {
+        await testDb.asService()
+        const result = await testDb.db.query<{ count: number }>(
+            'select message_count as count from roxcoach.coach_usage where user_id = $1 and day = $2',
+            [userId, day]
+        )
+        return result.rows[0]?.count ?? null
+    }
+
+    it('takes 50 slots, refuses the 51st and keeps the counter at 50', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asUser(userId)
+
+        const taken: boolean[] = []
+        for (let call = 0; call < 51; call += 1) {
+            // oxlint-disable-next-line no-await-in-loop -- sequential calls on one connection
+            taken.push(await takeSlot('2026-11-20'))
+        }
+
+        expect(taken.slice(0, 50).every(Boolean)).toBe(true)
+        expect(taken[50]).toBe(false)
+        expect(await readCount(userId, '2026-11-20')).toBe(50)
+    })
+
+    it('counts per user and per day independently', async () => {
+        const first = await createUser(testDb)
+        const second = await createUser(testDb)
+
+        await testDb.asUser(first)
+        expect(await takeSlot('2026-11-20', 1)).toBe(true)
+        expect(await takeSlot('2026-11-20', 1)).toBe(false)
+        expect(await takeSlot('2026-11-21', 1)).toBe(true)
+        await testDb.asUser(second)
+        expect(await takeSlot('2026-11-20', 1)).toBe(true)
+
+        expect(await readCount(first, '2026-11-20')).toBe(1)
+        expect(await readCount(first, '2026-11-21')).toBe(1)
+        expect(await readCount(second, '2026-11-20')).toBe(1)
+    })
+
+    it('only ever touches the caller row', async () => {
+        const owner = await createUser(testDb)
+        const other = await createUser(testDb)
+        await testDb.asUser(owner)
+        await takeSlot('2026-11-20')
+
+        await testDb.asUser(other)
+        await takeSlot('2026-11-20')
+
+        expect(await readCount(owner, '2026-11-20')).toBe(1)
+        expect(await readCount(other, '2026-11-20')).toBe(1)
+    })
+
+    it('refuses a caller without the access flag and an anonymous caller', async () => {
+        const userId = await createUser(testDb)
+
+        await testDb.asUser(userId, { access: false })
+        await expect(takeSlot('2026-11-20')).rejects.toMatchObject({ code: '42501' })
+        await testDb.asAnon()
+        await expect(takeSlot('2026-11-20')).rejects.toMatchObject({ code: '42501' })
+        expect(await readCount(userId, '2026-11-20')).toBeNull()
+    })
+
+    it('does not give the quota back when a conversation is deleted', async () => {
+        const userId = await createUser(testDb)
+        const conversationId = await insertConversation(testDb, userId)
+        await insertMessage(testDb, userId, conversationId)
+        await testDb.asUser(userId)
+        await takeSlot('2026-11-20')
+
+        await testDb.db.query('delete from roxcoach.coach_conversations where id = $1', [
+            conversationId,
+        ])
+
+        expect(await readCount(userId, '2026-11-20')).toBe(1)
+    })
+
+    it('lets a client neither delete the counter nor lower it below zero', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asUser(userId)
+        await takeSlot('2026-11-20')
+
+        const deleted = await testDb.db.query(
+            'delete from roxcoach.coach_usage where user_id = $1',
+            [userId]
+        )
+        await expect(
+            testDb.db.query(
+                'update roxcoach.coach_usage set message_count = -1 where user_id = $1',
+                [userId]
+            )
+        ).rejects.toThrow(CHECK_ERROR)
+
+        expect(deleted.affectedRows).toBe(0)
+        expect(await readCount(userId, '2026-11-20')).toBe(1)
+    })
+
+    it('adds the Lyfta sync lease column, null by default', async () => {
+        const userId = await createUser(testDb)
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.lyfta_connections (user_id, encrypted_api_key) values ($1, 'x')`,
+            [userId]
+        )
+
+        const result = await testDb.db.query<{ sync_started_at: string | null }>(
+            'select sync_started_at from roxcoach.lyfta_connections where user_id = $1',
+            [userId]
+        )
+
+        expect(result.rows[0].sync_started_at).toBeNull()
     })
 })
 

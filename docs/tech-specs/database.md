@@ -19,7 +19,7 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
       tables created by `postgres` (the SQL editor role that runs the migrations) follow.
     - nothing is granted to `anon`.
     - `0006` revokes every privilege on the service-only table `schema_migrations` from
-      `authenticated` and `anon`.
+      `authenticated` and `anon`; `0010` does the same for `lyfta_connections`.
 
     The schema is added to the API only after `0006` has been applied and verified: in Supabase,
     Project Settings, API, append `roxcoach` to "Exposed schemas" (never replace the list, the other
@@ -35,8 +35,8 @@ Because the project is shared, nothing of Roxcoach may touch what already exists
    therefore cannot assume "a signed-in user is mine". Access is an explicit flag, described in
    [auth-security.md](auth-security.md) (`app_metadata.roxcoach = true`), and RLS checks it with
    `roxcoach.has_access()`.
-5. **Shared extensions and jobs.** `pg_cron`, `pg_net` and Vault already serve the whole database.
-   Roxcoach's jobs and secrets are named with the prefix `roxcoach-`.
+5. **Shared extensions.** `pg_cron`, `pg_net` and Vault already serve the whole database. Roxcoach
+   runs no database jobs; any it adds must be named with the prefix `roxcoach-`.
 6. **No change to the other app's objects**, auth settings that it depends on (sign-ups, email
    templates, providers) or its policies. Roxcoach migrations are independent and can be rolled
    back by dropping the `roxcoach` schema.
@@ -64,7 +64,7 @@ The app has one athlete today, but nothing in the schema or the queries may assu
 make a second user work with no migration:
 
 1. **`user_id` on every table, child tables included.** A child row (laps, station results, sets,
-   planned sessions) carries its own `user_id`, so every RLS policy is the same one-liner and no
+   messages) carries its own `user_id`, so every RLS policy is the same one-liner and no
    policy needs a join.
 2. **Composite foreign keys keep tenants apart.** Each parent table has `unique (id, user_id)`, and
    each child references `(parent_id, user_id)` instead of `parent_id` alone. A child can then never
@@ -84,17 +84,15 @@ make a second user work with no migration:
 
 ## Enums
 
-| Enum                     | Values                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `activity_source`        | `strava`, `manual`                                                                                                  |
-| `activity_category`      | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
-| `session_kind`           | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
-| `race_type`              | `hyrox`, `running`, `other`                                                                                         |
-| `race_priority`          | `A`, `B`, `C`                                                                                                       |
-| `race_status`            | `upcoming`, `completed`, `cancelled`                                                                                |
-| `hyrox_station`          | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
-| `report_status`          | `generating`, `ready`, `failed`                                                                                     |
-| `planned_session_status` | `planned`, `done`, `skipped`                                                                                        |
+| Enum                | Values                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `activity_source`   | `strava`, `manual`, `lyfta`                                                                                         |
+| `activity_category` | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
+| `session_kind`      | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
+| `race_type`         | `hyrox`, `running`, `other`                                                                                         |
+| `race_priority`     | `A`, `B`, `C`                                                                                                       |
+| `race_status`       | `upcoming`, `completed`, `cancelled`                                                                                |
+| `hyrox_station`     | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
 
 ## Tables
 
@@ -133,19 +131,19 @@ save, and two concurrent saves by the same user can race the delete. Every state
 
 ### `races`
 
-| Column           | Type            | Notes                                    |
-| ---------------- | --------------- | ---------------------------------------- |
-| `name`           | text not null   | for example `S. Silvestre Guimaraes 10k` |
-| `race_type`      | `race_type`     |                                          |
-| `race_date`      | date not null   |                                          |
-| `location`       | text null       |                                          |
-| `distance_m`     | int null        | required for `running`, null for `hyrox` |
-| `hyrox_division` | text null       | required for `hyrox`                     |
-| `target_time_s`  | int not null    | the goal, for example 4200 for 1h10      |
-| `priority`       | `race_priority` | default `A`. See [plan.md](plan.md)      |
-| `status`         | `race_status`   | default `upcoming`                       |
-| `result_time_s`  | int null        | filled after the race                    |
-| `notes`          | text null       |                                          |
+| Column           | Type            | Notes                                                 |
+| ---------------- | --------------- | ----------------------------------------------------- |
+| `name`           | text not null   | for example `S. Silvestre Guimaraes 10k`              |
+| `race_type`      | `race_type`     |                                                       |
+| `race_date`      | date not null   |                                                       |
+| `location`       | text null       |                                                       |
+| `distance_m`     | int null        | required for `running`, null for `hyrox`              |
+| `hyrox_division` | text null       | required for `hyrox`                                  |
+| `target_time_s`  | int not null    | the goal, for example 4200 for 1h10                   |
+| `priority`       | `race_priority` | default `A`. See [athlete-races.md](athlete-races.md) |
+| `status`         | `race_status`   | default `upcoming`                                    |
+| `result_time_s`  | int null        | filled after the race                                 |
+| `notes`          | text null       |                                                       |
 
 Index on `(user_id, race_date)`.
 
@@ -156,30 +154,36 @@ a race; a completed race cannot be cancelled and a race with a result cannot be 
 
 ### `activities`
 
-Every workout, uploaded or entered by hand. Strava sync was removed (`0007`).
+Every workout, uploaded or entered by hand, or imported from Lyfta. Strava sync was removed
+(`0007`).
 
-| Column             | Type                | Notes                                                   |
-| ------------------ | ------------------- | ------------------------------------------------------- |
-| `source`           | `activity_source`   | `manual` today; the enum still holds `strava` (unused)  |
-| `category`         | `activity_category` | chosen or derived when the file is parsed               |
-| `sport_type`       | text null           | raw sport type of the source, for example `Run`         |
-| `name`             | text                |                                                         |
-| `started_at`       | timestamptz         |                                                         |
-| `local_date`       | date                | the day in the athlete's timezone, used by the calendar |
-| `distance_m`       | numeric null        |                                                         |
-| `moving_time_s`    | int null            |                                                         |
-| `elapsed_time_s`   | int null            |                                                         |
-| `elevation_gain_m` | numeric null        |                                                         |
-| `avg_hr`           | numeric null        |                                                         |
-| `max_hr`           | numeric null        |                                                         |
-| `avg_speed_mps`    | numeric null        |                                                         |
-| `calories`         | numeric null        |                                                         |
-| `perceived_effort` | smallint null       | RPE 1..10, entered by hand, applies to both sources     |
-| `notes`            | text null           |                                                         |
-| `deleted_at`       | timestamptz null    | soft delete                                             |
+| Column                       | Type                | Notes                                                             |
+| ---------------------------- | ------------------- | ----------------------------------------------------------------- |
+| `source`                     | `activity_source`   | `manual` or `lyfta` today; the enum still holds `strava` (unused) |
+| `source_id`                  | text null           | Provider workout ID; set for Lyfta imports                        |
+| `category`                   | `activity_category` | chosen or derived when the file is parsed                         |
+| `sport_type`                 | text null           | raw sport type of the source, for example `Run`                   |
+| `name`                       | text                |                                                                   |
+| `started_at`                 | timestamptz         |                                                                   |
+| `local_date`                 | date                | the day in the athlete's timezone, used by the calendar           |
+| `distance_m`                 | numeric null        |                                                                   |
+| `moving_time_s`              | int null            |                                                                   |
+| `elapsed_time_s`             | int null            |                                                                   |
+| `elevation_gain_m`           | numeric null        |                                                                   |
+| `avg_hr`                     | numeric null        |                                                                   |
+| `max_hr`                     | numeric null        |                                                                   |
+| `avg_speed_mps`              | numeric null        |                                                                   |
+| `calories`                   | numeric null        |                                                                   |
+| `body_weight_kg`             | numeric null        | Lyfta body weight, normalized to kilograms                        |
+| `lyfta_total_volume_kg_reps` | numeric null        | Lyfta volume normalized to kilograms times repetitions            |
+| `perceived_effort`           | smallint null       | RPE 1..10, entered by hand, applies to both sources               |
+| `notes`                      | text null           |                                                                   |
+| `deleted_at`                 | timestamptz null    | soft delete                                                       |
 
 Index on `(user_id, local_date)`.
-Also `unique (id, user_id)` so children can reference it with a composite key.
+Unique index on `(user_id, source, source_id)` makes provider imports idempotent. PostgreSQL's
+default `NULLS DISTINCT` behavior allows any number of rows without a provider ID. Also
+`unique (id, user_id)` so children can reference it with a composite key.
 
 ### `activity_laps`
 
@@ -227,59 +231,73 @@ Hand-entered Hyrox station data. See [manual-logging.md](manual-logging.md).
 
 ### `strength_sets`
 
-| Column        | Type                                           | Notes |
-| ------------- | ---------------------------------------------- | ----- |
-| `activity_id` | uuid references `activities` on delete cascade |       |
-| `exercise`    | text not null                                  |       |
-| `set_index`   | int                                            |       |
-| `reps`        | int null                                       |       |
-| `load_kg`     | numeric null                                   |       |
-| `rpe`         | numeric null                                   | 1..10 |
+| Column               | Type                                           | Notes                                                    |
+| -------------------- | ---------------------------------------------- | -------------------------------------------------------- |
+| `activity_id`        | uuid references `activities` on delete cascade |                                                          |
+| `exercise`           | text not null                                  | Display name from Lyfta or manual entry                  |
+| `exercise_index`     | int null                                       | Original order within the activity; null for legacy rows |
+| `exercise_image_url` | text null                                      | Optional Lyfta exercise image URL; never image bytes     |
+| `source_exercise_id` | text null                                      | Stable ID from the source, used to group progress        |
+| `set_index`          | int                                            |                                                          |
+| `reps`               | int null                                       |                                                          |
+| `load_kg`            | numeric null                                   | Always kilograms for Lyfta imports                       |
+| `rir`                | smallint null                                  | Non-negative reps in reserve from Lyfta                  |
+| `rpe`                | numeric null                                   | 1..10                                                    |
 
-### `weekly_reports`
+Lyfta imports store completed exercise sets here. The Lyfta sync replaces imported set rows when
+updating a source workout; see [lyfta.md](lyfta.md). An index on `(user_id, source_exercise_id)`
+supports per-exercise progress queries. A second index on `(user_id, activity_id, exercise_index,
+set_index)` returns exercise groups and sets in workout order.
 
-One report per week, written every Sunday night by the coach (see [coach.md](coach.md)).
+### `coach_usage`
 
-| Column              | Type             | Notes                                                                  |
-| ------------------- | ---------------- | ---------------------------------------------------------------------- |
-| `week_start`        | date             | Monday of the reported ISO week. Unique with `user_id`                 |
-| `status`            | `report_status`  | `generating`, `ready` or `failed`                                      |
-| `headline`          | text null        | one sentence                                                           |
-| `summary`           | text null        | review of the week                                                     |
-| `went_well`         | jsonb            | array of strings                                                       |
-| `watch_out`         | jsonb            | array of strings                                                       |
-| `follow_ups`        | jsonb            | array of `{ topic, status, note }`, status `resolved`, `open`, `worse` |
-| `next_week_focus`   | text null        |                                                                        |
-| `race_outlook`      | jsonb            | array of `{ race_id, weeks_to_go, note }`                              |
-| `goal_check`        | text null        | only when a goal looks unrealistic                                     |
-| `metrics`           | jsonb            | computed in code: minutes, sessions, run km, load ratio, adherence     |
-| `memory_report_ids` | uuid[]           | the up to 3 reports that were in the context                           |
-| `model`             | text             | model id used                                                          |
-| `prompt_version`    | text             |                                                                        |
-| `error`             | text null        | safe message when `failed`                                             |
-| `generated_at`      | timestamptz null |                                                                        |
+One row per athlete and athlete-local day: `user_id` (default `auth.uid()`, cascade), `day` date,
+`message_count` int (check `>= 0`), primary key `(user_id, day)`. RLS with the owner policy for
+`select`, `insert` and `update` and no `delete` policy (a client can never reset the counter).
+`roxcoach.coach_take_message_slot(p_day date, p_cap int) returns boolean` (security invoker, execute
+for `authenticated` and `service_role`) takes one slot atomically. See [coach-chat.md](coach-chat.md).
 
-Unique on `(user_id, week_start)`. Index on `(user_id, week_start desc)` for the memory lookup. Also
-`unique (id, user_id)` for the composite reference from `planned_sessions`.
+### `lyfta_connections`
 
-### `planned_sessions`
+One row per user, storing the encrypted personal API key and manual-sync checkpoint. See
+[lyfta.md](lyfta.md) for encryption, credential lifecycle and sync behavior.
 
-| Column                | Type                                                 | Notes                                  |
-| --------------------- | ---------------------------------------------------- | -------------------------------------- |
-| `report_id`           | uuid references `weekly_reports` on delete cascade   | the report that proposed the session   |
-| `race_id`             | uuid null references `races` on delete set null      | the race this session builds toward    |
-| `planned_date`        | date                                                 |                                        |
-| `session_kind`        | `session_kind`                                       |                                        |
-| `title`               | text                                                 |                                        |
-| `description`         | text                                                 | what to do, pacing and effort guidance |
-| `target_minutes`      | int null                                             |                                        |
-| `target_distance_m`   | int null                                             |                                        |
-| `status`              | `planned_session_status`                             | default `planned`                      |
-| `matched_activity_id` | uuid null references `activities` on delete set null |                                        |
+| Column              | Type             | Notes                                                             |
+| ------------------- | ---------------- | ----------------------------------------------------------------- |
+| `user_id`           | uuid             | primary key; cascades from `auth.users`                           |
+| `encrypted_api_key` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext         |
+| `last_synced_at`    | timestamptz null | end of the last fully completed sync window (see lyfta.md)        |
+| `sync_started_at`   | timestamptz null | sync lease (`0014`): set while a sync runs, stale after 5 minutes |
+| `created_at`        | timestamptz      |                                                                   |
+| `updated_at`        | timestamptz      | maintained by `set_updated_at()`                                  |
 
-Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id)` to
-`weekly_reports`, `(race_id, user_id)` to `races` and `(matched_activity_id, user_id)` to
-`activities`, the last two with `on delete set null (<column>)`.
+### `coach_conversations`
+
+One row per chat with the coach (see [coach-chat.md](coach-chat.md)).
+
+| Column  | Type      | Notes                                  |
+| ------- | --------- | -------------------------------------- |
+| `title` | text null | null until the first exchange names it |
+
+Index on `(user_id, updated_at desc)`. `unique (id, user_id)` for the composite reference from
+`coach_messages`. The `set_updated_at` trigger keeps `updated_at` current.
+
+### `coach_messages`
+
+Append-only: no `updated_at`.
+
+| Column              | Type                                                    | Notes                          |
+| ------------------- | ------------------------------------------------------- | ------------------------------ |
+| `conversation_id`   | uuid references `coach_conversations` on delete cascade |                                |
+| `role`              | text                                                    | check in `user`, `assistant`   |
+| `content`           | text                                                    | not null                       |
+| `model`             | text null                                               | model id of an assistant reply |
+| `prompt_tokens`     | int null                                                |                                |
+| `completion_tokens` | int null                                                |                                |
+
+Index on `(conversation_id, created_at)`. Composite foreign key `(conversation_id, user_id)` to
+`coach_conversations`. Migration `0009` dropped `weekly_reports`, `planned_sessions` and the enum
+types `report_status` and `planned_session_status`.
 
 ## Row Level Security
 
@@ -287,11 +305,12 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
   security`: forcing only affects the table owner (`postgres`), which runs the migrations, the seed
   and the `auth.users` cascades. Clients never connect as the owner and `service_role` bypasses RLS
   through `BYPASSRLS` either way.
-- Every table with a client-facing use (all except the three no-policy tables below,
-  `schema_migrations`): one policy per operation, `select`, `insert`, `update` and `delete`,
-  `to authenticated`, with `using (user_id = auth.uid() and roxcoach.has_access())` and, for
-  writes, `with check (user_id = auth.uid() and roxcoach.has_access())`. The policy is identical on
-  every table because every table, children included, carries `user_id`.
+- Every table with a client-facing use (all except the service-only tables, including
+  `schema_migrations` and `lyfta_connections`): one policy per operation, `select`, `insert`,
+  `update` and `delete`, `to authenticated`, with `using (user_id = auth.uid() and
+  roxcoach.has_access())` and, for writes, `with check (user_id = auth.uid() and
+  roxcoach.has_access())`. The policy is identical on every client-facing table because every
+  table, children included, carries `user_id`.
 - `roxcoach.has_access()` is a stable SQL function, `security invoker` with `search_path = ''`,
   returning `coalesce(auth.jwt() -> 'app_metadata' -> 'roxcoach' = 'true'::jsonb, false)`. The
   flag is compared as jsonb because `(... ->> 'roxcoach')::boolean` also accepts the strings
@@ -303,6 +322,10 @@ Index on `(user_id, planned_date)`. Composite foreign keys: `(report_id, user_id
   and no privileges for `authenticated` or `anon` (a client query fails with a permission error).
   Only the service-role client touches them, from server code and jobs. Tokens are never exposed
   to a client session, even if a policy were added by mistake.
+- `lyfta_connections`: RLS on, **no policies**, and no privileges for `authenticated` or `anon`.
+  The service-role repository is the only access path, and every query explicitly filters or
+  inserts using the authenticated `userId`. This prevents clients from retrieving even encrypted
+  credential material.
 - tRPC services use the session-bound client (publishable key), so RLS is a second layer under the
   `user_id` filters in the repositories.
 - Jobs and the report generator use the service-role client. RLS does not
@@ -316,7 +339,7 @@ schema:
 
 - A cannot select, update or delete any of B's rows in any table.
 - A cannot insert a row with B's `user_id`.
-- A cannot insert a child (lap, planned session, set) that references B's activity, report or race
+- A cannot insert a child (lap, set, message) that references B's activity or conversation
   (the composite foreign key rejects it).
 - A signed-in user **without** `app_metadata.roxcoach` (a user of the other app) cannot select or
   insert in any Roxcoach table.
@@ -328,16 +351,22 @@ schema:
 
 ## Migrations
 
-| File                         | Content                                                            |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `0001_schema_and_enums.sql`  | schema, `schema_migrations`, grants, enums, `set_updated_at()`     |
-| `0002_athlete_and_races.sql` | `athlete_profiles`, `availability_slots`, `races`                  |
-| `0003_strava.sql`            | `strava_connections`, `strava_webhook_events` (dropped by `0007`)  |
-| `0004_training.sql`          | `activities`, `activity_laps`, `station_results`, `strength_sets`  |
-| `0005_coach_and_plan.sql`    | `weekly_reports`, `planned_sessions`                               |
-| `0006_rls.sql`               | `has_access()`, RLS on every table, policies, service-only revokes |
-| `0007_remove_strava.sql`     | drops the Strava tables, `webhook_event_status` and `strava_id`    |
-| `0008_activity_files.sql`    | `activity_files`, private bucket `activity-files` and its policies |
+| File                                | Content                                                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `0001_schema_and_enums.sql`         | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                              |
+| `0002_athlete_and_races.sql`        | `athlete_profiles`, `availability_slots`, `races`                                                           |
+| `0003_strava.sql`                   | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                           |
+| `0004_training.sql`                 | `activities`, `activity_laps`, `station_results`, `strength_sets`                                           |
+| `0005_coach_and_plan.sql`           | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                    |
+| `0006_rls.sql`                      | `has_access()`, RLS on every table, policies, service-only revokes                                          |
+| `0007_remove_strava.sql`            | drops the Strava tables, `webhook_event_status` and `strava_id`                                             |
+| `0008_activity_files.sql`           | `activity_files`, private bucket `activity-files` and its policies                                          |
+| `0009_coach_chat.sql`               | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums                         |
+| `0010_lyfta.sql`                    | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                                   |
+| `0011_lyfta_progress_metrics.sql`   | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync           |
+| `0012_strength_exercise_order.sql`  | Stores exercise order for strength sets; requests one full manual Lyfta resync                              |
+| `0013_strength_exercise_images.sql` | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                            |
+| `0014_coach_usage.sql`              | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

@@ -5,6 +5,9 @@ import { appRouter } from '@/_bff/trpc/router'
 import { createContext } from '@/_bff/trpc/context'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 
+// Fluid Compute enabled
+export const maxDuration = 300
+
 const handler = (req: Request) =>
     fetchRequestHandler({
         router: appRouter,

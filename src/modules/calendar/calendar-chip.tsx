@@ -3,7 +3,7 @@ import { Match } from 'effect'
 import { IconCheck, IconFlag } from '@tabler/icons-react'
 import { formatDuration } from '@/_bff/core/utils/formatters.utils'
 import type { CalendarItem } from '@/_bff/modules/training/types'
-import { activityDurationS } from '@/modules/calendar/activity-time'
+import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { KINDS } from '@/modules/calendar/kinds'
 import { cn } from '@/lib/utils'
 

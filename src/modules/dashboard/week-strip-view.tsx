@@ -1,7 +1,8 @@
 import { formatDuration } from '@/_bff/core/utils/formatters.utils'
 import type { CalendarItem } from '@/_bff/modules/training/types'
-import { addDays, isoWeekNumber, startOfWeek } from '@/modules/calendar/date-utils'
-import { computeLoadRatio, computeTotals, loadLabel } from '@/modules/calendar/week-stats'
+import { addDays, startOfWeek } from '@/_bff/core/utils/week-dates.utils'
+import { isoWeekNumber } from '@/modules/calendar/date-utils'
+import { computeLoadRatio, computeTotals, loadLabel } from '@/_bff/core/utils/week-stats.utils'
 
 type Props = {
     items: CalendarItem[]

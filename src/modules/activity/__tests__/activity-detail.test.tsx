@@ -38,7 +38,9 @@ describe('ActivityDetail', () => {
     })
 
     it('returns the view for an existing activity', async () => {
-        const load = vi.fn().mockResolvedValue({ activity: makeActivity(), laps: [] })
+        const load = vi
+            .fn()
+            .mockResolvedValue({ activity: makeActivity(), laps: [], strengthSets: [] })
 
         const element = await ActivityDetail({ params: Promise.resolve({ id: ID }), load })
 

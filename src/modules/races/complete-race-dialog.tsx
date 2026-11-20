@@ -122,7 +122,7 @@ function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
 export function CompleteRaceDialog({ race, open, onOpenChange, onSubmit }: Props) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent data-testid="complete-dialog" className="sm:max-w-md">
+            <DialogContent data-testid="complete-dialog" className="md:max-w-md">
                 {race ? (
                     <CompleteRaceBody
                         race={race}
