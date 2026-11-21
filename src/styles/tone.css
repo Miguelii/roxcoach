@@ -45,7 +45,7 @@
     --tone: var(--amber);
     --tone-soft: var(--amber-soft);
     --tone-deep: var(--amber-deep);
-    --tone-ink: var(--amber-deep);
+    --tone-ink: var(--ink);
 }
 
 [data-tone='plum'] {

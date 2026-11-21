@@ -159,3 +159,15 @@ describe('Soft Studio typography', () => {
         }
     })
 })
+
+describe('Soft Studio review fixes', () => {
+    it('reads the amber tone fill with ink text at AA', () => {
+        expect(toneBlock('amber')).toContain('--tone-ink: var(--ink)')
+        expect(contrast(hex('--ink'), hex('--amber'))).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it('loads the 700 weight that bold titles use', () => {
+        const layout = readFileSync(path.resolve(STYLES_DIR, '../app/layout.tsx'), 'utf8')
+        expect(layout).toMatch(/weight:\s*\[[^\]]*'700'/)
+    })
+})

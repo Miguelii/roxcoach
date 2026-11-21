@@ -124,7 +124,7 @@ Each hue keeps the base / `-soft` (surface) / `-deep` (text on soft) triplet.
 - `tone.css` keeps working the same way, with `tangerine` renamed to `signal`, `navy` removed and
   a `red` tone added. In the `signal` tone, `--tone` is `signal-strong` (tone fills carry
   `--tone-ink` text). `--tone-ink` on `signal`, `blue`, `plum`, `green`, `red` is white
-  (`--on-brand`); on `amber` it stays `amber-deep`. The builder measures white on the `blue`,
+  (`--on-brand`); on `amber` it is `ink` (amber-deep on amber is only 3.1:1). The builder measures white on the `blue`,
   `plum` and `green` bases and uses the `-deep` shade as the tone fill for any that fail AA.
 
 ### Typography

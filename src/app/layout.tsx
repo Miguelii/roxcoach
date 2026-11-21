@@ -11,7 +11,7 @@ import { TrpcContextProvider } from '@/providers/trpc-provider'
 
 const outfit = Outfit({
     variable: '--font-outfit',
-    weight: ['400', '500', '600'],
+    weight: ['400', '500', '600', '700'],
     subsets: ['latin'],
     display: 'swap',
 })
