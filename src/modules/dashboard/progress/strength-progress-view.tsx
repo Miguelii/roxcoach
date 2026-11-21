@@ -6,6 +6,7 @@ import { formatVolumeKg, formatCompact } from '@/_bff/core/utils/formatters.util
 import type { StrengthProgressDTO } from '@/_bff/modules/training/types/progress'
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ExerciseCard } from '@/modules/dashboard/progress/exercise-card'
+import { StrengthOverviewCard } from '@/modules/dashboard/progress/strength-overview-card'
 import { ExerciseFilter, TOP_FILTER } from '@/modules/dashboard/progress/exercise-filter'
 import {
     bucketLabel,
@@ -50,6 +51,10 @@ export function StrengthProgressView({ data }: Props) {
 
     return (
         <div data-testid="strength-progress" className="space-y-4">
+            {data.exercises.length === 0 ? null : (
+                <StrengthOverviewCard exercises={data.exercises} />
+            )}
+
             <section aria-label="Top exercises" className="space-y-3">
                 <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div className="space-y-1">

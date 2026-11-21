@@ -46,7 +46,7 @@ const isLoaded = (set: SetInput): set is { reps: number; loadKg: number } =>
     set.reps !== null && set.reps >= 1 && set.loadKg !== null && set.loadKg > 0
 
 // Epley estimate (one rep is the load itself) for a set of 1 to 12 reps, otherwise null.
-export const estimateOneRepMax = (loadKg: number, reps: number) => {
+const estimateOneRepMax = (loadKg: number, reps: number) => {
     if (reps < 1 || reps > MAX_E1RM_REPS) return null
     return reps === 1 ? loadKg : loadKg * (1 + reps / 30)
 }

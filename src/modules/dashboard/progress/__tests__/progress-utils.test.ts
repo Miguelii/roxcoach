@@ -4,6 +4,7 @@ import {
     bucketLabel,
     bucketRangeLabel,
     exerciseInsights,
+    strengthSummary,
     dayLabel,
     daysLeftLabel,
     paceSummary,
@@ -97,50 +98,111 @@ describe('exerciseInsights', () => {
         topSetKg,
         topSetReps,
     })
+    const verdict = (first: [number, number], last: [number, number]) =>
+        exerciseInsights([
+            point('2026-10-05', first[0], first[1]),
+            point('2026-11-02', last[0], last[1]),
+        ])?.verdict
 
     it('needs at least two workouts', () => {
         expect(exerciseInsights([])).toBeNull()
         expect(exerciseInsights([point('2026-10-05', 40, 8)])).toBeNull()
     })
 
-    it('reports progress when the estimated 1RM rose, with the load, reps and 1RM changes', () => {
+    it('is progress with more weight and the same reps, or the same weight and more reps', () => {
+        expect(verdict([40, 8], [45, 8])).toBe('progressing')
+        expect(verdict([40, 8], [40, 10])).toBe('progressing')
+        expect(verdict([40, 8], [45, 10])).toBe('progressing')
+    })
+
+    it('is steady when nothing changed and slipping with less weight or fewer reps', () => {
+        expect(verdict([40, 8], [40, 8])).toBe('steady')
+        expect(verdict([40, 8], [35, 8])).toBe('declining')
+        expect(verdict([40, 8], [40, 6])).toBe('declining')
+    })
+
+    it('is a trade when weight and reps move in opposite directions', () => {
+        expect(verdict([40, 8], [45, 6])).toBe('mixed')
+        expect(verdict([40, 8], [35, 10])).toBe('mixed')
+    })
+
+    it('reports the weight and reps change, the first date and when the heaviest set was', () => {
         const insights = exerciseInsights([
             point('2026-10-05', 40, 8),
-            point('2026-10-19', 45, 6),
-            point('2026-11-02', 50, 6),
+            point('2026-10-19', 50, 6),
+            point('2026-11-02', 45, 8),
         ])
 
         expect(insights).toMatchObject({
             verdict: 'progressing',
-            loadDeltaKg: 10,
-            repsDelta: -2,
+            loadDeltaKg: 5,
+            repsDelta: 0,
             firstDate: '2026-10-05',
-            bestWorkoutsAgo: 0,
+            heaviestWorkoutsAgo: 1,
         })
-        // 40 x 8 estimates 50.7 and 50 x 6 estimates 60.
-        expect(insights?.e1rmDeltaKg).toBeCloseTo(9.3, 1)
+    })
+})
+
+describe('strengthSummary', () => {
+    const lift = (name: string, points: [string, number, number][]) => ({
+        key: name,
+        name,
+        imageUrl: null,
+        workouts: points.length,
+        points: points.map(([date, topSetKg, topSetReps]) => ({ date, topSetKg, topSetReps })),
     })
 
-    it('reports steady inside 2% and slipping below it, and how long ago the best was', () => {
-        expect(
-            exerciseInsights([point('2026-10-05', 40, 8), point('2026-11-02', 40, 8)])?.verdict
-        ).toBe('steady')
+    const summary = strengthSummary([
+        lift('Press', [
+            ['2026-10-05', 40, 8],
+            ['2026-10-19', 45, 6],
+            ['2026-11-02', 50, 8],
+        ]),
+        lift('Row', [
+            ['2026-10-05', 50, 8],
+            ['2026-10-19', 40, 8],
+            ['2026-11-02', 40, 6],
+        ]),
+        lift('Squat', [
+            ['2026-10-05', 60, 5],
+            ['2026-11-02', 70, 3],
+        ]),
+        lift('Curl', [['2026-11-02', 20, 10]]),
+    ])
 
-        const slipping = exerciseInsights([
-            point('2026-10-05', 50, 8),
-            point('2026-10-19', 40, 8),
-            point('2026-11-02', 40, 6),
-        ])
-        expect(slipping).toMatchObject({ verdict: 'declining', bestWorkoutsAgo: 2 })
+    it('counts the lifts by verdict, skipping lifts with one workout', () => {
+        expect(summary).toMatchObject({
+            rated: 3,
+            progressing: 1,
+            mixed: 1,
+            steady: 0,
+            declining: 1,
+        })
+        expect(summary.slipping).toEqual(['Row'])
     })
 
-    it('has no verdict or 1RM when a set is above 12 reps', () => {
-        const insights = exerciseInsights([
-            point('2026-10-05', 20, 15),
-            point('2026-11-02', 25, 15),
-        ])
+    it('counts a record for each top set heavier than every earlier one, never the first', () => {
+        // Press 45 and 50, Squat 70.
+        expect(summary.records).toBe(3)
+    })
 
-        expect(insights).toMatchObject({ verdict: null, e1rmDeltaKg: null, bestWorkoutsAgo: null })
-        expect(insights?.loadDeltaKg).toBe(5)
+    it('finds the heaviest top set (more reps wins a tie) and the biggest gain in weight', () => {
+        expect(summary.heaviest).toEqual({ name: 'Squat', topSetKg: 70, topSetReps: 3 })
+        expect(summary.bestGain).toEqual({ name: 'Press', loadDeltaKg: 10 })
+    })
+
+    it('averages the change in top set reps over the rated lifts', () => {
+        // Press 0, Row -2, Squat -2.
+        expect(summary.avgRepsDelta).toBeCloseTo(-1.33, 1)
+    })
+
+    it('is empty without lifts to rate', () => {
+        expect(strengthSummary([])).toMatchObject({
+            rated: 0,
+            records: 0,
+            heaviest: null,
+            avgRepsDelta: null,
+            bestGain: null,
+        })
     })
 })

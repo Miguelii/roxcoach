@@ -49,7 +49,7 @@ coach that respects your time.
 1. **Quiet authority.** Hierarchy, spacing and typography carry the design. No decoration.
 2. **One thing at a time.** Each screen has one job.
 3. **Show the work.** Coach answers quote the numbers they are based on.
-4. **Respect the decision.** No gamification: no streaks, no confetti, no badges.
+4. **Respect the decision.** The athlete stays in control of every choice.
 5. **Honest empty and error states.** Always say what happened and what to do next.
 
 Anti-references: chatbot bubbles, "AI" sparkle iconography, social feeds, dashboards with many

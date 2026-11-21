@@ -105,7 +105,7 @@ describe('ExerciseCard', () => {
         expect(screen.getByTestId('exercise-verdict')).toHaveTextContent('Progressing')
         expect(screen.getByTestId('exercise-insight-load')).toHaveTextContent('+10 kg')
         expect(screen.getByTestId('exercise-insight-reps')).toHaveTextContent('no change')
-        expect(screen.getByTestId('exercise-insight-e1rm')).toHaveTextContent('+11.7 kg')
+        expect(screen.queryByTestId('exercise-insight-e1rm')).toBeNull()
         expect(screen.getByTestId('exercise-insight-best')).toHaveTextContent('1 workout ago')
     })
 
@@ -149,6 +149,20 @@ describe('ExerciseCard', () => {
 })
 
 describe('StrengthProgressView', () => {
+    it('opens with a progress summary of every lift before the top exercises', () => {
+        render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
+
+        expect(screen.getByTestId('strength-overview-takeaway')).toHaveTextContent(
+            '2 progressing, 0 holding steady, 0 slipping across your 2 most used lifts.'
+        )
+        expect(screen.getByTestId('strength-overview-progressing')).toHaveTextContent('2 of 2')
+        expect(screen.getByTestId('strength-overview-records')).toHaveTextContent('2')
+        expect(screen.getByTestId('strength-overview-heaviest')).toHaveTextContent('105 kg x 5')
+        expect(screen.getByTestId('strength-overview-reps')).toHaveTextContent('no change')
+        expect(screen.queryByTestId('strength-overview-slipping')).toBeNull()
+        expect(screen.getByTestId('strength-overview-bar').children).toHaveLength(2)
+    })
+
     it('shows the volume and workouts charts, then one chart card per exercise', () => {
         render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
 

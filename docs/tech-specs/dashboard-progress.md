@@ -163,13 +163,29 @@ helpers, per the layering in [architecture.md](architecture.md)):
 Cross-module reads go through services: the training services call the athlete service for the
 profile and the races service for the goal race.
 
-### Exercise insights
+### Strength progress summary and exercise insights
 
-Each exercise card with at least two workouts in the range shows a progress panel computed in the
-client from its `points` (`exerciseInsights`): the change in load, reps and estimated 1RM (Epley,
-sets of 1 to 12 reps) from the first to the latest workout, a verdict from the 1RM (up 2% or more
-"Progressing", down 2% or more "Slipping", else "Holding steady"; none when a set is above 12 reps)
-and how many workouts ago the best estimated 1RM was. Zero changes read "no change".
+The dashboard judges strength by weight and reps of the top set, not by the estimated 1RM (that
+stays on the activity page). From the first to the latest workout of a lift in the range
+(`exerciseInsights`, in the client from the exercise `points`):
+
+- More weight with the same or more reps, or the same weight with more reps: "Progressing".
+- Nothing changed: "Holding steady". Less weight or fewer reps with nothing gained: "Slipping".
+- More weight with fewer reps ("More weight, fewer reps") or less weight with more reps ("Lighter,
+  more reps"): a trade, counted as "trading weight and reps".
+
+Each exercise card with at least two workouts shows this verdict, the change in weight and in reps,
+the first date and how many workouts ago the heaviest top set was.
+
+Strength mode opens with a "Progress summary" card (`strengthSummary`) before Top exercises, hidden
+without exercises: the lifts progressing, trading, holding steady or slipping, the top set records
+in the range (a top set heavier than every earlier top set of that lift, the first workout of a lift
+never counts), the heaviest top set with its lift, the average change in top set reps, the lift
+with the biggest gain in weight and up to three slipping lifts. It covers the most used lifts the
+response carries, not every lift. The card has a game-like look: a segmented bar with one segment per rated lift colored by verdict
+(green progressing, blue trading, slate steady, orange slipping, in that order, appearing one after
+another unless reduced motion is set), and four tinted stat tiles with an icon chip (progressing,
+records, heaviest top set, reps).
 
 ### Buckets
 
@@ -258,6 +274,7 @@ Running mode (the order of a training app, like Strava)
 +--------------------------------------------------------------------+
 
 Strength mode
+| Progress summary (progressing, records, heaviest top set, reps)    |
 | Top exercises (heading)                                            |
 | +----------------------------------------------------------------+ |
 | | [img]  Back squat                                  5 workouts  | |

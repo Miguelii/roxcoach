@@ -1,26 +1,24 @@
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
 import { formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
-import { estimateOneRepMax } from '@/_bff/core/helpers/strength-detail.helper'
 import type { RunBucketDTO, TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { isoWeekNumber } from '@/modules/calendar/date-utils'
 
 type Granularity = 'week' | 'month'
 
-type Verdict = 'progressing' | 'steady' | 'declining'
+type Verdict = 'progressing' | 'steady' | 'declining' | 'mixed'
 
 export type ExerciseInsights = {
-    // From the estimated 1RM, which folds load and reps together; null when it cannot be estimated.
-    verdict: Verdict | null
+    // From the top set of the first and the latest workout: more weight with the same or more reps,
+    // or the same weight with more reps, is progress; the opposite is slipping; more of one and less
+    // of the other is a trade ('mixed').
+    verdict: Verdict
     loadDeltaKg: number
     repsDelta: number
-    e1rmDeltaKg: number | null
     firstDate: string
-    // How many workouts ago the best estimated 1RM was set (0 is the latest workout).
-    bestWorkoutsAgo: number | null
+    // How many workouts ago the heaviest top set was done (0 is the latest workout).
+    heaviestWorkoutsAgo: number
 }
-
-const VERDICT_THRESHOLD = 0.02
 
 const MONTHS_BY_RANGE: Record<ProgressRange, number> = { '3m': 3, '6m': 6, '12m': 12 }
 
@@ -96,47 +94,114 @@ export const paceSummary = (buckets: RunBucketDTO[], range: ProgressRange) => {
     return `Average pace ${last < first ? 'improved' : 'slowed'} from ${from} to ${to} over ${span}.`
 }
 
+const verdictOf = (loadDeltaKg: number, repsDelta: number): Verdict => {
+    if (loadDeltaKg === 0 && repsDelta === 0) return 'steady'
+    if (loadDeltaKg >= 0 && repsDelta >= 0) return 'progressing'
+    if (loadDeltaKg <= 0 && repsDelta <= 0) return 'declining'
+    return 'mixed'
+}
+
 /**
- * How an exercise moved from its first to its latest workout in the range: the change in load,
- * reps and estimated 1RM, a verdict (1RM up or down by 2% or more, else steady) and how long ago
- * the best 1RM was. Null with fewer than two workouts.
+ * How an exercise moved from its first to its latest workout in the range: the change in the
+ * weight and the reps of the top set, a verdict from both and how long ago the heaviest top set was.
+ * Null with fewer than two workouts.
  */
 export function exerciseInsights(points: TopExerciseDTO['points']): ExerciseInsights | null {
     const first = points[0]
     const last = points.at(-1)
     if (first === undefined || last === undefined || points.length < 2) return null
 
-    const firstE1rm = estimateOneRepMax(first.topSetKg, first.topSetReps)
-    const lastE1rm = estimateOneRepMax(last.topSetKg, last.topSetReps)
-    let verdict: Verdict | null = null
-    let e1rmDeltaKg: number | null = null
-    if (firstE1rm !== null && lastE1rm !== null) {
-        e1rmDeltaKg = lastE1rm - firstE1rm
-        const change = e1rmDeltaKg / firstE1rm
-        verdict =
-            change >= VERDICT_THRESHOLD
-                ? 'progressing'
-                : change <= -VERDICT_THRESHOLD
-                  ? 'declining'
-                  : 'steady'
-    }
+    const loadDeltaKg = last.topSetKg - first.topSetKg
+    const repsDelta = last.topSetReps - first.topSetReps
 
-    let bestIndex: number | null = null
-    let best = 0
+    let heaviestIndex = 0
     for (const [index, point] of points.entries()) {
-        const estimate = estimateOneRepMax(point.topSetKg, point.topSetReps)
-        if (estimate !== null && estimate >= best) {
-            best = estimate
-            bestIndex = index
-        }
+        const heaviest = points[heaviestIndex]
+        if (
+            heaviest !== undefined &&
+            (point.topSetKg > heaviest.topSetKg ||
+                (point.topSetKg === heaviest.topSetKg && point.topSetReps >= heaviest.topSetReps))
+        )
+            heaviestIndex = index
     }
 
     return {
-        verdict,
-        loadDeltaKg: last.topSetKg - first.topSetKg,
-        repsDelta: last.topSetReps - first.topSetReps,
-        e1rmDeltaKg,
+        verdict: verdictOf(loadDeltaKg, repsDelta),
+        loadDeltaKg,
+        repsDelta,
         firstDate: first.date,
-        bestWorkoutsAgo: bestIndex === null ? null : points.length - 1 - bestIndex,
+        heaviestWorkoutsAgo: points.length - 1 - heaviestIndex,
     }
+}
+
+export type StrengthSummary = {
+    // Lifts with at least two workouts.
+    rated: number
+    progressing: number
+    steady: number
+    declining: number
+    mixed: number
+    // Top sets heavier than every earlier top set of the same lift in the range (the first workout of a lift never counts).
+    records: number
+    heaviest: { name: string; topSetKg: number; topSetReps: number } | null
+    // Mean change in the reps of the top set from the first to the latest workout, over the rated lifts.
+    avgRepsDelta: number | null
+    bestGain: { name: string; loadDeltaKg: number } | null
+    slipping: string[]
+}
+
+const MAX_SLIPPING_SHOWN = 3
+
+/** The progress of every lift at a glance, from the same points the exercise cards use. */
+export function strengthSummary(exercises: TopExerciseDTO[]): StrengthSummary {
+    const summary: StrengthSummary = {
+        rated: 0,
+        progressing: 0,
+        steady: 0,
+        declining: 0,
+        mixed: 0,
+        records: 0,
+        heaviest: null,
+        avgRepsDelta: null,
+        bestGain: null,
+        slipping: [],
+    }
+    let repsDeltaSum = 0
+
+    for (const exercise of exercises) {
+        let heaviestSoFar = 0
+        for (const [index, point] of exercise.points.entries()) {
+            if (index > 0 && point.topSetKg > heaviestSoFar) summary.records += 1
+            heaviestSoFar = Math.max(heaviestSoFar, point.topSetKg)
+
+            const top = summary.heaviest
+            if (
+                top === null ||
+                point.topSetKg > top.topSetKg ||
+                (point.topSetKg === top.topSetKg && point.topSetReps > top.topSetReps)
+            )
+                summary.heaviest = {
+                    name: exercise.name,
+                    topSetKg: point.topSetKg,
+                    topSetReps: point.topSetReps,
+                }
+        }
+
+        const insights = exerciseInsights(exercise.points)
+        if (insights === null) continue
+        summary.rated += 1
+        repsDeltaSum += insights.repsDelta
+        summary[insights.verdict] += 1
+        if (insights.verdict === 'declining') summary.slipping.push(exercise.name)
+        if (
+            insights.verdict === 'progressing' &&
+            insights.loadDeltaKg > 0 &&
+            (summary.bestGain === null || insights.loadDeltaKg > summary.bestGain.loadDeltaKg)
+        )
+            summary.bestGain = { name: exercise.name, loadDeltaKg: insights.loadDeltaKg }
+    }
+
+    summary.slipping = summary.slipping.slice(0, MAX_SLIPPING_SHOWN)
+    if (summary.rated > 0) summary.avgRepsDelta = repsDeltaSum / summary.rated
+    return summary
 }
