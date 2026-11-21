@@ -136,6 +136,17 @@ export type StorageClient = {
     }
 }
 
+// The part of the Supabase client the storage read touches.
+export type StorageReadClient = {
+    storage: {
+        from(bucket: string): {
+            download(
+                path: string
+            ): PromiseLike<{ data: Blob | null; error: { message: string } | null }>
+        }
+    }
+}
+
 export type ActivityDTO = {
     id: string
     source: ActivitySource
