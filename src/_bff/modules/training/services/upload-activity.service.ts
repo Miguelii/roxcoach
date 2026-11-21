@@ -133,6 +133,7 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
             max_hr: parsed.maxHr,
             avg_speed_mps: parsed.avgSpeedMps,
             calories: parsed.calories,
+            hr_histogram: parsed.hrHistogram,
         })
 
         yield* Effect.gen(function* () {

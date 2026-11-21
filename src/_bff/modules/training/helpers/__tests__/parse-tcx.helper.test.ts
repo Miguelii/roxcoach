@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { Effect, Result } from 'effect'
 import { describe, expect, it } from 'vitest'
-import { parseTcx } from '@/_bff/modules/training/helpers/parse-tcx.helper'
+import { parseTcx, tcxSamples } from '@/_bff/modules/training/helpers/parse-tcx.helper'
 
 const FIXTURES = new URL('./fixtures/', import.meta.url)
 const enc = (s: string) => new TextEncoder().encode(s)
@@ -124,5 +124,55 @@ describe('parseTcx synthetic', () => {
         expect(result.success.avgHr).toBe(100)
         expect(result.success.maxHr).toBe(110)
         expect(result.success.calories).toBe(5)
+    })
+})
+
+const tp = (sec: number, hr: number | null, dist: number | null) =>
+    `<Trackpoint><Time>2026-01-01T10:00:${String(sec).padStart(2, '0')}Z</Time>${
+        dist === null ? '' : `<DistanceMeters>${dist}</DistanceMeters>`
+    }${hr === null ? '' : `<HeartRateBpm><Value>${hr}</Value></HeartRateBpm>`}</Trackpoint>`
+const trackDoc = (points: string) =>
+    doc(
+        'Running',
+        `<Lap StartTime="2026-01-01T10:00:00Z"><TotalTimeSeconds>5</TotalTimeSeconds><Track>${points}</Track></Lap>`
+    )
+
+describe('parseTcx hrHistogram', () => {
+    it('bins the usable intervals of trackpoints with heart rate and distance', () => {
+        const result = run(enc(trackDoc([0, 1, 2, 3, 4].map((s) => tp(s, 130, s * 3)).join(''))))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        const { bins } = result.success.hrHistogram
+        expect(bins.length).toBeGreaterThan(0)
+        expect(bins.reduce((a, b) => a + b[1], 0)).toBe(4)
+        expect(bins[0]?.[0]).toBe(130)
+    })
+
+    it('returns an empty histogram without heart rate and keeps the rest unchanged', () => {
+        const result = run(enc(trackDoc([0, 1, 2].map((s) => tp(s, null, s * 3)).join(''))))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.hrHistogram).toEqual({ v: 1, bins: [] })
+        expect(result.success.format).toBe('tcx')
+        expect(result.success.avgHr).toBeNull()
+        expect(result.success.elapsedTimeS).toBe(5)
+    })
+})
+
+describe('tcxSamples', () => {
+    it('defaults missing heart rate and distance to null', () => {
+        const track = [{ Trackpoint: [{ Time: '2026-01-01T10:00:00Z' }, { Time: 'bad' }] }]
+        const samples = tcxSamples([
+            {
+                Track: track,
+                '@_StartTime': undefined,
+                TotalTimeSeconds: undefined,
+                DistanceMeters: undefined,
+                Calories: undefined,
+                AverageHeartRateBpm: undefined,
+                MaximumHeartRateBpm: undefined,
+            },
+        ])
+        expect(samples).toEqual([
+            { t: Date.parse('2026-01-01T10:00:00Z'), hr: null, distanceM: null, speedMps: null },
+        ])
     })
 })

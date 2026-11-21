@@ -1,6 +1,7 @@
 import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import type { HyroxStation } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
+import type { HrHistogram } from '@/_bff/modules/training/types/progress'
 
 export type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
 type ActivitySource = 'strava' | 'manual' | 'lyfta'
@@ -83,6 +84,7 @@ export type ParsedActivity = {
     // TCX Notes, used for Hyrox hinting
     noteText: string | null
     laps: ParsedLap[]
+    hrHistogram: HrHistogram
 }
 
 // The service-role client (server-side admin work) or the signed-in user's client (queries).
@@ -105,6 +107,7 @@ export type NewActivityRow = {
     max_hr: number | null
     avg_speed_mps: number | null
     calories: number | null
+    hr_histogram: HrHistogram
 }
 
 export type NewActivityFileRow = {

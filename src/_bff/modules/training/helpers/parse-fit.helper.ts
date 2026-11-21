@@ -2,7 +2,9 @@ import { Decoder, Stream } from '@garmin/fitsdk'
 import { Effect } from 'effect'
 import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
+import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import type { ActivityCategory, ParsedActivity, ParsedLap } from '@/_bff/modules/training/types'
+import type { HrSample } from '@/_bff/modules/training/types/progress'
 
 // The SDK returns decoded values: Date timestamps, seconds, meters, enum names as strings.
 type Maybe<T> = T | null | undefined
@@ -21,6 +23,9 @@ type FitMessage = {
     avgSpeed?: Maybe<number>
     enhancedAvgSpeed?: Maybe<number>
     heartRate?: Maybe<number>
+    distance?: Maybe<number>
+    speed?: Maybe<number>
+    enhancedSpeed?: Maybe<number>
 }
 type FitMessages = {
     sessionMesgs?: FitMessage[]
@@ -47,6 +52,22 @@ export function categoryFromSport(
     if (sport === 'cross_training') return 'cross'
     if (sport === 'training' && subSport === 'strength_training') return 'strength'
     return 'other'
+}
+
+// Maps FIT records to HR samples: cumulative distance, enhanced speed preferred over speed.
+export function fitSamples(records: FitMessage[]): HrSample[] {
+    return records.flatMap((r) => {
+        const ms = r.timestamp instanceof Date ? r.timestamp.getTime() : Number.NaN
+        if (!Number.isFinite(ms)) return []
+        return [
+            {
+                t: ms,
+                hr: num(r.heartRate),
+                distanceM: num(r.distance),
+                speedMps: num(r.enhancedSpeed) ?? num(r.speed),
+            },
+        ]
+    })
 }
 
 function parseLap(lap: FitMessage, index: number): ParsedLap | null {
@@ -94,6 +115,7 @@ function build(messages: FitMessages): ParsedActivity | null {
         elevationGainM: num(session?.totalAscent),
         noteText: null,
         laps,
+        hrHistogram: buildHrHistogram(fitSamples(records)),
     }
     const sessionStart = iso(session?.startTime)
     if (session && sessionStart) {

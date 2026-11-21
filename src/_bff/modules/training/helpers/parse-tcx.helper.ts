@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { isoOf, numOf, parseXml, type XmlTree } from '@/_bff/modules/training/helpers/xml.helper'
+import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import type { ParsedActivity, ParsedLap } from '@/_bff/modules/training/types'
+import type { HrSample } from '@/_bff/modules/training/types/progress'
 
 type Maybe<T> = T | undefined
 type LapWithMax = { lap: ParsedLap; maxHr: number | null }
@@ -11,14 +13,17 @@ type LapWithMax = { lap: ParsedLap; maxHr: number | null }
 // parseTagValue is off, so every leaf is a string.
 const leaf = z.string().optional()
 const hrSchema = z.object({ Value: leaf }).optional().catch(undefined)
+const trackpointSchema = z.object({
+    Time: leaf,
+    HeartRateBpm: hrSchema,
+    DistanceMeters: leaf,
+})
 const lapSchema = z.object({
     '@_StartTime': leaf,
     TotalTimeSeconds: leaf,
     DistanceMeters: leaf,
     Calories: leaf,
-    Track: z
-        .array(z.object({ Trackpoint: z.array(z.object({ Time: leaf })).default([]) }))
-        .catch([]),
+    Track: z.array(z.object({ Trackpoint: z.array(trackpointSchema).default([]) })).catch([]),
     AverageHeartRateBpm: hrSchema,
     MaximumHeartRateBpm: hrSchema,
 })
@@ -43,6 +48,24 @@ const sum = (values: (number | null)[]): number | null => {
     return present.length ? present.reduce((a, b) => a + b, 0) : null
 }
 const hrValue = (v: Maybe<{ Value?: Maybe<string> }>): number | null => numOf(v?.Value)
+
+// Maps trackpoints to HR samples. TCX has no speed leaf, so distance comes from DistanceMeters.
+export function tcxSamples(laps: TcxLap[]): HrSample[] {
+    return laps
+        .flatMap((l) => l.Track.flatMap((t) => t.Trackpoint))
+        .flatMap((p) => {
+            const iso = isoOf(p.Time)
+            if (iso === null) return []
+            return [
+                {
+                    t: Date.parse(iso),
+                    hr: hrValue(p.HeartRateBpm),
+                    distanceM: numOf(p.DistanceMeters),
+                    speedMps: null,
+                },
+            ]
+        })
+}
 
 // The lap start falls back to the first trackpoint time when StartTime is missing.
 function parseLap(lap: TcxLap, index: number): LapWithMax | null {
@@ -109,6 +132,7 @@ function build(root: XmlTree): ParsedActivity | null {
         calories: sum(laps.map((l) => l.calories)),
         noteText: note,
         laps,
+        hrHistogram: buildHrHistogram(tcxSamples(node.Lap)),
     }
 }
 

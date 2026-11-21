@@ -25,6 +25,7 @@ const ROW: NewActivityRow = {
     max_hr: null,
     avg_speed_mps: null,
     calories: null,
+    hr_histogram: { v: 1, bins: [[150, 60, 200]] },
 }
 const failed = { code: '42501', message: 'permission denied' }
 const LYFTA_ROW: LyftaActivityRow = {
@@ -87,6 +88,10 @@ describe('insertActivity', () => {
             source: 'manual',
             user_id: USER_ID,
         })
+        expect(chains[0]?.insert.mock.calls[0]?.[0]).toHaveProperty(
+            'hr_histogram',
+            ROW.hr_histogram
+        )
     })
 
     it('tags a thrown error and a returned error', async () => {
