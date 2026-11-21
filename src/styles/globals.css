@@ -49,6 +49,14 @@ html {
         letter-spacing: -0.15px;
     }
 
+    /* The installed app does not zoom (pinch or double tap); a browser tab still does. iOS also
+       needs StandaloneZoomLock. */
+    @media (display-mode: standalone) {
+        html {
+            touch-action: pan-x pan-y;
+        }
+    }
+
     /* Monospace text must not inherit the negative tracking */
     code,
     pre,

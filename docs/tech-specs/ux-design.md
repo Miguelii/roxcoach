@@ -95,6 +95,11 @@ respected, screen-reader labels on every icon-only control and on every calendar
   remembered. Out of scope on purpose: web push
   notifications (they need VAPID keys, a stored subscription and a sender) and offline caching with
   a service worker; neither is required to install the app.
+  When the app runs installed (`display-mode: standalone`), it does not zoom, like a native app:
+  `html` gets `touch-action: pan-x pan-y` (no pinch or double-tap zoom, Chrome), and
+  `StandaloneZoomLock` (root layout) adds `maximum-scale=1, user-scalable=no` to the viewport and
+  blocks iOS `gesturestart`, which also stops iOS zooming into a focused input. In a browser tab
+  zoom stays available, for accessibility.
 
 ## Screens
 
