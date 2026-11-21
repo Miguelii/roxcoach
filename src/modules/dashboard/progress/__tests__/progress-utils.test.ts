@@ -145,25 +145,37 @@ describe('exerciseInsights', () => {
 })
 
 describe('strengthSummary', () => {
-    const lift = (name: string, points: [string, number, number][]) => ({
+    const lift = (
+        name: string,
+        points: [string, number, number][],
+        imageUrl: string | null = null
+    ) => ({
         key: name,
         name,
-        imageUrl: null,
+        imageUrl,
         workouts: points.length,
         points: points.map(([date, topSetKg, topSetReps]) => ({ date, topSetKg, topSetReps })),
     })
 
     const summary = strengthSummary([
-        lift('Press', [
-            ['2026-10-05', 40, 8],
-            ['2026-10-19', 45, 6],
-            ['2026-11-02', 50, 8],
-        ]),
-        lift('Row', [
-            ['2026-10-05', 50, 8],
-            ['2026-10-19', 40, 8],
-            ['2026-11-02', 40, 6],
-        ]),
+        lift(
+            'Press',
+            [
+                ['2026-10-05', 40, 8],
+                ['2026-10-19', 45, 6],
+                ['2026-11-02', 50, 8],
+            ],
+            'https://lyfta.app/images/exercises/press.png'
+        ),
+        lift(
+            'Row',
+            [
+                ['2026-10-05', 50, 8],
+                ['2026-10-19', 40, 8],
+                ['2026-11-02', 40, 6],
+            ],
+            'https://lyfta.app/images/exercises/row.png'
+        ),
         lift('Squat', [
             ['2026-10-05', 60, 5],
             ['2026-11-02', 70, 3],
@@ -179,7 +191,9 @@ describe('strengthSummary', () => {
             steady: 0,
             declining: 1,
         })
-        expect(summary.slipping).toEqual(['Row'])
+        expect(summary.slipping).toEqual([
+            { name: 'Row', imageUrl: 'https://lyfta.app/images/exercises/row.png' },
+        ])
     })
 
     it('counts a record for each top set heavier than every earlier one, never the first', () => {
@@ -188,8 +202,17 @@ describe('strengthSummary', () => {
     })
 
     it('finds the heaviest top set (more reps wins a tie) and the biggest gain in weight', () => {
-        expect(summary.heaviest).toEqual({ name: 'Squat', topSetKg: 70, topSetReps: 3 })
-        expect(summary.bestGain).toEqual({ name: 'Press', loadDeltaKg: 10 })
+        expect(summary.heaviest).toEqual({
+            name: 'Squat',
+            imageUrl: null,
+            topSetKg: 70,
+            topSetReps: 3,
+        })
+        expect(summary.bestGain).toEqual({
+            name: 'Press',
+            loadDeltaKg: 10,
+            imageUrl: 'https://lyfta.app/images/exercises/press.png',
+        })
     })
 
     it('averages the change in top set reps over the rated lifts', () => {

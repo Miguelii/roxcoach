@@ -182,10 +182,9 @@ without exercises: the lifts progressing, trading, holding steady or slipping, t
 in the range (a top set heavier than every earlier top set of that lift, the first workout of a lift
 never counts), the heaviest top set with its lift, the average change in top set reps, the lift
 with the biggest gain in weight and up to three slipping lifts. It covers the most used lifts the
-response carries, not every lift. The card has a game-like look: a segmented bar with one segment per rated lift colored by verdict
-(green progressing, blue trading, slate steady, orange slipping, in that order, appearing one after
-another unless reduced motion is set), and four tinted stat tiles with an icon chip (progressing,
-records, heaviest top set, reps).
+response carries, not every lift. The card has four tinted stat tiles with an icon chip
+(progressing, records, heaviest top set, reps). The heaviest top set, the biggest gain and each slipping lift show the
+exercise picture (a barbell placeholder when the source has none).
 
 ### Buckets
 

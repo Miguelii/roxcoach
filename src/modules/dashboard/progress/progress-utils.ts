@@ -134,6 +134,8 @@ export function exerciseInsights(points: TopExerciseDTO['points']): ExerciseInsi
     }
 }
 
+type LiftRef = { name: string; imageUrl: string | null }
+
 export type StrengthSummary = {
     // Lifts with at least two workouts.
     rated: number
@@ -143,11 +145,11 @@ export type StrengthSummary = {
     mixed: number
     // Top sets heavier than every earlier top set of the same lift in the range (the first workout of a lift never counts).
     records: number
-    heaviest: { name: string; topSetKg: number; topSetReps: number } | null
+    heaviest: (LiftRef & { topSetKg: number; topSetReps: number }) | null
     // Mean change in the reps of the top set from the first to the latest workout, over the rated lifts.
     avgRepsDelta: number | null
-    bestGain: { name: string; loadDeltaKg: number } | null
-    slipping: string[]
+    bestGain: (LiftRef & { loadDeltaKg: number }) | null
+    slipping: LiftRef[]
 }
 
 const MAX_SLIPPING_SHOWN = 3
@@ -182,6 +184,7 @@ export function strengthSummary(exercises: TopExerciseDTO[]): StrengthSummary {
             )
                 summary.heaviest = {
                     name: exercise.name,
+                    imageUrl: exercise.imageUrl,
                     topSetKg: point.topSetKg,
                     topSetReps: point.topSetReps,
                 }
@@ -192,13 +195,18 @@ export function strengthSummary(exercises: TopExerciseDTO[]): StrengthSummary {
         summary.rated += 1
         repsDeltaSum += insights.repsDelta
         summary[insights.verdict] += 1
-        if (insights.verdict === 'declining') summary.slipping.push(exercise.name)
+        if (insights.verdict === 'declining')
+            summary.slipping.push({ name: exercise.name, imageUrl: exercise.imageUrl })
         if (
             insights.verdict === 'progressing' &&
             insights.loadDeltaKg > 0 &&
             (summary.bestGain === null || insights.loadDeltaKg > summary.bestGain.loadDeltaKg)
         )
-            summary.bestGain = { name: exercise.name, loadDeltaKg: insights.loadDeltaKg }
+            summary.bestGain = {
+                name: exercise.name,
+                imageUrl: exercise.imageUrl,
+                loadDeltaKg: insights.loadDeltaKg,
+            }
     }
 
     summary.slipping = summary.slipping.slice(0, MAX_SLIPPING_SHOWN)

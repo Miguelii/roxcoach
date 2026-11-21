@@ -8,7 +8,7 @@ import {
 } from '@tabler/icons-react'
 import { formatKg } from '@/_bff/core/utils/formatters.utils'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
-import { cn } from '@/lib/utils'
+import { ExerciseThumb } from '@/modules/dashboard/progress/exercise-thumb'
 import { strengthSummary } from '@/modules/dashboard/progress/progress-utils'
 
 type Props = {
@@ -20,20 +20,13 @@ type Tile = {
     label: string
     value: string
     hint?: string
+    // Shows the exercise picture beside the hint.
+    picture?: { imageUrl: string | null }
     tone: 'green' | 'amber' | 'plum' | 'blue'
     Icon: Icon
 }
 
 const TEST_ID = 'strength-overview'
-
-const SEGMENT_TONES = {
-    progressing: 'green',
-    mixed: 'blue',
-    steady: 'slate',
-    declining: 'tangerine',
-} as const
-
-const VERDICT_ORDER = ['progressing', 'mixed', 'steady', 'declining'] as const
 
 const signedReps = (value: number) => {
     const rounded = Math.round(value * 10) / 10
@@ -53,10 +46,6 @@ export function StrengthOverviewCard({ exercises }: Props) {
         summary.rated === 0
             ? 'Not enough workouts to compare yet.'
             : `${parts.join(', ')} across your ${summary.rated} most used lifts.`
-
-    const segments = VERDICT_ORDER.flatMap((verdict) =>
-        Array.from({ length: summary[verdict] }, () => verdict)
-    )
 
     const tiles: Tile[] = [
         {
@@ -81,6 +70,8 @@ export function StrengthOverviewCard({ exercises }: Props) {
                     ? '-'
                     : `${formatKg(summary.heaviest.topSetKg)} x ${summary.heaviest.topSetReps}`,
             hint: summary.heaviest?.name,
+            picture:
+                summary.heaviest === null ? undefined : { imageUrl: summary.heaviest.imageUrl },
             tone: 'plum',
             Icon: IconBarbell,
         },
@@ -111,25 +102,6 @@ export function StrengthOverviewCard({ exercises }: Props) {
                     </p>
                 </header>
 
-                {segments.length === 0 ? null : (
-                    <div
-                        data-testid={`${TEST_ID}-bar`}
-                        role="img"
-                        aria-label={takeaway}
-                        className="flex gap-1 rounded-full bg-muted p-1"
-                    >
-                        {segments.map((verdict, index) => (
-                            <span
-                                // oxlint-disable-next-line react/no-array-index-key -- the bar is static and the index drives the staggered delay
-                                key={index}
-                                data-tone={SEGMENT_TONES[verdict]}
-                                style={{ animationDelay: `${index * 45}ms` }}
-                                className="h-3 min-w-1 flex-1 rounded-full bg-tone animate-in fade-in zoom-in-90 fill-mode-both duration-500 motion-reduce:animate-none"
-                            />
-                        ))}
-                    </div>
-                )}
-
                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:grid-cols-4">
                     {tiles.map((tile) => (
                         <div
@@ -150,9 +122,17 @@ export function StrengthOverviewCard({ exercises }: Props) {
                                 {tile.value}
                             </dd>
                             {tile.hint === undefined ? null : (
-                                <p className="text-xs leading-snug opacity-80 [overflow-wrap:anywhere]">
-                                    {tile.hint}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    {tile.picture === undefined ? null : (
+                                        <ExerciseThumb
+                                            imageUrl={tile.picture.imageUrl}
+                                            testId={`${TEST_ID}-${tile.id}`}
+                                        />
+                                    )}
+                                    <p className="min-w-0 text-xs leading-snug opacity-80 [overflow-wrap:anywhere]">
+                                        {tile.hint}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     ))}
@@ -164,17 +144,21 @@ export function StrengthOverviewCard({ exercises }: Props) {
                             <li
                                 data-testid={`${TEST_ID}-best-gain`}
                                 data-tone="green"
-                                className={cn(
-                                    'flex items-start gap-2 rounded-[var(--radius-surface-inner)] border border-tone/30 bg-card px-3 py-2.5 text-sm text-tone-deep'
-                                )}
+                                className="flex items-center gap-3 rounded-[var(--radius-surface-inner)] border border-tone/30 bg-card px-3 py-2.5 text-sm text-tone-deep"
                             >
-                                <IconTrendingUp
-                                    className="mt-0.5 size-4 shrink-0"
-                                    aria-hidden="true"
+                                <ExerciseThumb
+                                    imageUrl={summary.bestGain.imageUrl}
+                                    testId={`${TEST_ID}-best-gain`}
                                 />
                                 <span className="min-w-0 [overflow-wrap:anywhere]">
-                                    Biggest gain: {summary.bestGain.name},{' '}
-                                    {formatKg(summary.bestGain.loadDeltaKg)} more weight.
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                        <IconTrendingUp
+                                            className="size-4 shrink-0"
+                                            aria-hidden="true"
+                                        />
+                                        Biggest gain: {summary.bestGain.name},{' '}
+                                        {formatKg(summary.bestGain.loadDeltaKg)} more weight.
+                                    </span>
                                 </span>
                             </li>
                         )}
@@ -182,15 +166,32 @@ export function StrengthOverviewCard({ exercises }: Props) {
                             <li
                                 data-testid={`${TEST_ID}-slipping`}
                                 data-tone="tangerine"
-                                className="flex items-start gap-2 rounded-[var(--radius-surface-inner)] border border-tone/30 bg-card px-3 py-2.5 text-sm text-tone-deep"
+                                className="grid gap-2 rounded-[var(--radius-surface-inner)] border border-tone/30 bg-card px-3 py-2.5 text-sm text-tone-deep"
                             >
-                                <IconTrendingDown
-                                    className="mt-0.5 size-4 shrink-0"
-                                    aria-hidden="true"
-                                />
-                                <span className="min-w-0 [overflow-wrap:anywhere]">
-                                    Slipping: {summary.slipping.join(', ')}.
+                                <span className="flex items-center gap-1.5 font-medium">
+                                    <IconTrendingDown
+                                        className="size-4 shrink-0"
+                                        aria-hidden="true"
+                                    />
+                                    Slipping:
                                 </span>
+                                <ul className="grid gap-2">
+                                    {summary.slipping.map((lift, index) => (
+                                        <li
+                                            key={lift.name}
+                                            data-testid={`${TEST_ID}-slipping-${index}`}
+                                            className="flex items-center gap-3"
+                                        >
+                                            <ExerciseThumb
+                                                imageUrl={lift.imageUrl}
+                                                testId={`${TEST_ID}-slipping-${index}`}
+                                            />
+                                            <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                {lift.name}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </li>
                         )}
                     </ul>

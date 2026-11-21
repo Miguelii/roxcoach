@@ -160,7 +160,59 @@ describe('StrengthProgressView', () => {
         expect(screen.getByTestId('strength-overview-heaviest')).toHaveTextContent('105 kg x 5')
         expect(screen.getByTestId('strength-overview-reps')).toHaveTextContent('no change')
         expect(screen.queryByTestId('strength-overview-slipping')).toBeNull()
-        expect(screen.getByTestId('strength-overview-bar').children).toHaveLength(2)
+    })
+
+    it('shows the picture of the lift with the heaviest top set, or a placeholder without one', () => {
+        const { unmount } = render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
+
+        expect(screen.getByTestId('strength-overview-heaviest')).toHaveTextContent('105 kg x 5')
+        expect(screen.getByTestId('strength-overview-heaviest-image')).toBeInTheDocument()
+        unmount()
+
+        render(<StrengthProgressView data={data([BENCH])} />)
+        expect(screen.getByTestId('strength-overview-heaviest-placeholder')).toBeInTheDocument()
+    })
+
+    it('has no segmented progress bar', () => {
+        render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
+
+        expect(screen.queryByTestId('strength-overview-bar')).toBeNull()
+    })
+
+    it('shows the picture of the lift with the biggest gain, or a placeholder without one', () => {
+        const { unmount } = render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
+
+        expect(screen.getByTestId('strength-overview-best-gain')).toHaveTextContent(
+            'Biggest gain: Back squat'
+        )
+        expect(screen.getByTestId('strength-overview-best-gain-image')).toHaveAttribute('alt', '')
+        unmount()
+
+        render(<StrengthProgressView data={data([BENCH])} />)
+        expect(screen.getByTestId('strength-overview-best-gain-placeholder')).toBeInTheDocument()
+    })
+
+    it('shows each slipping lift with its picture', () => {
+        const SLIPPING = exercise(
+            'row',
+            'Barbell row',
+            [
+                ['2026-10-05', 60],
+                ['2026-11-02', 50],
+            ],
+            'https://lyfta.app/images/exercises/row.png'
+        )
+        const NO_PICTURE = exercise('pull', 'Pull-up', [
+            ['2026-10-05', 20],
+            ['2026-11-02', 10],
+        ])
+        render(<StrengthProgressView data={data([SLIPPING, NO_PICTURE])} />)
+
+        expect(screen.getByTestId('strength-overview-slipping')).toHaveTextContent('Slipping')
+        expect(screen.getByTestId('strength-overview-slipping-0')).toHaveTextContent('Barbell row')
+        expect(screen.getByTestId('strength-overview-slipping-0-image')).toBeInTheDocument()
+        expect(screen.getByTestId('strength-overview-slipping-1')).toHaveTextContent('Pull-up')
+        expect(screen.getByTestId('strength-overview-slipping-1-placeholder')).toBeInTheDocument()
     })
 
     it('shows the volume and workouts charts, then one chart card per exercise', () => {

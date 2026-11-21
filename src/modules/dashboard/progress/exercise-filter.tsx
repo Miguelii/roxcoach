@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import { useState } from 'react'
-import { IconBarbell, IconCheck, IconChevronDown } from '@tabler/icons-react'
+import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { ExerciseThumb } from '@/modules/dashboard/progress/exercise-thumb'
 import { cn } from '@/lib/utils'
 
 // The value that stands for "the top exercises" rather than one exercise.
@@ -40,24 +40,6 @@ const optionsOf = (exercises: TopExerciseDTO[], topCount: number): Option[] => [
     { value: TOP_FILTER, label: `Top ${Math.min(topCount, exercises.length)}`, exercise: null },
     ...exercises.map((exercise) => ({ value: exercise.key, label: exercise.name, exercise })),
 ]
-
-function Thumb({ exercise }: { exercise: TopExerciseDTO | null }) {
-    return (
-        <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-hairline bg-background">
-            {exercise?.imageUrl ? (
-                <Image
-                    src={exercise.imageUrl}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    className="object-contain p-0.5"
-                />
-            ) : (
-                <IconBarbell className="size-5 text-muted-foreground" aria-hidden="true" />
-            )}
-        </span>
-    )
-}
 
 // Chooses which exercises the strength dashboard shows: the top ones (the first option) or one.
 // A dropdown on a wide screen; on a phone a button that opens a list in a bottom drawer.
@@ -137,7 +119,10 @@ export function ExerciseFilter({ exercises, value, onChange, topCount }: Props) 
                                             selected && 'font-medium'
                                         )}
                                     >
-                                        <Thumb exercise={option.exercise} />
+                                        <ExerciseThumb
+                                            imageUrl={option.exercise?.imageUrl ?? null}
+                                            testId={`exercise-filter-thumb-${option.value}`}
+                                        />
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm">
                                                 {option.label}
