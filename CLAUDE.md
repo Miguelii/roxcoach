@@ -17,6 +17,14 @@ in the same change when behavior, data or contracts change.
 - Nothing is pushed and no secrets are committed: `.env*` is git-ignored, only `.env.example` is tracked.
 - Every commit passes the pre-commit hook (`pnpm fmt`, `pnpm check`, `pnpm knip`). Run `pnpm test` before committing.
 
+## Superpowers skills
+
+These preferences override the default paths of the superpowers skills (brainstorming, writing-plans and the rest):
+
+- Design docs and specs go in `docs/tech-specs/` as `YYYY-MM-DD-<topic>-design.md`. Never create `docs/superpowers/`.
+- Implementation plans go in `docs/plans/` as `YYYY-MM-DD-<topic>.md`.
+- A plan names its spec by its `docs/tech-specs/` path.
+
 ## Imports: ALWAYS use the `@/` alias
 
 Never use relative imports (`./`, `../`) for anything under `src/`.

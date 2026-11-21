@@ -8,7 +8,7 @@
 
 **Tech Stack:** Effect v4, tRPC 11, Supabase (schema `roxcoach`), zod 4, React 19, `pnpm test`.
 
-**Spec:** `docs/superpowers/specs/2026-11-21-race-readiness-design.md` (approved). Also read `docs/tech-specs/dashboard-progress.md`, `docs/tech-specs/architecture.md` and `CLAUDE.md`.
+**Spec:** `docs/tech-specs/2026-11-21-race-readiness-design.md` (approved). Also read `docs/tech-specs/dashboard-progress.md`, `docs/tech-specs/architecture.md` and `CLAUDE.md`.
 
 ## Global Constraints
 

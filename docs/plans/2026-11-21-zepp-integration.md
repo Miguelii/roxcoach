@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js (custom, see AGENTS.md), tRPC, Effect v4, Supabase (`roxcoach` schema), zod, react-hook-form, shadcn on base-ui, vitest via `pnpm test`.
 
-**Spec:** `docs/superpowers/specs/2026-11-21-zepp-integration-design.md`. Real payloads: `mocks/zepp_history_mock.json`, `mocks/zepp_detail_mock.json`. This plan narrows the spec in three places, each also edited in the spec: only sport type `1` (outdoor run) is imported (types 6 and 214 have no mock yet), only `app_token` is stored (no `user_id`), and no GPS coordinates or laps are decoded (the normalized activity has no coordinates and GPX gives no laps either).
+**Spec:** `docs/tech-specs/2026-11-21-zepp-integration-design.md`. Real payloads: `mocks/zepp_history_mock.json`, `mocks/zepp_detail_mock.json`. This plan narrows the spec in three places, each also edited in the spec: only sport type `1` (outdoor run) is imported (types 6 and 214 have no mock yet), only `app_token` is stored (no `user_id`), and no GPS coordinates or laps are decoded (the normalized activity has no coordinates and GPX gives no laps either).
 
 ## Global Constraints
 

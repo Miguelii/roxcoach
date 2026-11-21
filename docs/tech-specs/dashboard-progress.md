@@ -450,7 +450,7 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 
 ## Race readiness
 
-Design: `docs/superpowers/specs/2026-11-21-race-readiness-design.md`. Running mode opens with a race
+Design: `docs/tech-specs/2026-11-21-race-readiness-design.md`. Running mode opens with a race
 banner and a readiness card for the next race, Hyrox included.
 
 - **Next race**: `pickNextRace` takes the upcoming races that are Hyrox or running with a distance,
