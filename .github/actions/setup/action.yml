@@ -1,0 +1,33 @@
+name: Setup
+description: Setup pnpm and Node.js, and restore or install dependencies
+runs:
+    using: composite
+    steps:
+        # No version here: pnpm/action-setup reads `packageManager` from package.json.
+        - uses: pnpm/action-setup@v6
+        - uses: actions/setup-node@v7
+          id: node
+          with:
+              node-version: 24
+        # Caching node_modules itself (not only the pnpm store) skips `pnpm install` entirely when
+        # the lockfile is unchanged. The key carries the OS, arch and exact Node version because
+        # node_modules holds native binaries (oxlint, rolldown, sharp).
+        - uses: actions/cache@v6
+          id: node-modules
+          with:
+              path: node_modules
+              key: node-modules-${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('pnpm-lock.yaml') }}
+        # Only on a miss: the pnpm store cache makes that install mostly offline.
+        - if: steps.node-modules.outputs.cache-hit != 'true'
+          id: pnpm-store
+          shell: bash
+          run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+        - if: steps.node-modules.outputs.cache-hit != 'true'
+          uses: actions/cache@v6
+          with:
+              path: ${{ steps.pnpm-store.outputs.path }}
+              key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+              restore-keys: pnpm-store-${{ runner.os }}-
+        - if: steps.node-modules.outputs.cache-hit != 'true'
+          shell: bash
+          run: pnpm install --frozen-lockfile --prefer-offline

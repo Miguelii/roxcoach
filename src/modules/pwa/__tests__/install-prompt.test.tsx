@@ -24,8 +24,15 @@ const setMatchMedia = (standalone: boolean) =>
 const setUserAgent = (userAgent: string) =>
     Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
 
+// What was saved when the sheet was dismissed, null when nothing is saved.
+const saved = (): { at: number; build: string | null } | null =>
+    JSON.parse(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) ?? 'null')
+
 // The time saved when the sheet was dismissed, 0 when nothing is saved.
-const savedAt = () => Number(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) ?? 0)
+const savedAt = () => saved()?.at ?? 0
+
+const saveDismissal = (at: number, build: string | null = null) =>
+    window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, JSON.stringify({ at, build }))
 
 const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/126.0 Mobile Safari/537.36'
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari/604.1'
@@ -107,7 +114,7 @@ describe('InstallPrompt', () => {
         ['71 hours ago', INSTALL_PROMPT_DISMISS_TTL_MS - 60 * 60 * 1000, false],
         ['73 hours ago', INSTALL_PROMPT_DISMISS_TTL_MS + 60 * 60 * 1000, true],
     ])('a dismissal from %s %s the sheet', async (_label, ageMs, shows) => {
-        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, String(Date.now() - ageMs))
+        saveDismissal(Date.now() - ageMs)
         render(<InstallPrompt delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
@@ -119,11 +126,41 @@ describe('InstallPrompt', () => {
 
     it.each([
         ['an old flag', '1'],
+        ['an old bare time', String(Date.now())],
         ['a corrupt value', 'soon'],
-        ['a time in the future', String(Date.now() + 86_400_000)],
+        ['a time in the future', JSON.stringify({ at: Date.now() + 86_400_000, build: null })],
+        ['a value without a build', JSON.stringify({ at: Date.now() })],
     ])('treats %s as stale, shows the sheet and removes the value', async (_label, value) => {
         window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, value)
         render(<InstallPrompt delayMs={0} />)
+        fireInstallEvent()
+
+        expect(await screen.findByTestId('install-prompt')).toBeInTheDocument()
+        expect(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)).toBeNull()
+    })
+
+    it('saves the build the sheet was dismissed on', async () => {
+        render(<InstallPrompt buildId="build-a" delayMs={0} />)
+        fireInstallEvent()
+        fireEvent.click(await screen.findByTestId('install-prompt-dismiss'))
+
+        expect(saved()?.build).toBe('build-a')
+    })
+
+    it('stays hidden after a recent dismissal on the same build', async () => {
+        saveDismissal(Date.now() - 60_000, 'build-a')
+        render(<InstallPrompt buildId="build-a" delayMs={0} />)
+        fireInstallEvent()
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 30))
+        })
+
+        expect(screen.queryByTestId('install-prompt')).toBeNull()
+    })
+
+    it('shows the sheet again on a new build and removes the old dismissal', async () => {
+        saveDismissal(Date.now() - 60_000, 'build-a')
+        render(<InstallPrompt buildId="build-b" delayMs={0} />)
         fireInstallEvent()
 
         expect(await screen.findByTestId('install-prompt')).toBeInTheDocument()

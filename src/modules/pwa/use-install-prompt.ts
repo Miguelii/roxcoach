@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { z } from 'zod'
 import {
     INSTALL_PROMPT_DELAY_MS,
     INSTALL_PROMPT_DISMISS_TTL_MS,
@@ -20,22 +21,38 @@ export type InstallPromptState =
     // iOS Safari cannot install from code: the sheet explains the Share menu steps.
     | { kind: 'ios'; dismiss: () => void }
 
+type Dismissal = z.output<typeof DismissalSchema>
+
+// The saved value is JSON text; an old or corrupt value fails to parse and counts as stale.
+const DismissalSchema = z
+    .string()
+    .transform((text, ctx) => {
+        try {
+            return JSON.parse(text)
+        } catch {
+            ctx.addIssue({ code: 'custom', message: 'Not JSON' })
+            return z.NEVER
+        }
+    })
+    .pipe(z.object({ at: z.number().int().positive(), build: z.string().nullable() }))
+
 const isInstallPromptEvent = (event: Event): event is InstallPromptEvent =>
     'prompt' in event && 'userChoice' in event
 
-// A dismissal counts for 72 hours. A value that is not a past time (an old flag, a corrupt value,
-// a clock that moved back) counts as stale, and a stale one is removed.
-const readDismissed = () => {
+// A dismissal counts for 72 hours and only on the build it was made on. Anything else (another
+// build, the old bare time, a corrupt value, a clock that moved back) counts as stale, and a stale
+// value is removed.
+const isFresh = ({ at, build }: Dismissal, buildId: string | null) => {
+    const age = Date.now() - at
+    return age >= 0 && age < INSTALL_PROMPT_DISMISS_TTL_MS && build === buildId
+}
+
+const readDismissed = (buildId: string | null) => {
     try {
-        const dismissedAt = Number(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY))
-        const age = Date.now() - dismissedAt
-        if (
-            Number.isFinite(dismissedAt) &&
-            dismissedAt > 0 &&
-            age >= 0 &&
-            age < INSTALL_PROMPT_DISMISS_TTL_MS
+        const parsed = DismissalSchema.safeParse(
+            window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)
         )
-            return true
+        if (parsed.success && isFresh(parsed.data, buildId)) return true
         window.localStorage.removeItem(INSTALL_PROMPT_DISMISSED_KEY)
         return false
     } catch {
@@ -44,9 +61,12 @@ const readDismissed = () => {
     }
 }
 
-const writeDismissed = () => {
+const writeDismissed = (buildId: string | null) => {
     try {
-        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, String(Date.now()))
+        window.localStorage.setItem(
+            INSTALL_PROMPT_DISMISSED_KEY,
+            JSON.stringify({ at: Date.now(), build: buildId })
+        )
     } catch {
         // Not remembered; the sheet closes for this visit anyway.
     }
@@ -62,9 +82,12 @@ const isIosSafari = () =>
     (/macintosh/iu.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
 
 // Decides whether to offer installing the app: never when it already runs installed or it was
-// dismissed in the last 72 hours, and only after `delayMs`. A dismissal is saved in localStorage
-// with its time.
-export function useInstallPrompt(delayMs = INSTALL_PROMPT_DELAY_MS): InstallPromptState {
+// dismissed in the last 72 hours on this same build, and only after `delayMs`. A dismissal is
+// saved in localStorage with its time and `buildId`.
+export function useInstallPrompt(
+    buildId: string | null,
+    delayMs = INSTALL_PROMPT_DELAY_MS
+): InstallPromptState {
     const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null)
     const [ios, setIos] = useState(false)
     const [blocked, setBlocked] = useState(true)
@@ -86,7 +109,7 @@ export function useInstallPrompt(delayMs = INSTALL_PROMPT_DELAY_MS): InstallProm
         // The browser-only facts are read when the pause ends, so the first render matches the
         // server and nothing flashes.
         const timer = window.setTimeout(() => {
-            setBlocked(isStandalone() || readDismissed())
+            setBlocked(isStandalone() || readDismissed(buildId))
             setIos(isIosSafari())
             setReady(true)
         }, delayMs)
@@ -96,12 +119,12 @@ export function useInstallPrompt(delayMs = INSTALL_PROMPT_DELAY_MS): InstallProm
             window.removeEventListener('appinstalled', onInstalled)
             window.clearTimeout(timer)
         }
-    }, [delayMs])
+    }, [buildId, delayMs])
 
     const dismiss = useCallback(() => {
-        writeDismissed()
+        writeDismissed(buildId)
         setBlocked(true)
-    }, [])
+    }, [buildId])
 
     const install = useCallback(async () => {
         if (deferred === null) return
