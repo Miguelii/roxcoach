@@ -23,6 +23,16 @@ export const bucketLabel = (start: string, granularity: Granularity) => {
     return (granularity === 'week' ? WEEK_LABEL : MONTH_LABEL).format(date)
 }
 
+const DAY_LABEL = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+})
+
+/** `Wed 18 Nov`, for a plain date. */
+export const dayLabel = (date: string) => DAY_LABEL.format(new Date(`${date}T00:00:00Z`))
+
 /** `6 months`, for the chart summaries. */
 export const rangeLabel = (range: ProgressRange) => `${MONTHS_BY_RANGE[range]} months`
 

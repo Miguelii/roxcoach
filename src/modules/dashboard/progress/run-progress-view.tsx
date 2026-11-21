@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { HR_ZONES, type ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
 import { formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
+import type { CalendarItem } from '@/_bff/modules/training/types'
 import type { RunBucketDTO, RunProgressDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -12,7 +13,10 @@ import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
 import { bucketLabel, paceSummary, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
-import { RunKpis } from '@/modules/dashboard/progress/run-kpis'
+import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
+import { ProgressHero } from '@/modules/dashboard/progress/progress-hero'
+import { RecentRuns } from '@/modules/dashboard/progress/recent-runs'
+import { WeekDots } from '@/modules/dashboard/progress/week-dots'
 import {
     ZONE_STYLES,
     PACE_COLOR,
@@ -22,6 +26,12 @@ import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
 type Props = {
     data: RunProgressDTO
+}
+
+type ViewProps = Props & {
+    // The last weeks of activities and today, for the week dots and the feed.
+    items: CalendarItem[]
+    today: string
 }
 
 const ChartSkeleton = () => <Skeleton className="h-full w-full" />
@@ -157,27 +167,6 @@ function PaceCard({ data }: Props) {
     )
 }
 
-function DistanceCard({ data }: Props) {
-    const { buckets, granularity, kpis, range } = data
-    return (
-        <BucketChartCard
-            testId="distance-chart"
-            title="Distance"
-            takeaway={`${kpis.distanceKm.toFixed(1)} km in ${kpis.runs} runs over ${rangeLabel(range)}.`}
-            ariaLabel={`Distance per ${granularity}, ${kpis.distanceKm.toFixed(1)} km in total.`}
-            kind="bar"
-            color={PACE_COLOR}
-            data={buckets.map((bucket) => ({
-                label: bucketLabel(bucket.start, granularity),
-                value: bucket.runs === 0 ? null : bucket.distanceKm,
-            }))}
-            format={(value) => `${value.toFixed(1)} km`}
-            formatAxis={(value) => String(value)}
-            valueName="Distance"
-        />
-    )
-}
-
 function HeartRateCard({ data }: Props) {
     const { buckets, granularity } = data
     const rates = buckets.flatMap((bucket) => bucket.avgHrBpm ?? [])
@@ -208,8 +197,9 @@ function HeartRateCard({ data }: Props) {
     )
 }
 
-// The running mode of the dashboard: KPIs, pace, zones, distance and heart rate.
-export function RunProgressView({ data }: Props) {
+// The running mode of the dashboard, in the order of a training app: this week, the progress
+// chart, the goal, the latest runs, then pace, zones and heart rate.
+export function RunProgressView({ data, items, today }: ViewProps) {
     if (data.kpis.runs === 0)
         return (
             <p
@@ -222,10 +212,12 @@ export function RunProgressView({ data }: Props) {
 
     return (
         <div data-testid="run-progress" className="space-y-4">
-            <RunKpis kpis={data.kpis} goal={data.goal} />
+            <WeekDots items={items} today={today} />
+            <ProgressHero data={data} />
+            <GoalPaceCard goal={data.goal} deltaSecPerKm={data.kpis.goalDeltaSecPerKm} />
+            <RecentRuns items={items} />
             <PaceCard data={data} />
             <ZoneCard data={data} />
-            <DistanceCard data={data} />
             <HeartRateCard data={data} />
         </div>
     )

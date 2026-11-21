@@ -18,8 +18,10 @@ seconds, on a phone, from charts that are readable first and pretty second.
 ## Goals
 
 - A Running/Strength mode switch on the dashboard, persisted in `athlete_profiles`.
-- Running mode: a small KPI strip, the pace trend with the goal pace as a reference line, pace by
-  heart rate zone, distance per week or month (bars) and average heart rate (line).
+- Running mode, laid out like Strava: the days of this week, a headline for the week or month you
+  are looking at (distance, time or runs, with the change from the previous one and a bar per
+  week to pick another), the goal pace, the latest runs, then the pace trend with the goal pace
+  as a reference line, pace by heart rate zone and average heart rate.
 - Strength mode: training volume and workouts per week or month (bars), then one card per exercise
   for the 5 most used, one below the other, each with its picture, the latest top set and a chart
   of its top set over time. The dashboard has no data tables: every series is a chart.
@@ -176,6 +178,8 @@ no data are present in the response with `null` values so the x axis is continuo
   `null` when there is none (Hyrox races have no distance, so they never give a goal pace).
 - **Heart rate**: `avgHrBpm` per bucket is the average heart rate of the runs counted in the pace,
   weighted by moving time (from `activities.avg_hr`); null without any heart rate.
+- **Buckets** also carry `movingTimeS` (the headline's Time). The week dots and the recent runs
+  come from the same calendar window as the week strip (35 days), not from this query.
 - **KPIs**: average pace, total distance and number of runs in the range, and the difference of the
   recent pace (last bucket with data) against the goal pace.
 
@@ -210,17 +214,30 @@ A clear view of ...
 
 [ week strip (unchanged, both modes) ]
 
-Running mode
-+----------------+----------------+----------------+----------------+
-| Avg pace       | Distance       | Runs           | Goal pace      |
-| 5:12 /km       | 184 km         | 21             | 4:30 /km       |
-|                |                |                | 0:42 slower    |
-+----------------+----------------+----------------+----------------+
+Running mode (the order of a training app, like Strava)
++--------------------------------------------------------------------+
+| This week                                              34.2 km     |
+|  (M) (T) (W) (T) (F) (S) (S)   filled = ran, today ringed          |
++--------------------------------------------------------------------+
+| [ Distance | Time | Runs ]                                         |
+| THIS WEEK                                   [<] [>]                |
+| 34.2 km        +5.1 km vs previous week                            |
+|  bars, one per week, the selected one in the accent color          |
+|  Distance 34.2 km | Time 3h 05m | Runs 4 | Avg pace 5:12 /km       |
++--------------------------------------------------------------------+
+| (target) GOAL PACE 4:30 /km  Lisbon 10K, in 23 days   +0:42 /km    |
++--------------------------------------------------------------------+
+| Recent runs                                                        |
+|  Long run  Wed 18 Nov, 55m                     10.0 km  5:30 /km > |
+|  ... (5 at most, each links to the run)                            |
++--------------------------------------------------------------------+
 | Pace trend                                         faster is up    |
 |  line + dashed goal line "Goal 4:30 (Lisbon 10K, in 23 days)"      |
 +--------------------------------------------------------------------+
 | Pace by heart rate zone     [Z1] [Z2] [Z3] [Z4] [Z5]  (toggles)    |
 |  one line per zone, gaps where under 5 minutes                     |
++--------------------------------------------------------------------+
+| Average heart rate (only with heart rate data)                     |
 +--------------------------------------------------------------------+
 
 Strength mode
@@ -235,8 +252,8 @@ Strength mode
 ```
 
 On a phone: the title row, then the mode switch (full width) and the range, then the actions; cards
-stack in one column, KPI tiles in a 2 by 2 grid, exercise cards one below the other (chart 176 px
-high). From `md`: KPI strip in one row, chart 208 px high; from `lg` the exercise cards go in two
+stack in one column, the headline stats in a 2 by 2 grid, exercise cards one below the other (chart 176 px
+high). From `md`: the headline stats in one row, chart 208 px high; from `lg` the exercise cards go in two
 columns.
 
 The week strip above the charts follows the mode: in strength mode there is no run distance tile,
@@ -334,7 +351,7 @@ The cache is cleared on logout as today.
 - Services with a fake Supabase client; the backfill service with fake storage; repositories check
   the `user_id` filter.
 - PGlite SQL tests: the new columns, the check constraint on `dashboard_mode`, RLS unchanged.
-- Components: KPI tiles, cards, empty states, and the mode switch (optimistic update and revert),
+- Components: week dots, headline, goal card, recent runs, cards, empty states, and the mode switch (optimistic update and revert),
   always located by `data-testid`. SVG drawing is not asserted; tests read the frames with their
   `aria-label` summaries, the takeaways, the legends and the empty states.
 

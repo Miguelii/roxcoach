@@ -50,7 +50,7 @@ export function DashboardContent() {
             </header>
             <WeekStrip today={today} mode={profile.data.dashboardMode} />
             {profile.data.dashboardMode === 'run' ? (
-                <RunProgress range={range} />
+                <RunProgress range={range} today={today} />
             ) : (
                 <StrengthProgress range={range} />
             )}

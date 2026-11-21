@@ -61,6 +61,7 @@ describe('buildRunProgress buckets', () => {
         const last = dto.buckets.at(-1)
         expect(last?.paceSecPerKm).toBe(310)
         expect(last?.distanceKm).toBe(10)
+        expect(last?.movingTimeS).toBe(3100)
         expect(last?.runs).toBe(2)
     })
 

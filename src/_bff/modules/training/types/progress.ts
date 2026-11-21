@@ -7,6 +7,7 @@ export type RunBucketDTO = {
     start: string
     paceSecPerKm: number | null
     distanceKm: number
+    movingTimeS: number
     runs: number
     // Average heart rate of the runs in the bucket, weighted by moving time.
     avgHrBpm: number | null

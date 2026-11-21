@@ -128,6 +128,7 @@ export function buildRunProgress({
         start,
         paceSecPerKm: paceOf(acc.movingTimeS, acc.distanceM),
         distanceKm: acc.distanceM / 1000,
+        movingTimeS: acc.movingTimeS,
         runs: acc.runs,
         avgHrBpm: acc.hrTimeS > 0 ? Math.round(acc.hrTimeProduct / acc.hrTimeS) : null,
         zones: zonePoints(acc),

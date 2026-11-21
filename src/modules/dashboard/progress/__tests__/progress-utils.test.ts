@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RunBucketDTO } from '@/_bff/modules/training/types/progress'
 import {
     bucketLabel,
+    dayLabel,
     daysLeftLabel,
     paceSummary,
     rangeLabel,
@@ -11,6 +12,7 @@ const bucket = (start: string, paceSecPerKm: number | null): RunBucketDTO => ({
     start,
     paceSecPerKm,
     distanceKm: 0,
+    movingTimeS: 0,
     runs: 0,
     avgHrBpm: null,
     zones: [],
@@ -20,6 +22,12 @@ describe('bucketLabel', () => {
     it('labels a week by its first day and a month by month and year', () => {
         expect(bucketLabel('2026-11-16', 'week')).toBe('16 Nov')
         expect(bucketLabel('2026-11-01', 'month')).toBe('Nov 26')
+    })
+})
+
+describe('dayLabel', () => {
+    it('labels a date with its weekday', () => {
+        expect(dayLabel('2026-11-18')).toBe('Wed 18 Nov')
     })
 })
 
