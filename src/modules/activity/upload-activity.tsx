@@ -12,6 +12,8 @@ export function UploadActivity() {
             onUploaded={() => {
                 toast.success('Activity uploaded')
                 void utils.training.getCalendar.invalidate()
+                void utils.training.getRunProgress.invalidate()
+                void utils.training.getStrengthProgress.invalidate()
             }}
         />
     )

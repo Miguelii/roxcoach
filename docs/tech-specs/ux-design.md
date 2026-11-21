@@ -91,16 +91,23 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 ### Dashboard
 
-The dashboard is focused on training progress, not the calendar. It currently shows the real-data
-weekly summary: time, sessions, run km and the acute:chronic load ratio from the last 35 days of
-activities, with zeros and "No history yet" when there is no history. Charts and deeper progress
-trends are a follow-up. "Today" comes from `athlete.getTimezone` (`todayIn(timezone)`), never from
-the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
+The dashboard is focused on training progress, not the calendar. It shows the real-data weekly
+summary (time, sessions, run km and the acute:chronic load ratio from the last 35 days of
+activities, with zeros and "No history yet" when there is no history) and, below it, progress
+charts for the athlete's chosen mode. A segmented control switches between **Running** and
+**Strength**; the choice is saved in `athlete_profiles.dashboard_mode` (applied at once, reverted
+with a toast if the save fails). A second control sets the range (3M, 6M, 1Y), kept in the URL
+(`range`, default `6m`). Running shows KPIs, the pace trend with the goal pace line and pace by
+heart rate zone; Strength shows the top 5 exercises as small multiples (top set or estimated 1RM)
+and body weight. Every chart has a "View as table" fallback and a text summary; series with fewer
+than 4 points (3 for strength) show the table instead of a line. Full behavior, data and design
+rules are in [dashboard-progress.md](dashboard-progress.md). "Today" comes from the athlete
+timezone in `athlete.getProfile` (`todayIn(timezone)`), never from the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
 and manual Lyfta sync.
 
-The dashboard loads its timezone and 35-day summary through tRPC client queries. React Query
+The dashboard loads its profile (timezone and mode), the 35-day summary and the progress series through tRPC client queries. React Query
 retains the summary while navigating between routes and revalidates it after 30 seconds. Uploads
-invalidate the calendar query, which refreshes both the calendar and summary. The client query
+invalidate the calendar and both progress queries, which refreshes the calendar, summary and charts. The client query
 cache is cleared on logout.
 
 ### Calendar

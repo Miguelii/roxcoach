@@ -1,7 +1,7 @@
 # Dashboard progress
 
 The dashboard becomes mode based: the athlete picks **Running** or **Strength**, the choice is saved
-in the athlete profile, and the page shows progress charts for that mode. Status: planned.
+in the athlete profile, and the page shows progress charts for that mode. Status: implemented (migration `0015`, branch `feat/dashboard-progress`).
 
 ## Why
 
@@ -101,6 +101,9 @@ How it is built (pure helper `buildHrHistogram(samples)` in `_bff/modules/traini
   (speed below `MIN_MOVING_SPEED_MPS`, 0.5 m/s).
 - Distance of an interval is the difference of cumulative distance when both points have it,
   otherwise speed times the time step, never negative.
+- An interval with neither a distance delta nor a speed is skipped (it would give a time with no
+  distance, and pace needs both). Indoor files with heart rate only therefore have an empty
+  histogram; outdoor runs carry distance and speed per record.
 - The histogram is computed for every parsed activity that has heart rate data, whatever its
   category; only `run` activities feed the charts.
 

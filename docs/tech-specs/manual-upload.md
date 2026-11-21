@@ -39,14 +39,31 @@ Decision: **Supabase Storage for the original file, the database for everything 
 | Original file (bytes)             | Storage, private bucket `activity-files`    |
 | File metadata, hash, parse status | table `activity_files`                      |
 | Summary and laps                  | `activities` and `activity_laps` (existing) |
-| Track points (per second records) | not stored in v1                            |
+| Track points (per second records) | not stored; an HR histogram per run is      |
 
 Why not the database for the bytes: files are up to a few MB each, are never queried, and would
 bloat backups and the shared project. Why keep the original at all: a parser fix or a new field
 can be applied again by reprocessing, without asking the athlete to upload again.
 
-Track points are not stored: nothing in v1 reads them (no map, no charts). If a later feature
-needs them, they are re-parsed from the stored file.
+Track points are not stored. The one thing derived from them is the HR histogram saved in
+`activities.hr_histogram` (migration `0015`): time and distance per heart rate, built while
+parsing (FIT records, TCX trackpoints, GPX points with the heart rate extension) and used by the
+dashboard zone chart, see [dashboard-progress.md](dashboard-progress.md). Anything else a later
+feature needs is re-parsed from the stored file.
+
+### Backfill of the HR histogram
+
+Runs uploaded before `0015` have no histogram. After applying the migration, the owner runs once:
+
+```bash
+pnpm dlx tsx --conditions=react-server tools/backfill-hr-histograms.ts <user_id>
+```
+
+It reads every parsed file of that user whose activity has no histogram, parses it again and writes
+the histogram. It is safe to rerun (only rows still without one are touched), a failing file does
+not stop it, and it prints `updated: N, failed: M` plus one `failed <activity id>: <error code>`
+line per failure (never a path or file content). `--conditions=react-server` lets the
+server-only modules load outside Next.
 
 ### Table `activity_files` (migration `0008`)
 

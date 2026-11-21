@@ -70,7 +70,9 @@ list, create, update, complete, cancel and delete controllers, the matching serv
 `listRacesInRange` service used by the `training` calendar feed, one repository and a validation
 helper. Rules and file lists are in [athlete-races.md](athlete-races.md). `coach` reads the other
 modules only through their services (`getProfile`, `getAvailability`, `getAthleteTimezone`,
-`listRaces`, `getCalendar`, `getActivity`); the week totals and load ratio it shares with the
+`listRaces`, `getCalendar`, `getActivity`); the dashboard progress queries `training.getRunProgress`
+and `training.getStrengthProgress` (pure aggregation helpers under `training/helpers`, zones in
+`core/constants/hr-zones.constants.ts`, see [dashboard-progress.md](dashboard-progress.md)); the week totals and load ratio it shares with the
 dashboard summary and calendar page live in `src/_bff/core/utils/week-stats.utils.ts` and
 `week-dates.utils.ts`.
 

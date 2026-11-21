@@ -51,6 +51,7 @@ export function ProfileTab() {
         await Promise.all([
             utils.athlete.getProfile.invalidate(),
             utils.athlete.getTimezone.invalidate(),
+            utils.training.getRunProgress.invalidate(),
         ])
     }
 
