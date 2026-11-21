@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type {
     StrengthBucketDTO,
     StrengthProgressDTO,
@@ -7,6 +7,36 @@ import type {
 } from '@/_bff/modules/training/types/progress'
 import { ExerciseCard } from '@/modules/dashboard/progress/exercise-card'
 import { StrengthProgressView } from '@/modules/dashboard/progress/strength-progress-view'
+
+const mocks = vi.hoisted(() => ({ isMobile: false }))
+
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => mocks.isMobile }))
+
+// The lazily loaded charts read the reduced motion setting and measure themselves, which jsdom
+// does not provide.
+beforeEach(() => {
+    vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+            matches: false,
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        }))
+    )
+    vi.stubGlobal(
+        'ResizeObserver',
+        class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        }
+    )
+})
+
+afterEach(() => {
+    vi.unstubAllGlobals()
+})
 
 const exercise = (
     key: string,
@@ -50,6 +80,10 @@ const BUCKETS = [
     bucket('2026-10-19', 12_480, 3),
     bucket('2026-10-26', 8000, 2),
 ]
+
+const MANY = ['squat', 'bench', 'deadlift', 'row', 'press'].map((key, index) =>
+    exercise(key, key.toUpperCase(), [['2026-11-02', 50 + index]])
+)
 
 const data = (
     exercises: TopExerciseDTO[],
@@ -140,5 +174,90 @@ describe('StrengthProgressView', () => {
             'Sync Lyfta to see your progress.'
         )
         expect(screen.queryByTestId('volume-chart')).toBeNull()
+    })
+})
+
+// base-ui selects an item on a full pointer press, not on a bare click.
+const pick = (option: HTMLElement) => {
+    fireEvent.pointerDown(option, { pointerType: 'mouse' })
+    fireEvent.mouseUp(option)
+    fireEvent.click(option)
+}
+
+describe('exercise filter', () => {
+    beforeEach(() => {
+        mocks.isMobile = false
+    })
+
+    it('shows the top 4 by default and offers every exercise in the list', () => {
+        render(<StrengthProgressView data={data(MANY)} />)
+
+        expect(screen.getAllByTestId('exercise-card')).toHaveLength(4)
+        expect(screen.getByTestId('exercise-filter')).toHaveTextContent('Top 4')
+        expect(screen.queryByTestId('exercise-filter-drawer')).toBeNull()
+    })
+
+    it('on a wide screen picks one exercise from a dropdown whose first option is the top ones', async () => {
+        render(<StrengthProgressView data={data(MANY)} />)
+        fireEvent.click(screen.getByTestId('exercise-filter'))
+
+        const options = await screen.findAllByRole('option')
+        expect(options[0]).toHaveTextContent('Top 4')
+        expect(options).toHaveLength(6)
+
+        pick(await screen.findByTestId('exercise-filter-option-press'))
+        await waitFor(() => expect(screen.getAllByTestId('exercise-card')).toHaveLength(1))
+        expect(screen.getByTestId('exercise-card')).toHaveAttribute('aria-label', 'PRESS')
+        expect(screen.getByTestId('exercise-filter')).toHaveTextContent('PRESS')
+    })
+
+    it('goes back to the top ones from the first option', async () => {
+        render(<StrengthProgressView data={data(MANY)} />)
+        fireEvent.click(screen.getByTestId('exercise-filter'))
+        pick(await screen.findByTestId('exercise-filter-option-press'))
+        await waitFor(() => expect(screen.getAllByTestId('exercise-card')).toHaveLength(1))
+
+        fireEvent.click(screen.getByTestId('exercise-filter'))
+        pick(await screen.findByTestId('exercise-filter-option-top'))
+        await waitFor(() => expect(screen.getAllByTestId('exercise-card')).toHaveLength(4))
+    })
+
+    it('on a phone has no dropdown but a button that opens a list in a bottom drawer', async () => {
+        mocks.isMobile = true
+        render(<StrengthProgressView data={data(MANY)} />)
+
+        expect(screen.queryByRole('combobox')).toBeNull()
+        expect(screen.queryByTestId('exercise-filter-drawer')).toBeNull()
+        fireEvent.click(screen.getByTestId('exercise-filter'))
+
+        expect(await screen.findByTestId('exercise-filter-drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('exercise-filter-option-top')).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        )
+        expect(screen.getByTestId('exercise-filter-option-squat')).toHaveTextContent('1 workouts')
+    })
+
+    it('on a phone shows the chosen exercise from the drawer list', async () => {
+        mocks.isMobile = true
+        render(<StrengthProgressView data={data(MANY)} />)
+        fireEvent.click(screen.getByTestId('exercise-filter'))
+        fireEvent.click(await screen.findByTestId('exercise-filter-option-row'))
+
+        await waitFor(() => expect(screen.getAllByTestId('exercise-card')).toHaveLength(1))
+        expect(screen.getByTestId('exercise-card')).toHaveAttribute('aria-label', 'ROW')
+        expect(screen.getByTestId('exercise-filter')).toHaveTextContent('ROW')
+    })
+
+    it('has no filter when there are no exercises', () => {
+        render(<StrengthProgressView data={data([])} />)
+
+        expect(screen.queryByTestId('exercise-filter')).toBeNull()
+    })
+
+    it('labels the first option with how many exercises it really shows', () => {
+        render(<StrengthProgressView data={data([SQUAT, BENCH])} />)
+
+        expect(screen.getByTestId('exercise-filter')).toHaveTextContent('Top 2')
     })
 })

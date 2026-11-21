@@ -155,14 +155,15 @@ describe('buildStrengthProgress', () => {
         ).toBeNull()
     })
 
-    it('returns only the first five exercises', () => {
-        const names = ['A', 'B', 'C', 'D', 'E', 'F']
+    it('returns at most twelve exercises, the most used first', () => {
+        const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
         const dto = run(
-            [wk('a', '2026-11-01')],
-            names.map((name) => set('a', name, 5, 50))
+            [wk('a', '2026-11-01'), wk('b', '2026-11-08')],
+            [...names.map((name) => set('a', name, 5, 50)), set('b', 'N', 5, 50)]
         )
 
-        expect(dto.exercises).toHaveLength(5)
+        expect(dto.exercises).toHaveLength(12)
+        expect(dto.exercises[0]?.name).toBe('N')
     })
 
     it('ignores sets of workouts outside the given list', () => {

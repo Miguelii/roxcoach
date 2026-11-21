@@ -24,8 +24,9 @@ seconds, on a phone, from charts that are readable first and pretty second.
   week to pick another), the goal pace, the latest runs, then the pace trend with the goal pace
   as a reference line, pace by heart rate zone and average heart rate.
 - Strength mode: training volume and workouts per week or month (bars), then one card per exercise
-  for the 5 most used, one below the other, each with its picture, the latest top set and a chart
-  of its top set over time. The dashboard has no data tables: every series is a chart.
+  for the top 4 most used by default, one below the other, each with its picture, the latest top
+  set and a chart of its top set over time. A filter chooses one exercise instead (any of the 12
+  most used). The dashboard has no data tables: every series is a chart.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -189,7 +190,8 @@ no data are present in the response with `null` values so the x axis is continuo
 - **Top exercises**: an exercise is keyed by `source_exercise_id` when present, otherwise by its
   lower-cased, trimmed name; the displayed name is the most recent one. Ranked by the number of
   distinct workouts in the range, ties broken by total sets, then name. The first
-  `TOP_EXERCISES` (5) are returned.
+  `MAX_EXERCISES` (12) are returned, so the dashboard has a list to choose from (it shows the
+  top 4 by default).
 - Per exercise and workout date: `topSetKg`, the highest `load_kg` among the sets with reps and a
   positive load. Dates with no usable set have no point, so a point is never null. Two workouts on
   the same date collapse to one point.
@@ -249,7 +251,7 @@ Strength mode
 | |  100 kg  +10 kg            105 kg                              | |
 | |   area chart of the top set of every workout (own axis)        | |
 | +----------------------------------------------------------------+ |
-| | [img]  Bench press ... (one card per exercise, 5 at most)      | |
+| | [img]  Bench press ... (one card per exercise, 4 by default)   | |
 ```
 
 On a phone: the title row, then the range (full width) and the actions; cards
@@ -386,7 +388,12 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 - `3m` and `6m` weekly, `12m` monthly; default `6m`; range kept in the URL, not in the profile.
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
-- Top 5 exercises by number of workouts, each in its own card with its own axis (loads differ too
-  much for one shared chart). Its chart is drawn from one workout on.
+- Top 4 exercises by number of workouts by default, each in its own card with its own axis (loads
+  differ too much for one shared chart). Its chart is drawn from one workout on.
+- The exercise filter is a dropdown on a wide screen (`Select`, first option "Top 4", then every
+  exercise) and, on a phone, a full-width button that opens a bottom drawer with the same list
+  (rows at least 56 px tall, picture, name, workouts, a check on the current one): no dropdown on a
+  phone. Choosing an exercise shows only its card (full width); "Top 4" goes back. The choice is
+  not saved; if the chosen exercise is not in the data of another range, it falls back to the top.
 - The week strip stays in both modes; in strength mode it drops the run distance tile and counts
   strength workouts only for time and sessions.

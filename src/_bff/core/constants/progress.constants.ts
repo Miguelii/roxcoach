@@ -7,9 +7,9 @@ export const MAX_HR_BPM = 250
 
 export const PROGRESS_RANGES = ['3m', '6m', '12m'] as const
 export type ProgressRange = (typeof PROGRESS_RANGES)[number]
-// Minimum time in a zone for a bucket to report a pace for it.
 export const DEFAULT_PROGRESS_RANGE: ProgressRange = '6m'
 
+// Minimum time in a zone for a bucket to report a pace for it.
 export const MIN_ZONE_SAMPLE_S = 300
-export const TOP_EXERCISES = 5
-// Epley is only trusted for sets up to this many reps.
+// How many exercises the strength dashboard can choose from (the dashboard shows the top 4 by default).
+export const MAX_EXERCISES = 12

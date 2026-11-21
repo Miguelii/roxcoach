@@ -1,5 +1,5 @@
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { TOP_EXERCISES } from '@/_bff/core/constants/progress.constants'
+import { MAX_EXERCISES } from '@/_bff/core/constants/progress.constants'
 import { bucketStartOf, bucketStarts, rangeBounds } from '@/_bff/core/utils/progress-range.utils'
 import type {
     StrengthBucketDTO,
@@ -122,7 +122,7 @@ export function buildStrengthProgress(input: Input): StrengthProgressDTO {
                 b.totalSets - a.totalSets ||
                 a.name.localeCompare(b.name)
         )
-        .slice(0, TOP_EXERCISES)
+        .slice(0, MAX_EXERCISES)
         .map(([key, acc]) => ({
             key,
             name: acc.name,
