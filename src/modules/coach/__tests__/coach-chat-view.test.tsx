@@ -90,6 +90,15 @@ describe('CoachChatView', () => {
         expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
     })
 
+    it('closes when the scrim around the centered panel is clicked, but not the panel itself', () => {
+        render(<Harness />)
+        fireEvent.click(screen.getByTestId('coach-panel'))
+        expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
+
+        fireEvent.click(screen.getByTestId('coach-scrim'))
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
     it('closes with the close button and Escape', () => {
         render(<Harness />)
         fireEvent.click(screen.getByTestId('coach-close'))
@@ -308,11 +317,20 @@ describe('CoachChatView', () => {
     })
 
     describe('responsive containers', () => {
-        it('is a full-height container on narrow screens and a fixed bottom-right panel from md', () => {
+        it('is full screen on narrow screens and a centered dialog over a scrim from md', () => {
             render(<Harness />)
-            const panel = screen.getByTestId('coach-panel')
-            expect(panel).toHaveClass('fixed', 'inset-0')
-            expect(panel).toHaveClass('md:right-4', 'md:bottom-4', 'md:inset-auto')
+            expect(screen.getByTestId('coach-scrim')).toHaveClass('fixed', 'inset-0')
+            expect(screen.getByTestId('coach-scrim')).toHaveClass(
+                'md:flex',
+                'md:items-center',
+                'md:justify-center'
+            )
+            expect(screen.getByTestId('coach-panel')).toHaveClass(
+                'h-full',
+                'w-full',
+                'md:max-w-[46rem]'
+            )
+            expect(screen.getByTestId('coach-panel')).not.toHaveClass('md:right-4')
         })
     })
 
