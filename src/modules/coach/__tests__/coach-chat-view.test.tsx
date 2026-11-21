@@ -1,3 +1,4 @@
+// oxlint-disable max-lines-per-function
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
@@ -75,12 +76,12 @@ const type = (value: string) =>
     fireEvent.change(screen.getByTestId('coach-input'), { target: { value } })
 
 describe('CoachChatView', () => {
-    it('shows the launcher bar and opens the panel, focusing the input', () => {
+    it('shows the launcher bar and opens the panel without focusing the input', () => {
         render(<Harness startOpen={false} />)
         expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
         fireEvent.click(screen.getByTestId('coach-launcher'))
         expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
-        expect(screen.getByTestId('coach-input')).toHaveFocus()
+        expect(screen.getByTestId('coach-input')).not.toHaveFocus()
     })
 
     it('hides the launcher with its X button', () => {
