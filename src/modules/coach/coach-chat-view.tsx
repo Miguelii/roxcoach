@@ -56,6 +56,17 @@ const STICK_PX = 48
 export function CoachChatView(props: Props) {
     const { open, onOpenChange, status, errorKind, launcherEnabled, onDismissLauncher } = props
 
+    // Escape closes the panel wherever the focus is, not only inside it. An Escape that something
+    // inside already handled (an open menu) is left to that thing.
+    useEffect(() => {
+        if (!open) return undefined
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !event.defaultPrevented) onOpenChange(false)
+        }
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
+    }, [open, onOpenChange])
+
     if (!open) {
         if (!launcherEnabled) return null
         // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
@@ -103,9 +114,6 @@ export function CoachChatView(props: Props) {
                 aria-modal="true"
                 aria-label="Coach chat"
                 data-testid="coach-panel"
-                onKeyDown={(event) => {
-                    if (event.key === 'Escape') onOpenChange(false)
-                }}
                 className={cn(
                     'flex h-full w-full flex-col bg-paper text-ink',
                     'md:h-[42rem] md:max-h-full md:max-w-[46rem]',

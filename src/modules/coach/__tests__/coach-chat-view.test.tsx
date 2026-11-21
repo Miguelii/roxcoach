@@ -99,6 +99,36 @@ describe('CoachChatView', () => {
         expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
     })
 
+    it('closes on Escape even when the focus is outside the panel', () => {
+        render(<Harness />)
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+        expect(screen.getByTestId('coach-input')).not.toHaveFocus()
+
+        fireEvent.keyDown(document.body, { key: 'Escape' })
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
+    it('ignores an Escape that was already handled inside the panel', () => {
+        render(<Harness />)
+        const handled = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        })
+        handled.preventDefault()
+        document.body.dispatchEvent(handled)
+
+        expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
+    })
+
+    it('stops listening for Escape once the panel is closed', () => {
+        render(<Harness startOpen={false} />)
+        fireEvent.keyDown(document.body, { key: 'Escape' })
+
+        expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
     it('closes with the close button and Escape', () => {
         render(<Harness />)
         fireEvent.click(screen.getByTestId('coach-close'))
