@@ -1,6 +1,6 @@
 # Design system: Soft Studio
 
-Status: awaiting approval. Scope: the foundation (tokens, fonts, type scale, buttons, radii,
+Status: implemented. Scope: the foundation (tokens, fonts, type scale, buttons, radii,
 elevation, motion). Screen redesigns come after, one screen at a time, on top of this.
 
 ## Intent
