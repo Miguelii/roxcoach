@@ -13,14 +13,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatDateTime } from '@/lib/formatters'
 import { useZeppConnection } from '@/modules/zepp/use-zepp-connection'
-
-const TIMESTAMP_FORMAT: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
-
-const formatTimestamp = (value: string) => {
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? 'Unknown' : date.toLocaleString('en-US', TIMESTAMP_FORMAT)
-}
 
 export function ZeppCard() {
     const zepp = useZeppConnection()
@@ -70,7 +64,7 @@ export function ZeppCard() {
                         <p className="text-sm font-medium">Zepp is connected</p>
                         <p data-testid="zepp-last-synced" className="text-sm text-muted-foreground">
                             {lastSyncedAt
-                                ? `Last synced ${formatTimestamp(lastSyncedAt)}`
+                                ? `Last synced ${formatDateTime(lastSyncedAt)}`
                                 : 'Runs have not been synced yet.'}
                         </p>
                     </div>

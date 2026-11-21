@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
-import { formatLyftaTimestamp, messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
+import { formatDateTime } from '@/lib/formatters'
+import { messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 
 type SyncResult = {
     created: number
@@ -60,7 +61,7 @@ export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
 
     return {
         errorMessage,
-        formatTimestamp: formatLyftaTimestamp,
+        formatTimestamp: formatDateTime,
         isSyncing: syncMutation.isPending,
         syncResult,
         syncWorkouts,

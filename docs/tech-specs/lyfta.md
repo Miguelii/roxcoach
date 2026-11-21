@@ -71,10 +71,10 @@ request runs both buttons are disabled; a failure keeps the dialog open and show
   counts of workouts created and updated, and the sync time; when `hasMore` is true, show "More
   workouts to sync. Press Sync workouts again to continue." instead. On failure, keep the connection and
   show an actionable error. A retry is safe.
-- **Dashboard and Calendar:** show a shared action group with `Upload activity` and `Sync Lyfta`.
-  The sync action is manual, disabled while connection status is loading or when Lyfta is not
-  connected, and displays the same success counts and actionable errors as Settings. When
-  disconnected, link to Settings to connect.
+- **Dashboard and Calendar:** show a shared action group with `Upload activity` and the shared `Sync`
+  button (see [ux-design.md](ux-design.md)), which lists Lyfta as one integration. The sync is
+  manual and shows the same success counts and actionable errors as Settings in toasts. When
+  Lyfta is not connected its row links to Settings to connect.
 - **Disconnect:** confirm before removing the encrypted key. Keep already imported activities and
   their strength sets; disconnecting must not delete training history.
 

@@ -2,7 +2,7 @@ import { ErrorCode } from '@/_bff/lib/error-codes'
 
 type ZeppUiError = { message: string }
 
-type ZeppSyncResult = { imported: number; skipped: number; remaining: number }
+export type ZeppSyncResult = { imported: number; skipped: number; remaining: number }
 
 const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
     [ErrorCode.ZEPP_LOGIN_REJECTED]: 'Zepp did not accept this email or password.',

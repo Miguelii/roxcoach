@@ -36,9 +36,3 @@ export const messageForLyftaError = ({ message }: LyftaUiError): string => {
     const errorCode = Object.values(ErrorCode).find((code) => code === message)
     return (errorCode && ERROR_MESSAGES[errorCode]) || GENERIC_ERROR_MESSAGE
 }
-
-export const formatLyftaTimestamp = (value: string): string => {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return 'Unknown'
-    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
-}

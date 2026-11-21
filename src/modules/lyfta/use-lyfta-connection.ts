@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
-import { formatLyftaTimestamp, messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
+import { formatDateTime } from '@/lib/formatters'
+import { messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
 export type LyftaFormValues = z.infer<typeof lyftaFormSchema>
@@ -106,6 +107,6 @@ export function useLyftaConnection() {
             setErrorMessage(null)
             lyftaSync.clearError()
         },
-        formatTimestamp: formatLyftaTimestamp,
+        formatTimestamp: formatDateTime,
     }
 }

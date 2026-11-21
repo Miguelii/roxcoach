@@ -80,6 +80,11 @@ that run only. There is no history window: the whole history is read every time.
 second insert into "already imported". The result is `{ imported, skipped, remaining }`; the UI asks
 to press Sync again while `remaining` is above zero. An expired token aborts the sync.
 
+## Sync button
+
+The Dashboard and Calendar `Sync` button lists Zepp next to Lyfta. Its row syncs only Zepp. The result goes through a toast: "Zepp synced: Imported 2
+runs." or, while more remains, "Imported 50 runs. More runs to sync. Press Sync again to continue."
+
 ## Security
 
 The password is used for the login call only. The `app_token` is encrypted at rest (AES-256-GCM,

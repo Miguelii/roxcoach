@@ -154,9 +154,15 @@ cache is cleared on logout.
 ### Calendar
 
 The `/calendar` page owns the activity calendar. Dashboard and Calendar share an action group with
-"Upload activity" and "Sync Lyfta". Upload opens the existing drawer with its idle, uploading,
-error and success states; Lyfta sync is manual and uses the connection and feedback behavior in
-[lyfta.md](lyfta.md). See [manual-upload.md](manual-upload.md) for upload details.
+"Upload activity" and "Sync". Upload opens the existing drawer with its idle, uploading,
+error and success states. "Sync" is one button for every integration (Lyfta and Zepp today,
+see [lyfta.md](lyfta.md) and [zepp.md](zepp.md)). It never syncs by itself: it opens a list with one
+row per connected integration (name, last sync, a sync icon) and the athlete picks one. An
+integration the athlete has not connected is not listed; with none connected the list says so and
+links to Settings. The list is a popover under the button on a wide screen and a drawer from the bottom on
+a phone (the shared `PopoverDrawer`). Each integration reports through toasts and exposes a
+`use-sync-<name>` hook that returns a `SyncSource` (`src/lib/sync-source.ts`); a new integration is
+one more hook in the list. See [manual-upload.md](manual-upload.md) for upload details.
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query, returning activities
 and upcoming or completed races for the visible range, never cancelled races. Items are typed as a

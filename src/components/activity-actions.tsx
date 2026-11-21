@@ -1,8 +1,10 @@
 'use client'
 
+import { SyncIntegrations } from '@/components/sync-integrations'
 import { cn } from '@/lib/utils'
 import { UploadActivity } from '@/modules/activity/upload-activity'
-import { SyncLyfta } from '@/modules/lyfta/sync-lyfta'
+import { useSyncLyfta } from '@/modules/lyfta/use-sync-lyfta'
+import { useSyncZepp } from '@/modules/zepp/use-sync-zepp'
 
 type Props = {
     // From `sm` up, size to the buttons and keep them on one row, so the group can sit at the end
@@ -11,6 +13,8 @@ type Props = {
 }
 
 export function ActivityActions({ inline = false }: Props) {
+    const sources = [useSyncLyfta(), useSyncZepp()]
+
     return (
         <div
             data-testid="activity-actions"
@@ -27,7 +31,7 @@ export function ActivityActions({ inline = false }: Props) {
                 )}
             >
                 <UploadActivity />
-                <SyncLyfta />
+                <SyncIntegrations sources={sources} />
             </div>
         </div>
     )

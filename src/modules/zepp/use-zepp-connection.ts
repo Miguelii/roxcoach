@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
-import { messageForZeppError, zeppSyncMessage } from '@/modules/zepp/zepp-ui.utils'
+import { useZeppSync } from '@/modules/zepp/use-zepp-sync'
+import { messageForZeppError } from '@/modules/zepp/zepp-ui.utils'
 
 export type ZeppFormValues = z.infer<typeof zeppFormSchema>
 
@@ -19,15 +20,14 @@ export function useZeppConnection() {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
     const query = useQuery(trpc.zepp.getConnectionStatus.queryOptions())
+    const zeppSync = useZeppSync()
     const connectMutation = useMutation(trpc.zepp.connect.mutationOptions({ gcTime: 0 }))
-    const syncMutation = useMutation(trpc.zepp.syncActivities.mutationOptions())
     const disconnectMutation = useMutation(trpc.zepp.disconnect.mutationOptions())
     const form = useForm<ZeppFormValues>({
         resolver: zodResolver(zeppFormSchema),
         defaultValues: { email: '', password: '' },
     })
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
-    const [syncMessage, setSyncMessage] = useState<string | null>(null)
     const [showForm, setShowForm] = useState(false)
     const [confirmDisconnect, setConfirmDisconnect] = useState(false)
 
@@ -36,7 +36,7 @@ export function useZeppConnection() {
 
     const submit = form.handleSubmit(async (values) => {
         setErrorMessage(null)
-        setSyncMessage(null)
+        zeppSync.clearMessage()
         try {
             await connectMutation.mutateAsync(values)
         } catch (error) {
@@ -56,24 +56,7 @@ export function useZeppConnection() {
 
     const sync = async () => {
         setErrorMessage(null)
-        setSyncMessage(null)
-        try {
-            const result = await syncMutation.mutateAsync()
-            setSyncMessage(zeppSyncMessage(result))
-        } catch (error) {
-            setErrorMessage(
-                messageForZeppError({ message: error instanceof Error ? error.message : '' })
-            )
-            syncMutation.reset()
-            return
-        }
-
-        syncMutation.reset()
-        await Promise.all([
-            refreshStatus(),
-            queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
-            queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
-        ])
+        await zeppSync.sync()
     }
 
     const disconnect = async () => {
@@ -91,7 +74,7 @@ export function useZeppConnection() {
         disconnectMutation.reset()
         setConfirmDisconnect(false)
         setShowForm(false)
-        setSyncMessage(null)
+        zeppSync.clearMessage()
         form.reset({ email: '', password: '' })
         await refreshStatus()
     }
@@ -99,12 +82,12 @@ export function useZeppConnection() {
     return {
         query,
         form,
-        errorMessage,
-        syncMessage,
+        errorMessage: errorMessage ?? zeppSync.errorMessage,
+        syncMessage: zeppSync.syncMessage,
         showForm,
         confirmDisconnect,
         isConnecting: form.formState.isSubmitting || connectMutation.isPending,
-        isSyncing: syncMutation.isPending,
+        isSyncing: zeppSync.isSyncing,
         isDisconnecting: disconnectMutation.isPending,
         submit,
         sync,
@@ -112,6 +95,7 @@ export function useZeppConnection() {
         setConfirmDisconnect,
         openForm: () => {
             setErrorMessage(null)
+            zeppSync.clearError()
             setShowForm(true)
         },
         closeForm: () => {
