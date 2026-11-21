@@ -56,7 +56,7 @@ feature needs is re-parsed from the stored file.
 Runs uploaded before `0015` have no histogram. After applying the migration, the owner runs once:
 
 ```bash
-pnpm dlx tsx --conditions=react-server tools/backfill-hr-histograms.ts <user_id>
+pnpm dlx tsx --conditions=react-server tools/backfill-histograms.ts <user_id>
 ```
 
 It reads every parsed file of that user whose activity has no histogram, parses it again and writes

@@ -4,20 +4,22 @@ import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 import {
     selectBackfillTargets,
-    updateHrHistogram,
+    updateHistograms,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import { getActivityFile } from '@/_bff/modules/training/repositories/activity-files-storage.repository'
-import type { HrHistogram } from '@/_bff/modules/training/types/progress'
+import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
 import type { StorageReadClient } from '@/_bff/modules/training/types'
 
 const USER_ID = 'user-1'
 
 // SAFETY: the fake only carries rows through; an embedded relation is not a flat FakeRow.
 const okRows = (rows: unknown[]) => ok(rows as never)
-const HISTOGRAM: HrHistogram = { v: 1, bins: [[150, 10, 30]] }
+const HR: HrHistogram = { v: 1, bins: [[150, 10, 30]] }
+const PACE: PaceHistogram = { v: 1, bins: [[250, 10, 40]] }
+const HISTOGRAMS = { hrHistogram: HR, paceHistogram: PACE }
 
 describe('selectBackfillTargets', () => {
-    it('selects the user rows without a histogram that have a parsed file', async () => {
+    it('selects the user rows missing the HR or the pace histogram that have a parsed file', async () => {
         const { chains, from, supabase } = makeFakeDb([
             okRows([
                 { id: 'a1', activity_files: [{ storage_path: 'user-1/f1.fit' }] },
@@ -28,7 +30,7 @@ describe('selectBackfillTargets', () => {
 
         expect(from).toHaveBeenCalledWith('activities')
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
-        expect(chains[0]?.is).toHaveBeenCalledWith('hr_histogram', null)
+        expect(chains[0]?.or).toHaveBeenCalledWith('hr_histogram.is.null,pace_histogram.is.null')
         expect(chains[0]?.is).toHaveBeenCalledWith('deleted_at', null)
         expect(chains[0]?.eq).toHaveBeenCalledWith('activity_files.status', 'parsed')
         expect(targets).toEqual([
@@ -48,13 +50,16 @@ describe('selectBackfillTargets', () => {
     })
 })
 
-describe('updateHrHistogram', () => {
-    it('updates only the histogram of the user row', async () => {
+describe('updateHistograms', () => {
+    it('updates only the histograms of the user row', async () => {
         const { chains, from, supabase } = makeFakeDb([ok()])
-        await Effect.runPromise(updateHrHistogram(supabase, USER_ID, 'a1', HISTOGRAM))
+        await Effect.runPromise(updateHistograms(supabase, USER_ID, 'a1', HISTOGRAMS))
 
         expect(from).toHaveBeenCalledWith('activities')
-        expect(chains[0]?.update).toHaveBeenCalledWith({ hr_histogram: HISTOGRAM })
+        expect(chains[0]?.update).toHaveBeenCalledWith({
+            hr_histogram: HR,
+            pace_histogram: PACE,
+        })
         expect(chains[0]?.eq).toHaveBeenCalledWith('id', 'a1')
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
     })
@@ -62,7 +67,7 @@ describe('updateHrHistogram', () => {
     it('tags thrown and returned errors as ActivityWriteError', async () => {
         const run = (queue: Parameters<typeof makeFakeDb>[0]) =>
             Effect.runPromiseExit(
-                updateHrHistogram(makeFakeDb(queue).supabase, USER_ID, 'a1', HISTOGRAM)
+                updateHistograms(makeFakeDb(queue).supabase, USER_ID, 'a1', HISTOGRAMS)
             )
         expect(failureTag(await run([new Error('x')]))).toBe('ActivityWriteError')
         expect(

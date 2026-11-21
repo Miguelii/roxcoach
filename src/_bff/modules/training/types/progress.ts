@@ -80,3 +80,8 @@ export type HrSample = {
 export type HrBin = [bpm: number, timeS: number, distanceM: number]
 
 export type HrHistogram = { v: 1; bins: HrBin[] }
+
+// [paceSPerKm, timeS, distanceM]: moving time and distance at a pace, in 5 s/km bins
+export type PaceBin = [paceSPerKm: number, timeS: number, distanceM: number]
+
+export type PaceHistogram = { v: 1; bins: PaceBin[] }

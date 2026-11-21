@@ -2,6 +2,10 @@
 export const MAX_SAMPLE_GAP_S = 10
 // Below this speed (m/s) the athlete is considered stopped.
 export const MIN_MOVING_SPEED_MPS = 0.5
+// Pace histogram: bin width and the clamp range, in seconds per km.
+export const PACE_BIN_S = 5
+export const MIN_PACE_S_PER_KM = 150
+export const MAX_PACE_S_PER_KM = 600
 export const MIN_HR_BPM = 30
 export const MAX_HR_BPM = 250
 

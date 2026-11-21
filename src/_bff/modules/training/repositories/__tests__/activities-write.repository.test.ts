@@ -26,6 +26,7 @@ const ROW: NewActivityRow = {
     avg_speed_mps: null,
     calories: null,
     hr_histogram: { v: 1, bins: [[150, 60, 200]] },
+    pace_histogram: { v: 1, bins: [[300, 60, 200]] },
 }
 const failed = { code: '42501', message: 'permission denied' }
 const LYFTA_ROW: LyftaActivityRow = {

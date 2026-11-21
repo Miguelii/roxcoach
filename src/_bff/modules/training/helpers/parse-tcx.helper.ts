@@ -4,6 +4,7 @@ import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { isoOf, numOf, parseXml, type XmlTree } from '@/_bff/modules/training/helpers/xml.helper'
 import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
+import { buildPaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import type { ParsedActivity, ParsedLap } from '@/_bff/modules/training/types'
 import type { HrSample } from '@/_bff/modules/training/types/progress'
 
@@ -133,6 +134,7 @@ function build(root: XmlTree): ParsedActivity | null {
         noteText: note,
         laps,
         hrHistogram: buildHrHistogram(tcxSamples(node.Lap)),
+        paceHistogram: buildPaceHistogram(tcxSamples(node.Lap)),
     }
 }
 

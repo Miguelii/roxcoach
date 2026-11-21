@@ -24,6 +24,7 @@ describe('selectRunsInRange', () => {
                     moving_time_s: 3000,
                     avg_hr: '152.5',
                     hr_histogram: { v: 1, bins: [[150, 10, 30]] },
+                    pace_histogram: { v: 1, bins: [[250, 10, 40]] },
                 },
             ]),
         ])
@@ -45,6 +46,7 @@ describe('selectRunsInRange', () => {
                 movingTimeS: 3000,
                 avgHr: 152.5,
                 hrHistogram: { v: 1, bins: [[150, 10, 30]] },
+                paceHistogram: { v: 1, bins: [[250, 10, 40]] },
             },
         ])
     })
@@ -58,13 +60,14 @@ describe('selectRunsInRange', () => {
         }
         const { supabase } = makeFakeDb([
             okRows([
-                { ...base, hr_histogram: { v: 9, bins: 'nope' } },
-                { ...base, hr_histogram: null },
+                { ...base, hr_histogram: { v: 9, bins: 'nope' }, pace_histogram: { v: 9 } },
+                { ...base, hr_histogram: null, pace_histogram: null },
             ]),
         ])
         const rows = await Effect.runPromise(selectRunsInRange(supabase, USER_ID, 'a', 'b'))
 
         expect(rows.map((row) => row.hrHistogram)).toEqual([null, null])
+        expect(rows.map((row) => row.paceHistogram)).toEqual([null, null])
     })
 
     it('tags thrown, returned and malformed results as ActivityQueryError', async () => {

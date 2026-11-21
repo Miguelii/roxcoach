@@ -3,6 +3,7 @@ import { Effect } from 'effect'
 import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
+import { buildPaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import type { ActivityCategory, ParsedActivity, ParsedLap } from '@/_bff/modules/training/types'
 import type { HrSample } from '@/_bff/modules/training/types/progress'
 
@@ -116,6 +117,7 @@ function build(messages: FitMessages): ParsedActivity | null {
         noteText: null,
         laps,
         hrHistogram: buildHrHistogram(fitSamples(records)),
+        paceHistogram: buildPaceHistogram(fitSamples(records)),
     }
     const sessionStart = iso(session?.startTime)
     if (session && sessionStart) {

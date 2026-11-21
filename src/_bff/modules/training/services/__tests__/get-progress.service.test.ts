@@ -67,6 +67,7 @@ describe('getRunProgress', () => {
                     moving_time_s: 3000,
                     avg_hr: 150,
                     hr_histogram: { v: 1, bins: [[150, 600, 2000]] },
+                    pace_histogram: { v: 1, bins: [[300, 600, 2000]] },
                 },
             ]),
         ])

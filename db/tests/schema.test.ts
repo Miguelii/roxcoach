@@ -92,6 +92,7 @@ describe('schema layout', () => {
             '0013_strength_exercise_images.sql',
             '0014_coach_usage.sql',
             '0015_dashboard_progress.sql',
+            '0016_race_readiness.sql',
         ])
     })
 
@@ -349,6 +350,25 @@ describe('dashboard progress columns', () => {
             [activityId]
         )
         expect((await read()).rows[0].hr_histogram).toEqual({ v: 1, bins: [] })
+    })
+})
+
+describe('activities pace_histogram', () => {
+    it('adds a nullable pace_histogram jsonb to activities', async () => {
+        const userId = await createUser(testDb)
+        const activityId = await insertActivity(testDb, userId)
+        const read = () =>
+            testDb.db.query<{ pace_histogram: unknown }>(
+                `select pace_histogram from roxcoach.activities where id = $1`,
+                [activityId]
+            )
+
+        expect((await read()).rows[0].pace_histogram).toBeNull()
+        await testDb.db.query(
+            `update roxcoach.activities set pace_histogram = '{"v":1,"bins":[]}'::jsonb where id = $1`,
+            [activityId]
+        )
+        expect((await read()).rows[0].pace_histogram).toEqual({ v: 1, bins: [] })
     })
 })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBackfillOutput, parseUserIdArg } from '../backfill-hr-histograms'
+import { formatBackfillOutput, parseUserIdArg } from '../backfill-histograms'
 
 const UUID = '11111111-1111-4111-8111-111111111111'
 

@@ -158,29 +158,30 @@ a race; a completed race cannot be cancelled and a race with a result cannot be 
 Every workout, uploaded or entered by hand, or imported from Lyfta. Strava sync was removed
 (`0007`).
 
-| Column                       | Type                | Notes                                                                                                |
-| ---------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `source`                     | `activity_source`   | `manual` or `lyfta` today; the enum still holds `strava` (unused)                                    |
-| `source_id`                  | text null           | Provider workout ID; set for Lyfta imports                                                           |
-| `category`                   | `activity_category` | chosen or derived when the file is parsed                                                            |
-| `sport_type`                 | text null           | raw sport type of the source, for example `Run`                                                      |
-| `name`                       | text                |                                                                                                      |
-| `started_at`                 | timestamptz         |                                                                                                      |
-| `local_date`                 | date                | the day in the athlete's timezone, used by the calendar                                              |
-| `distance_m`                 | numeric null        |                                                                                                      |
-| `moving_time_s`              | int null            |                                                                                                      |
-| `elapsed_time_s`             | int null            |                                                                                                      |
-| `elevation_gain_m`           | numeric null        |                                                                                                      |
-| `avg_hr`                     | numeric null        |                                                                                                      |
-| `max_hr`                     | numeric null        |                                                                                                      |
-| `avg_speed_mps`              | numeric null        |                                                                                                      |
-| `calories`                   | numeric null        |                                                                                                      |
-| `body_weight_kg`             | numeric null        | Lyfta body weight, normalized to kilograms                                                           |
-| `lyfta_total_volume_kg_reps` | numeric null        | Lyfta volume normalized to kilograms times repetitions                                               |
-| `perceived_effort`           | smallint null       | RPE 1..10, entered by hand, applies to both sources                                                  |
-| `notes`                      | text null           |                                                                                                      |
-| `deleted_at`                 | timestamptz null    | soft delete                                                                                          |
-| `hr_histogram`               | jsonb null          | `{"v":1,"bins":[[bpm,time_s,distance_m]]}` (`0015`); null = not computed, empty bins = no heart rate |
+| Column                       | Type                | Notes                                                                                                                        |
+| ---------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `source`                     | `activity_source`   | `manual` or `lyfta` today; the enum still holds `strava` (unused)                                                            |
+| `source_id`                  | text null           | Provider workout ID; set for Lyfta imports                                                                                   |
+| `category`                   | `activity_category` | chosen or derived when the file is parsed                                                                                    |
+| `sport_type`                 | text null           | raw sport type of the source, for example `Run`                                                                              |
+| `name`                       | text                |                                                                                                                              |
+| `started_at`                 | timestamptz         |                                                                                                                              |
+| `local_date`                 | date                | the day in the athlete's timezone, used by the calendar                                                                      |
+| `distance_m`                 | numeric null        |                                                                                                                              |
+| `moving_time_s`              | int null            |                                                                                                                              |
+| `elapsed_time_s`             | int null            |                                                                                                                              |
+| `elevation_gain_m`           | numeric null        |                                                                                                                              |
+| `avg_hr`                     | numeric null        |                                                                                                                              |
+| `max_hr`                     | numeric null        |                                                                                                                              |
+| `avg_speed_mps`              | numeric null        |                                                                                                                              |
+| `calories`                   | numeric null        |                                                                                                                              |
+| `body_weight_kg`             | numeric null        | Lyfta body weight, normalized to kilograms                                                                                   |
+| `lyfta_total_volume_kg_reps` | numeric null        | Lyfta volume normalized to kilograms times repetitions                                                                       |
+| `perceived_effort`           | smallint null       | RPE 1..10, entered by hand, applies to both sources                                                                          |
+| `notes`                      | text null           |                                                                                                                              |
+| `deleted_at`                 | timestamptz null    | soft delete                                                                                                                  |
+| `hr_histogram`               | jsonb null          | `{"v":1,"bins":[[bpm,time_s,distance_m]]}` (`0015`); null = not computed, empty bins = no heart rate                         |
+| `pace_histogram`             | jsonb null          | `{"v":1,"bins":[[pace_s_per_km,time_s,distance_m]]}` (`0016`); null = not computed, empty bins = no usable distance or speed |
 
 Index on `(user_id, local_date)`.
 Unique index on `(user_id, source, source_id)` makes provider imports idempotent. PostgreSQL's
@@ -370,6 +371,7 @@ schema:
 | `0013_strength_exercise_images.sql` | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                            |
 | `0014_coach_usage.sql`              | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
 | `0015_dashboard_progress.sql`       | `athlete_profiles.dashboard_mode`, `activities.hr_histogram`                                                |
+| `0016_race_readiness.sql`           | `activities.pace_histogram`                                                                                 |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see

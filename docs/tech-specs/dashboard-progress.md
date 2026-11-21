@@ -116,7 +116,7 @@ live in `_bff/core/constants/hr-histogram.constants.ts`.
 
 ### Backfill
 
-A service `backfillHrHistograms` plus a thin script in `tools/` (same conventions as
+A service `backfillHistograms` plus a thin script in `tools/` (same conventions as
 `tools/gemini-smoke.ts`): for every `parsed` file whose activity has `hr_histogram is null`,
 download it from Storage, parse it, update the row. Idempotent and resumable (it only touches rows
 still `null`), a file that fails is logged with the activity id and error code only (never file
