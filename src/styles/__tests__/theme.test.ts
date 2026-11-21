@@ -115,3 +115,47 @@ describe('Soft Studio tokens', () => {
         expect(variables.get('--radius-surface-inner')).toBe('22px')
     })
 })
+
+function classBlock(css: string, selector: string) {
+    const escaped = selector.replace(/[.]/g, '\\.')
+    return new RegExp(`${escaped}\\s*{([^}]*)}`).exec(css)?.[1] ?? ''
+}
+
+describe('Soft Studio typography', () => {
+    it('uses Outfit for sans and display', () => {
+        const font = readStyle('font.css')
+        expect(font).toMatch(/--font-sans:\s*var\(--font-outfit\)/)
+        expect(font).toMatch(/--font-display:\s*var\(--font-outfit\)/)
+        expect(font).not.toMatch(/anton|geist-sans/i)
+    })
+
+    it('keeps display titles in sentence case', () => {
+        const display = classBlock(readStyle('globals.css'), '.display')
+        expect(display).not.toContain('uppercase')
+        expect(display).toContain('font-weight: 600')
+    })
+
+    it('defines the type scale and drops the old display sizes', () => {
+        const globals = readStyle('globals.css')
+        for (const name of [
+            '.display',
+            '.type-display',
+            '.type-title',
+            '.type-heading',
+            '.type-subheading',
+            '.type-metric',
+            '.type-metric-xl',
+            '.eyebrow',
+        ]) {
+            expect(classBlock(globals, name)).not.toBe('')
+        }
+        for (const gone of [
+            '.display-giant',
+            '.display-hero',
+            '.display-card',
+            '.display-section',
+        ]) {
+            expect(globals).not.toContain(gone)
+        }
+    })
+})

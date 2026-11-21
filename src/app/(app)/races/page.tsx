@@ -7,7 +7,7 @@ export default function RacesPage() {
     return (
         <main className="main-container">
             <div className="space-y-6">
-                <h1 className="display display-section">Races</h1>
+                <h1 className="type-title">Races</h1>
                 <RacesView />
             </div>
         </main>

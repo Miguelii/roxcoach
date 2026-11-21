@@ -183,7 +183,7 @@ export function ActivityView({
                         {longDateLabel(activity.localDate)}
                     </span>
                 </p>
-                <h1 data-testid="activity-name" className="display display-section">
+                <h1 data-testid="activity-name" className="type-title">
                     {activity.name}
                 </h1>
             </header>
