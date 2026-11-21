@@ -174,14 +174,14 @@ export function AppShell({ children }: Props) {
                     <MobileLogoutButton isPending={logout.isPending} onLogout={onLogout} />
                 </header>
 
-                <div className="pb-28 md:pb-6">{children}</div>
+                <div className="pb-24 md:pb-6">{children}</div>
             </div>
 
             <nav
                 aria-label="Primary"
                 data-testid="nav-mobile"
                 className={cn(
-                    'fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:hidden',
+                    'fixed inset-x-4 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-40 md:hidden',
                     'grid grid-cols-5 items-center rounded-full p-1.5',
                     // Liquid glass: blurred, saturated backdrop with a bright rim and a soft shadow.
                     'border border-white/60 bg-paper/70 shadow-[0_8px_32px_rgba(23,24,28,0.14),inset_0_1px_0_rgba(255,255,255,0.7)]',

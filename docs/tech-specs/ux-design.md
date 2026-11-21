@@ -65,7 +65,9 @@ respected, screen-reader labels on every icon-only control and on every calendar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
   `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
-  filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.
+  filled, opens the coach panel), Races and Settings. It sits low, like Instagram's: its bottom edge is
+  at the safe area (the home indicator) with at least 8 px to the screen edge. Page content reserves
+  `pb-24` above it.
 - Page container: `main-container` (max-w-5xl) for reading pages, `main-container-lg` for the
   dashboard and calendar.
 - Light and dark themes through `next-themes`, as in BrewStock.
