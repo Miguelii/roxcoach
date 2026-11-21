@@ -20,8 +20,8 @@ seconds, on a phone, from charts that are readable first and pretty second.
 - A Running/Strength mode switch on the dashboard, persisted in `athlete_profiles`.
 - Running mode: pace trend with the goal pace as a reference line, pace by heart rate zone, and a
   small KPI strip.
-- Strength mode: one chart with the top set of the 5 most used exercises over time, each with its
-  picture.
+- Strength mode: one card per exercise for the 5 most used, one below the other, each with its
+  picture, the latest top set and a chart of its top set over time.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -218,19 +218,20 @@ Running mode
 +--------------------------------------------------------------------+
 
 Strength mode
-| Top exercises                                [ Top set | Change ]   |
-| [img] Back squat  o  [img] Bench press []  [img] Deadlift <>        |
-|       120 kg +10 kg        85 kg +5 kg           150 kg +7.5 kg     |
-|  (legend entries: picture, line marker, latest top set, change;     |
-|   each one also shows or hides its line)                            |
-|                                                                     |
-|   one line per exercise over the workout dates                      |
-|   (kg, or the change in % since each lift's first workout)          |
+| Top exercises (heading)                                            |
+| +----------------------------------------------------------------+ |
+| | [img]  Back squat                                  5 workouts  | |
+| |  Latest top set            Best                                | |
+| |  100 kg  +10 kg            105 kg                              | |
+| |   area chart of the top set of every workout (own axis)        | |
+| +----------------------------------------------------------------+ |
+| | [img]  Bench press ... (one card per exercise, 5 at most)      | |
 ```
 
 On a phone: the title row, then the mode switch (full width) and the range, then the actions; cards
-stack in one column, KPI tiles in a 2 by 2 grid, legend entries in one column. From `md`: KPI strip
-in one row, legend entries in two columns, from `xl` in three.
+stack in one column, KPI tiles in a 2 by 2 grid, exercise cards one below the other (chart 176 px
+high). From `md`: KPI strip in one row, chart 208 px high; from `lg` the exercise cards go in two
+columns.
 
 The week strip above the charts follows the mode: in strength mode there is no run distance tile,
 and time and sessions count strength workouts only (the load ratio still uses every activity). In
@@ -355,7 +356,8 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 - `3m` and `6m` weekly, `12m` monthly; default `6m`; range kept in the URL, not in the profile.
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
-- Top 5 exercises by number of workouts; the chart shows the top set of each, in kg or as the
-  change in % since the first workout (so lifts of very different loads can be compared).
+- Top 5 exercises by number of workouts, each in its own card with its own axis (loads differ too
+  much for one shared chart). A line is drawn from two workouts on; with one, the value and the
+  table are shown.
 - The week strip stays in both modes; in strength mode it drops the run distance tile and counts
   strength workouts only for time and sessions.

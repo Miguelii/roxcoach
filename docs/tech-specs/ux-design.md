@@ -98,10 +98,10 @@ charts for the athlete's chosen mode. A segmented control switches between **Run
 **Strength**; the choice is saved in `athlete_profiles.dashboard_mode` (applied at once, reverted
 with a toast if the save fails). A second control sets the range (3M, 6M, 1Y), kept in the URL
 (`range`, default `6m`). Running shows KPIs, the pace trend with the goal pace line and pace by
-heart rate zone; Strength shows one chart with the top set of the top 5 exercises over time (kg or
-change in %), each exercise with its picture. In strength mode the week strip has no run distance
+heart rate zone; Strength shows one card per top exercise (5 at most, one below the other), each with its
+picture, the latest top set and an area chart of its top set over time. In strength mode the week strip has no run distance
 tile and its time and sessions count strength workouts only. Every chart has a "View as table" fallback and a text summary; series with fewer
-than 4 points (3 for strength) show the table instead of a line. Full behavior, data and design
+than 4 points (1 for a strength exercise) show the table instead of a line. Full behavior, data and design
 rules are in [dashboard-progress.md](dashboard-progress.md). "Today" comes from the athlete
 timezone in `athlete.getProfile` (`todayIn(timezone)`), never from the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
 and manual Lyfta sync.
