@@ -7,6 +7,7 @@ import {
     INSTALL_PROMPT_DISMISS_TTL_MS,
     INSTALL_PROMPT_DISMISSED_KEY,
 } from '@/modules/pwa/constants'
+import { isStandalone } from '@/modules/pwa/utils'
 
 // The browser's install prompt event (Chrome and Edge, not in the DOM typings).
 type InstallPromptEvent = Event & {
@@ -71,10 +72,6 @@ const writeDismissed = (buildId: string | null) => {
         // Not remembered; the sheet closes for this visit anyway.
     }
 }
-
-const isStandalone = () =>
-    window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in navigator && navigator.standalone === true)
 
 // iPadOS reports a desktop Safari user agent, so it is told apart by its touch screen.
 const isIosSafari = () =>

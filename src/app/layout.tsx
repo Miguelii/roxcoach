@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ServerEnv } from '@/env/server'
 import { cn } from '@/lib/utils'
 import { InstallPrompt } from '@/modules/pwa/install-prompt'
+import { StandaloneZoomLock } from '@/modules/pwa/standalone-zoom-lock'
 import { TrpcContextProvider } from '@/providers/trpc-provider'
 
 const geistSans = Geist({
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                 <Toaster />
                 {/* In the root layout so it is offered on the login page too, before signing in. */}
                 <InstallPrompt buildId={ServerEnv.NEXT_BUILD_ID ?? null} />
+                <StandaloneZoomLock />
             </body>
         </html>
     )
