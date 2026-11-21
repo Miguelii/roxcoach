@@ -197,7 +197,7 @@ export function StrengthSummary({
                                 No new records this session.
                             </p>
                         ) : (
-                            <ul className="grid gap-2">
+                            <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                                 {records.map((record, index) => (
                                     <li
                                         key={record.key}
@@ -222,7 +222,7 @@ export function StrengthSummary({
                                                         data-testid={`strength-record-${index + 1}-${kind.type}`}
                                                         className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm tabular-nums"
                                                     >
-                                                        <span className="eyebrow min-w-20">
+                                                        <span className="eyebrow min-w-24">
                                                             {RECORD_LABELS[kind.type]}
                                                         </span>
                                                         <span

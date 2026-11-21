@@ -44,6 +44,11 @@ documented UTC timeline date filtering. Accept explicit ISO offsets and reject o
 invalid dates. The API documents `limit` up to 100, `page` starting at 1, 60 requests/minute and
 5,000 requests/day.
 
+`mocks/lyfta_mock.json` holds a real, anonymized `GET /workouts` response (one workout, six
+exercises, sets with and without records). Consult it before changing the Lyfta parser or reading a
+new field; it shows the exact types, for example numbers as strings (`"15.000"`), empty strings for
+missing values, `is_completed` always false for some athletes and comma separated record lists.
+
 Treat the API response as untrusted input. Validate the response envelope and every imported
 workout before writing it. Do not log request headers, keys or raw workout payloads.
 

@@ -106,6 +106,19 @@ Logic lives in a hook, UI in the component.
 - The component uses the shadcn `Form` with `FormField` + `FormControl` + `FormMessage`, never raw inputs outside that pattern.
 - Select with react-hook-form: `value={field.value}` and `onValueChange={field.onChange}`.
 
+## Lyfta
+
+`mocks/lyfta_mock.json` is a real response of `GET /workouts` from the Lyfta personal API (personal
+data anonymized). It is the source of truth for the payload shape.
+
+- Before touching anything in the Lyfta integration (`src/_bff/modules/lyfta`, the Lyfta import in
+  the `training` module, `docs/tech-specs/lyfta.md`), read this mock first.
+- Before using a Lyfta field that is not imported yet, check that it exists in the mock and how it
+  looks (types, string numbers, empty strings, comma separated lists). Never invent or assume a
+  field. If it is not in the mock, ask the user for a real sample instead of guessing.
+- When a real payload shows something the mock does not (a new field or format), update the mock
+  in the same change and document the finding in `docs/tech-specs/lyfta.md`.
+
 ## Tests
 
 - Unit tests (`pnpm test`, vite-plus) cover pure logic and services with a fake Supabase client. Knip treats test files as usage.
