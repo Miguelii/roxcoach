@@ -3,15 +3,17 @@
 import { useRouter } from 'next/navigation'
 import { Loader2Icon } from 'lucide-react'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
 // Everything it has to say goes through toasts, like the activity upload: no text under the button.
 export function SyncLyfta() {
+    const trpc = useTRPC()
     const router = useRouter()
-    const connection = trpcClient.lyfta.getConnectionStatus.useQuery()
+    const connection = useQuery(trpc.lyfta.getConnectionStatus.queryOptions())
     const lyfta = useLyftaSync({
         onSynced: (result) => {
             const summary = `${result.created} workouts added and ${result.updated} updated.`

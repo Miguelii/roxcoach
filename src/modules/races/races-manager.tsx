@@ -1,9 +1,10 @@
 'use client'
 
 import { toast } from 'sonner'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { RacesList } from '@/modules/races/races-list'
 import { runRaceAction } from '@/modules/races/run-race-action'
 
@@ -24,12 +25,13 @@ const quiet = (promise: Promise<void>) =>
 // Thin wrapper: runs each mutation, toasts and refreshes the server data. Covered through
 // RacesList; it only wires trpc.
 export function RacesManager({ races, today, defaultDivision }: Props) {
-    const utils = trpcClient.useUtils()
-    const create = trpcClient.races.create.useMutation()
-    const update = trpcClient.races.update.useMutation()
-    const complete = trpcClient.races.complete.useMutation()
-    const cancel = trpcClient.races.cancel.useMutation()
-    const remove = trpcClient.races.delete.useMutation()
+    const trpc = useTRPC()
+    const queryClient = useQueryClient()
+    const create = useMutation(trpc.races.create.mutationOptions())
+    const update = useMutation(trpc.races.update.mutationOptions())
+    const complete = useMutation(trpc.races.complete.mutationOptions())
+    const cancel = useMutation(trpc.races.cancel.mutationOptions())
+    const remove = useMutation(trpc.races.delete.mutationOptions())
 
     // Runs `action` with fixed copy, refreshing server data and invalidating client queries.
     const run = <Result,>(action: () => Promise<Result>, success: string, failure: string) =>
@@ -41,9 +43,9 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
             notifySuccess: (message) => toast.success(message),
             notifyFailure: (message) => toast.error(message),
             onChanged: () => {
-                void utils.training.getCalendar.invalidate()
-                void utils.training.getRunProgress.invalidate()
-                void utils.races.list.invalidate()
+                void queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter())
+                void queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter())
+                void queryClient.invalidateQueries(trpc.races.list.queryFilter())
             },
         })
 

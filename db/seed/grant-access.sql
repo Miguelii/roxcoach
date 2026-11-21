@@ -14,18 +14,12 @@
 -- Running it again is harmless: the flag is merged into the existing app_metadata (other keys are
 -- kept) and an existing profile is left as it is.
 --
--- The update is the statement from docs/tech-specs/auth-security.md ("Account provisioning"), wrapped so the
--- profile insert uses the id it returns and the email is written only once.
-with granted as (
-    update auth.users
-    set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"roxcoach": true}'::jsonb
-    where email = '<EMAIL>' -- PLACEHOLDER: the user's sign-in email
-    returning id
-)
-insert into roxcoach.athlete_profiles (user_id, display_name)
-select id, '<DISPLAY_NAME>' -- PLACEHOLDER: the name shown in the app
-from granted
-on conflict (user_id) do nothing;
+-- New users do not need this script: the /signup page grants access by itself with the same function
+-- (roxcoach.grant_access, migration 0017). Use the script for an account that already exists, for
+-- example a user of the other app.
+select roxcoach.grant_access(id, '<DISPLAY_NAME>') -- PLACEHOLDER: the name shown in the app
+from auth.users
+where email = '<EMAIL>'; -- PLACEHOLDER: the user's sign-in email
 
 -- Check (replace <EMAIL> here too).
 select

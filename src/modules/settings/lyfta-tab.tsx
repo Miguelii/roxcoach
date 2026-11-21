@@ -128,7 +128,7 @@ export function LyftaTab() {
                                 >
                                     Lyfta account settings
                                 </a>
-                                . Your key is encrypted before it is saved and is never shown again.
+                                .
                             </p>
                         ) : null}
                         <FormField

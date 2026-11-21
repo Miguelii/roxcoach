@@ -15,8 +15,17 @@ export class SignInWithPasswordError extends Data.TaggedError(
 )<ServiceErrorFields> {}
 export class AccessDeniedError extends Data.TaggedError('AccessDeniedError')<ServiceErrorFields> {}
 export class LogoutError extends Data.TaggedError('LogoutError')<ServiceErrorFields> {}
+export class SignUpClosedError extends Data.TaggedError('SignUpClosedError')<ServiceErrorFields> {}
+export class InvalidAccessCodeError extends Data.TaggedError(
+    'InvalidAccessCodeError'
+)<ServiceErrorFields> {}
+export class CreateUserError extends Data.TaggedError('CreateUserError')<ServiceErrorFields> {}
+export class GrantAccessError extends Data.TaggedError('GrantAccessError')<ServiceErrorFields> {}
 
 // Athlete
+export class AccountDeletionError extends Data.TaggedError(
+    'AccountDeletionError'
+)<ServiceErrorFields> {}
 export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}
 // `field` names the profile field that failed validation.
 export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<

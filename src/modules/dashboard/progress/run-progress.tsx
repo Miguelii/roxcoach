@@ -1,13 +1,13 @@
 'use client'
 
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { RunProgressView } from '@/modules/dashboard/progress/run-progress-view'
+import { weekStripWindow } from '@/modules/dashboard/utils'
 
 type Props = {
     range: ProgressRange
@@ -29,15 +29,19 @@ function RunProgressSkeleton() {
 }
 
 export function RunProgress({ range, today }: Props) {
-    const query = trpcClient.training.getRunProgress.useQuery(
-        { range },
-        { staleTime: DASHBOARD_QUERY_STALE_TIME, placeholderData: keepPreviousData }
+    const trpc = useTRPC()
+    const query = useQuery(
+        trpc.training.getRunProgress.queryOptions(
+            { range },
+            { staleTime: DASHBOARD_QUERY_STALE_TIME, placeholderData: keepPreviousData }
+        )
     )
 
     // The same window as the week strip, so both share one request.
-    const calendar = trpcClient.training.getCalendar.useQuery(
-        { from: addDays(today, -34), to: today },
-        { staleTime: DASHBOARD_QUERY_STALE_TIME }
+    const calendar = useQuery(
+        trpc.training.getCalendar.queryOptions(weekStripWindow(today), {
+            staleTime: DASHBOARD_QUERY_STALE_TIME,
+        })
     )
 
     if (query.data === undefined && query.isPending) return <RunProgressSkeleton />

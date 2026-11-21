@@ -5,6 +5,7 @@ import type { RaceDTO } from '@/_bff/modules/races/types'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { HYROX_RACE } from '@/modules/races/__tests__/fixtures'
 import { RacesView } from '@/modules/races/races-view'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 type QueryState<Data> = {
     data: Data | undefined
@@ -54,17 +55,22 @@ const mocks = vi.hoisted(() => {
     return { timezone, profile, races }
 })
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        athlete: {
-            getTimezone: { useQuery: () => mocks.timezone },
-            getProfile: { useQuery: () => mocks.profile },
-        },
-        races: {
-            list: { useQuery: () => mocks.races },
-        },
-    },
-}))
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc(
+                {
+                    'athlete.getTimezone': () => mocks.timezone,
+                    'athlete.getProfile': () => mocks.profile,
+                    'races.list': () => mocks.races,
+                },
+                options
+            ),
+    }
+})
 
 vi.mock('@/modules/races/races-manager', () => ({
     RacesManager: ({ races, today, defaultDivision }: RacesManagerProps) => (

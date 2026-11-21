@@ -2,18 +2,20 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AvailabilitySlotDTO } from '@/_bff/modules/athlete/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { AvailabilityEditorView } from '@/modules/settings/availability-editor-view'
 
 type DraftProps = { initial: AvailabilitySlotDTO[] }
 
 function AvailabilityDraft({ initial }: DraftProps) {
+    const trpc = useTRPC()
     const [slots, setSlots] = useState(initial)
-    const utils = trpcClient.useUtils()
-    const save = trpcClient.athlete.saveAvailability.useMutation()
+    const queryClient = useQueryClient()
+    const save = useMutation(trpc.athlete.saveAvailability.mutationOptions())
 
     const onSave = async () => {
         try {
@@ -23,7 +25,7 @@ function AvailabilityDraft({ initial }: DraftProps) {
             return
         }
         toast.success('Availability saved')
-        await utils.athlete.getAvailability.invalidate()
+        await queryClient.invalidateQueries(trpc.athlete.getAvailability.queryFilter())
     }
 
     return (
@@ -38,7 +40,8 @@ function AvailabilityDraft({ initial }: DraftProps) {
 
 // Thin wrapper: fetches the week and saves it. The editing logic is tested in the view and hook.
 export function AvailabilityTab() {
-    const query = trpcClient.athlete.getAvailability.useQuery()
+    const trpc = useTRPC()
+    const query = useQuery(trpc.athlete.getAvailability.queryOptions())
 
     if (query.isPending)
         return <Skeleton data-testid="availability-loading" className="h-72 w-full" />

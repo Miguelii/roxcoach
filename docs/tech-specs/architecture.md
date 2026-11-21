@@ -101,10 +101,40 @@ dashboard summary and calendar page live in `src/_bff/core/utils/week-stats.util
 `src/_bff/trpc/router.ts`). The `lyfta` namespace handles connection status, credential
 management and manual workout sync (see [lyfta.md](lyfta.md)). The `coach` namespace has
 `listConversations`, `getConversationMessages` and `deleteConversation`; the chat itself is a route
-handler (below). Example client call:
-`trpcClient.races.create.useMutation()`. Server Components use the server-side caller
-(`createCaller()` from `trpc/caller.ts`, server-only), which builds the context and calls
-`appRouter.createCaller`.
+handler (below).
+
+### Client
+
+The frontend uses `@trpc/tanstack-react-query` (not the deprecated `@trpc/react-query`).
+`src/lib/trpc.ts` exports `TRPCProvider` and `useTRPC` from `createTRPCContext<AppRouter>()`;
+`src/providers/trpc-provider.tsx` mounts `QueryClientProvider` and `TRPCProvider` with a
+`createTRPCClient` over `httpBatchLink` at `/api/trpc` (no transformer). Components call TanStack
+Query directly with the options the proxy builds:
+
+```tsx
+const trpc = useTRPC()
+const queryClient = useQueryClient()
+const races = useQuery(trpc.races.list.queryOptions(input, { staleTime }))
+const create = useMutation(trpc.races.create.mutationOptions())
+await queryClient.invalidateQueries(trpc.races.list.queryFilter())
+```
+
+Cache reads and writes (optimistic updates) go through `queryClient` with
+`trpc.x.queryKey(input)`; `queryFilter()` without input matches every input of a procedure.
+
+Server Components use the server-side caller (`createCaller()` from `trpc/caller.ts`,
+server-only), which builds the context and calls `appRouter.createCaller`. To prefetch data that
+client hooks then read, a Server Component uses `getServerTrpc()` from `src/lib/trpc-server.ts`
+(server-only): a request-scoped `QueryClient` plus `createTRPCOptionsProxy({ router, ctx,
+queryClient })`, which calls the router in process (no HTTP). It reads with
+`queryClient.query(trpc.x.queryOptions(input))` (TanStack Query 5.108 deprecates `fetchQuery` and
+`prefetchQuery`; a prefetch adds `.catch(() => null)`), so the cache keys
+match the client hooks, and passes `dehydrate(queryClient)` to a `HydrationBoundary` (used by the
+dashboard page).
+
+Component tests replace `@/lib/trpc` with `src/lib/__mocks__/trpc.ts` (the real options proxy over
+a client with no links) and route `useQuery` / `useMutation` / `useQueryClient` by procedure path
+with `routeTrpc` from `src/lib/__mocks__/trpc-path.ts`.
 
 ## Non-tRPC entry points
 
@@ -122,14 +152,15 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 
 ## Environment variables
 
-| Name                             | Scope  | Used by                       |
-| -------------------------------- | ------ | ----------------------------- |
-| `NEXT_SUPABASE_URL`              | server | all Supabase clients          |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client          |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                    |
-| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                |
-| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption      |
-| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect |
+| Name                             | Scope  | Used by                                                            |
+| -------------------------------- | ------ | ------------------------------------------------------------------ |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                               |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                               |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                         |
+| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                     |
+| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                           |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                      |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).

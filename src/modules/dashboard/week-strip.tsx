@@ -1,9 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import { Skeleton } from '@/components/ui/skeleton'
 import { QueryError } from '@/components/query-error'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
-import { addDays } from '@/_bff/core/utils/week-dates.utils'
+import { weekStripWindow } from '@/modules/dashboard/utils'
 import { WeekStripView } from '@/modules/dashboard/week-strip-view'
 
 type Props = {
@@ -12,9 +13,11 @@ type Props = {
 }
 
 export function WeekStrip({ today, mode }: Props) {
-    const query = trpcClient.training.getCalendar.useQuery(
-        { from: addDays(today, -34), to: today },
-        { staleTime: DASHBOARD_QUERY_STALE_TIME }
+    const trpc = useTRPC()
+    const query = useQuery(
+        trpc.training.getCalendar.queryOptions(weekStripWindow(today), {
+            staleTime: DASHBOARD_QUERY_STALE_TIME,
+        })
     )
 
     if (query.data === undefined && query.isPending) return <WeekStripSkeleton />

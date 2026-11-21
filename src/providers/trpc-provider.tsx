@@ -2,15 +2,16 @@
 
 import { useState, type PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
-import { trpcClient as trpc } from '@/lib/trpc'
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import type { AppRouter } from '@/_bff/trpc/router'
+import { TRPCProvider } from '@/lib/trpc'
 
 type Props = PropsWithChildren
 
 export function TrpcContextProvider({ children }: Props) {
     const [queryClient] = useState(() => new QueryClient())
     const [trpcClient] = useState(() =>
-        trpc.createClient({
+        createTRPCClient<AppRouter>({
             links: [
                 httpBatchLink({
                     url: '/api/trpc',
@@ -20,8 +21,10 @@ export function TrpcContextProvider({ children }: Props) {
     )
 
     return (
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        </trpc.Provider>
+        <QueryClientProvider client={queryClient}>
+            <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
+                {children}
+            </TRPCProvider>
+        </QueryClientProvider>
     )
 }

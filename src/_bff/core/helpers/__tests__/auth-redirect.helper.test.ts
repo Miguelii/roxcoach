@@ -45,6 +45,17 @@ describe('decideAuthRedirect', () => {
         expect(decideAuthRedirect({ pathname: '/login', hasAccess: false })).toBeNull()
     })
 
+    it.each(['/signup', '/signup/', '/signup/extra', '/%73ignup'])(
+        'sends %s to /dashboard with access',
+        (pathname) => {
+            expect(decideAuthRedirect({ pathname, hasAccess: true })).toBe('/dashboard')
+        }
+    )
+
+    it.each(['/signup', '/signup/'])('keeps %s without access (it is public)', (pathname) => {
+        expect(decideAuthRedirect({ pathname, hasAccess: false })).toBeNull()
+    })
+
     it.each([true, false])('keeps / (hasAccess %s)', (hasAccess) => {
         expect(decideAuthRedirect({ pathname: '/', hasAccess })).toBeNull()
     })
@@ -55,6 +66,7 @@ describe('decideAuthRedirect', () => {
         '/races-extra',
         '/dashboarding',
         '/loginx',
+        '/signupx',
         '/settings-public',
     ])('only matches on a path-segment boundary: %s', (pathname) => {
         expect(decideAuthRedirect({ pathname, hasAccess: false })).toBeNull()

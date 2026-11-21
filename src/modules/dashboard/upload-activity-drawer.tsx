@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2Icon, UploadIcon } from 'lucide-react'
+import { FileCheck2Icon, FileUpIcon, Loader2Icon, UploadIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,6 +8,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { DrawerFormLayout } from '@/components/ui/drawer-form-layout'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import { useUploadActivity } from '@/modules/activity/use-upload-activity'
 
 type Props = {
@@ -16,7 +17,7 @@ type Props = {
 }
 
 const BANNER =
-    'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none.'
+    'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none. On Strava, the recommended option is "Export Original".'
 
 const formatSize = (bytes: number) =>
     bytes >= 1024 * 1024
@@ -25,6 +26,7 @@ const formatSize = (bytes: number) =>
 
 export function UploadActivityDrawer({ upload, onUploaded }: Props) {
     const [open, setOpen] = useState(false)
+    const [dragOver, setDragOver] = useState(false)
     const {
         form,
         file,
@@ -101,29 +103,81 @@ export function UploadActivityDrawer({ upload, onUploaded }: Props) {
                                 name="file"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormControl>
-                                            <Input
-                                                key={inputKey}
-                                                type="file"
-                                                aria-label="Activity file"
-                                                accept=".fit,.tcx,.gpx"
-                                                data-testid="upload-file-input"
-                                                name={field.name}
-                                                ref={field.ref}
-                                                onBlur={field.onBlur}
-                                                onChange={(event) =>
-                                                    void selectFile(event.target.files?.[0])
-                                                }
-                                            />
-                                        </FormControl>
-                                        {file ? (
-                                            <p
-                                                data-testid="upload-file-name"
-                                                className="text-xs text-muted-foreground"
-                                            >
-                                                {file.name} ({formatSize(file.size)})
-                                            </p>
-                                        ) : null}
+                                        <label
+                                            data-testid="upload-dropzone"
+                                            onDragOver={(event) => {
+                                                event.preventDefault()
+                                                setDragOver(true)
+                                            }}
+                                            onDragLeave={() => setDragOver(false)}
+                                            onDrop={(event) => {
+                                                event.preventDefault()
+                                                setDragOver(false)
+                                                if (uploading) return
+                                                void selectFile(event.dataTransfer.files[0])
+                                            }}
+                                            className={cn(
+                                                'group flex cursor-pointer flex-col items-center gap-3 rounded-[var(--radius-surface-inner)] border border-dashed border-hairline bg-muted/40 px-6 py-8 text-center',
+                                                'transition-[transform,background-color,border-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+                                                'hover:border-ink/30 hover:bg-muted active:scale-[0.99]',
+                                                'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                                                (dragOver || file) && 'border-ink/40 bg-muted',
+                                                dragOver && 'scale-[1.01]',
+                                                uploading && 'pointer-events-none opacity-60'
+                                            )}
+                                        >
+                                            <FormControl>
+                                                <Input
+                                                    key={inputKey}
+                                                    type="file"
+                                                    aria-label="Activity file"
+                                                    accept=".fit,.tcx,.gpx"
+                                                    data-testid="upload-file-input"
+                                                    className="sr-only"
+                                                    name={field.name}
+                                                    ref={field.ref}
+                                                    onBlur={field.onBlur}
+                                                    onChange={(event) =>
+                                                        void selectFile(event.target.files?.[0])
+                                                    }
+                                                />
+                                            </FormControl>
+                                            <span className="flex size-12 items-center justify-center rounded-full bg-paper text-ink ring-1 ring-hairline transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 motion-reduce:transition-none">
+                                                {file ? (
+                                                    <FileCheck2Icon
+                                                        className="size-5"
+                                                        strokeWidth={1.5}
+                                                    />
+                                                ) : (
+                                                    <FileUpIcon
+                                                        className="size-5"
+                                                        strokeWidth={1.5}
+                                                    />
+                                                )}
+                                            </span>
+                                            {file ? (
+                                                <span
+                                                    data-testid="upload-file-name"
+                                                    className="max-w-full space-y-0.5"
+                                                >
+                                                    <span className="block truncate text-sm font-medium text-ink">
+                                                        {file.name} ({formatSize(file.size)})
+                                                    </span>
+                                                    <span className="block text-xs text-muted-foreground">
+                                                        Tap to choose a different file
+                                                    </span>
+                                                </span>
+                                            ) : (
+                                                <span className="space-y-0.5">
+                                                    <span className="block text-sm font-medium text-ink">
+                                                        Choose a file or drop it here
+                                                    </span>
+                                                    <span className="block text-xs text-muted-foreground">
+                                                        FIT, TCX or GPX, up to 10 MB
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </label>
                                         <FormMessage data-testid="upload-file-error" />
                                     </FormItem>
                                 )}

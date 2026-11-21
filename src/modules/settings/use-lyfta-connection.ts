@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { trpcClient } from '@/lib/trpc'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTRPC } from '@/lib/trpc'
 import { formatLyftaTimestamp, messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
@@ -18,10 +19,11 @@ const lyftaFormSchema = z.object({
 })
 
 export function useLyftaConnection() {
-    const query = trpcClient.lyfta.getConnectionStatus.useQuery()
-    const utils = trpcClient.useUtils()
-    const connectMutation = trpcClient.lyfta.connect.useMutation({ gcTime: 0 })
-    const disconnectMutation = trpcClient.lyfta.disconnect.useMutation()
+    const trpc = useTRPC()
+    const query = useQuery(trpc.lyfta.getConnectionStatus.queryOptions())
+    const queryClient = useQueryClient()
+    const connectMutation = useMutation(trpc.lyfta.connect.mutationOptions({ gcTime: 0 }))
+    const disconnectMutation = useMutation(trpc.lyfta.disconnect.mutationOptions())
     const lyftaSync = useLyftaSync()
     const form = useForm<LyftaFormValues>({
         resolver: zodResolver(lyftaFormSchema),
@@ -33,7 +35,7 @@ export function useLyftaConnection() {
 
     const refreshStatus = async () => {
         try {
-            await utils.lyfta.getConnectionStatus.invalidate()
+            await queryClient.invalidateQueries(trpc.lyfta.getConnectionStatus.queryFilter())
         } catch {
             setErrorMessage('Your change was saved, but some data could not refresh.')
         }

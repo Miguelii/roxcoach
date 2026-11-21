@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { trpcClient } from '@/lib/trpc'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTRPC } from '@/lib/trpc'
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 import { COACH_SUGGESTIONS } from '@/modules/coach/suggestions'
@@ -10,14 +11,18 @@ import { useCoachChat } from '@/modules/coach/use-coach-chat'
 // Wires the hook to the conversation queries. The list refreshes after every completed reply
 // (the first one creates the conversation) and after a delete.
 export function CoachChat() {
+    const trpc = useTRPC()
     const { open, setOpen, enabled, setEnabled } = useCoachPanel()
-    const utils = trpcClient.useUtils()
-    const conversations = trpcClient.coach.listConversations.useQuery(undefined, { enabled: open })
-    const remove = trpcClient.coach.deleteConversation.useMutation()
+    const queryClient = useQueryClient()
+    const conversations = useQuery(
+        trpc.coach.listConversations.queryOptions(undefined, { enabled: open })
+    )
+    const remove = useMutation(trpc.coach.deleteConversation.mutationOptions())
     const chat = useCoachChat({
         loadMessages: (conversationId) =>
-            utils.coach.getConversationMessages.fetch({ conversationId }),
-        onReply: () => void utils.coach.listConversations.invalidate(),
+            queryClient.query(trpc.coach.getConversationMessages.queryOptions({ conversationId })),
+        onReply: () =>
+            void queryClient.invalidateQueries(trpc.coach.listConversations.queryFilter()),
     })
 
     // The panel opens on the latest conversation, once, unless the athlete already started one.
@@ -36,7 +41,7 @@ export function CoachChat() {
             {
                 onSuccess: () => {
                     if (chat.conversationId === id) chat.newConversation()
-                    void utils.coach.listConversations.invalidate()
+                    void queryClient.invalidateQueries(trpc.coach.listConversations.queryFilter())
                 },
             }
         )

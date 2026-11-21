@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
+import { SIGNUP_PAGE_PATH } from '@/_bff/core/constants/auth.constants'
 import { safeReturnTo } from '@/_bff/core/helpers/safe-redirect.helper'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,22 +17,25 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { useLoginForm, type LoginValues } from '@/modules/auth/use-login-form'
 
 type Props = {
     returnTo?: string
+    // Shows the link to the sign-up page. False while sign-up is closed.
+    signupOpen?: boolean
 }
 
 // The only failure copy the UI ever shows. The server error message is an internal hash and is
 // never rendered, so a wrong password and an account without access look identical.
 const LOGIN_ERROR_COPY = 'Invalid email or password'
 
-export function LoginCard({ returnTo }: Props) {
+export function LoginCard({ returnTo, signupOpen = false }: Props) {
+    const trpc = useTRPC()
     const router = useRouter()
     const queryClient = useQueryClient()
     const form = useLoginForm()
-    const login = trpcClient.auth.login.useMutation()
+    const login = useMutation(trpc.auth.login.mutationOptions())
     const [failed, setFailed] = useState(false)
 
     const onSubmit = async (values: LoginValues) => {
@@ -117,6 +122,19 @@ export function LoginCard({ returnTo }: Props) {
                     </Button>
                 </form>
             </Form>
+
+            {signupOpen && (
+                <p className="mt-6 text-center text-sm text-muted-foreground">
+                    Have an access code?{' '}
+                    <Link
+                        data-testid="signup-link"
+                        href={SIGNUP_PAGE_PATH}
+                        className="text-ink underline"
+                    >
+                        Create an account
+                    </Link>
+                </p>
+            )}
         </div>
     )
 }

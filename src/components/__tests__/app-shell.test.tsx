@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/app-shell'
 import { CoachPanelProvider, useCoachPanel } from '@/modules/coach/coach-panel-context'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     mutateAsync: vi.fn(),
@@ -12,27 +13,26 @@ const mocks = vi.hoisted(() => ({
     setDashboardMode: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        useUtils: () => ({
-            athlete: {
-                getProfile: {
-                    cancel: vi.fn(),
-                    getData: vi.fn(),
-                    setData: vi.fn(),
-                    invalidate: vi.fn(),
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc(
+                { 'athlete.getProfile': () => ({ data: { dashboardMode: 'run' } }) },
+                options
+            ),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc(
+                {
+                    'athlete.setDashboardMode': () => ({ mutate: mocks.setDashboardMode }),
+                    'auth.logout': () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
                 },
-            },
-        }),
-        athlete: {
-            getProfile: { useQuery: () => ({ data: { dashboardMode: 'run' } }) },
-            setDashboardMode: { useMutation: () => ({ mutate: mocks.setDashboardMode }) },
-        },
-        auth: {
-            logout: { useMutation: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }) },
-        },
-    },
-}))
+                options
+            ),
+    }
+})
 
 vi.mock('next/navigation', () => ({
     usePathname: () => '/dashboard',

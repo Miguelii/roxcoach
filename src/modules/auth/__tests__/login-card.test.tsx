@@ -3,6 +3,7 @@ import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-librar
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { LoginCard } from '@/modules/auth/login-card'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     mutateAsync: vi.fn(),
@@ -10,13 +11,15 @@ const mocks = vi.hoisted(() => ({
     refresh: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        auth: {
-            login: { useMutation: () => ({ mutateAsync: mocks.mutateAsync }) },
-        },
-    },
-}))
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc({ 'auth.login': () => ({ mutateAsync: mocks.mutateAsync }) }, options),
+    }
+})
 
 vi.mock('next/navigation', () => ({
     useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
@@ -52,6 +55,18 @@ describe('LoginCard', () => {
             'current-password'
         )
         expect(screen.queryByTestId('login-error')).not.toBeInTheDocument()
+    })
+
+    it('shows the sign-up link only when sign-up is open', () => {
+        const { rerender } = render(<LoginCard />)
+        expect(screen.queryByTestId('signup-link')).not.toBeInTheDocument()
+
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <LoginCard signupOpen />
+            </QueryClientProvider>
+        )
+        expect(screen.getByTestId('signup-link')).toHaveAttribute('href', '/signup')
     })
 
     it('shows field errors and skips the mutation for empty fields', async () => {

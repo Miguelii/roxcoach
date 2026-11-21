@@ -126,9 +126,9 @@ Contents, top to bottom:
    your watch or Strava.") and a close button.
 2. **Banner** (an informational note, semantic tokens only, no fixed colors) with this copy:
    "Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps
-   the laps, so your stations can be matched. TCX merges the laps and GPX has none."
+   the laps, so your stations can be matched. TCX merges the laps and GPX has none. On Strava, the recommended option is "Export Original"."
    Test id `upload-format-banner`.
-3. File input (`accept=".fit,.tcx,.gpx"`), showing the chosen file name and size.
+3. Dropzone (`upload-dropzone`): a dashed label around the visually hidden file input (`accept=".fit,.tcx,.gpx"`). It accepts a click or a dropped file, and shows the chosen file name and size (`upload-file-name`) with a check icon.
 4. Checkbox "This is a Hyrox session". Unchecked by default, checked automatically when a TCX
    `Notes` text contains "HYROX". Hidden for GPX, which has no laps.
 5. Footer with Cancel and Submit ("Upload"). On mobile they stack vertically at full width; on

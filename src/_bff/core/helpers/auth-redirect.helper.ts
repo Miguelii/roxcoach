@@ -2,6 +2,7 @@ import {
     AUTH_PAGE_PATH,
     DEFAULT_POST_AUTH_PATH,
     PROTECTED_PATHS,
+    PUBLIC_AUTH_PATHS,
 } from '@/_bff/core/constants/auth.constants'
 
 type AuthRedirectInput = { pathname: string; hasAccess: boolean }
@@ -32,7 +33,10 @@ export const decideAuthRedirect = ({ pathname, hasAccess }: AuthRedirectInput): 
 
     if (!hasAccess && candidates.some((path) => isProtected(path))) return AUTH_PAGE_PATH
 
-    if (hasAccess && candidates.some((path) => isUnder(path, AUTH_PAGE_PATH))) {
+    if (
+        hasAccess &&
+        candidates.some((path) => PUBLIC_AUTH_PATHS.some((prefix) => isUnder(path, prefix)))
+    ) {
         return DEFAULT_POST_AUTH_PATH
     }
 

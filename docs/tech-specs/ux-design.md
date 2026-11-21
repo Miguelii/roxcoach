@@ -64,7 +64,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
-  `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
+  `prefers-reduced-transparency`; a glass bubble marks the active route, springs between items and can be dragged across them, snapping to the nearest route on release; `MobileNav` in `src/components/mobile-nav.tsx`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. It sits low, like Instagram's: its bottom edge is
   at the safe area (the home indicator) with at least 8 px to the screen edge. Page content reserves
   `pb-24` above it.
@@ -97,6 +97,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 | Route              | Access    | Job                                                            |
 | ------------------ | --------- | -------------------------------------------------------------- |
 | `/login`           | public    | sign in                                                        |
+| `/signup`          | public    | create an account with an access code (404 while closed)       |
 | `/dashboard`       | protected | training progress overview                                     |
 | `/calendar`        | protected | activity and race calendar, activity upload                    |
 | `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
@@ -108,8 +109,14 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ### Login
 
 A centered card on the paper ground: logo, email, password, one primary button. Inline field
-errors, a single generic failure message, a loading state on submit. No links to sign up or reset
-a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
+errors, a single generic failure message, a loading state on submit. No link to reset a password;
+a link to `/signup` shows only while sign-up is open. Follows the BrewStock form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
+
+### Sign-up
+
+The login card with four fields: name, email, password (8 to 72 characters) and access code, one primary
+button ("Create account") and a link back to sign in. One generic failure message for every
+refusal. The page is a 404 while sign-up is closed. See [signup-access-code.md](signup-access-code.md).
 
 ### Dashboard
 
@@ -246,8 +253,8 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
 ### Settings
 
 Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
-`trpcClient.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
-`trpcClient.lyfta.*` for credential management and manual workout sync. All tabs have loading and
+`trpc.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+`trpc.lyfta.*` for credential management and manual workout sync. All tabs have loading and
 error states; profile and availability show toasts on save. Lyfta connection and sync states are
 specified in [lyfta.md](lyfta.md).
 
@@ -255,7 +262,11 @@ specified in [lyfta.md](lyfta.md).
   the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
   hours cap and notes for the coach. Number fields are entered as text and converted; an empty
   optional field is saved as null. Ranges come from `PROFILE_LIMITS`
-  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server.
+  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server. Below the form,
+  `DeleteProfileSection` has a **Delete profile** button that opens a `ConfirmDialog` ("Keep my
+  profile" or "Delete everything"). Confirming deletes the account and all the athlete's data (see
+  [athlete-races.md](athlete-races.md), "Delete profile"), clears the query cache and goes to
+  `/login`; a failure keeps the dialog open with one fixed message.
 - **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
   7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
   kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to

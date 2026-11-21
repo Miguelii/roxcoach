@@ -2,20 +2,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { withNuqsTestingAdapter, type UrlUpdateEvent } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Calendar } from '@/modules/calendar/calendar'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const { getCalendarQuery } = vi.hoisted(() => ({
     getCalendarQuery: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        training: {
-            getCalendar: {
-                useQuery: getCalendarQuery,
-            },
-        },
-    },
-}))
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc({ 'training.getCalendar': getCalendarQuery }, options),
+    }
+})
 
 const TODAY = '2026-11-20'
 

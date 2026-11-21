@@ -1,14 +1,16 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { todayIn } from '@/_bff/core/utils/date.utils'
 import { ActivityActions } from '@/components/activity-actions'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { Calendar } from '@/modules/calendar/calendar'
 
 export function CalendarPageContent() {
-    const timezone = trpcClient.athlete.getTimezone.useQuery()
+    const trpc = useTRPC()
+    const timezone = useQuery(trpc.athlete.getTimezone.queryOptions())
 
     if (timezone.isPending && timezone.data === undefined) {
         return (

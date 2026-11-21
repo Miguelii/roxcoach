@@ -372,7 +372,9 @@ schema:
 | `0014_coach_usage.sql`              | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
 | `0015_dashboard_progress.sql`       | `athlete_profiles.dashboard_mode`, `activities.hr_histogram`                                                |
 | `0016_race_readiness.sql`           | `activities.pace_histogram`                                                                                 |
+| `0017_grant_access_fn.sql`          | `roxcoach.grant_access(user_id, display_name)`: sets the flag and creates the profile (service role only)   |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
-the initial `athlete_profiles` row are created by hand with `db/seed/grant-access.sql` (see
-[auth-security.md](auth-security.md)).
+the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the
+`/signup` page for new users ([signup-access-code.md](signup-access-code.md)), or by hand with
+`db/seed/grant-access.sql` for an existing account (see [auth-security.md](auth-security.md)).
