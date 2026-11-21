@@ -169,13 +169,10 @@ function PanelBody({
     const streaming = status === 'streaming'
     const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
 
-    const inputRef = useRef<HTMLTextAreaElement | null>(null)
     const listRef = useRef<HTMLDivElement | null>(null)
     const stickRef = useRef(true)
     const [previousStatus, setPreviousStatus] = useState<ChatStatus>(status)
     const [announcement, setAnnouncement] = useState('')
-
-    useEffect(() => inputRef.current?.focus(), [])
 
     // Follows the newest text unless the athlete scrolled up.
     useEffect(() => {
@@ -311,10 +308,6 @@ function PanelBody({
                                 <FormControl>
                                     <Textarea
                                         {...field}
-                                        ref={(node) => {
-                                            field.ref(node)
-                                            inputRef.current = node
-                                        }}
                                         rows={2}
                                         aria-label="Message to Migueli Coach"
                                         placeholder="Ask Migueli Coach..."
