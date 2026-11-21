@@ -45,8 +45,8 @@ export function DashboardContent() {
                         range={range}
                         onRangeChange={(next) => void setRange(next)}
                     />
-                    <div className="max-w-full">
-                        <ActivityActions />
+                    <div className="w-full sm:w-auto">
+                        <ActivityActions inline />
                     </div>
                 </div>
             </header>

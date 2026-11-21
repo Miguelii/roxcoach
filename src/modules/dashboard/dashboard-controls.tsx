@@ -15,7 +15,7 @@ const asRange = (value: string) => PROGRESS_RANGES.find((range) => range === val
 // sidebar and in Settings, not here.
 export function DashboardControls({ range, onRangeChange }: Props) {
     return (
-        <div data-testid="dashboard-controls">
+        <div data-testid="dashboard-controls" className="w-full sm:w-auto">
             <Tabs
                 value={range}
                 onValueChange={(value) => {
