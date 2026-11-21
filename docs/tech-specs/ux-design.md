@@ -70,6 +70,15 @@ respected, screen-reader labels on every icon-only control and on every calendar
   dashboard and calendar.
 - Light and dark themes through `next-themes`, as in BrewStock.
 - Mobile first: the athlete will mostly check this on a phone.
+- Installable app (PWA), following the Next.js PWA guide: `src/app/manifest.ts` (name Roxcoach,
+  `start_url` `/dashboard`, `standalone`, paper color for background and theme, 192 and 512 icons
+  plus a maskable one), the icons in `public/` (`web-app-manifest-192x192.png`,
+  `web-app-manifest-512x512.png`, `apple-touch-icon.png`; the proxy matcher already lets these names
+  through without a session), and in the root layout `viewportFit: 'cover'`, `themeColor` and
+  `appleWebApp` so it runs full screen on a phone. The icon is a rising line ending in a dot on the
+  ink color. It needs HTTPS to be offered for installation. Out of scope on purpose: web push
+  notifications (they need VAPID keys, a stored subscription and a sender) and offline caching with
+  a service worker; neither is required to install the app.
 
 ## Screens
 

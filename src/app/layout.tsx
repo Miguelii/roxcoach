@@ -29,12 +29,17 @@ export const viewport: Viewport = {
     colorScheme: 'light',
     width: 'device-width',
     initialScale: 1,
+    // Lets the page use the safe areas of a notched phone when it runs as an installed app.
+    viewportFit: 'cover',
+    themeColor: '#f7f4ee',
 }
 
 export const metadata: Metadata = {
     title: { default: 'Roxcoach', template: '%s | Roxcoach' },
     description: 'A personal training assistant for Hyrox and running.',
     robots: { index: false, follow: false },
+    icons: { apple: '/apple-touch-icon.png' },
+    appleWebApp: { capable: true, title: 'Roxcoach', statusBarStyle: 'default' },
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
