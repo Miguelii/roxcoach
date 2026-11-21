@@ -5,6 +5,9 @@ export type SeriesMarkerKind = 'circle' | 'square' | 'diamond' | 'triangle' | 'c
 type SeriesStyle = { color: string; dash: string | undefined; marker: SeriesMarkerKind }
 
 export const PACE_COLOR = 'var(--color-blue)'
+export const HEART_RATE_COLOR = 'var(--color-tangerine)'
+export const VOLUME_COLOR = 'var(--color-green)'
+export const FREQUENCY_COLOR = 'var(--color-slate)'
 export const GOAL_COLOR = 'var(--color-tangerine)'
 export const GRID_COLOR = 'var(--color-hairline)'
 export const AXIS_COLOR = 'var(--color-muted-foreground)'

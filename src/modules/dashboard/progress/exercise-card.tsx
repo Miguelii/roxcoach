@@ -7,16 +7,10 @@ import { formatKg } from '@/_bff/core/utils/formatters.utils'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChangeBadge } from '@/modules/dashboard/progress/change-badge'
-import { ChartDataTable } from '@/modules/dashboard/progress/chart-data-table'
-import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
 
 type Props = {
     exercise: TopExerciseDTO
 }
-
-// Two workouts already make a line; with one there is nothing to compare, so the value and the
-// table are shown.
-const MIN_POINTS_TO_DRAW = 2
 
 const ExerciseTrendChart = dynamic(
     () =>
@@ -25,6 +19,15 @@ const ExerciseTrendChart = dynamic(
         ),
     { ssr: false, loading: () => <Skeleton className="h-full w-full" /> }
 )
+
+const chartLabel = (exercise: TopExerciseDTO) => {
+    const first = exercise.points[0]
+    const last = exercise.points.at(-1)
+    if (first === undefined || last === undefined) return `${exercise.name} top set.`
+    if (exercise.points.length === 1)
+        return `${exercise.name} top set, ${formatKg(last.topSetKg) ?? '-'} in 1 workout.`
+    return `${exercise.name} top set, from ${formatKg(first.topSetKg) ?? '-'} to ${formatKg(last.topSetKg) ?? '-'} over ${exercise.points.length} workouts.`
+}
 
 // One exercise: its picture, the latest top set, how far it climbed, and a chart of the heaviest
 // set of every workout on its own axis.
@@ -93,27 +96,14 @@ export function ExerciseCard({ exercise }: Props) {
                 </div>
             </div>
 
-            {exercise.points.length >= MIN_POINTS_TO_DRAW ? (
-                <div
-                    role="img"
-                    data-testid="exercise-chart-figure"
-                    aria-label={`${exercise.name} top set, from ${formatKg(first?.topSetKg) ?? '-'} to ${formatKg(last?.topSetKg) ?? '-'} over ${exercise.points.length} workouts.`}
-                    className="h-44 w-full md:h-52"
-                >
-                    <ExerciseTrendChart exercise={exercise} />
-                </div>
-            ) : null}
-
-            <ChartDataTable
-                testId={`exercise-table-${exercise.key}`}
-                caption={`${exercise.name} top set by workout`}
-                columns={['Date', 'Top set']}
-                rows={exercise.points.map((point) => [
-                    bucketLabel(point.date, 'week'),
-                    formatKg(point.topSetKg),
-                ])}
-                defaultOpen={exercise.points.length < MIN_POINTS_TO_DRAW}
-            />
+            <div
+                role="img"
+                data-testid="exercise-chart-figure"
+                aria-label={chartLabel(exercise)}
+                className="h-44 w-full md:h-52"
+            >
+                <ExerciseTrendChart exercise={exercise} />
+            </div>
         </section>
     )
 }

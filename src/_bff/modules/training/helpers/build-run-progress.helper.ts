@@ -19,6 +19,7 @@ type RunRow = {
     localDate: string
     distanceM: number | null
     movingTimeS: number | null
+    avgHr: number | null
     hrHistogram: HrHistogram | null
 }
 
@@ -36,6 +37,9 @@ type Accumulator = {
     distanceM: number
     movingTimeS: number
     runs: number
+    // Heart rate times moving time, and the moving time that has a heart rate.
+    hrTimeProduct: number
+    hrTimeS: number
     zones: Map<ZoneNumber, ZoneTotals>
 }
 
@@ -94,7 +98,14 @@ export function buildRunProgress({
     const { from, granularity } = rangeBounds(today, range)
     const accumulators = new Map<string, Accumulator>()
     for (const start of bucketStarts(from, today, granularity)) {
-        accumulators.set(start, { distanceM: 0, movingTimeS: 0, runs: 0, zones: new Map() })
+        accumulators.set(start, {
+            distanceM: 0,
+            movingTimeS: 0,
+            runs: 0,
+            hrTimeProduct: 0,
+            hrTimeS: 0,
+            zones: new Map(),
+        })
     }
 
     for (const run of runs) {
@@ -105,6 +116,10 @@ export function buildRunProgress({
             acc.distanceM += distanceM
             acc.movingTimeS += movingTimeS
             acc.runs += 1
+            if (run.avgHr !== null && run.avgHr > 0) {
+                acc.hrTimeProduct += run.avgHr * movingTimeS
+                acc.hrTimeS += movingTimeS
+            }
         }
         if (run.hrHistogram !== null) addHistogram(acc, run.hrHistogram, zoneBounds)
     }
@@ -114,6 +129,7 @@ export function buildRunProgress({
         paceSecPerKm: paceOf(acc.movingTimeS, acc.distanceM),
         distanceKm: acc.distanceM / 1000,
         runs: acc.runs,
+        avgHrBpm: acc.hrTimeS > 0 ? Math.round(acc.hrTimeProduct / acc.hrTimeS) : null,
         zones: zonePoints(acc),
     }))
 

@@ -8,6 +8,8 @@ export type RunBucketDTO = {
     paceSecPerKm: number | null
     distanceKm: number
     runs: number
+    // Average heart rate of the runs in the bucket, weighted by moving time.
+    avgHrBpm: number | null
     zones: RunZonePointDTO[]
 }
 
@@ -50,8 +52,18 @@ export type TopExerciseDTO = {
     points: ExercisePointDTO[]
 }
 
+export type StrengthBucketDTO = {
+    start: string
+    // Sum of reps times load over every set of the bucket.
+    volumeKg: number
+    workouts: number
+    sets: number
+}
+
 export type StrengthProgressDTO = {
     range: ProgressRange
+    granularity: 'week' | 'month'
+    buckets: StrengthBucketDTO[]
     exercises: TopExerciseDTO[]
 }
 

@@ -3,9 +3,11 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatCompact,
     formatKg,
     formatPace,
     formatPaceSeconds,
+    formatVolumeKg,
     parseClock,
 } from '@/_bff/core/utils/formatters.utils'
 
@@ -83,5 +85,20 @@ describe('formatKg', () => {
 
     it('returns null for a missing value', () => {
         expect(formatKg(null)).toBeNull()
+    })
+})
+
+describe('formatVolumeKg', () => {
+    it('adds a thousands separator and drops decimals', () => {
+        expect(formatVolumeKg(12480.4)).toBe('12,480 kg')
+        expect(formatVolumeKg(950)).toBe('950 kg')
+        expect(formatVolumeKg(null)).toBeNull()
+    })
+})
+
+describe('formatCompact', () => {
+    it('shortens large values for axes', () => {
+        expect(formatCompact(12_480)).toBe('12.5k')
+        expect(formatCompact(950)).toBe('950')
     })
 })

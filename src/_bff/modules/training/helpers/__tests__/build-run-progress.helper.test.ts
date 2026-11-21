@@ -17,11 +17,13 @@ const run = (
     localDate: string,
     distanceM: number | null,
     movingTimeS: number | null,
-    bins: [number, number, number][] | null = null
+    bins: [number, number, number][] | null = null,
+    avgHr: number | null = null
 ) => ({
     localDate,
     distanceM,
     movingTimeS,
+    avgHr,
     hrHistogram: bins === null ? null : { v: 1 as const, bins },
 })
 
@@ -171,5 +173,30 @@ describe('buildRunProgress kpis and goal', () => {
             goalRace: { ...goalRace, raceDate: '2026-11-01' },
         })
         expect(dto.goal?.daysLeft).toBe(0)
+    })
+})
+
+describe('buildRunProgress heart rate', () => {
+    it('averages the heart rate of the bucket weighted by moving time', () => {
+        const dto = buildRunProgress({
+            ...base,
+            runs: [
+                run('2026-11-16', 5000, 1500, null, 150),
+                run('2026-11-17', 10_000, 3000, null, 160),
+            ],
+        })
+
+        // (150 * 1500 + 160 * 3000) / 4500
+        expect(dto.buckets.at(-1)?.avgHrBpm).toBe(157)
+    })
+
+    it('has no average without a heart rate and ignores runs that are left out of the pace', () => {
+        const dto = buildRunProgress({
+            ...base,
+            runs: [run('2026-11-16', 5000, 1500), run('2026-11-17', 0, 600, null, 170)],
+        })
+
+        expect(dto.buckets.at(-1)?.avgHrBpm).toBeNull()
+        expect(dto.buckets[0]?.avgHrBpm).toBeNull()
     })
 })

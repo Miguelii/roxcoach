@@ -8,12 +8,17 @@ import { formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
 import type { RunBucketDTO, RunProgressDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
 import { ChartDataTable } from '@/modules/dashboard/progress/chart-data-table'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
-import { bucketLabel, paceSummary } from '@/modules/dashboard/progress/progress-utils'
+import { bucketLabel, paceSummary, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
 import { RunKpis } from '@/modules/dashboard/progress/run-kpis'
-import { ZONE_STYLES } from '@/modules/dashboard/progress/series-styles'
+import {
+    ZONE_STYLES,
+    PACE_COLOR,
+    HEART_RATE_COLOR,
+} from '@/modules/dashboard/progress/series-styles'
 import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
 type Props = {
@@ -195,7 +200,60 @@ function PaceCard({ data }: Props) {
     )
 }
 
-// The running mode of the dashboard: KPIs, the pace trend and pace by heart rate zone.
+function DistanceCard({ data }: Props) {
+    const { buckets, granularity, kpis, range } = data
+    return (
+        <BucketChartCard
+            testId="distance-chart"
+            title="Distance"
+            takeaway={`${kpis.distanceKm.toFixed(1)} km in ${kpis.runs} runs over ${rangeLabel(range)}.`}
+            ariaLabel={`Distance per ${granularity}, ${kpis.distanceKm.toFixed(1)} km in total.`}
+            kind="bar"
+            color={PACE_COLOR}
+            data={buckets.map((bucket) => ({
+                label: bucketLabel(bucket.start, granularity),
+                value: bucket.runs === 0 ? null : bucket.distanceKm,
+            }))}
+            format={(value) => `${value.toFixed(1)} km`}
+            formatAxis={(value) => String(value)}
+            valueName="Distance"
+            periodName={granularity === 'week' ? 'Week' : 'Month'}
+        />
+    )
+}
+
+function HeartRateCard({ data }: Props) {
+    const { buckets, granularity } = data
+    const rates = buckets.flatMap((bucket) => bucket.avgHrBpm ?? [])
+    const first = rates[0]
+    const last = rates.at(-1)
+    if (first === undefined || last === undefined) return null
+
+    return (
+        <BucketChartCard
+            testId="heart-rate-chart"
+            title="Average heart rate"
+            takeaway={
+                rates.length < 2
+                    ? `${last} bpm.`
+                    : `From ${first} bpm to ${last} bpm, weighted by time.`
+            }
+            ariaLabel={`Average heart rate per ${granularity}, from ${first} bpm to ${last} bpm.`}
+            kind="line"
+            color={HEART_RATE_COLOR}
+            data={buckets.map((bucket) => ({
+                label: bucketLabel(bucket.start, granularity),
+                value: bucket.avgHrBpm,
+            }))}
+            format={(value) => `${value} bpm`}
+            formatAxis={(value) => String(value)}
+            valueName="Heart rate"
+            periodName={granularity === 'week' ? 'Week' : 'Month'}
+        />
+    )
+}
+
+// The running mode of the dashboard: KPIs, pace, zones, distance and heart rate.
 export function RunProgressView({ data }: Props) {
     if (data.kpis.runs === 0)
         return (
@@ -212,6 +270,8 @@ export function RunProgressView({ data }: Props) {
             <RunKpis kpis={data.kpis} goal={data.goal} />
             <PaceCard data={data} />
             <ZoneCard data={data} />
+            <DistanceCard data={data} />
+            <HeartRateCard data={data} />
         </div>
     )
 }

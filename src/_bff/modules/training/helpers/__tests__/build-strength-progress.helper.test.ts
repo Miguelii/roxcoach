@@ -32,8 +32,16 @@ const run = (workouts: ReturnType<typeof wk>[], sets: SetInput[]) =>
     buildStrengthProgress({ range: '3m', today: '2026-11-21', workouts, sets })
 
 describe('buildStrengthProgress', () => {
-    it('echoes the range and handles no data', () => {
-        expect(run([], [])).toEqual({ range: '3m', exercises: [] })
+    it('echoes the range and handles no data with empty buckets', () => {
+        const dto = run([], [])
+
+        expect(dto.range).toBe('3m')
+        expect(dto.granularity).toBe('week')
+        expect(dto.exercises).toEqual([])
+        expect(dto.buckets).toHaveLength(13)
+        expect(dto.buckets.every((b) => b.volumeKg === 0 && b.workouts === 0 && b.sets === 0)).toBe(
+            true
+        )
     })
 
     it('keeps the heaviest set of every workout date, ascending', () => {
@@ -161,5 +169,41 @@ describe('buildStrengthProgress', () => {
         const dto = run([wk('a', '2026-11-01')], [set('x', 'Squat', 5, 100)])
 
         expect(dto.exercises).toEqual([])
+    })
+
+    describe('buckets', () => {
+        it('sums reps times load, counts distinct workouts and sets per week, over every exercise', () => {
+            const dto = run(
+                [wk('a', '2026-11-16'), wk('b', '2026-11-18'), wk('c', '2026-11-03')],
+                [
+                    set('a', 'Squat', 5, 100),
+                    set('a', 'Squat', 5, 100),
+                    set('b', 'Curl', 10, 20),
+                    set('c', 'Row', 8, 50),
+                ]
+            )
+
+            const thisWeek = dto.buckets.at(-1)
+            expect(thisWeek).toMatchObject({
+                start: '2026-11-16',
+                volumeKg: 1200,
+                workouts: 2,
+                sets: 3,
+            })
+            expect(dto.buckets.find((b) => b.start === '2026-11-02')).toMatchObject({
+                volumeKg: 400,
+                workouts: 1,
+                sets: 1,
+            })
+        })
+
+        it('counts a bodyweight set but adds no volume, and a workout without sets still counts', () => {
+            const dto = run(
+                [wk('a', '2026-11-16'), wk('b', '2026-11-17')],
+                [set('a', 'Push-up', 20, null), set('a', 'Squat', null, 100)]
+            )
+
+            expect(dto.buckets.at(-1)).toMatchObject({ volumeKg: 0, workouts: 2, sets: 2 })
+        })
     })
 })

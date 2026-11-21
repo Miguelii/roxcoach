@@ -18,10 +18,11 @@ seconds, on a phone, from charts that are readable first and pretty second.
 ## Goals
 
 - A Running/Strength mode switch on the dashboard, persisted in `athlete_profiles`.
-- Running mode: pace trend with the goal pace as a reference line, pace by heart rate zone, and a
-  small KPI strip.
-- Strength mode: one card per exercise for the 5 most used, one below the other, each with its
-  picture, the latest top set and a chart of its top set over time.
+- Running mode: a small KPI strip, the pace trend with the goal pace as a reference line, pace by
+  heart rate zone, distance per week or month (bars) and average heart rate (line).
+- Strength mode: training volume and workouts per week or month (bars), then one card per exercise
+  for the 5 most used, one below the other, each with its picture, the latest top set and a chart
+  of its top set over time. The exercise cards have no table: they are charts only.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -173,6 +174,8 @@ no data are present in the response with `null` values so the x axis is continuo
 - **Goal**: the next upcoming `running` race (priority A first, then the earliest date) with a
   distance. `paceSecPerKm = target_time_s / (distance_m / 1000)`, plus race name, date and days left.
   `null` when there is none (Hyrox races have no distance, so they never give a goal pace).
+- **Heart rate**: `avgHrBpm` per bucket is the average heart rate of the runs counted in the pace,
+  weighted by moving time (from `activities.avg_hr`); null without any heart rate.
 - **KPIs**: average pace, total distance and number of runs in the range, and the difference of the
   recent pace (last bucket with data) against the goal pace.
 
@@ -185,6 +188,9 @@ no data are present in the response with `null` values so the x axis is continuo
 - Per exercise and workout date: `topSetKg`, the highest `load_kg` among the sets with reps and a
   positive load. Dates with no usable set have no point, so a point is never null. Two workouts on
   the same date collapse to one point.
+- **Buckets** (`granularity` and `buckets` of `StrengthProgressDTO`): per week or month, `volumeKg`
+  (sum of reps times load over every set with reps and a positive load, all exercises), `workouts`
+  (distinct workouts) and `sets`. Empty buckets are present.
 - **Picture**: `imageUrl` is `exercise_image_url` of the most recent workout that has one (null
   when none does). The images are Lyfta URLs shown through `next/image` (the hosts are in
   `next.config` `images.remotePatterns`).

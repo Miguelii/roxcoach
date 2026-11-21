@@ -12,6 +12,7 @@ const bucket = (start: string, paceSecPerKm: number | null): RunBucketDTO => ({
     paceSecPerKm,
     distanceKm: 0,
     runs: 0,
+    avgHrBpm: null,
     zones: [],
 })
 

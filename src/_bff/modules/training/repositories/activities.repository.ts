@@ -372,6 +372,7 @@ const runRowSchema = z.object({
     local_date: z.string(),
     distance_m: numeric,
     moving_time_s: numeric,
+    avg_hr: numeric,
     // Validated by parseHrHistogram: a corrupt value must not fail the whole request.
     hr_histogram: z.unknown(),
 })
@@ -387,7 +388,7 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
         try: () =>
             supabase
                 .from(TABLE)
-                .select('local_date, distance_m, moving_time_s, hr_histogram')
+                .select('local_date, distance_m, moving_time_s, avg_hr, hr_histogram')
                 .eq('user_id', userId)
                 .eq('category', 'run')
                 .is('deleted_at', null)
@@ -411,6 +412,7 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
         localDate: row.local_date,
         distanceM: row.distance_m,
         movingTimeS: row.moving_time_s,
+        avgHr: row.avg_hr,
         hrHistogram: parseHrHistogram(row.hr_histogram),
     }))
 })

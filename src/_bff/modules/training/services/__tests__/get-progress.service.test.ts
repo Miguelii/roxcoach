@@ -65,6 +65,7 @@ describe('getRunProgress', () => {
                     local_date: '2026-11-10',
                     distance_m: 10000,
                     moving_time_s: 3000,
+                    avg_hr: 150,
                     hr_histogram: { v: 1, bins: [[150, 600, 2000]] },
                 },
             ]),

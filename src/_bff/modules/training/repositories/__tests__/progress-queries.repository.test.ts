@@ -22,6 +22,7 @@ describe('selectRunsInRange', () => {
                     local_date: '2026-11-10',
                     distance_m: '10000',
                     moving_time_s: 3000,
+                    avg_hr: '152.5',
                     hr_histogram: { v: 1, bins: [[150, 10, 30]] },
                 },
             ]),
@@ -42,13 +43,19 @@ describe('selectRunsInRange', () => {
                 localDate: '2026-11-10',
                 distanceM: 10000,
                 movingTimeS: 3000,
+                avgHr: 152.5,
                 hrHistogram: { v: 1, bins: [[150, 10, 30]] },
             },
         ])
     })
 
     it('turns a corrupt or missing histogram into null without failing', async () => {
-        const base = { local_date: '2026-11-10', distance_m: 5000, moving_time_s: 1500 }
+        const base = {
+            local_date: '2026-11-10',
+            distance_m: 5000,
+            moving_time_s: 1500,
+            avg_hr: null,
+        }
         const { supabase } = makeFakeDb([
             okRows([
                 { ...base, hr_histogram: { v: 9, bins: 'nope' } },

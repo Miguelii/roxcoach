@@ -13,11 +13,17 @@ const zones = (z2: number | null, z3: number | null): RunBucketDTO['zones'] => [
     { zone: 5, paceSecPerKm: null, minutes: 0 },
 ]
 
-const bucket = (start: string, pace: number | null, z2: number | null = null): RunBucketDTO => ({
+const bucket = (
+    start: string,
+    pace: number | null,
+    z2: number | null = null,
+    avgHrBpm: number | null = null
+): RunBucketDTO => ({
     start,
     paceSecPerKm: pace,
     distanceKm: pace === null ? 0 : 20,
     runs: pace === null ? 0 : 3,
+    avgHrBpm,
     zones: zones(z2, z2 === null ? null : z2 - 30),
 })
 
@@ -171,5 +177,41 @@ describe('RunProgressView', () => {
         fireEvent.click(screen.getByTestId('zone-toggle-3'))
 
         expect(screen.getByTestId('zone-chart-all-hidden')).toBeInTheDocument()
+    })
+
+    it('shows the distance chart and the average heart rate chart when there is heart rate data', () => {
+        const buckets = [
+            bucket('2026-10-12', 330, 360, 158),
+            bucket('2026-10-19', 325, 355, 156),
+            bucket('2026-10-26', null),
+            bucket('2026-11-02', 318, 350, 154),
+        ]
+        render(<RunProgressView data={data({ buckets })} />)
+
+        expect(screen.getByTestId('distance-chart-takeaway')).toHaveTextContent(
+            '80.0 km in 12 runs over 3 months.'
+        )
+        expect(screen.getByTestId('distance-chart-figure')).toBeInTheDocument()
+        expect(screen.getByTestId('heart-rate-chart-takeaway')).toHaveTextContent(
+            'From 158 bpm to 154 bpm, weighted by time.'
+        )
+        expect(screen.getByTestId('heart-rate-chart-figure')).toBeInTheDocument()
+    })
+
+    it('leaves out the heart rate chart when no run has a heart rate', () => {
+        render(<RunProgressView data={data()} />)
+
+        expect(screen.getByTestId('distance-chart')).toBeInTheDocument()
+        expect(screen.queryByTestId('heart-rate-chart')).toBeNull()
+    })
+
+    it('lists the distance of every bucket in its table, with a dash for empty weeks', () => {
+        render(<RunProgressView data={data()} />)
+
+        fireEvent.click(screen.getByTestId('distance-chart-table-toggle'))
+        const rows = screen.getAllByTestId('distance-chart-table-row')
+        expect(rows).toHaveLength(5)
+        expect(rows[0]).toHaveTextContent('12 Oct20.0 km')
+        expect(rows[2]).toHaveTextContent('26 Oct-')
     })
 })
