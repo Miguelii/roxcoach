@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
     getCalendarQuery: vi.fn(),
     getRunProgressQuery: vi.fn(),
+    getStrengthProgressQuery: vi.fn(),
     mutate: vi.fn(),
     useMutation: vi.fn(),
 }))
@@ -30,6 +31,7 @@ vi.mock('@/lib/trpc', () => ({
         training: {
             getCalendar: { useQuery: mocks.getCalendarQuery },
             getRunProgress: { useQuery: mocks.getRunProgressQuery },
+            getStrengthProgress: { useQuery: mocks.getStrengthProgressQuery },
         },
     },
 }))
@@ -51,6 +53,11 @@ describe('DashboardContent', () => {
         mocks.getProfileQuery.mockReturnValue(profile('run'))
         mocks.useMutation.mockReturnValue({ mutate: mocks.mutate })
         mocks.mutate.mockReset()
+        mocks.getStrengthProgressQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
         mocks.getRunProgressQuery.mockReturnValue({
             data: undefined,
             isPending: true,
@@ -83,7 +90,7 @@ describe('DashboardContent', () => {
         expect(mocks.mutate).toHaveBeenCalledWith({ mode: 'run' })
     })
 
-    it('shows the running progress in run mode and a placeholder in strength mode', () => {
+    it('shows the running progress in run mode and the strength progress in strength mode', () => {
         const { unmount } = renderContent()
         expect(screen.getByTestId('run-progress-skeleton')).toBeInTheDocument()
         unmount()
@@ -91,7 +98,7 @@ describe('DashboardContent', () => {
         mocks.getProfileQuery.mockReturnValue(profile('strength'))
         renderContent()
         expect(screen.queryByTestId('run-progress-skeleton')).toBeNull()
-        expect(screen.getByTestId('progress-placeholder')).toBeInTheDocument()
+        expect(screen.getByTestId('strength-progress-skeleton')).toBeInTheDocument()
     })
 
     it('shows the skeleton while the profile loads and an error with retry when it fails', () => {

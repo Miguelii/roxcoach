@@ -6,6 +6,7 @@ import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardControls } from '@/modules/dashboard/dashboard-controls'
 import { RunProgress } from '@/modules/dashboard/progress/run-progress'
+import { StrengthProgress } from '@/modules/dashboard/progress/strength-progress'
 import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
 import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
@@ -51,7 +52,7 @@ export function DashboardContent() {
             {profile.data.dashboardMode === 'run' ? (
                 <RunProgress range={range} />
             ) : (
-                <div data-testid="progress-placeholder" data-mode="strength" />
+                <StrengthProgress range={range} />
             )}
         </div>
     )
