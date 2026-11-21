@@ -1,5 +1,6 @@
 'use client'
 
+import { useWatch } from 'react-hook-form'
 import { Loader2Icon } from 'lucide-react'
 import { formatClock } from '@/_bff/core/utils/formatters.utils'
 import type { RaceDTO } from '@/_bff/modules/races/types'
@@ -43,7 +44,8 @@ type BodyProps = {
 
 function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
     const form = useCompleteRaceForm()
-    const typed = form.watch('resultTime')
+    // useWatch, not form.watch: the React Compiler memoizes watch() and the delta would go stale.
+    const typed = useWatch({ control: form.control, name: 'resultTime' })
     const delta = formatDelta(race.targetTimeS, parseResultTime(typed))
 
     const submit = async (values: CompleteRaceValues) => {

@@ -1,5 +1,6 @@
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -119,7 +120,9 @@ function PanelBody({
     onRetry,
 }: Props) {
     const { form, submit } = useCoachComposer({ onSend })
-    const text = form.watch('message')
+    // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
+    // disabled while typing.
+    const text = useWatch({ control: form.control, name: 'message' })
     const streaming = status === 'streaming'
     const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
 
