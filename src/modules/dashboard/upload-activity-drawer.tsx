@@ -17,7 +17,7 @@ type Props = {
 }
 
 const BANNER =
-    'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none.'
+    'Accepted formats: FIT, TCX and GPX (up to 10 MB). FIT is the best choice for Hyrox: it keeps the laps, so your stations can be matched. TCX merges the laps and GPX has none. On Strava, the recommended option is "Export Original".'
 
 const formatSize = (bytes: number) =>
     bytes >= 1024 * 1024
