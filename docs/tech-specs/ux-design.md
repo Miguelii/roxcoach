@@ -61,7 +61,8 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ## Layout
 
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
-  plus an account menu for logout. On mobile use a compact top bar and a floating bottom
+  plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
+  keeps a small account menu with Log out. On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
   `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.
@@ -91,16 +92,25 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 
 ### Dashboard
 
-The dashboard is focused on training progress, not the calendar. It currently shows the real-data
-weekly summary: time, sessions, run km and the acute:chronic load ratio from the last 35 days of
-activities, with zeros and "No history yet" when there is no history. Charts and deeper progress
-trends are a follow-up. "Today" comes from `athlete.getTimezone` (`todayIn(timezone)`), never from
-the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
+The dashboard is focused on training progress, not the calendar. It shows the real-data weekly
+summary (time, sessions, run km and the acute:chronic load ratio from the last 35 days of
+activities, with zeros and "No history yet" when there is no history) and, below it, progress
+charts for the athlete's chosen mode. The **Running** or **Strength** choice is a segmented control at the bottom of the
+desktop sidebar and in its own Settings tab, Dashboard (so a phone user, who has no sidebar, can change it); it is
+saved in `athlete_profiles.dashboard_mode` (applied at once, reverted with a toast if the save
+fails) and is not on the dashboard page. A control on the page sets the range (3M, 6M, 1Y), kept in the URL
+(`range`, default `6m`). Running follows a training-app layout: the days of this week, a headline
+with a bar per week (distance, time or runs, tap a bar or step with the arrows), the goal pace, the
+latest runs, the pace trend with the goal pace line, pace by heart rate zone and average heart rate; Strength shows training volume and workouts per week as bars, then one card per top exercise (5 at most, one below the other), each with its
+picture, the latest top set and an area chart of its top set over time. In strength mode the week strip has no run distance
+tile and its time and sessions count strength workouts only. Every chart has a text summary for screen readers; there are no data tables, only charts. Full behavior, data and design
+rules are in [dashboard-progress.md](dashboard-progress.md). "Today" comes from the athlete
+timezone in `athlete.getProfile` (`todayIn(timezone)`), never from the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
 and manual Lyfta sync.
 
-The dashboard loads its timezone and 35-day summary through tRPC client queries. React Query
+The dashboard loads its profile (timezone and mode), the 35-day summary and the progress series through tRPC client queries. React Query
 retains the summary while navigating between routes and revalidates it after 30 seconds. Uploads
-invalidate the calendar query, which refreshes both the calendar and summary. The client query
+invalidate the calendar and both progress queries, which refreshes the calendar, summary and charts. The client query
 cache is cleared on logout.
 
 ### Calendar

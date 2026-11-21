@@ -2,6 +2,7 @@ import 'server-only'
 
 import { Effect } from 'effect'
 import { z } from 'zod'
+import { DASHBOARD_MODES, type DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import { HYROX_DIVISION_KEYS } from '@/_bff/core/constants/hyrox.constants'
 import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
@@ -69,10 +70,11 @@ const profileRowSchema = z.object({
     hyrox_division: z.enum(HYROX_DIVISION_KEYS).nullable(),
     weekly_hours_cap: numeric,
     notes: z.string().nullable(),
+    dashboard_mode: z.enum(DASHBOARD_MODES),
 })
 
 const PROFILE_COLUMNS =
-    'display_name, timezone, max_hr, resting_hr, hyrox_division, weekly_hours_cap, notes'
+    'display_name, timezone, max_hr, resting_hr, hyrox_division, weekly_hours_cap, notes, dashboard_mode'
 
 export const selectProfile = Effect.fn('selectProfile')(function* (
     supabase: ProfilesClient,
@@ -110,6 +112,7 @@ export const selectProfile = Effect.fn('selectProfile')(function* (
         hyroxDivision: row.hyrox_division,
         weeklyHoursCap: row.weekly_hours_cap,
         notes: row.notes,
+        dashboardMode: row.dashboard_mode,
     }
     return profile
 })
@@ -145,5 +148,38 @@ export const upsertProfile = Effect.fn('upsertProfile')(function* (
         return yield* new ProfileQueryError({
             cause: `${error.code}: ${error.message}`,
             error_hash: ErrorCode.ATHLETE_PROFILE_UPSERT_ERR,
+        })
+})
+
+// Updates only the dashboard mode. The profile row must exist: an update that matches no row is a
+// failure, because the athlete would otherwise believe the choice was saved.
+export const updateDashboardMode = Effect.fn('updateDashboardMode')(function* (
+    supabase: ProfilesClient,
+    userId: string,
+    mode: DashboardMode
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .update({ dashboard_mode: mode })
+                .eq('user_id', userId)
+                .select('user_id'),
+        catch: (cause) =>
+            new ProfileQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.ATHLETE_DASHBOARD_MODE_UPDATE,
+            }),
+    })
+
+    if (error)
+        return yield* new ProfileQueryError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.ATHLETE_DASHBOARD_MODE_UPDATE_ERR,
+        })
+    if (!Array.isArray(data) || data.length === 0)
+        return yield* new ProfileQueryError({
+            cause: 'no profile row to update',
+            error_hash: ErrorCode.ATHLETE_DASHBOARD_MODE_UPDATE_ERR,
         })
 })

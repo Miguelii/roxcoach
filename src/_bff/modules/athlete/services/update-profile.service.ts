@@ -7,7 +7,7 @@ import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError, ProfileValidationError } from '@/_bff/lib/errors'
 import { validateProfile } from '@/_bff/modules/athlete/helpers/profile-validation.helper'
 import { upsertProfile } from '@/_bff/modules/athlete/repositories/athlete-profiles.repository'
-import type { ProfileDTO, ProfileInput } from '@/_bff/modules/athlete/types'
+import type { ProfileInput } from '@/_bff/modules/athlete/types'
 
 // Validates first and writes nothing on invalid input. Runs as the signed-in user (RLS applies).
 export const updateProfile = Effect.fn('updateProfile')(function* (
@@ -29,7 +29,7 @@ export const updateProfile = Effect.fn('updateProfile')(function* (
     })
 
     // An empty notes string is stored as NULL.
-    const saved: ProfileDTO = {
+    const saved: ProfileInput = {
         ...input,
         displayName: input.displayName.trim(),
         notes: input.notes === '' ? null : input.notes,

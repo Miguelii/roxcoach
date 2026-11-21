@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { ActivityFileParseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { isoOf, numOf, parseXml, type XmlTree } from '@/_bff/modules/training/helpers/xml.helper'
+import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import type { ParsedActivity } from '@/_bff/modules/training/types'
+import type { HrSample } from '@/_bff/modules/training/types/progress'
 
 type Point = {
     lat: number | null
@@ -59,6 +61,29 @@ function readPoint(p: GpxPoint): Point {
     }
 }
 
+// Maps segments to HR samples. Distance is cumulative per segment (restarting at 0, so the gap
+// between segments is never bridged) and only counts when both points have lat and lon.
+export function gpxSamples(segments: Point[][]): HrSample[] {
+    return segments.flatMap((segment) => {
+        let cumulative = 0
+        let prev: { lat: number; lon: number } | null = null
+        return segment.flatMap((p) => {
+            const here = p.lat !== null && p.lon !== null ? { lat: p.lat, lon: p.lon } : null
+            let distanceM: number | null = null
+            if (here !== null && prev !== null) {
+                cumulative += haversine(prev, here)
+                distanceM = cumulative
+            } else if (here !== null) {
+                distanceM = cumulative
+            }
+            prev = here
+            const ms = p.time === null ? Number.NaN : Date.parse(p.time)
+            if (!Number.isFinite(ms)) return []
+            return [{ t: ms, hr: p.hr, distanceM, speedMps: null }]
+        })
+    })
+}
+
 const sumOf = (values: number[]) => values.reduce((a, b) => a + b, 0)
 
 // Distance and elevation gain are summed per segment: the gap between segments is never bridged.
@@ -111,6 +136,7 @@ function build(root: XmlTree): ParsedActivity | null {
         calories: null,
         noteText: null,
         laps: [],
+        hrHistogram: buildHrHistogram(gpxSamples(segments)),
     }
 }
 

@@ -3,7 +3,11 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatCompact,
+    formatKg,
     formatPace,
+    formatPaceSeconds,
+    formatVolumeKg,
     parseClock,
 } from '@/_bff/core/utils/formatters.utils'
 
@@ -56,5 +60,45 @@ describe('parseClock', () => {
         expect(parseClock('10:75')).toBeNull()
         expect(parseClock('1:75:00')).toBeNull()
         expect(parseClock('90:00')).toBe(5400)
+    })
+})
+
+describe('formatPaceSeconds', () => {
+    it('formats seconds per kilometer as a pace', () => {
+        expect(formatPaceSeconds(295)).toBe('4:55 /km')
+        expect(formatPaceSeconds(370)).toBe('6:10 /km')
+    })
+
+    it('returns null for missing or non-positive values', () => {
+        expect(formatPaceSeconds(null)).toBeNull()
+        expect(formatPaceSeconds(0)).toBeNull()
+        expect(formatPaceSeconds(-5)).toBeNull()
+    })
+})
+
+describe('formatKg', () => {
+    it('keeps at most one decimal', () => {
+        expect(formatKg(82.5)).toBe('82.5 kg')
+        expect(formatKg(80)).toBe('80 kg')
+        expect(formatKg(116.66)).toBe('116.7 kg')
+    })
+
+    it('returns null for a missing value', () => {
+        expect(formatKg(null)).toBeNull()
+    })
+})
+
+describe('formatVolumeKg', () => {
+    it('adds a thousands separator and drops decimals', () => {
+        expect(formatVolumeKg(12480.4)).toBe('12,480 kg')
+        expect(formatVolumeKg(950)).toBe('950 kg')
+        expect(formatVolumeKg(null)).toBeNull()
+    })
+})
+
+describe('formatCompact', () => {
+    it('shortens large values for axes', () => {
+        expect(formatCompact(12_480)).toBe('12.5k')
+        expect(formatCompact(950)).toBe('950')
     })
 })

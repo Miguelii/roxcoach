@@ -4,6 +4,7 @@ import { SettingsTabs } from '@/modules/settings/settings-tabs'
 
 const panels = {
     profile: <div data-testid="panel-profile" />,
+    dashboard: <div data-testid="panel-dashboard" />,
     availability: <div data-testid="panel-availability" />,
     lyfta: <div data-testid="panel-lyfta" />,
 }
@@ -13,6 +14,7 @@ describe('SettingsTabs', () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
+                dashboard={panels.dashboard}
                 availability={panels.availability}
                 lyfta={panels.lyfta}
             />
@@ -22,10 +24,27 @@ describe('SettingsTabs', () => {
         expect(screen.getByTestId('panel-lyfta')).not.toBeVisible()
     })
 
+    it('has its own Dashboard tab, apart from the profile', async () => {
+        render(
+            <SettingsTabs
+                profile={panels.profile}
+                dashboard={panels.dashboard}
+                availability={panels.availability}
+                lyfta={panels.lyfta}
+            />
+        )
+        expect(screen.getByTestId('panel-dashboard')).not.toBeVisible()
+        fireEvent.click(screen.getByTestId('settings-tab-dashboard'))
+        await waitFor(() => {
+            expect(screen.getByTestId('panel-dashboard')).toBeVisible()
+        })
+    })
+
     it('switches to weekly availability', async () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
+                dashboard={panels.dashboard}
                 availability={panels.availability}
                 lyfta={panels.lyfta}
             />
@@ -40,6 +59,7 @@ describe('SettingsTabs', () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
+                dashboard={panels.dashboard}
                 availability={panels.availability}
                 lyfta={panels.lyfta}
             />
@@ -56,6 +76,7 @@ describe('SettingsTabs', () => {
         render(
             <SettingsTabs
                 profile={<input data-testid="profile-input" defaultValue="" />}
+                dashboard={panels.dashboard}
                 availability={panels.availability}
                 lyfta={panels.lyfta}
             />

@@ -1,5 +1,6 @@
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,49 +56,72 @@ const STICK_PX = 48
 export function CoachChatView(props: Props) {
     const { open, onOpenChange, status, errorKind, launcherEnabled, onDismissLauncher } = props
 
+    // Escape closes the panel wherever the focus is, not only inside it. An Escape that something
+    // inside already handled (an open menu) is left to that thing.
+    useEffect(() => {
+        if (!open) return undefined
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !event.defaultPrevented) onOpenChange(false)
+        }
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
+    }, [open, onOpenChange])
+
     if (!open) {
         if (!launcherEnabled) return null
         // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
         return (
-            <div className="fixed bottom-4 left-1/2 z-30 hidden h-12 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center rounded-full border border-hairline bg-paper text-sm text-muted-foreground shadow-md md:flex">
-                <button
-                    type="button"
-                    data-testid="coach-launcher"
-                    onClick={() => onOpenChange(true)}
-                    className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-5 text-left"
-                >
-                    <MessageCircleIcon className="size-4 shrink-0" />
-                    Ask Migueli Coach...
-                </button>
-                <button
-                    type="button"
-                    data-testid="coach-launcher-dismiss"
-                    aria-label="Hide coach bar"
-                    onClick={onDismissLauncher}
-                    className="mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted"
-                >
-                    <XIcon className="size-4" />
-                </button>
+            // A white bar in a faint bezel with a soft shadow: it lifts off the page without shouting.
+            <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/5 p-1.5 ring-1 ring-ink/10 shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--color-ink)_35%,transparent)] md:block">
+                <div className="group flex h-12 items-center rounded-full bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5">
+                    <button
+                        type="button"
+                        data-testid="coach-launcher"
+                        onClick={() => onOpenChange(true)}
+                        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2 text-left text-sm text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
+                    >
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tangerine/10 text-tangerine transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
+                            <MessageCircleIcon className="size-4" strokeWidth={1.75} />
+                        </span>
+                        <span className="truncate">Ask Migueli Coach...</span>
+                    </button>
+                    <button
+                        type="button"
+                        data-testid="coach-launcher-dismiss"
+                        aria-label="Hide coach bar"
+                        onClick={onDismissLauncher}
+                        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-muted hover:text-foreground"
+                    >
+                        <XIcon className="size-4" />
+                    </button>
+                </div>
             </div>
         )
     }
 
     return (
+        // Full screen on a phone; from md up a centered dialog over a soft scrim. Clicking the
+        // scrim (not the panel) closes it.
         <div
-            role="dialog"
-            aria-label="Coach chat"
-            data-testid="coach-panel"
-            onKeyDown={(event) => {
-                if (event.key === 'Escape') onOpenChange(false)
+            data-testid="coach-scrim"
+            className="fixed inset-0 z-50 md:flex md:items-center md:justify-center md:bg-ink/30 md:p-6"
+            onClick={(event) => {
+                if (event.target === event.currentTarget) onOpenChange(false)
             }}
-            // Full height on narrow screens, a fixed bottom-right panel from md up.
-            className={cn(
-                'fixed inset-0 z-50 flex flex-col bg-paper text-ink',
-                'md:inset-auto md:right-4 md:bottom-4 md:h-[36rem] md:max-h-[calc(100dvh-2rem)] md:w-[26rem]',
-                'md:rounded-[var(--radius-surface)] md:border md:border-hairline md:shadow-lg'
-            )}
         >
-            <PanelBody {...props} errorKind={errorKind} status={status} />
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Coach chat"
+                data-testid="coach-panel"
+                className={cn(
+                    'flex h-full w-full flex-col bg-paper text-ink',
+                    'md:h-[42rem] md:max-h-full md:max-w-[46rem]',
+                    'md:rounded-[var(--radius-surface)] md:border md:border-hairline md:shadow-[0_30px_80px_-30px_color-mix(in_srgb,var(--color-ink)_50%,transparent)]'
+                )}
+            >
+                <PanelBody {...props} errorKind={errorKind} status={status} />
+            </div>
         </div>
     )
 }
@@ -119,7 +143,9 @@ function PanelBody({
     onRetry,
 }: Props) {
     const { form, submit } = useCoachComposer({ onSend })
-    const text = form.watch('message')
+    // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
+    // disabled while typing.
+    const text = useWatch({ control: form.control, name: 'message' })
     const streaming = status === 'streaming'
     const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
 

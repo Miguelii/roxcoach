@@ -46,6 +46,7 @@ export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
             await Promise.all([
                 utils.lyfta.getConnectionStatus.invalidate(),
                 utils.training.getCalendar.invalidate(),
+                utils.training.getStrengthProgress.invalidate(),
             ])
         } catch {
             const message =

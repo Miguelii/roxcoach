@@ -138,3 +138,69 @@ export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
 
     if (error) return yield* writeError(error, ErrorCode.TRAINING_STRENGTH_SETS_INSERT_ERR)
 })
+
+const progressSetRowSchema = z.object({
+    activity_id: z.string(),
+    exercise: z.string(),
+    exercise_image_url: z.string().nullable(),
+    source_exercise_id: z.string().nullable(),
+    reps: z.number().int().nullable(),
+    load_kg: numeric,
+})
+
+const ID_CHUNK_SIZE = 100
+
+// Sets of many workouts, queried in chunks so the `in` filter stays within the URL length limit.
+export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    activityIds: string[]
+) {
+    const chunks: string[][] = []
+    for (let index = 0; index < activityIds.length; index += ID_CHUNK_SIZE)
+        chunks.push(activityIds.slice(index, index + ID_CHUNK_SIZE))
+
+    const results = yield* Effect.forEach(
+        chunks,
+        (chunk) =>
+            Effect.gen(function* () {
+                const { data, error } = yield* Effect.tryPromise({
+                    try: () =>
+                        supabase
+                            .from(TABLE)
+                            .select(
+                                'activity_id, exercise, exercise_image_url, source_exercise_id, reps, load_kg'
+                            )
+                            .eq('user_id', userId)
+                            .in('activity_id', chunk),
+                    catch: (cause) =>
+                        new ActivityQueryError({
+                            cause: String(cause),
+                            error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT,
+                        }),
+                })
+
+                if (error)
+                    return yield* selectError(error, ErrorCode.TRAINING_PROGRESS_SETS_SELECT_ERR)
+
+                const parsed = z.array(progressSetRowSchema).safeParse(data)
+                if (!parsed.success)
+                    return yield* new ActivityQueryError({
+                        cause: `Rows failed schema validation: ${parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
+                        error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT_PARSE,
+                    })
+
+                return parsed.data
+            }),
+        { concurrency: 3 }
+    )
+
+    return results.flat().map((row) => ({
+        activityId: row.activity_id,
+        exercise: row.exercise,
+        exerciseImageUrl: row.exercise_image_url,
+        sourceExerciseId: row.source_exercise_id,
+        reps: row.reps,
+        loadKg: row.load_kg,
+    }))
+})

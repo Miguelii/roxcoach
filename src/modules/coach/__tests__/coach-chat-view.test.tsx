@@ -90,6 +90,45 @@ describe('CoachChatView', () => {
         expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
     })
 
+    it('closes when the scrim around the centered panel is clicked, but not the panel itself', () => {
+        render(<Harness />)
+        fireEvent.click(screen.getByTestId('coach-panel'))
+        expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
+
+        fireEvent.click(screen.getByTestId('coach-scrim'))
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
+    it('closes on Escape even when the focus is outside the panel', () => {
+        render(<Harness />)
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+        expect(screen.getByTestId('coach-input')).not.toHaveFocus()
+
+        fireEvent.keyDown(document.body, { key: 'Escape' })
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
+    it('ignores an Escape that was already handled inside the panel', () => {
+        render(<Harness />)
+        const handled = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        })
+        handled.preventDefault()
+        document.body.dispatchEvent(handled)
+
+        expect(screen.getByTestId('coach-panel')).toBeInTheDocument()
+    })
+
+    it('stops listening for Escape once the panel is closed', () => {
+        render(<Harness startOpen={false} />)
+        fireEvent.keyDown(document.body, { key: 'Escape' })
+
+        expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+    })
+
     it('closes with the close button and Escape', () => {
         render(<Harness />)
         fireEvent.click(screen.getByTestId('coach-close'))
@@ -308,11 +347,20 @@ describe('CoachChatView', () => {
     })
 
     describe('responsive containers', () => {
-        it('is a full-height container on narrow screens and a fixed bottom-right panel from md', () => {
+        it('is full screen on narrow screens and a centered dialog over a scrim from md', () => {
             render(<Harness />)
-            const panel = screen.getByTestId('coach-panel')
-            expect(panel).toHaveClass('fixed', 'inset-0')
-            expect(panel).toHaveClass('md:right-4', 'md:bottom-4', 'md:inset-auto')
+            expect(screen.getByTestId('coach-scrim')).toHaveClass('fixed', 'inset-0')
+            expect(screen.getByTestId('coach-scrim')).toHaveClass(
+                'md:flex',
+                'md:items-center',
+                'md:justify-center'
+            )
+            expect(screen.getByTestId('coach-panel')).toHaveClass(
+                'h-full',
+                'w-full',
+                'md:max-w-[46rem]'
+            )
+            expect(screen.getByTestId('coach-panel')).not.toHaveClass('md:right-4')
         })
     })
 

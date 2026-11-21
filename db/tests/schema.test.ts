@@ -91,6 +91,7 @@ describe('schema layout', () => {
             '0012_strength_exercise_order.sql',
             '0013_strength_exercise_images.sql',
             '0014_coach_usage.sql',
+            '0015_dashboard_progress.sql',
         ])
     })
 
@@ -303,6 +304,51 @@ describe('Lyfta connections', () => {
                 )
             ).rejects.toThrow(CHECK_ERROR)
         })
+    })
+})
+
+describe('dashboard progress columns', () => {
+    it("adds dashboard_mode with default 'run' and rejects other values", async () => {
+        const userId = await createUser(testDb)
+        await testDb.db.query(
+            `insert into roxcoach.athlete_profiles (user_id, display_name) values ($1, 'Athlete')`,
+            [userId]
+        )
+        const read = () =>
+            testDb.db.query<{ dashboard_mode: string }>(
+                `select dashboard_mode from roxcoach.athlete_profiles where user_id = $1`,
+                [userId]
+            )
+
+        expect((await read()).rows[0].dashboard_mode).toBe('run')
+        await testDb.db.query(
+            `update roxcoach.athlete_profiles set dashboard_mode = 'strength' where user_id = $1`,
+            [userId]
+        )
+        expect((await read()).rows[0].dashboard_mode).toBe('strength')
+        await expect(
+            testDb.db.query(
+                `update roxcoach.athlete_profiles set dashboard_mode = 'swim' where user_id = $1`,
+                [userId]
+            )
+        ).rejects.toThrow(CHECK_ERROR)
+    })
+
+    it('adds a nullable hr_histogram jsonb to activities', async () => {
+        const userId = await createUser(testDb)
+        const activityId = await insertActivity(testDb, userId)
+        const read = () =>
+            testDb.db.query<{ hr_histogram: unknown }>(
+                `select hr_histogram from roxcoach.activities where id = $1`,
+                [activityId]
+            )
+
+        expect((await read()).rows[0].hr_histogram).toBeNull()
+        await testDb.db.query(
+            `update roxcoach.activities set hr_histogram = '{"v":1,"bins":[]}'::jsonb where id = $1`,
+            [activityId]
+        )
+        expect((await read()).rows[0].hr_histogram).toEqual({ v: 1, bins: [] })
     })
 })
 

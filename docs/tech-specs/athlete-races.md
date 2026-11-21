@@ -23,11 +23,13 @@ controller input and the form.
 
 What reads it today: the timezone drives `todayIn(timezone)` (the dashboard, the races page, the
 calendar and race date validation) through `athlete.getTimezone`, and the division is the default
-of the race form. Nothing reads the heart rates, the weekly cap or the notes yet; they are stored
-for the coach chat.
+of the race form. The heart rates also feed the dashboard heart rate zones (`max_hr` and `resting_hr`, both
+required, see [dashboard-progress.md](dashboard-progress.md)); the weekly cap and the notes are
+stored for the coach chat. The profile also carries `dashboardMode` (`run` or `strength`, default
+`run`), saved on its own by `athlete.setDashboardMode`; `updateProfile` never writes it.
 
-Defaults: without a saved row, `getProfile` returns an empty display name, `Europe/Lisbon` and
-nulls (a missing row is not an error). `updateProfile` validates first, writes nothing on invalid
+Defaults: without a saved row, `getProfile` returns an empty display name, `Europe/Lisbon`, nulls
+and mode `run` (a missing row is not an error, but `setDashboardMode` needs the row to exist). `updateProfile` validates first, writes nothing on invalid
 input and upserts the row for the signed-in user.
 
 ## Weekly availability

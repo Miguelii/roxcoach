@@ -42,6 +42,7 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
             notifyFailure: (message) => toast.error(message),
             onChanged: () => {
                 void utils.training.getCalendar.invalidate()
+                void utils.training.getRunProgress.invalidate()
                 void utils.races.list.invalidate()
             },
         })

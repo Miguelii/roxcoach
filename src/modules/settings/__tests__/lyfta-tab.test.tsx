@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     },
     invalidate: vi.fn(),
     invalidateCalendar: vi.fn(),
+    invalidateStrength: vi.fn(),
     connect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
     sync: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
     disconnect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
@@ -27,7 +28,10 @@ vi.mock('@/lib/trpc', () => ({
         },
         useUtils: () => ({
             lyfta: { getConnectionStatus: { invalidate: mocks.invalidate } },
-            training: { getCalendar: { invalidate: mocks.invalidateCalendar } },
+            training: {
+                getCalendar: { invalidate: mocks.invalidateCalendar },
+                getStrengthProgress: { invalidate: mocks.invalidateStrength },
+            },
         }),
     },
 }))
@@ -54,6 +58,7 @@ describe('LyftaTab', () => {
         mocks.disconnect.mutateAsync.mockResolvedValue(undefined)
         mocks.invalidate.mockResolvedValue(undefined)
         mocks.invalidateCalendar.mockResolvedValue(undefined)
+        mocks.invalidateStrength.mockResolvedValue(undefined)
     })
 
     it('shows an empty password field and validates before connecting', async () => {
@@ -116,6 +121,7 @@ describe('LyftaTab', () => {
             )
         })
         expect(mocks.invalidateCalendar).toHaveBeenCalledTimes(1)
+        expect(mocks.invalidateStrength).toHaveBeenCalledTimes(1)
 
         mocks.sync.mutateAsync.mockRejectedValueOnce(new Error(ErrorCode.LYFTA_RATE_LIMIT))
         fireEvent.click(screen.getByTestId('lyfta-sync'))

@@ -11,6 +11,8 @@ import type {
     NewActivityRow,
     TrainingClient,
 } from '@/_bff/modules/training/types'
+import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
+import type { HrHistogram } from '@/_bff/modules/training/types/progress'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
@@ -180,6 +182,69 @@ export const insertActivity = Effect.fn('insertActivity')(function* (
     return data.id
 })
 
+const backfillTargetSchema = z.object({
+    id: z.string(),
+    // One activity has one file in practice, but PostgREST returns the one-to-many embed as an array.
+    activity_files: z.array(z.object({ storage_path: z.string() })),
+})
+
+// Activities of the user whose histogram was never computed and that still have a parsed file.
+export const selectBackfillTargets = Effect.fn('selectBackfillTargets')(function* (
+    supabase: TrainingClient,
+    userId: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id, activity_files!inner(storage_path)')
+                .eq('user_id', userId)
+                .is('hr_histogram', null)
+                .is('deleted_at', null)
+                .eq('activity_files.status', 'parsed')
+                .order('started_at', { ascending: true }),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_HR_BACKFILL_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_HR_BACKFILL_SELECT_ERR)
+
+    const parsed = z.array(backfillTargetSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(parsed.error.issues, ErrorCode.TRAINING_HR_BACKFILL_SELECT_PARSE)
+
+    return parsed.data.flatMap((row) => {
+        const file = row.activity_files[0]
+        return file === undefined ? [] : [{ activityId: row.id, storagePath: file.storage_path }]
+    })
+})
+
+export const updateHrHistogram = Effect.fn('updateHrHistogram')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    activityId: string,
+    histogram: HrHistogram
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .update({ hr_histogram: histogram })
+                .eq('id', activityId)
+                .eq('user_id', userId),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_HR_HISTOGRAM_UPDATE,
+            }),
+    })
+
+    if (error) return yield* writeError(error, ErrorCode.TRAINING_HR_HISTOGRAM_UPDATE_ERR)
+})
+
 export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
     supabase: TrainingClient,
     userId: string,
@@ -301,4 +366,98 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
             cause: 'delete removed no row',
             error_hash: ErrorCode.TRAINING_ACTIVITY_DELETE_ERR,
         })
+})
+
+const runRowSchema = z.object({
+    local_date: z.string(),
+    distance_m: numeric,
+    moving_time_s: numeric,
+    avg_hr: numeric,
+    // Validated by parseHrHistogram: a corrupt value must not fail the whole request.
+    hr_histogram: z.unknown(),
+})
+
+// Runs bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
+export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('local_date, distance_m, moving_time_s, avg_hr, hr_histogram')
+                .eq('user_id', userId)
+                .eq('category', 'run')
+                .is('deleted_at', null)
+                .gte('local_date', from)
+                .lte('local_date', to)
+                .order('started_at', { ascending: true }),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_RUN_PROGRESS_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_ERR)
+
+    const parsed = z.array(runRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(parsed.error.issues, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_PARSE)
+
+    return parsed.data.map((row) => ({
+        localDate: row.local_date,
+        distanceM: row.distance_m,
+        movingTimeS: row.moving_time_s,
+        avgHr: row.avg_hr,
+        hrHistogram: parseHrHistogram(row.hr_histogram),
+    }))
+})
+
+const strengthWorkoutRowSchema = z.object({
+    id: z.string(),
+    local_date: z.string(),
+})
+
+// Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
+export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsInRange')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id, local_date')
+                .eq('user_id', userId)
+                .eq('category', 'strength')
+                .is('deleted_at', null)
+                .gte('local_date', from)
+                .lte('local_date', to)
+                .order('started_at', { ascending: true }),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_ERR)
+
+    const parsed = z.array(strengthWorkoutRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(
+            parsed.error.issues,
+            ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_PARSE
+        )
+
+    return parsed.data.map((row) => ({
+        activityId: row.id,
+        localDate: row.local_date,
+    }))
 })

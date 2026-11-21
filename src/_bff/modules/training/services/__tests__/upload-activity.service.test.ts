@@ -37,6 +37,7 @@ const activitySchema = z.object({
     user_id: z.string(),
     category: z.string(),
     local_date: z.string(),
+    hr_histogram: z.object({ v: z.literal(1), bins: z.array(z.unknown()) }),
 })
 
 // Parses the first argument the chain's insert received.
@@ -92,6 +93,7 @@ describe('uploadActivity', () => {
             source: 'manual',
             user_id: 'user-1',
             category: 'hyrox',
+            hr_histogram: { v: 1, bins: [] },
         })
         const stations = insertedLapStations(db.chains[4])
         expect(stations).toHaveLength(16)

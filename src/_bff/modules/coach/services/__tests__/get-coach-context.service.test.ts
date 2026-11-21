@@ -52,6 +52,7 @@ const PROFILE: ProfileDTO = {
     hyroxDivision: null,
     weeklyHoursCap: null,
     notes: null,
+    dashboardMode: 'run',
 }
 
 const make = () => {

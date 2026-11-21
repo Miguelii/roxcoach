@@ -23,6 +23,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { trpcClient } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
+import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 
 type NavItem = {
@@ -41,7 +42,6 @@ type MobileNavLinkProps = {
 }
 
 type AccountMenuProps = {
-    isMobile?: boolean
     isPending: boolean
     onLogout: () => void
 }
@@ -55,36 +55,25 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
 
 const MOBILE_NAV_ITEMS = PRIMARY_NAV_ITEMS
 
-function AccountMenu({ isMobile = false, isPending, onLogout }: AccountMenuProps) {
+// The phone top bar keeps a small menu; the desktop sidebar has a direct Log out button instead.
+function MobileAccountMenu({ isPending, onLogout }: AccountMenuProps) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger
                 render={
                     <Button
-                        variant={isMobile ? 'outline' : 'ghost'}
-                        size={isMobile ? 'icon' : 'default'}
+                        variant="outline"
+                        size="icon"
                         aria-label="Account menu"
-                        data-testid={
-                            isMobile ? 'account-menu-trigger-mobile' : 'account-menu-trigger'
-                        }
-                        className={isMobile ? undefined : 'w-full justify-start gap-3 px-2'}
+                        data-testid="account-menu-trigger-mobile"
                     />
                 }
             >
-                {isMobile ? (
-                    <span className="font-mono text-xs">MG</span>
-                ) : (
-                    <>
-                        <span className="flex size-8 items-center justify-center rounded-full bg-muted font-mono text-xs">
-                            MG
-                        </span>
-                        <span className="text-sm font-medium">Account</span>
-                    </>
-                )}
+                <span className="font-mono text-xs">MG</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
-                    data-testid={isMobile ? 'logout-button-mobile' : 'logout-button'}
+                    data-testid="logout-button-mobile"
                     disabled={isPending}
                     onClick={onLogout}
                 >
@@ -178,8 +167,21 @@ export function AppShell({ children }: Props) {
                     </div>
                 </nav>
 
-                <div className="mt-auto border-t border-hairline pt-4">
-                    <AccountMenu isPending={logout.isPending} onLogout={onLogout} />
+                <div className="mt-auto space-y-4 border-t border-hairline pt-4">
+                    <div className="space-y-1.5 px-1">
+                        <p className="eyebrow text-muted-foreground">Dashboard</p>
+                        <DashboardModeToggle testIdPrefix="nav-mode" compact />
+                    </div>
+                    <Button
+                        variant="ghost"
+                        data-testid="logout-button"
+                        disabled={logout.isPending}
+                        onClick={onLogout}
+                        className="w-full justify-start gap-3 px-3 text-muted-foreground"
+                    >
+                        <IconLogout className="size-5" aria-hidden="true" />
+                        Log out
+                    </Button>
                 </div>
             </aside>
 
@@ -188,7 +190,7 @@ export function AppShell({ children }: Props) {
                     <Link href="/dashboard" className="display text-xl text-ink">
                         ROXCOACH
                     </Link>
-                    <AccountMenu isMobile isPending={logout.isPending} onLogout={onLogout} />
+                    <MobileAccountMenu isPending={logout.isPending} onLogout={onLogout} />
                 </header>
 
                 <div className="pb-28 md:pb-6">{children}</div>

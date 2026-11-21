@@ -4,27 +4,32 @@ import { todayIn } from '@/_bff/core/utils/date.utils'
 import { ActivityActions } from '@/components/activity-actions'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { DashboardControls } from '@/modules/dashboard/dashboard-controls'
+import { RunProgress } from '@/modules/dashboard/progress/run-progress'
+import { StrengthProgress } from '@/modules/dashboard/progress/strength-progress'
+import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
+import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
 
 export function DashboardContent() {
-    const timezone = trpcClient.athlete.getTimezone.useQuery()
+    const { profile } = useDashboardMode()
+    const { range, setRange } = useProgressRange()
 
-    if (timezone.isPending && timezone.data === undefined) return <DashboardSkeleton />
-    if (timezone.data === undefined)
+    if (profile.isPending && profile.data === undefined) return <DashboardSkeleton />
+    if (profile.data === undefined)
         return (
             <QueryError
-                message="Could not load your timezone."
-                onRetry={() => void timezone.refetch()}
-                testId="dashboard-timezone-error"
+                message="Could not load your profile."
+                onRetry={() => void profile.refetch()}
+                testId="dashboard-profile-error"
             />
         )
 
-    const today = todayIn(timezone.data)
+    const today = todayIn(profile.data.timezone)
 
     return (
         <div data-testid="dashboard-content" className="space-y-6">
-            <header className="flex flex-wrap items-end justify-between gap-4">
+            <header className="space-y-4">
                 <div className="space-y-2">
                     <h1 data-testid="dashboard-title" className="display text-4xl">
                         Progress
@@ -33,9 +38,24 @@ export function DashboardContent() {
                         A clear view of your recent training and how it is building over time.
                     </p>
                 </div>
-                <ActivityActions />
+                {/* One row: the range on the left, the two drawer actions at the far right. On a
+                    phone the actions come first and the range sits below them. */}
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <DashboardControls
+                        range={range}
+                        onRangeChange={(next) => void setRange(next)}
+                    />
+                    <div className="w-full sm:w-auto">
+                        <ActivityActions inline />
+                    </div>
+                </div>
             </header>
-            <WeekStrip today={today} />
+            <WeekStrip today={today} mode={profile.data.dashboardMode} />
+            {profile.data.dashboardMode === 'run' ? (
+                <RunProgress range={range} today={today} />
+            ) : (
+                <StrengthProgress range={range} />
+            )}
         </div>
     )
 }
@@ -47,6 +67,7 @@ function DashboardSkeleton() {
                 <Skeleton className="h-10 w-48" />
                 <Skeleton className="h-4 w-72 max-w-full" />
             </div>
+            <Skeleton className="h-11 w-full sm:w-72" />
             <WeekStripSkeleton />
         </div>
     )

@@ -29,6 +29,33 @@ export const formatPace = (metersPerSecond: number | null | undefined) => {
     return `${formatClock(1000 / metersPerSecond)} /km`
 }
 
+/** Formats seconds per kilometer as a running pace, `4:55 /km`. */
+export const formatPaceSeconds = (secondsPerKm: number | null | undefined) => {
+    if (!secondsPerKm || secondsPerKm <= 0) return null
+    return `${formatClock(secondsPerKm)} /km`
+}
+
+/** Formats kilograms with at most one decimal, `82.5 kg` or `80 kg`. */
+export const formatKg = (kg: number | null | undefined) => {
+    if (kg == null) return null
+    return `${Number(kg.toFixed(1))} kg`
+}
+
+const WHOLE_NUMBER = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 })
+const COMPACT_NUMBER = new Intl.NumberFormat('en-GB', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+})
+
+/** Formats a training volume in kilograms with a thousands separator, `12,480 kg`. */
+export const formatVolumeKg = (kg: number | null | undefined) => {
+    if (kg == null) return null
+    return `${WHOLE_NUMBER.format(kg)} kg`
+}
+
+/** Formats a number compactly for chart axes, `12k`. */
+export const formatCompact = (value: number) => COMPACT_NUMBER.format(value)
+
 /** Formats meters as kilometers with one decimal, `10.2 km`. */
 export const formatKm = (meters: number | null | undefined) => {
     if (meters == null) return null

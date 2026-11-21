@@ -9,10 +9,25 @@ const mocks = vi.hoisted(() => ({
     replace: vi.fn(),
     refresh: vi.fn(),
     toastError: vi.fn(),
+    setDashboardMode: vi.fn(),
 }))
 
 vi.mock('@/lib/trpc', () => ({
     trpcClient: {
+        useUtils: () => ({
+            athlete: {
+                getProfile: {
+                    cancel: vi.fn(),
+                    getData: vi.fn(),
+                    setData: vi.fn(),
+                    invalidate: vi.fn(),
+                },
+            },
+        }),
+        athlete: {
+            getProfile: { useQuery: () => ({ data: { dashboardMode: 'run' } }) },
+            setDashboardMode: { useMutation: () => ({ mutate: mocks.setDashboardMode }) },
+        },
         auth: {
             logout: { useMutation: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }) },
         },
@@ -32,8 +47,7 @@ const clickLogout = async (queryClient: QueryClient) => {
             <AppShell>content</AppShell>
         </QueryClientProvider>
     )
-    fireEvent.click(screen.getByTestId('account-menu-trigger'))
-    fireEvent.click(await screen.findByTestId('logout-button'))
+    fireEvent.click(screen.getByTestId('logout-button'))
 }
 
 describe('AppShell logout', () => {
@@ -116,6 +130,29 @@ describe('AppShell navigation', () => {
         fireEvent.click(screen.getByTestId('coach-toggle'))
         expect(screen.getByTestId('coach-enabled')).toHaveTextContent('true')
         expect(document.cookie).toContain('coach_enabled=1')
+    })
+
+    it('has a direct Log out button at the bottom of the sidebar, with no account dropdown', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByTestId('logout-button')).toHaveTextContent('Log out')
+        expect(screen.queryByTestId('account-menu-trigger')).toBeNull()
+    })
+
+    it('has the dashboard mode switch at the bottom of the sidebar and saves a change', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByTestId('nav-mode-run')).toHaveAttribute('aria-selected', 'true')
+        fireEvent.click(screen.getByTestId('nav-mode-strength'))
+        expect(mocks.setDashboardMode).toHaveBeenCalledWith({ mode: 'strength' })
     })
 
     it('opens the coach panel from the mobile nav button', () => {

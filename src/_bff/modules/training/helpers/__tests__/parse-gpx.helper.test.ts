@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { Effect, Result } from 'effect'
 import { describe, expect, it } from 'vitest'
-import { parseGpx } from '@/_bff/modules/training/helpers/parse-gpx.helper'
+import { gpxSamples, parseGpx } from '@/_bff/modules/training/helpers/parse-gpx.helper'
 
 const enc = (s: string) => new TextEncoder().encode(s)
 const run = (xml: string) => Effect.runSync(Effect.result(parseGpx(enc(xml))))
@@ -115,5 +115,57 @@ describe('parseGpx', () => {
         const result = run(gpx('running', pt(0, 0, 1, '2026-01-01T10:00:00')))
         if (Result.isFailure(result)) throw new Error('expected success')
         expect(result.success.startedAt).toBe('2026-01-01T10:00:00.000Z')
+    })
+})
+
+describe('parseGpx hrHistogram', () => {
+    // 0.00003 degrees of longitude at the equator is about 3.3 m.
+    const walk = (hr?: number) =>
+        [0, 1, 2, 3, 4].map((s) => pt(0, s * 0.00003, 10, `2026-01-01T10:00:0${s}Z`, hr)).join('')
+
+    it('bins the usable intervals of points with heart rate', () => {
+        const result = run(gpx('running', walk(150)))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        const { bins } = result.success.hrHistogram
+        expect(bins.length).toBeGreaterThan(0)
+        expect(bins.reduce((a, b) => a + b[1], 0)).toBe(4)
+        expect(bins[0]?.[0]).toBe(150)
+    })
+
+    it('returns an empty histogram without heart rate and keeps the rest unchanged', () => {
+        const result = run(gpx('running', walk()))
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.hrHistogram).toEqual({ v: 1, bins: [] })
+        expect(result.success.avgHr).toBeNull()
+        expect(result.success.elapsedTimeS).toBe(4)
+        expect(result.success.distanceM).toBeGreaterThan(0)
+    })
+})
+
+describe('gpxSamples', () => {
+    const p = (lat: number | null, lon: number | null, time: string) => ({
+        lat,
+        lon,
+        ele: null,
+        time,
+        hr: 140,
+    })
+
+    it('restarts the cumulative distance per segment', () => {
+        const samples = gpxSamples([
+            [p(0, 0, '2026-01-01T10:00:00Z'), p(0, 0.001, '2026-01-01T10:00:01Z')],
+            [p(1, 1, '2026-01-01T11:00:00Z'), p(1, 1.001, '2026-01-01T11:00:01Z')],
+        ])
+        expect(samples[0]?.distanceM).toBe(0)
+        expect(samples[2]?.distanceM).toBe(0)
+        expect(samples[3]?.distanceM).toBeCloseTo(samples[1]?.distanceM ?? 0, -1)
+    })
+
+    it('leaves distance null without coordinates and never emits NaN', () => {
+        const samples = gpxSamples([
+            [p(null, null, '2026-01-01T10:00:00Z'), p(0, 0, '2026-01-01T10:00:01Z')],
+        ])
+        expect(samples[0]?.distanceM).toBeNull()
+        expect(samples.every((s) => Number.isFinite(s.t))).toBe(true)
     })
 })

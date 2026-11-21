@@ -3,7 +3,7 @@ import 'server-only'
 import { Effect } from 'effect'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityFileStorageError } from '@/_bff/lib/errors'
-import type { StorageClient } from '@/_bff/modules/training/types'
+import type { StorageClient, StorageReadClient } from '@/_bff/modules/training/types'
 
 const BUCKET = 'activity-files'
 
@@ -50,4 +50,34 @@ export const removeActivityFile = Effect.fn('removeActivityFile')(function* (
             cause: error.message,
             error_hash: ErrorCode.TRAINING_FILE_STORAGE_REMOVE_ERR,
         })
+})
+
+// Reads an original file back for reprocessing. A missing body without an error is a failure too.
+export const getActivityFile = Effect.fn('getActivityFile')(function* (
+    supabase: StorageReadClient,
+    path: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () => supabase.storage.from(BUCKET).download(path),
+        catch: (cause) =>
+            new ActivityFileStorageError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_FILE_STORAGE_GET,
+            }),
+    })
+
+    if (error || data === null)
+        return yield* new ActivityFileStorageError({
+            cause: error?.message ?? 'empty download',
+            error_hash: ErrorCode.TRAINING_FILE_STORAGE_GET_ERR,
+        })
+
+    return yield* Effect.tryPromise({
+        try: async () => new Uint8Array(await data.arrayBuffer()),
+        catch: (cause) =>
+            new ActivityFileStorageError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_FILE_STORAGE_GET_ERR,
+            }),
+    })
 })

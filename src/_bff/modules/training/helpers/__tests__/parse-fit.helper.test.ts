@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs'
 import { Encoder, Profile } from '@garmin/fitsdk'
 import { Effect, Result } from 'effect'
 import { describe, expect, it } from 'vitest'
-import { categoryFromSport, parseFit } from '@/_bff/modules/training/helpers/parse-fit.helper'
+import {
+    categoryFromSport,
+    fitSamples,
+    parseFit,
+} from '@/_bff/modules/training/helpers/parse-fit.helper'
 import { parseActivityFile } from '@/_bff/modules/training/helpers/parse-activity-file.helper'
 
 const FIXTURES = new URL('./fixtures/', import.meta.url)
@@ -56,7 +60,9 @@ describe('parseFit failures', () => {
     })
 })
 
-function buildFit(records: { timestamp: Date; heartRate: number }[]) {
+function buildFit(
+    records: { timestamp: Date; heartRate?: number; distance?: number; speed?: number }[]
+) {
     const encoder = new Encoder()
     const fileId = {
         mesgNum: Profile.MesgNum.FILE_ID,
@@ -144,5 +150,65 @@ describe('categoryFromSport', () => {
         expect(categoryFromSport('training', 'exercise')).toBe('other')
         expect(categoryFromSport('cycling')).toBe('other')
         expect(categoryFromSport(null)).toBe('other')
+    })
+})
+
+describe('parseFit hrHistogram', () => {
+    const at = (s: number) => new Date(Date.parse('2026-01-01T10:00:00Z') + s * 1000)
+
+    it('bins the usable intervals of records with heart rate and distance', () => {
+        const bytes = buildFit(
+            [0, 1, 2, 3, 4].map((s) => ({ timestamp: at(s), heartRate: 120, distance: s * 3 }))
+        )
+        const result = run(bytes)
+        if (Result.isFailure(result)) throw new Error('expected success')
+        const { bins } = result.success.hrHistogram
+        expect(bins.length).toBeGreaterThan(0)
+        expect(bins.reduce((a, b) => a + b[1], 0)).toBe(4)
+        expect(bins[0]?.[0]).toBe(120)
+    })
+
+    it('returns an empty histogram without heart rate and keeps the rest unchanged', () => {
+        const result = run(
+            buildFit([
+                { timestamp: at(0), distance: 0 },
+                { timestamp: at(10), distance: 30 },
+            ])
+        )
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.hrHistogram).toEqual({ v: 1, bins: [] })
+        expect(result.success.elapsedTimeS).toBe(10)
+        expect(result.success.avgHr).toBeNull()
+    })
+
+    it('has a histogram on the real Zepp file', () => {
+        const result = run(real())
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.hrHistogram.v).toBe(1)
+    })
+})
+
+describe('fitSamples', () => {
+    it('maps fields, prefers enhancedSpeed and never emits NaN', () => {
+        const samples = fitSamples([
+            {
+                timestamp: new Date(1000),
+                heartRate: 100,
+                distance: 5,
+                enhancedSpeed: 3,
+                speed: 2,
+            },
+            { timestamp: new Date(2000), heartRate: Number.NaN, speed: 2 },
+            { timestamp: new Date(Number.NaN), heartRate: 90 },
+        ])
+        expect(samples).toEqual([
+            { t: 1000, hr: 100, distanceM: 5, speedMps: 3 },
+            { t: 2000, hr: null, distanceM: null, speedMps: 2 },
+        ])
+    })
+
+    it('returns no heart rate when records have none', () => {
+        const samples = fitSamples([{ timestamp: new Date(1000) }])
+        expect(samples.every((s) => s.hr === null)).toBe(true)
     })
 })
