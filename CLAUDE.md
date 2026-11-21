@@ -13,6 +13,7 @@ in the same change when behavior, data or contracts change.
 - NEVER use em-dashes in anything: code, comments, UI copy, docs, commit messages. Use commas, colons, parentheses or separate sentences.
 - shadcn components use `base-ui`, NEVER Radix.
 - Types are declared at the top of the file, never in the middle.
+- No unnecessary comments. The component, function or variable name must already say what it does. Only comment non-obvious logic worth documenting (a business rule, a trade-off, a workaround, why something is done a surprising way), never what the code plainly does or why a style was chosen (for example "a real button so it is easy to tap"). Never leave a JSX comment that narrates markup. If a comment restates the name or the next line, delete it.
 - Nothing is pushed and no secrets are committed: `.env*` is git-ignored, only `.env.example` is tracked.
 - Every commit passes the pre-commit hook (`pnpm fmt`, `pnpm check`, `pnpm knip`). Run `pnpm test` before committing.
 

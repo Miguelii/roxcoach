@@ -151,7 +151,6 @@ export function ActivityView({ activity, laps, strengthSets, strengthComparisons
 
     return (
         <>
-            {/* A real button (44 px tall) so it is easy to tap; the aria-label keeps the destination. */}
             <Button
                 variant="outline"
                 nativeButton={false}

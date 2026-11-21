@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 
 type Props = {
     item: CalendarItem
-    // Taller on a phone (44 px) so it is easy to tap; the desktop size is unchanged.
     touch?: boolean
 }
 
