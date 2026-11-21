@@ -1,4 +1,5 @@
 import type { SessionKind } from '@/_bff/core/constants/availability.constants'
+import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import type { HyroxDivision } from '@/_bff/core/constants/hyrox.constants'
 
 export type ProfileDTO = {
@@ -9,9 +10,11 @@ export type ProfileDTO = {
     hyroxDivision: HyroxDivision | null
     weeklyHoursCap: number | null
     notes: string | null
+    dashboardMode: DashboardMode
 }
 
-export type ProfileInput = ProfileDTO
+// What the profile form saves: the dashboard mode is saved on its own, never with the form.
+export type ProfileInput = Omit<ProfileDTO, 'dashboardMode'>
 
 export type AvailabilitySlotDTO = {
     weekday: number

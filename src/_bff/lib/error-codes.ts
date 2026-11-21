@@ -84,6 +84,8 @@ export enum ErrorCode {
     ATHLETE_PROFILE_FULL_SELECT_PARSE = 'k9b3m6xa',
     ATHLETE_PROFILE_UPSERT = 'd2f6j8vp',
     ATHLETE_PROFILE_UPSERT_ERR = 'g5s1h4ln',
+    ATHLETE_DASHBOARD_MODE_UPDATE = 'dm4k7w2q',
+    ATHLETE_DASHBOARD_MODE_UPDATE_ERR = 'dm9c3x6v',
     ATHLETE_PROFILE_INVALID = 'z8u3c7to',
     // Athlete - Availability slots repository and services
     ATHLETE_AVAILABILITY_SELECT = 'a7n2p4ke',

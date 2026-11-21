@@ -17,6 +17,7 @@ const DEFAULT_PROFILE: ProfileDTO = {
     hyroxDivision: null,
     weeklyHoursCap: null,
     notes: null,
+    dashboardMode: 'run',
 }
 
 // Runs as the signed-in user (publishable key). A missing row is not an error.

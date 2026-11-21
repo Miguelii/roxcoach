@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => {
             hyroxDivision: 'open_men',
             weeklyHoursCap: null,
             notes: null,
+            dashboardMode: 'run',
         },
         isPending: false,
         isError: false,
@@ -90,6 +91,7 @@ describe('RacesView', () => {
             hyroxDivision: 'open_men',
             weeklyHoursCap: null,
             notes: null,
+            dashboardMode: 'run',
         }
         mocks.profile.isPending = false
         mocks.profile.isError = false

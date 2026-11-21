@@ -4,6 +4,7 @@ import { failureTag } from '@/_bff/lib/tests-utils'
 import {
     selectProfile,
     selectTimezone,
+    updateDashboardMode,
     upsertProfile,
 } from '@/_bff/modules/athlete/repositories/athlete-profiles.repository'
 import type { ProfileInput } from '@/_bff/modules/athlete/types'
@@ -64,6 +65,7 @@ const ROW = {
     hyrox_division: 'pro_women',
     weekly_hours_cap: '7.5',
     notes: null,
+    dashboard_mode: 'strength',
 }
 
 describe('selectProfile', () => {
@@ -80,6 +82,7 @@ describe('selectProfile', () => {
             hyroxDivision: 'pro_women',
             weeklyHoursCap: 7.5,
             notes: null,
+            dashboardMode: 'strength',
         })
         expect(calls[0]?.filters).toEqual([['user_id', 'user-1']])
     })
@@ -93,7 +96,7 @@ describe('selectProfile', () => {
     it('fails with ProfileQueryError on returned, thrown and malformed results', async () => {
         const returned = makeFakeAdminDb(() => ({ data: null, error: { code: '1', message: 'x' } }))
         const thrown = makeFakeAdminDb(() => new Error('down'))
-        const malformed = makeFakeAdminDb(() => ok({ ...ROW, hyrox_division: 'masters' }))
+        const malformed = makeFakeAdminDb(() => ok({ ...ROW, dashboard_mode: 'swim' }))
 
         const exits = await Promise.all(
             [returned, thrown, malformed].map(({ supabase }) =>
@@ -155,5 +158,35 @@ describe('upsertProfile', () => {
         const exit = await Effect.runPromiseExit(upsertProfile(supabase, 'user-1', INPUT))
 
         expect(failureTag(exit)).toBe('ProfileQueryError')
+    })
+})
+
+describe('updateDashboardMode', () => {
+    it('updates only dashboard_mode of the user row', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok([{ user_id: 'user-1' }]))
+
+        await Effect.runPromise(updateDashboardMode(supabase, 'user-1', 'strength'))
+
+        expect(calls[0]?.op).toBe('update')
+        expect(calls[0]?.payload).toEqual({ dashboard_mode: 'strength' })
+        expect(calls[0]?.filters).toEqual([['user_id', 'user-1']])
+    })
+
+    it('fails with ProfileQueryError on returned and thrown errors and when no row matched', async () => {
+        const returned = makeFakeAdminDb(() => ({ data: null, error: { code: '1', message: 'x' } }))
+        const thrown = makeFakeAdminDb(() => new Error('down'))
+        const noRow = makeFakeAdminDb(() => ok([]))
+
+        const exits = await Promise.all(
+            [returned, thrown, noRow].map(({ supabase }) =>
+                Effect.runPromiseExit(updateDashboardMode(supabase, 'user-1', 'run'))
+            )
+        )
+
+        expect(exits.map((exit) => failureTag(exit))).toEqual([
+            'ProfileQueryError',
+            'ProfileQueryError',
+            'ProfileQueryError',
+        ])
     })
 })

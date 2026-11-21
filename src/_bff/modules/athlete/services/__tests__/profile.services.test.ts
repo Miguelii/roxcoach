@@ -4,6 +4,7 @@ import { Effect, Exit, Cause, Option } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { getProfile } from '@/_bff/modules/athlete/services/get-profile.service'
+import { setDashboardMode } from '@/_bff/modules/athlete/services/set-dashboard-mode.service'
 import { updateProfile } from '@/_bff/modules/athlete/services/update-profile.service'
 import type { ProfileInput } from '@/_bff/modules/athlete/types'
 import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
@@ -44,6 +45,7 @@ describe('getProfile', () => {
             hyroxDivision: null,
             weeklyHoursCap: null,
             notes: null,
+            dashboardMode: 'run',
         })
     })
 
@@ -103,5 +105,40 @@ describe('updateProfile', () => {
         const exit = await Effect.runPromiseExit(updateProfile(USER, INPUT))
 
         expect(failureTag(exit)).toBe('ProfileQueryError')
+    })
+})
+
+describe('setDashboardMode', () => {
+    beforeEach(() => {
+        createDBServerClientMock.mockReset()
+    })
+
+    it('saves only the mode and returns 200', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok([{ user_id: 'user-1' }]))
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        await expect(Effect.runPromise(setDashboardMode(USER, 'strength'))).resolves.toEqual({
+            status: 200,
+        })
+        expect(calls).toHaveLength(1)
+        expect(calls[0]?.payload).toEqual({ dashboard_mode: 'strength' })
+        expect(calls[0]?.filters).toEqual([['user_id', 'user-1']])
+    })
+
+    it('fails when the profile row does not exist', async () => {
+        const { supabase } = makeFakeAdminDb(() => ok([]))
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        expect(failureTag(await Effect.runPromiseExit(setDashboardMode(USER, 'run')))).toBe(
+            'ProfileQueryError'
+        )
+    })
+
+    it('fails with CreateSbClientError when the client cannot be created', async () => {
+        createDBServerClientMock.mockRejectedValue(new Error('cookies unavailable'))
+
+        expect(failureTag(await Effect.runPromiseExit(setDashboardMode(USER, 'run')))).toBe(
+            'CreateSbClientError'
+        )
     })
 })

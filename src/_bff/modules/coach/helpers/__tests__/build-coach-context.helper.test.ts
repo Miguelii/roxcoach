@@ -14,6 +14,7 @@ const PROFILE: ProfileDTO = {
     hyroxDivision: 'open_men',
     weeklyHoursCap: 8,
     notes: 'Left knee sensitive',
+    dashboardMode: 'run',
 }
 
 const race = (overrides: Partial<RaceDTO>): RaceDTO => ({

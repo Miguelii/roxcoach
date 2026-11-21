@@ -7,14 +7,20 @@ import { ProfileQueryError, ProfileValidationError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import type { ProfileInput } from '@/_bff/modules/athlete/types'
 
-const { getProfileMock, updateProfileMock, getSessionMock } = vi.hoisted(() => ({
-    getProfileMock: vi.fn(),
-    updateProfileMock: vi.fn(),
-    getSessionMock: vi.fn(),
-}))
+const { getProfileMock, updateProfileMock, setDashboardModeMock, getSessionMock } = vi.hoisted(
+    () => ({
+        getProfileMock: vi.fn(),
+        updateProfileMock: vi.fn(),
+        setDashboardModeMock: vi.fn(),
+        getSessionMock: vi.fn(),
+    })
+)
 
 vi.mock('@/_bff/modules/athlete/services/get-profile.service', () => ({
     getProfile: getProfileMock,
+}))
+vi.mock('@/_bff/modules/athlete/services/set-dashboard-mode.service', () => ({
+    setDashboardMode: setDashboardModeMock,
 }))
 vi.mock('@/_bff/modules/athlete/services/update-profile.service', () => ({
     updateProfile: updateProfileMock,
@@ -52,6 +58,7 @@ describe('profile controllers', () => {
     beforeEach(() => {
         getProfileMock.mockReset()
         updateProfileMock.mockReset()
+        setDashboardModeMock.mockReset()
         getSessionMock.mockReset().mockReturnValue(Effect.succeed(USER))
         vi.spyOn(console, 'error').mockImplementation(() => {})
     })
@@ -123,5 +130,37 @@ describe('profile controllers', () => {
         const error = await caught(caller.athlete.updateProfile(INPUT))
 
         expect(error.code).toBe('INTERNAL_SERVER_ERROR')
+    })
+    it('setDashboardMode saves a valid mode', async () => {
+        setDashboardModeMock.mockReturnValue(Effect.succeed({ status: 200 }))
+
+        await expect(caller.athlete.setDashboardMode({ mode: 'strength' })).resolves.toEqual({
+            status: 200,
+        })
+        expect(setDashboardModeMock).toHaveBeenCalledWith(USER, 'strength')
+    })
+
+    it('setDashboardMode rejects an unknown mode with BAD_REQUEST before the service', async () => {
+        // SAFETY: deliberately invalid input to prove the zod enum rejects it.
+        const error = await caught(caller.athlete.setDashboardMode({ mode: 'swim' as never }))
+
+        expect(error.code).toBe('BAD_REQUEST')
+        expect(setDashboardModeMock).not.toHaveBeenCalled()
+    })
+
+    it('setDashboardMode maps ProfileQueryError to INTERNAL_SERVER_ERROR', async () => {
+        setDashboardModeMock.mockReturnValue(
+            Effect.fail(
+                new ProfileQueryError({
+                    cause: 'no profile row to update',
+                    error_hash: ErrorCode.ATHLETE_DASHBOARD_MODE_UPDATE_ERR,
+                })
+            )
+        )
+
+        const error = await caught(caller.athlete.setDashboardMode({ mode: 'run' }))
+
+        expect(error.code).toBe('INTERNAL_SERVER_ERROR')
+        expect(error.cause).toBeUndefined()
     })
 })
