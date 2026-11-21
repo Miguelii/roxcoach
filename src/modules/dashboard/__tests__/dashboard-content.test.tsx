@@ -81,24 +81,12 @@ describe('DashboardContent', () => {
         expect(screen.queryByTestId('next-race')).toBeNull()
     })
 
-    it('shows the mode saved in the profile and saves a change', () => {
-        mocks.getProfileQuery.mockReturnValue(profile('strength'))
+    it('has the range control but no mode switch on the page', () => {
         renderContent()
 
-        expect(screen.getByTestId('mode-tab-strength')).toHaveAttribute('aria-selected', 'true')
-        fireEvent.click(screen.getByTestId('mode-tab-run'))
-        expect(mocks.mutate).toHaveBeenCalledWith({ mode: 'run' })
-    })
-
-    it('shows the running progress in run mode and the strength progress in strength mode', () => {
-        const { unmount } = renderContent()
-        expect(screen.getByTestId('run-progress-skeleton')).toBeInTheDocument()
-        unmount()
-
-        mocks.getProfileQuery.mockReturnValue(profile('strength'))
-        renderContent()
-        expect(screen.queryByTestId('run-progress-skeleton')).toBeNull()
-        expect(screen.getByTestId('strength-progress-skeleton')).toBeInTheDocument()
+        expect(screen.getByTestId('range-tab-6m')).toBeInTheDocument()
+        expect(screen.queryByTestId('mode-tab-run')).toBeNull()
+        expect(screen.queryByTestId('mode-tab-strength')).toBeNull()
     })
 
     it('shows the skeleton while the profile loads and an error with retry when it fails', () => {

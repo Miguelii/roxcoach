@@ -1,56 +1,21 @@
-import { DASHBOARD_MODES, type DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import { PROGRESS_RANGES, type ProgressRange } from '@/_bff/core/constants/progress.constants'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type Props = {
-    mode: DashboardMode
-    onModeChange: (mode: DashboardMode) => void
     range: ProgressRange
     onRangeChange: (range: ProgressRange) => void
 }
 
-const MODE_LABELS: Record<DashboardMode, string> = { run: 'Running', strength: 'Strength' }
-const RANGE_LABELS: Record<(typeof PROGRESS_RANGES)[number], string> = {
-    '3m': '3M',
-    '6m': '6M',
-    '12m': '1Y',
-}
+const RANGE_LABELS: Record<ProgressRange, string> = { '3m': '3M', '6m': '6M', '12m': '1Y' }
 
-// Tabs report any string; only accept values this control offers.
-const asMode = (value: string) => DASHBOARD_MODES.find((mode) => mode === value)
+// Tabs report any string; only accept a range this control offers.
 const asRange = (value: string) => PROGRESS_RANGES.find((range) => range === value)
 
-// Two segmented controls: what the dashboard shows (saved in the profile) and how far back (URL).
-export function DashboardControls({ mode, onModeChange, range, onRangeChange }: Props) {
+// How far back the charts look, kept in the URL. The Running or Strength choice lives in the
+// sidebar and in Settings, not here.
+export function DashboardControls({ range, onRangeChange }: Props) {
     return (
-        <div
-            data-testid="dashboard-controls"
-            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-            <Tabs
-                value={mode}
-                onValueChange={(value) => {
-                    const next = asMode(value)
-                    if (next !== undefined) onModeChange(next)
-                }}
-                className="w-full sm:w-auto"
-            >
-                <TabsList
-                    aria-label="Dashboard mode"
-                    className="grid h-auto w-full grid-cols-2 sm:w-fit"
-                >
-                    {DASHBOARD_MODES.map((value) => (
-                        <TabsTrigger
-                            key={value}
-                            value={value}
-                            data-testid={`mode-tab-${value}`}
-                            className="h-11 sm:h-8 sm:px-5"
-                        >
-                            {MODE_LABELS[value]}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
+        <div data-testid="dashboard-controls">
             <Tabs
                 value={range}
                 onValueChange={(value) => {

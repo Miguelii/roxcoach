@@ -94,9 +94,10 @@ a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormContro
 The dashboard is focused on training progress, not the calendar. It shows the real-data weekly
 summary (time, sessions, run km and the acute:chronic load ratio from the last 35 days of
 activities, with zeros and "No history yet" when there is no history) and, below it, progress
-charts for the athlete's chosen mode. A segmented control switches between **Running** and
-**Strength**; the choice is saved in `athlete_profiles.dashboard_mode` (applied at once, reverted
-with a toast if the save fails). A second control sets the range (3M, 6M, 1Y), kept in the URL
+charts for the athlete's chosen mode. The **Running** or **Strength** choice is a segmented control at the bottom of the
+desktop sidebar and in Settings, Profile (so a phone user, who has no sidebar, can change it); it is
+saved in `athlete_profiles.dashboard_mode` (applied at once, reverted with a toast if the save
+fails) and is not on the dashboard page. A control on the page sets the range (3M, 6M, 1Y), kept in the URL
 (`range`, default `6m`). Running follows a training-app layout: the days of this week, a headline
 with a bar per week (distance, time or runs, tap a bar or step with the arrows), the goal pace, the
 latest runs, the pace trend with the goal pace line, pace by heart rate zone and average heart rate; Strength shows training volume and workouts per week as bars, then one card per top exercise (5 at most, one below the other), each with its

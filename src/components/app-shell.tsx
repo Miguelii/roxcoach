@@ -23,6 +23,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { trpcClient } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
+import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 
 type NavItem = {
@@ -178,7 +179,11 @@ export function AppShell({ children }: Props) {
                     </div>
                 </nav>
 
-                <div className="mt-auto border-t border-hairline pt-4">
+                <div className="mt-auto space-y-4 border-t border-hairline pt-4">
+                    <div className="space-y-1.5 px-1">
+                        <p className="eyebrow text-muted-foreground">Dashboard</p>
+                        <DashboardModeToggle testIdPrefix="nav-mode" compact />
+                    </div>
                     <AccountMenu isPending={logout.isPending} onLogout={onLogout} />
                 </div>
             </aside>

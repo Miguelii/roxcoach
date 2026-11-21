@@ -12,7 +12,7 @@ import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
 
 export function DashboardContent() {
-    const { profile, setMode } = useDashboardMode()
+    const { profile } = useDashboardMode()
     const { range, setRange } = useProgressRange()
 
     if (profile.isPending && profile.data === undefined) return <DashboardSkeleton />
@@ -41,12 +41,7 @@ export function DashboardContent() {
                     </div>
                     <ActivityActions />
                 </div>
-                <DashboardControls
-                    mode={profile.data.dashboardMode}
-                    onModeChange={setMode}
-                    range={range}
-                    onRangeChange={(next) => void setRange(next)}
-                />
+                <DashboardControls range={range} onRangeChange={(next) => void setRange(next)} />
             </header>
             <WeekStrip today={today} mode={profile.data.dashboardMode} />
             {profile.data.dashboardMode === 'run' ? (

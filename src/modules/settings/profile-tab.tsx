@@ -5,6 +5,7 @@ import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { trpcClient } from '@/lib/trpc'
+import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
 import { ProfileForm } from '@/modules/settings/profile-form'
 import type { ProfileFormValues, ProfileValues } from '@/modules/settings/use-profile-form'
 
@@ -55,5 +56,22 @@ export function ProfileTab() {
         ])
     }
 
-    return <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />
+    return (
+        <div className="space-y-8">
+            <section
+                data-testid="profile-dashboard-mode"
+                aria-labelledby="profile-dashboard-mode-title"
+                className="max-w-xl space-y-2"
+            >
+                <h3 id="profile-dashboard-mode-title" className="display text-xl">
+                    Dashboard
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    Choose the charts your dashboard shows. It is saved as you pick.
+                </p>
+                <DashboardModeToggle testIdPrefix="profile-mode" />
+            </section>
+            <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />
+        </div>
+    )
 }
