@@ -144,6 +144,14 @@ describe('uploadActivity', () => {
         expect(upload).not.toHaveBeenCalled()
     })
 
+    it('looks for an activity within five minutes of the start, so a run synced from Zepp counts', async () => {
+        const { db, run } = setup([ok(), ok({ id: 'zepp-run' })])
+        await run(GPX('2026-11-20T10:00:00Z'))
+        expect(db.chains[1]?.gte).toHaveBeenCalledWith('started_at', '2026-11-20T09:55:00.000Z')
+        expect(db.chains[1]?.lte).toHaveBeenCalledWith('started_at', '2026-11-20T10:05:00.000Z')
+        expect(db.chains[1]?.neq).not.toHaveBeenCalled()
+    })
+
     it('maps a unique violation on the file insert to the duplicate error and rolls back', async () => {
         const { db, remove, run } = setup([
             ok(),

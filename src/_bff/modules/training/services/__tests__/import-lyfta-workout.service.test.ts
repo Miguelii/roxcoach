@@ -3,10 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import {
-    createLyftaImportContext,
-    importLyftaWorkout,
-} from '@/_bff/modules/training/services/import-lyfta-workout.service'
+import { createImportContext } from '@/_bff/modules/training/services/import-context.service'
+import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 
@@ -195,7 +193,7 @@ describe('importLyftaWorkout', () => {
         const createUserClient = vi.fn(async () => supabase)
         const make = (timezone: string) =>
             Effect.runPromise(
-                createLyftaImportContext(USER, {
+                createImportContext(USER, {
                     createUserClient,
                     getTimezone: () => Effect.succeed(timezone),
                 })

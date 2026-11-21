@@ -7,7 +7,7 @@ There is no scheduled or background sync.
 
 ## Goals and scope
 
-- Add a `Lyfta` tab to `/settings`.
+- Add a Lyfta card to the `Integrations` tab of `/settings`.
 - Let the athlete save, replace and disconnect a Lyfta personal API key.
 - Validate the key before saving it, then keep it encrypted at rest and server-only.
 - Add a manual `Sync workouts` action that imports completed workouts and their sets.
@@ -54,8 +54,9 @@ workout before writing it. Do not log request headers, keys or raw workout paylo
 
 ## Settings UX
 
-Add a third `Lyfta` tab alongside Profile and Weekly availability. Keep all tab panels mounted,
-following the existing Settings tabs behavior.
+Lyfta is a card of the `Integrations` tab of `/settings` (alongside Profile, Dashboard and Weekly
+availability), above the other integrations (see [zepp.md](zepp.md)). Keep all tab panels
+mounted, following the existing Settings tabs behavior.
 Disconnect asks first in a confirmation dialog, like deleting a race: a popup on desktop and a
 sheet from the bottom on a phone (the shared `Dialog`). "Keep connected" closes it; while the
 request runs both buttons are disabled; a failure keeps the dialog open and shows its reason there.

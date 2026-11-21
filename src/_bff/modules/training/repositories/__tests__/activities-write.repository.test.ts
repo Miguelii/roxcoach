@@ -5,7 +5,6 @@ import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/f
 import {
     deleteActivity,
     insertActivity,
-    selectIdByStartedAt,
     upsertLyftaActivity,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import type { LyftaActivityRow, NewActivityRow } from '@/_bff/modules/training/types'
@@ -111,38 +110,6 @@ describe('insertActivity', () => {
         expect(
             failureTag(await Effect.runPromiseExit(insertActivity(db.supabase, USER_ID, ROW)))
         ).toBe('ActivityWriteError')
-    })
-})
-
-describe('selectIdByStartedAt', () => {
-    it('filters by user and started_at and returns the id or null', async () => {
-        const hit = makeFakeDb([ok({ id: 'act-9' })])
-        const miss = makeFakeDb([ok(null)])
-
-        expect(
-            await Effect.runPromise(selectIdByStartedAt(hit.supabase, USER_ID, ROW.started_at))
-        ).toBe('act-9')
-        expect(hit.chains[0]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
-        expect(hit.chains[0]?.eq).toHaveBeenCalledWith('started_at', ROW.started_at)
-        expect(hit.chains[0]?.is).toHaveBeenCalledWith('deleted_at', null)
-        expect(
-            await Effect.runPromise(selectIdByStartedAt(miss.supabase, USER_ID, ROW.started_at))
-        ).toBeNull()
-    })
-
-    it('tags a thrown error and a returned error', async () => {
-        const thrown = makeFakeDb([new Error('x')])
-        const returned = makeFakeDb([{ data: null, error: failed }])
-        expect(
-            failureTag(
-                await Effect.runPromiseExit(selectIdByStartedAt(thrown.supabase, USER_ID, 'a'))
-            )
-        ).toBe('ActivityQueryError')
-        expect(
-            failureTag(
-                await Effect.runPromiseExit(selectIdByStartedAt(returned.supabase, USER_ID, 'a'))
-            )
-        ).toBe('ActivityQueryError')
     })
 })
 

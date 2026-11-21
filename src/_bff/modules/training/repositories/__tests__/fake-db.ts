@@ -45,6 +45,7 @@ const makeChain = (item: QueryResult | Error) => {
         or: vi.fn((_filter: string) => chain),
         in: vi.fn(() => chain),
         not: vi.fn(() => chain),
+        neq: vi.fn(() => chain),
         gte: vi.fn(() => chain),
         lte: vi.fn(() => chain),
         lt: vi.fn(() => chain),

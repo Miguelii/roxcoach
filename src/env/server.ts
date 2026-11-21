@@ -16,6 +16,13 @@ export const ServerEnv = createEnv({
                 return decoded.byteLength === 32 && decoded.toString('base64') === value
             }, 'Must be canonical Base64 encoding of exactly 32 bytes')
             .optional(),
+        NEXT_ZEPP_ENCRYPTION_KEY: z
+            .string()
+            .refine((value) => {
+                const decoded = Buffer.from(value, 'base64')
+                return decoded.byteLength === 32 && decoded.toString('base64') === value
+            }, 'Must be canonical Base64 encoding of exactly 32 bytes')
+            .optional(),
         // Identifies the deployed build (the install prompt is offered again after a new one).
         NEXT_BUILD_ID: z.string().min(1).optional(),
     },
@@ -26,6 +33,7 @@ export const ServerEnv = createEnv({
         NEXT_GEMINI_API_KEY: process.env.NEXT_GEMINI_API_KEY,
         NEXT_SIGNUP_ACCESS_CODE: process.env.NEXT_SIGNUP_ACCESS_CODE,
         NEXT_LYFTA_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
+        NEXT_ZEPP_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
         // Vercel sets the commit of every deployment; NEXT_BUILD_ID overrides it elsewhere.
         NEXT_BUILD_ID: process.env.NEXT_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA,
     },

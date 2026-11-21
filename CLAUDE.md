@@ -120,6 +120,19 @@ data anonymized). It is the source of truth for the payload shape.
 - When a real payload shows something the mock does not (a new field or format), update the mock
   in the same change and document the finding in `docs/tech-specs/lyfta.md`.
 
+## Zepp
+
+`mocks/zepp_history_mock.json` and `mocks/zepp_detail_mock.json` are real responses of the Zepp
+(Amazfit) cloud API, anonymized. The API is not public, so they are the source of truth for the
+payload shape.
+
+- Before touching anything in the Zepp integration (`src/_bff/modules/zepp`, the Zepp import in the
+  `training` module, `docs/tech-specs/zepp.md`), read both mocks first.
+- Never invent or assume a field. If a field or workout type is not in a mock, ask the user for a
+  real sample instead of guessing.
+- When a real payload shows something the mock does not, update the mock in the same change and
+  document the finding in `docs/tech-specs/zepp.md`.
+
 ## Tests
 
 - Unit tests (`pnpm test`, vite-plus) cover pure logic and services with a fake Supabase client. Knip treats test files as usage.

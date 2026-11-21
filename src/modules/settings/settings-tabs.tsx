@@ -7,10 +7,10 @@ type Props = {
     profile: ReactNode
     dashboard: ReactNode
     availability: ReactNode
-    lyfta: ReactNode
+    integrations: ReactNode
 }
 
-export function SettingsTabs({ profile, dashboard, availability, lyfta }: Props) {
+export function SettingsTabs({ profile, dashboard, availability, integrations }: Props) {
     return (
         <Tabs defaultValue="profile" data-testid="settings-tabs">
             <TabsList>
@@ -23,8 +23,8 @@ export function SettingsTabs({ profile, dashboard, availability, lyfta }: Props)
                 <TabsTrigger value="availability" data-testid="settings-tab-availability">
                     Availability
                 </TabsTrigger>
-                <TabsTrigger value="lyfta" data-testid="settings-tab-lyfta">
-                    Lyfta
+                <TabsTrigger value="integrations" data-testid="settings-tab-integrations">
+                    Integrations
                 </TabsTrigger>
             </TabsList>
             {/* The panels stay mounted so unsaved edits survive switching tabs. */}
@@ -37,8 +37,8 @@ export function SettingsTabs({ profile, dashboard, availability, lyfta }: Props)
             <TabsContent value="availability" keepMounted>
                 {availability}
             </TabsContent>
-            <TabsContent value="lyfta" keepMounted>
-                {lyfta}
+            <TabsContent value="integrations" keepMounted>
+                {integrations}
             </TabsContent>
         </Tabs>
     )

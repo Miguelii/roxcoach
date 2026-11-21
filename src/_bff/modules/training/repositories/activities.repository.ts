@@ -7,8 +7,10 @@ import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
 import type {
     ActivityDTO,
+    ActivitySource,
     LyftaActivityRow,
     NewActivityRow,
+    NewZeppActivityRow,
     TrainingClient,
 } from '@/_bff/modules/training/types'
 import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
@@ -35,7 +37,7 @@ const numeric = z
 
 const activityRowSchema = z.object({
     id: z.string(),
-    source: z.enum(['strava', 'manual', 'lyfta']),
+    source: z.enum(['strava', 'manual', 'lyfta', 'zepp']),
     category: z.enum(['run', 'hyrox', 'strength', 'cross', 'other']),
     name: z.string(),
     started_at: z.string(),
@@ -320,35 +322,6 @@ export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
     return { activityId: data.id, created: existing === null }
 })
 
-// The id of the user's non-deleted activity that started at that instant, or null.
-export const selectIdByStartedAt = Effect.fn('selectIdByStartedAt')(function* (
-    supabase: TrainingClient,
-    userId: string,
-    startedAt: string
-) {
-    const { data, error } = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(TABLE)
-                .select('id')
-                .eq('user_id', userId)
-                .eq('started_at', startedAt)
-                .is('deleted_at', null)
-                .limit(1)
-                .maybeSingle(),
-        catch: (cause) =>
-            new ActivityQueryError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_ACTIVITY_START_LOOKUP,
-            }),
-    })
-
-    if (error) return yield* queryError(error, ErrorCode.TRAINING_ACTIVITY_START_LOOKUP_ERR)
-
-    return data?.id ?? null
-})
-
-// Hard delete, used only to undo an insert of the same request (laps and files cascade).
 export const deleteActivity = Effect.fn('deleteActivity')(function* (
     supabase: TrainingClient,
     userId: string,
@@ -505,4 +478,140 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
         activityId: row.id,
         localDate: row.local_date,
     }))
+})
+
+const UNIQUE_VIOLATION = '23505'
+
+// Inserts a run imported from Zepp. The unique (user, source, source_id) index makes a repeated
+// import (two presses of Sync) a no-op: that case reports `created: false`.
+export const insertZeppActivity = Effect.fn('insertZeppActivity')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    row: NewZeppActivityRow
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).insert({ ...row, source: 'zepp', user_id: userId }),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_INSERT,
+            }),
+    })
+
+    if (error?.code === UNIQUE_VIOLATION) return { created: false }
+    if (error) return yield* writeError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_INSERT_ERR)
+    return { created: true }
+})
+
+// Which of these provider ids the user already has as activities of that source.
+export const selectSourceIds = Effect.fn('selectSourceIds')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    source: ActivitySource,
+    sourceIds: string[]
+) {
+    if (sourceIds.length === 0) return new Set<string>()
+
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('source_id')
+                .eq('user_id', userId)
+                .eq('source', source)
+                .in('source_id', sourceIds),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR)
+    const parsed = z.array(z.object({ source_id: z.string().nullable() })).safeParse(data)
+    if (!parsed.success)
+        return yield* new ActivityQueryError({
+            cause: 'source_id rows failed schema validation',
+            error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR,
+        })
+    return new Set(parsed.data.flatMap((row) => row.source_id ?? []))
+})
+
+const isoAround = (centre: string, windowSeconds: number) => {
+    const middle = Date.parse(centre)
+    return {
+        from: new Date(middle - windowSeconds * 1000).toISOString(),
+        to: new Date(middle + windowSeconds * 1000).toISOString(),
+    }
+}
+
+// The id of a live activity of the user that started within `windowSeconds` of that instant,
+// leaving out the activities of `excludeSource`.
+export const selectIdNearStartedAt = Effect.fn('selectIdNearStartedAt')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    startedAt: string,
+    windowSeconds: number,
+    excludeSource?: ActivitySource
+) {
+    const { from, to } = isoAround(startedAt, windowSeconds)
+
+    const { data, error } = yield* Effect.tryPromise({
+        try: () => {
+            const query = supabase
+                .from(TABLE)
+                .select('id')
+                .eq('user_id', userId)
+                .gte('started_at', from)
+                .lte('started_at', to)
+                .is('deleted_at', null)
+            return (excludeSource === undefined ? query : query.neq('source', excludeSource))
+                .limit(1)
+                .maybeSingle()
+        },
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR)
+    return data === null ? null : data.id
+})
+
+// The start times of the live activities of the user inside a range, leaving out `excludeSource`.
+export const selectStartedAtsBetween = Effect.fn('selectStartedAtsBetween')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string,
+    excludeSource?: ActivitySource
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () => {
+            const query = supabase
+                .from(TABLE)
+                .select('started_at')
+                .eq('user_id', userId)
+                .gte('started_at', from)
+                .lte('started_at', to)
+                .is('deleted_at', null)
+            return excludeSource === undefined ? query : query.neq('source', excludeSource)
+        },
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR)
+    const parsed = z.array(z.object({ started_at: z.string() })).safeParse(data)
+    if (!parsed.success)
+        return yield* new ActivityQueryError({
+            cause: 'started_at rows failed schema validation',
+            error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR,
+        })
+    return parsed.data.map((row) => row.started_at)
 })

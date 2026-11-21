@@ -160,13 +160,15 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 | `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                               |
 | `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length           |
 | `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                                     |
+| `NEXT_ZEPP_ENCRYPTION_KEY`       | server | Zepp app token encryption                                                    |
 | `NEXT_BUILD_ID`                  | server | install prompt build check, optional (falls back to `VERCEL_GIT_COMMIT_SHA`) |
 | `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                                |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
-`NEXT_LYFTA_ENCRYPTION_KEY` is also optional at startup, but must be a valid base64-encoded
-32-byte key when set. Lyfta connection and sync operations fail explicitly when it is absent.
+`NEXT_LYFTA_ENCRYPTION_KEY` and `NEXT_ZEPP_ENCRYPTION_KEY` are also optional at startup, but must
+be a valid base64-encoded 32-byte key when set. Lyfta and Zepp connection and sync operations fail
+explicitly when their key is absent.
 `NEXT_BUILD_ID` identifies the deployed build and defaults to Vercel's `VERCEL_GIT_COMMIT_SHA`; when
 both are unset the install prompt only uses its 72 hour expiry.
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to

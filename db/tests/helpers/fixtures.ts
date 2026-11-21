@@ -113,6 +113,14 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
             params: [graph.userId],
         }),
     ],
+    [
+        'zepp_connections',
+        (graph) => ({
+            sql: `insert into roxcoach.zepp_connections (user_id, encrypted_app_token)
+                  values ($1, 'encrypted-test-fixture')`,
+            params: [graph.userId],
+        }),
+    ],
 ])
 
 // Seeded after the parents, in this order (coach_messages needs the conversation).
@@ -126,6 +134,7 @@ const GRAPH_CHILD_TABLES = [
     'coach_messages',
     'coach_usage',
     'lyfta_connections',
+    'zepp_connections',
 ]
 
 // Inserts an auth user as the superuser, then hands control back to the service role.

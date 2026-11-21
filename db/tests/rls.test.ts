@@ -18,7 +18,7 @@ type AccessRow = { has_access: boolean }
 type CountRow = { count: number }
 
 // RLS on, no policies: only the service role touches them.
-const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations', 'zepp_connections'])
 
 // Tables whose client rows are never deleted by a client: they have no DELETE policy.
 const NO_DELETE_POLICY_TABLES = new Set(['coach_usage'])

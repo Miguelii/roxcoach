@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
 import { createDBServerClient } from '@/_bff/core/db'
 import { localDateIn } from '@/_bff/core/utils/date.utils'
+import { DUPLICATE_WINDOW_SECONDS } from '@/_bff/core/constants/import.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     ActivityFileTooLargeError,
@@ -17,7 +18,7 @@ import { parseActivityFile } from '@/_bff/modules/training/helpers/parse-activit
 import {
     deleteActivity,
     insertActivity,
-    selectIdByStartedAt,
+    selectIdNearStartedAt,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import { replaceLaps } from '@/_bff/modules/training/repositories/activity-laps.repository'
 import {
@@ -105,8 +106,13 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
     const { supabase, storage } = yield* deps.createClient()
 
     if ((yield* selectFileIdBySha256(supabase, user.id, sha256)) !== null) return yield* duplicate()
-    if ((yield* selectIdByStartedAt(supabase, user.id, parsed.startedAt)) !== null)
-        return yield* duplicate()
+    const nearby = yield* selectIdNearStartedAt(
+        supabase,
+        user.id,
+        parsed.startedAt,
+        DUPLICATE_WINDOW_SECONDS
+    )
+    if (nearby !== null) return yield* duplicate()
 
     const timezone = yield* deps.getTimezone(user)
     const laps = toLapRows(parsed, input.isHyrox)

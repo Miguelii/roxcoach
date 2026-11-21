@@ -23,10 +23,10 @@ import {
     type LyftaConnectionDependencies,
 } from '@/_bff/modules/lyfta/services/lyfta-connection.service'
 import {
-    createLyftaImportContext,
-    importLyftaWorkout,
-    type LyftaImportContext,
-} from '@/_bff/modules/training/services/import-lyfta-workout.service'
+    createImportContext,
+    type ImportContext,
+} from '@/_bff/modules/training/services/import-context.service'
+import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import {
     MAX_PAGES_PER_SYNC,
     SYNC_LEASE_STALE_MS,
@@ -40,14 +40,14 @@ import {
 
 type SyncDependencies = LyftaConnectionDependencies & {
     importWorkout: typeof importLyftaWorkout
-    createImportContext: typeof createLyftaImportContext
+    createImportContext: typeof createImportContext
     now: () => Date
 }
 
 const DEFAULT_DEPENDENCIES: SyncDependencies = {
     ...DEFAULT_LYFTA_CONNECTION_DEPENDENCIES,
     importWorkout: importLyftaWorkout,
-    createImportContext: createLyftaImportContext,
+    createImportContext,
     now: () => new Date(),
 }
 
@@ -64,7 +64,7 @@ const syncStart = (lastSyncedAt: string | null, now: Date) =>
 type SyncRun = {
     apiKey: string
     range: LyftaWorkoutRange
-    context: LyftaImportContext
+    context: ImportContext
     // Pages this run may still fetch (shared by all windows of the run).
     pagesLeft: number
     startedAtMs: number

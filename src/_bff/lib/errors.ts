@@ -114,3 +114,35 @@ export class LyftaImportError extends Data.TaggedError('LyftaImportError')<Servi
 export class LyftaCheckpointError extends Data.TaggedError(
     'LyftaCheckpointError'
 )<ServiceErrorFields> {}
+
+export class ZeppConfigurationError extends Data.TaggedError(
+    'ZeppConfigurationError'
+)<ServiceErrorFields> {}
+export class ZeppCredentialError extends Data.TaggedError(
+    'ZeppCredentialError'
+)<ServiceErrorFields> {}
+export class ZeppConnectionNotFoundError extends Data.TaggedError(
+    'ZeppConnectionNotFoundError'
+)<ServiceErrorFields> {}
+export class ZeppConnectionQueryError extends Data.TaggedError(
+    'ZeppConnectionQueryError'
+)<ServiceErrorFields> {}
+export class ZeppConnectionWriteError extends Data.TaggedError(
+    'ZeppConnectionWriteError'
+)<ServiceErrorFields> {}
+export class ZeppConnectionParseError extends Data.TaggedError(
+    'ZeppConnectionParseError'
+)<ServiceErrorFields> {}
+export class ZeppApiRequestError extends Data.TaggedError(
+    'ZeppApiRequestError'
+)<ServiceErrorFields> {}
+export class ZeppApiResponseError extends Data.TaggedError(
+    'ZeppApiResponseError'
+)<ServiceErrorFields> {}
+export class ZeppLoginRejectedError extends Data.TaggedError(
+    'ZeppLoginRejectedError'
+)<ServiceErrorFields> {}
+export class ZeppSessionExpiredError extends Data.TaggedError(
+    'ZeppSessionExpiredError'
+)<ServiceErrorFields> {}
+export class ZeppImportError extends Data.TaggedError('ZeppImportError')<ServiceErrorFields> {}

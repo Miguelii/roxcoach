@@ -159,9 +159,10 @@ readable. Client-side checks
        (`UnsupportedActivityFileError` otherwise), then parses to the normalized result (below). A
        parse failure returns `ActivityFileParseError` and stores nothing.
     3. Hashes the bytes (sha256) and rejects a duplicate for that user: same hash, or an activity
-       of that user with the same `started_at` (so the same workout in another format is also a
-       duplicate). Both are `DuplicateActivityFileError`. The `started_at` check needs identical instants:
-       a FIT and a GPX of the same workout whose starts differ by a second or more are not caught.
+       of that user starting within 300 seconds of this one (`DUPLICATE_WINDOW_SECONDS`, so the same
+       workout in another format, or already synced from Zepp, is also a duplicate). Both are
+       `DuplicateActivityFileError`. Two different workouts that start less than five minutes
+       apart are treated as one.
     4. Reads the athlete timezone through the `athlete` service and computes `local_date`.
     5. Builds the lap rows. With the "Hyrox" flag, `labelHyroxLaps` sets `station` (below); when any
        lap got a station the activity `category` is `hyrox`, otherwise the category of its sport.

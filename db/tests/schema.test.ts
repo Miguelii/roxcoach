@@ -28,12 +28,13 @@ const ROXCOACH_TABLES = [
     'schema_migrations',
     'station_results',
     'strength_sets',
+    'zepp_connections',
 ]
 
 const USER_TABLES = ROXCOACH_TABLES.filter((table) => table !== 'schema_migrations')
 
-// Tables only the service role may touch: 0006 and 0010 revoke client privileges.
-const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations'])
+// Tables only the service role may touch: 0006, 0010 and 0020 revoke client privileges.
+const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations', 'zepp_connections'])
 
 const UNIQUE_ERROR = /unique/u
 const CHECK_ERROR = /check constraint/u
@@ -96,6 +97,7 @@ describe('schema layout', () => {
             '0017_grant_access_fn.sql',
             '0018_lyfta_resync_incomplete_sets.sql',
             '0019_strength_set_lyfta_records.sql',
+            '0020_zepp.sql',
         ])
     })
 
@@ -140,7 +142,7 @@ describe('schema layout', () => {
         })
     })
 
-    it('retains the old activity source labels and adds lyfta', async () => {
+    it('retains the old activity source labels and adds lyfta and zepp', async () => {
         await testDb.asSuperuser()
         const result = await testDb.db.query<{ enumlabel: string }>(
             `select e.enumlabel
@@ -151,7 +153,12 @@ describe('schema layout', () => {
              order by e.enumsortorder`
         )
 
-        expect(result.rows.map((row) => row.enumlabel)).toEqual(['strava', 'manual', 'lyfta'])
+        expect(result.rows.map((row) => row.enumlabel)).toEqual([
+            'strava',
+            'manual',
+            'lyfta',
+            'zepp',
+        ])
     })
 
     it('defaults user_id to auth.uid() for a signed-in user', async () => {
@@ -216,6 +223,30 @@ describe('unique constraints', () => {
         await expect(insert(otherUserId, '501')).resolves.toBeDefined()
         await expect(insert(userId, null)).resolves.toBeDefined()
         await expect(insert(userId, null)).resolves.toBeDefined()
+    })
+})
+
+describe('Zepp connections', () => {
+    it('keeps the Zepp token service-only and maintains updated_at', async () => {
+        const userId = await createUser(testDb)
+
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.zepp_connections (user_id, encrypted_app_token)
+             values ($1, 'encrypted-fixture')`,
+            [userId]
+        )
+        await testDb.asUser(userId)
+        await expect(
+            testDb.db.query('select * from roxcoach.zepp_connections')
+        ).rejects.toMatchObject({ code: '42501' })
+        await expect(
+            testDb.db.query(
+                `insert into roxcoach.zepp_connections (user_id, encrypted_app_token)
+                 values ($1, 'not-client-writable')`,
+                [userId]
+            )
+        ).rejects.toMatchObject({ code: '42501' })
     })
 })
 

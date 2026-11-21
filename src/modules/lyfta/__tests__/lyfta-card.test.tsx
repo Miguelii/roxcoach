@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ErrorCode } from '@/_bff/lib/error-codes'
-import { LyftaTab } from '@/modules/settings/lyfta-tab'
+import { LyftaCard } from '@/modules/lyfta/lyfta-card'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
@@ -49,7 +49,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     }
 })
 
-describe('LyftaTab', () => {
+describe('LyftaCard', () => {
     beforeEach(() => {
         // jsdom has no matchMedia; the confirm dialog reads it through useIsMobile (desktop here).
         vi.stubGlobal('matchMedia', () => ({
@@ -81,7 +81,7 @@ describe('LyftaTab', () => {
     })
 
     it('shows an empty password field and validates before connecting', async () => {
-        render(<LyftaTab />)
+        render(<LyftaCard />)
 
         expect(screen.getByTestId('lyfta-api-key')).toHaveAttribute('type', 'password')
         expect(screen.getByTestId('lyfta-api-key')).toHaveValue('')
@@ -94,7 +94,7 @@ describe('LyftaTab', () => {
     })
 
     it('saves the key, clears the input and refreshes the connection status', async () => {
-        render(<LyftaTab />)
+        render(<LyftaCard />)
         fireEvent.change(screen.getByTestId('lyfta-api-key'), {
             target: { value: 'personal-key' },
         })
@@ -109,7 +109,7 @@ describe('LyftaTab', () => {
 
     it('shows a categorized connection error without clearing the entered key', async () => {
         mocks.connect.mutateAsync.mockRejectedValue(new Error(ErrorCode.LYFTA_CREDENTIAL))
-        render(<LyftaTab />)
+        render(<LyftaCard />)
         fireEvent.change(screen.getByTestId('lyfta-api-key'), {
             target: { value: 'rejected-key' },
         })
@@ -131,7 +131,7 @@ describe('LyftaTab', () => {
             hasMore: false,
             lastSyncedAt: '2026-11-20T08:30:00.000Z',
         })
-        render(<LyftaTab />)
+        render(<LyftaCard />)
         fireEvent.click(screen.getByTestId('lyfta-sync'))
 
         await waitFor(() => {
@@ -159,7 +159,7 @@ describe('LyftaTab', () => {
             hasMore: true,
             lastSyncedAt: null,
         })
-        render(<LyftaTab />)
+        render(<LyftaCard />)
         fireEvent.click(screen.getByTestId('lyfta-sync'))
 
         await waitFor(() => {
@@ -181,7 +181,7 @@ describe('LyftaTab', () => {
     it('disables another sync while a request is pending', () => {
         mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
         mocks.sync.isPending = true
-        render(<LyftaTab />)
+        render(<LyftaCard />)
 
         expect(screen.getByTestId('lyfta-sync')).toBeDisabled()
         fireEvent.click(screen.getByTestId('lyfta-sync'))
@@ -190,7 +190,7 @@ describe('LyftaTab', () => {
 
     it('asks in a dialog before disconnecting, and Keep connected closes it without disconnecting', async () => {
         mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
-        render(<LyftaTab />)
+        render(<LyftaCard />)
 
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
         expect(await screen.findByTestId('lyfta-disconnect-dialog')).toHaveAttribute(
@@ -207,7 +207,7 @@ describe('LyftaTab', () => {
 
     it('disconnects when the dialog is confirmed', async () => {
         mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
-        render(<LyftaTab />)
+        render(<LyftaCard />)
 
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
         fireEvent.click(await screen.findByTestId('lyfta-disconnect-confirm'))
@@ -219,7 +219,7 @@ describe('LyftaTab', () => {
     it('keeps the dialog open and shows the error inside it when disconnecting fails', async () => {
         mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
         mocks.disconnect.mutateAsync.mockRejectedValue(new Error('network'))
-        render(<LyftaTab />)
+        render(<LyftaCard />)
 
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
         fireEvent.click(await screen.findByTestId('lyfta-disconnect-confirm'))

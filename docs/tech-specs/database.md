@@ -275,6 +275,23 @@ One row per user, storing the encrypted personal API key and manual-sync checkpo
 | `created_at`        | timestamptz      |                                                                   |
 | `updated_at`        | timestamptz      | maintained by `set_updated_at()`                                  |
 
+### `zepp_connections`
+
+One row per user, storing the encrypted Zepp `app_token` and the time of the last sync. The Zepp
+password is never stored. See [zepp.md](zepp.md).
+
+| Column                | Type             | Notes                                                     |
+| --------------------- | ---------------- | --------------------------------------------------------- |
+| `user_id`             | uuid             | primary key; cascades from `auth.users`                   |
+| `encrypted_app_token` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext |
+| `last_synced_at`      | timestamptz null | end of the last completed sync; cleared when reconnecting |
+| `created_at`          | timestamptz      |                                                           |
+| `updated_at`          | timestamptz      | maintained by `set_updated_at()`                          |
+
+RLS on, no policies, no privileges for `authenticated` or `anon` (service role only). Zepp
+activities are `activities` rows with `source = 'zepp'` and the Zepp track id in `source_id`
+(unique with the user and source); they have no `activity_files` row.
+
 ### `coach_conversations`
 
 One row per chat with the coach (see [coach-chat.md](coach-chat.md)).
@@ -326,7 +343,8 @@ types `report_status` and `planned_session_status`.
   and no privileges for `authenticated` or `anon` (a client query fails with a permission error).
   Only the service-role client touches them, from server code and jobs. Tokens are never exposed
   to a client session, even if a policy were added by mistake.
-- `lyfta_connections`: RLS on, **no policies**, and no privileges for `authenticated` or `anon`.
+- `lyfta_connections` and `zepp_connections`: RLS on, **no policies**, and no privileges for
+  `authenticated` or `anon`.
   The service-role repository is the only access path, and every query explicitly filters or
   inserts using the authenticated `userId`. This prevents clients from retrieving even encrypted
   credential material.
@@ -376,6 +394,7 @@ schema:
 | `0017_grant_access_fn.sql`              | `roxcoach.grant_access(user_id, display_name)`: sets the flag and creates the profile (service role only)   |
 | `0018_lyfta_resync_incomplete_sets.sql` | Requests one full manual Lyfta resync so sets Lyfta never marked completed are imported                     |
 | `0019_strength_set_lyfta_records.sql`   | `strength_sets.lyfta_records` (records Lyfta flagged per set); requests one full manual Lyfta resync        |
+| `0020_zepp.sql`                         | Adds the `zepp` activity source and `zepp_connections` (service role only)                                  |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

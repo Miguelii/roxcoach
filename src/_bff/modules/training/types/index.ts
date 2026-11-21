@@ -4,7 +4,7 @@ import type { RaceDTO } from '@/_bff/modules/races/types'
 import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
 
 export type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
-type ActivitySource = 'strava' | 'manual' | 'lyfta'
+export type ActivitySource = 'strava' | 'manual' | 'lyfta' | 'zepp'
 
 export type LyftaActivityRow = {
     source_id: string
@@ -17,6 +17,9 @@ export type LyftaActivityRow = {
     body_weight_kg: number | null
     lyfta_total_volume_kg_reps: number | null
 }
+
+// Insert shape of an activity imported from Zepp: the manual shape plus the Zepp track id.
+export type NewZeppActivityRow = NewActivityRow & { source_id: string }
 
 // A record Lyfta flagged on a set: `type` 1 is the estimated 1RM, 3 the volume of the set.
 type StrengthSetRecord = {

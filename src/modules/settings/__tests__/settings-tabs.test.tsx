@@ -6,7 +6,7 @@ const panels = {
     profile: <div data-testid="panel-profile" />,
     dashboard: <div data-testid="panel-dashboard" />,
     availability: <div data-testid="panel-availability" />,
-    lyfta: <div data-testid="panel-lyfta" />,
+    integrations: <div data-testid="panel-integrations" />,
 }
 
 describe('SettingsTabs', () => {
@@ -16,12 +16,25 @@ describe('SettingsTabs', () => {
                 profile={panels.profile}
                 dashboard={panels.dashboard}
                 availability={panels.availability}
-                lyfta={panels.lyfta}
+                integrations={panels.integrations}
             />
         )
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
         expect(screen.getByTestId('panel-availability')).not.toBeVisible()
-        expect(screen.getByTestId('panel-lyfta')).not.toBeVisible()
+        expect(screen.getByTestId('panel-integrations')).not.toBeVisible()
+    })
+
+    it('names the fourth tab Integrations', () => {
+        render(
+            <SettingsTabs
+                profile={panels.profile}
+                dashboard={panels.dashboard}
+                availability={panels.availability}
+                integrations={panels.integrations}
+            />
+        )
+        expect(screen.getByTestId('settings-tab-integrations')).toHaveTextContent('Integrations')
+        expect(screen.queryByTestId('settings-tab-lyfta')).toBeNull()
     })
 
     it('has its own Dashboard tab, apart from the profile', async () => {
@@ -30,7 +43,7 @@ describe('SettingsTabs', () => {
                 profile={panels.profile}
                 dashboard={panels.dashboard}
                 availability={panels.availability}
-                lyfta={panels.lyfta}
+                integrations={panels.integrations}
             />
         )
         expect(screen.getByTestId('panel-dashboard')).not.toBeVisible()
@@ -46,7 +59,7 @@ describe('SettingsTabs', () => {
                 profile={panels.profile}
                 dashboard={panels.dashboard}
                 availability={panels.availability}
-                lyfta={panels.lyfta}
+                integrations={panels.integrations}
             />
         )
         fireEvent.click(screen.getByTestId('settings-tab-availability'))
@@ -55,18 +68,18 @@ describe('SettingsTabs', () => {
         })
     })
 
-    it('switches to Lyfta while keeping all panels mounted', async () => {
+    it('switches to Integrations while keeping all panels mounted', async () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
                 availability={panels.availability}
-                lyfta={panels.lyfta}
+                integrations={panels.integrations}
             />
         )
-        fireEvent.click(screen.getByTestId('settings-tab-lyfta'))
+        fireEvent.click(screen.getByTestId('settings-tab-integrations'))
         await waitFor(() => {
-            expect(screen.getByTestId('panel-lyfta')).toBeVisible()
+            expect(screen.getByTestId('panel-integrations')).toBeVisible()
         })
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
         expect(screen.getByTestId('panel-availability')).toBeInTheDocument()
@@ -78,7 +91,7 @@ describe('SettingsTabs', () => {
                 profile={<input data-testid="profile-input" defaultValue="" />}
                 dashboard={panels.dashboard}
                 availability={panels.availability}
-                lyfta={panels.lyfta}
+                integrations={panels.integrations}
             />
         )
         fireEvent.change(screen.getByTestId('profile-input'), { target: { value: 'draft' } })

@@ -12,11 +12,11 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LyftaDisconnectDialog } from '@/modules/settings/lyfta-disconnect-dialog'
+import { LyftaDisconnectDialog } from '@/modules/lyfta/lyfta-disconnect-dialog'
 import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
-import { useLyftaConnection } from '@/modules/settings/use-lyfta-connection'
+import { useLyftaConnection } from '@/modules/lyfta/use-lyfta-connection'
 
-export function LyftaTab() {
+export function LyftaCard() {
     const lyfta = useLyftaConnection()
 
     if (lyfta.query.isPending) {

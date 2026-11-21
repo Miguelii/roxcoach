@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { LyftaDisconnectDialog } from '@/modules/settings/lyfta-disconnect-dialog'
+import { LyftaDisconnectDialog } from '@/modules/lyfta/lyfta-disconnect-dialog'
 
 const setup = (overrides: Partial<Parameters<typeof LyftaDisconnectDialog>[0]> = {}) => {
     const onOpenChange = vi.fn()

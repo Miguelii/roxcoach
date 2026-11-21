@@ -2,58 +2,21 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
-import { createDBServerClient } from '@/_bff/core/db'
-import { localDateIn, validTimezoneOrUtc } from '@/_bff/core/utils/date.utils'
+import { localDateIn } from '@/_bff/core/utils/date.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
-import { CreateSbClientError, LyftaImportError } from '@/_bff/lib/errors'
-import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
+import { LyftaImportError } from '@/_bff/lib/errors'
 import { upsertLyftaActivity } from '@/_bff/modules/training/repositories/activities.repository'
 import {
     deleteStrengthSets,
     insertStrengthSets,
 } from '@/_bff/modules/training/repositories/strength-sets.repository'
-import type { TrainingClient } from '@/_bff/modules/training/types'
+import type { ImportContext } from '@/_bff/modules/training/services/import-context.service'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
-
-type ImportDependencies = {
-    createUserClient: () => Promise<TrainingClient>
-    getTimezone: typeof getAthleteTimezone
-}
-
-// What every workout of one sync shares, resolved once per sync instead of once per workout.
-export type LyftaImportContext = {
-    supabase: TrainingClient
-    timeZone: string
-}
-
-const DEFAULT_DEPENDENCIES: ImportDependencies = {
-    createUserClient: createDBServerClient,
-    getTimezone: getAthleteTimezone,
-}
-
-// Resolves the athlete timezone (UTC when the stored one is invalid) and creates the session-bound
-// client, once for a whole sync.
-export const createLyftaImportContext = Effect.fn('createLyftaImportContext')(function* (
-    user: User,
-    dependencies: ImportDependencies = DEFAULT_DEPENDENCIES
-) {
-    const timeZone = validTimezoneOrUtc(yield* dependencies.getTimezone(user))
-    const supabase = yield* Effect.tryPromise({
-        try: dependencies.createUserClient,
-        catch: (cause) =>
-            new CreateSbClientError({
-                cause,
-                error_hash: ErrorCode.TRAINING_SB_CLIENT,
-            }),
-    })
-    const context: LyftaImportContext = { supabase, timeZone }
-    return context
-})
 
 export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
     user: User,
     workout: LyftaWorkout,
-    context: LyftaImportContext
+    context: ImportContext
 ) {
     const { supabase, timeZone } = context
     const localDate = yield* Effect.try({
