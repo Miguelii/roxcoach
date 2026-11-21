@@ -56,6 +56,7 @@ const data = (overrides: Partial<RunProgressDTO> = {}): RunProgressDTO => ({
         targetTimeS: 2700,
         paceSecPerKm: 270,
     },
+    readiness: null,
     kpis: {
         avgPaceSecPerKm: 321,
         distanceKm: 80,
@@ -346,5 +347,47 @@ describe('RunProgressView', () => {
             'From 158 bpm to 154 bpm, weighted by time.'
         )
         expect(screen.getByTestId('heart-rate-chart-figure')).toBeInTheDocument()
+    })
+})
+
+const READINESS: NonNullable<RunProgressDTO['readiness']> = {
+    race: {
+        raceId: 'h1',
+        name: 'Hyrox Lisbon',
+        raceType: 'hyrox',
+        raceDate: '2027-01-10',
+        daysLeft: 50,
+        targetTimeS: 5400,
+        priority: 'A',
+        racePaceSPerKm: 355,
+    },
+    load: { state: 'on_track', weeklyKm: 38, previousWeeklyKm: 36, ratio: 1.06, easySharePct: 71 },
+    pace: { state: 'attention', fastSessions: 2, fastTimeS: 500 },
+}
+
+describe('RunProgressView race readiness', () => {
+    it('shows the banner and the readiness card first when there is a next race', () => {
+        view({ readiness: READINESS })
+
+        expect(screen.getByTestId('race-banner-name')).toHaveTextContent('Hyrox Lisbon')
+        expect(screen.getByTestId('race-banner-days')).toHaveTextContent('50 days to go')
+        expect(screen.getByTestId('race-banner-pace')).toHaveTextContent('5:55 /km')
+        expect(screen.getByTestId('readiness-load-state')).toHaveTextContent('On track')
+        expect(screen.getByTestId('readiness-pace-state')).toHaveTextContent('Needs attention')
+        expect(screen.getByTestId('readiness-pace-reason')).toHaveTextContent('aim for 3')
+    })
+
+    it('shows neither without a next race', () => {
+        view()
+
+        expect(screen.queryByTestId('race-banner')).toBeNull()
+        expect(screen.queryByTestId('readiness-card')).toBeNull()
+    })
+
+    it('keeps the banner when there are no runs yet', () => {
+        view({ readiness: READINESS, kpis: { ...data().kpis, runs: 0 } })
+
+        expect(screen.getByTestId('race-banner')).toBeInTheDocument()
+        expect(screen.getByTestId('run-progress-empty')).toBeInTheDocument()
     })
 })

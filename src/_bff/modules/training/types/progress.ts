@@ -31,6 +31,7 @@ export type RunProgressDTO = {
     zoneBounds: HrZoneBounds[] | null
     hasZoneData: boolean
     goal: RunGoalDTO | null
+    readiness: RunReadinessDTO | null
     kpis: {
         avgPaceSecPerKm: number | null
         distanceKm: number
@@ -85,3 +86,26 @@ export type HrHistogram = { v: 1; bins: HrBin[] }
 export type PaceBin = [paceSPerKm: number, timeS: number, distanceM: number]
 
 export type PaceHistogram = { v: 1; bins: PaceBin[] }
+
+export type ReadinessState = 'on_track' | 'attention' | 'no_data' | 'taper'
+
+export type RunReadinessDTO = {
+    race: {
+        raceId: string
+        name: string
+        raceType: string
+        raceDate: string
+        daysLeft: number
+        targetTimeS: number
+        priority: string
+        racePaceSPerKm: number
+    }
+    load: {
+        state: ReadinessState
+        weeklyKm: number
+        previousWeeklyKm: number | null
+        ratio: number | null
+        easySharePct: number | null
+    }
+    pace: { state: ReadinessState; fastSessions: number; fastTimeS: number }
+}
