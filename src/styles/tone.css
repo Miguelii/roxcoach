@@ -2,6 +2,8 @@
  * Contextual palette. A section declares data-tone="green" and everything inside
  * it reads only --tone / --tone-soft / --tone-deep / --tone-ink, so one attribute
  * swaps the whole block. Tailwind exposes these as bg-tone, text-tone-ink, etc.
+ * --tone is always a fill that carries --tone-ink text at AA contrast, so tones whose
+ * base colour is too light for white text (plum, green) fill with their deep shade.
  */
 
 [data-tone] {
@@ -13,7 +15,7 @@
 
 [data-tone='paper'] {
     --tone: var(--paper);
-    --tone-soft: #fffaf1;
+    --tone-soft: var(--card);
     --tone-deep: var(--ink);
     --tone-ink: var(--ink);
 }
@@ -25,15 +27,15 @@
     --tone-ink: var(--on-brand);
 }
 
-[data-tone='navy'] {
-    --tone: var(--navy);
-    --tone-soft: var(--navy-soft);
-    --tone-deep: var(--navy-deep);
+[data-tone='signal'] {
+    --tone: var(--signal-strong);
+    --tone-soft: var(--signal-soft);
+    --tone-deep: var(--signal-deep);
     --tone-ink: var(--on-brand);
 }
 
 [data-tone='green'] {
-    --tone: var(--green);
+    --tone: var(--green-deep);
     --tone-soft: var(--green-soft);
     --tone-deep: var(--green-deep);
     --tone-ink: var(--on-brand);
@@ -46,17 +48,17 @@
     --tone-ink: var(--amber-deep);
 }
 
-[data-tone='tangerine'] {
-    --tone: var(--tangerine);
-    --tone-soft: var(--tangerine-soft);
-    --tone-deep: var(--tangerine-deep);
+[data-tone='plum'] {
+    --tone: var(--plum-deep);
+    --tone-soft: var(--plum-soft);
+    --tone-deep: var(--plum-deep);
     --tone-ink: var(--on-brand);
 }
 
-[data-tone='plum'] {
-    --tone: var(--plum);
-    --tone-soft: var(--plum-soft);
-    --tone-deep: var(--plum-deep);
+[data-tone='red'] {
+    --tone: var(--red);
+    --tone-soft: var(--red-soft);
+    --tone-deep: var(--red-deep);
     --tone-ink: var(--on-brand);
 }
 
