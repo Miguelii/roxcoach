@@ -14,6 +14,11 @@ describe('ActivityView', () => {
         )
 
         expect(screen.getByTestId('activity-back-to-calendar')).toHaveAttribute('href', '/calendar')
+        expect(screen.getByTestId('activity-back-to-calendar')).toHaveTextContent('Back')
+        expect(screen.getByTestId('activity-back-to-calendar')).toHaveAttribute(
+            'aria-label',
+            'Back to calendar'
+        )
         expect(screen.getByTestId('activity-name')).toHaveTextContent('Easy run')
         expect(screen.getByTestId('metric-time-value')).toHaveTextContent('45m')
         expect(screen.getByTestId('metric-distance-value')).toHaveTextContent('8.0 km')

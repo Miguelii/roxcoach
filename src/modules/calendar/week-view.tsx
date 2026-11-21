@@ -47,7 +47,7 @@ export function WeekView({ days, today, items, onSelectDay }: Props) {
                         </button>
                         <div className="space-y-1.5">
                             {dayItems.map((item) => (
-                                <CalendarChip key={getItemKey(item)} item={item} />
+                                <CalendarChip key={getItemKey(item)} item={item} touch />
                             ))}
                             {dayItems.length === 0 && (
                                 <p className="text-xs text-muted-foreground">Rest</p>

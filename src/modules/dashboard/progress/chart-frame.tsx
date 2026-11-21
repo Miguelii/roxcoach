@@ -9,7 +9,12 @@ type Props = {
 // Fixed height so loading never shifts the page; the label tells screen readers the message.
 export function ChartFrame({ label, testId, children }: Props) {
     return (
-        <div role="img" aria-label={label} data-testid={testId} className="h-60 w-full md:h-72">
+        <div
+            role="img"
+            aria-label={label}
+            data-testid={testId}
+            className="h-60 w-full min-w-0 md:h-72"
+        >
             {children}
         </div>
     )

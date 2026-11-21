@@ -1,3 +1,4 @@
+// oxlint-disable max-lines-per-function
 import Link from 'next/link'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { HYROX_STATION_LABELS } from '@/_bff/core/constants/hyrox.constants'
@@ -15,6 +16,7 @@ import type {
     StrengthSetDTO,
 } from '@/_bff/modules/training/types'
 import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
+import { Button } from '@/components/ui/button'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
 import { cn } from '@/lib/utils'
@@ -149,13 +151,21 @@ export function ActivityView({ activity, laps, strengthSets, strengthComparisons
 
     return (
         <>
-            <Link
-                href="/calendar"
-                data-testid="activity-back-to-calendar"
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            {/* A real button (44 px tall) so it is easy to tap; the aria-label keeps the destination. */}
+            <Button
+                variant="outline"
+                nativeButton={false}
+                className="h-11! md:h-8! w-fit gap-2 px-4"
+                render={
+                    <Link
+                        href="/calendar"
+                        data-testid="activity-back-to-calendar"
+                        aria-label="Back to calendar"
+                    />
+                }
             >
-                <IconArrowLeft className="size-4" /> Back to calendar
-            </Link>
+                <IconArrowLeft aria-hidden="true" /> Back
+            </Button>
 
             <header data-tone={tone} className="space-y-2">
                 <p className="flex items-center gap-2 text-sm">
@@ -276,13 +286,11 @@ export function ActivityView({ activity, laps, strengthSets, strengthComparisons
             )}
 
             {isStrengthActivity ? (
-                <>
-                    <StrengthExercises
-                        strengthSets={strengthSets}
-                        comparisons={strengthComparisons}
-                        records={records}
-                    />
-                </>
+                <StrengthExercises
+                    strengthSets={strengthSets}
+                    comparisons={strengthComparisons}
+                    records={records}
+                />
             ) : (
                 strengthSets.length > 0 && (
                     <section aria-label="Strength sets" className="space-y-3">

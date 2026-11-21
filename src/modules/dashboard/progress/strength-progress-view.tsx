@@ -46,7 +46,7 @@ export function StrengthProgressView({ data }: Props) {
 
     return (
         <div data-testid="strength-progress" className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <BucketChartCard
                     testId="volume-chart"
                     title="Training volume"
@@ -103,7 +103,13 @@ export function StrengthProgressView({ data }: Props) {
                         No weighted sets in this range.
                     </p>
                 ) : (
-                    <div className={shown.length > 1 ? 'grid gap-3 lg:grid-cols-2' : 'grid gap-3'}>
+                    <div
+                        className={
+                            shown.length > 1
+                                ? 'grid grid-cols-1 gap-3 lg:grid-cols-2'
+                                : 'grid grid-cols-1 gap-3'
+                        }
+                    >
                         {shown.map((exercise) => (
                             <ExerciseCard key={exercise.key} exercise={exercise} />
                         ))}

@@ -44,7 +44,7 @@ export function ExerciseCard({ exercise }: Props) {
         <section
             data-testid="exercise-card"
             aria-label={exercise.name}
-            className="space-y-4 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4 md:p-5"
+            className="min-w-0 space-y-4 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4 md:p-5"
         >
             <header className="flex items-center gap-3">
                 <span className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius-surface-inner)] border border-hairline bg-background">

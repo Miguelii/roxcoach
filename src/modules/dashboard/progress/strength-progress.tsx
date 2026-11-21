@@ -15,7 +15,7 @@ type Props = {
 function StrengthProgressSkeleton() {
     return (
         <div data-testid="strength-progress-skeleton" className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 3 }, (_, index) => (
                     <Skeleton key={index} className="h-64 rounded-[var(--radius-surface)]" />
                 ))}
