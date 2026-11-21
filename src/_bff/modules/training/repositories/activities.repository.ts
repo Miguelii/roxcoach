@@ -11,6 +11,7 @@ import type {
     NewActivityRow,
     TrainingClient,
 } from '@/_bff/modules/training/types'
+import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import type { HrHistogram } from '@/_bff/modules/training/types/progress'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
@@ -365,4 +366,98 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
             cause: 'delete removed no row',
             error_hash: ErrorCode.TRAINING_ACTIVITY_DELETE_ERR,
         })
+})
+
+const runRowSchema = z.object({
+    local_date: z.string(),
+    distance_m: numeric,
+    moving_time_s: numeric,
+    // Validated by parseHrHistogram: a corrupt value must not fail the whole request.
+    hr_histogram: z.unknown(),
+})
+
+// Runs bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
+export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('local_date, distance_m, moving_time_s, hr_histogram')
+                .eq('user_id', userId)
+                .eq('category', 'run')
+                .is('deleted_at', null)
+                .gte('local_date', from)
+                .lte('local_date', to)
+                .order('started_at', { ascending: true }),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_RUN_PROGRESS_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_ERR)
+
+    const parsed = z.array(runRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(parsed.error.issues, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_PARSE)
+
+    return parsed.data.map((row) => ({
+        localDate: row.local_date,
+        distanceM: row.distance_m,
+        movingTimeS: row.moving_time_s,
+        hrHistogram: parseHrHistogram(row.hr_histogram),
+    }))
+})
+
+const strengthWorkoutRowSchema = z.object({
+    id: z.string(),
+    local_date: z.string(),
+    body_weight_kg: numeric,
+})
+
+// Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
+export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsInRange')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id, local_date, body_weight_kg')
+                .eq('user_id', userId)
+                .eq('category', 'strength')
+                .is('deleted_at', null)
+                .gte('local_date', from)
+                .lte('local_date', to)
+                .order('started_at', { ascending: true }),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_ERR)
+
+    const parsed = z.array(strengthWorkoutRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(
+            parsed.error.issues,
+            ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_PARSE
+        )
+
+    return parsed.data.map((row) => ({
+        activityId: row.id,
+        localDate: row.local_date,
+        bodyWeightKg: row.body_weight_kg,
+    }))
 })
