@@ -127,7 +127,9 @@ Behaviour in the UI:
   race, blue for a tune-up, slate for a training race or a cancelled one, green once completed. It
   shows the priority pill with a flag, the name as a display heading, the date and location with
   icons, the days to go in a tinted panel, then a data grid (race type, goal, required pace or
-  result), a goal-versus-result chip and the notes. Actions carry icons and are 44 px tall on a
+  result; the required pace of an upcoming race is the goal time over the distance for a running
+  race and, for a Hyrox, the run pace from the Hyrox pace table for that goal, as `racePaceSPerKm`
+  does for the readiness card), a goal-versus-result chip and the notes. Actions carry icons and are 44 px tall on a
   phone.
 - The card offers Edit for upcoming races, and Complete only for upcoming races dated today or
   earlier (the server is permissive and accepts a result for a future-dated race; the UI hides it). New and Edit open a drawer (right side

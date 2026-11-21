@@ -35,18 +35,16 @@ function Tile({ id, label, value, hint }: TileProps) {
 }
 
 /**
- * This week at a glance, from the last 35 days of real activities. In strength mode time and
- * sessions count strength workouts only and there is no run distance; the load ratio always uses
- * every activity.
+ * This week at a glance, from the last 35 days of real activities. Time and sessions count the
+ * workouts of the mode only (runs in run mode, strength in strength mode), and strength mode has
+ * no run distance; the load ratio always uses every activity.
  */
 export function WeekStripView({ items, today, mode }: Props) {
     const start = startOfWeek(today)
-    const scoped =
-        mode === 'strength'
-            ? items.filter(
-                  (item) => item.type === 'activity' && item.activity.category === 'strength'
-              )
-            : items
+    const category = mode === 'strength' ? 'strength' : 'run'
+    const scoped = items.filter(
+        (item) => item.type === 'activity' && item.activity.category === category
+    )
     const totals = computeTotals(scoped, start, addDays(start, 6))
     const ratio = computeLoadRatio(items, today)
 

@@ -45,6 +45,25 @@ describe('RaceCardView', () => {
         expect(screen.getByTestId('race-priority-r-hyrox')).toHaveTextContent('Target race')
         expect(screen.getByTestId('race-location-r-hyrox')).toHaveTextContent('Lisbon')
         expect(screen.getByTestId('race-notes-r-hyrox')).toHaveTextContent('Bring grips')
+    })
+
+    it('shows the required pace of a hyrox race from the pace table', () => {
+        setup(HYROX_RACE)
+        expect(screen.getByTestId('race-pace-r-hyrox')).toHaveTextContent('Required pace 4:36 /km')
+    })
+
+    it('uses the exact tier pace when the goal is a tier time', () => {
+        setup({ ...HYROX_RACE, targetTimeS: 4500 })
+        expect(screen.getByTestId('race-pace-r-hyrox')).toHaveTextContent('Required pace 4:55 /km')
+    })
+
+    it('has no required pace for a race that is neither running nor hyrox', () => {
+        setup({ ...RUN_RACE, raceType: 'other', distanceM: null })
+        expect(screen.queryByTestId('race-pace-r-run')).not.toBeInTheDocument()
+    })
+
+    it('has no required pace once a hyrox race is completed', () => {
+        setup({ ...HYROX_RACE, status: 'completed', resultTimeS: 4300 })
         expect(screen.queryByTestId('race-pace-r-hyrox')).not.toBeInTheDocument()
     })
 

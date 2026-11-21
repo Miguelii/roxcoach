@@ -29,6 +29,57 @@ describe('WeekStripView', () => {
         expect(screen.getByTestId('week-tile-load-value')).toHaveTextContent('Too high')
     })
 
+    describe('in run mode', () => {
+        const items = [
+            makeItem({
+                id: 'r1',
+                category: 'run',
+                localDate: '2026-11-18',
+                movingTimeS: 720,
+                distanceM: 2000,
+            }),
+            makeItem({
+                id: 'r2',
+                category: 'run',
+                localDate: '2026-11-16',
+                movingTimeS: 720,
+                distanceM: 2000,
+            }),
+            makeItem({
+                id: 's1',
+                category: 'strength',
+                localDate: '2026-11-17',
+                movingTimeS: 3600,
+            }),
+            makeItem({
+                id: 's2',
+                category: 'strength',
+                localDate: '2026-11-19',
+                movingTimeS: 3600,
+            }),
+            makeItem({
+                id: 'h1',
+                category: 'hyrox',
+                localDate: '2026-11-19',
+                movingTimeS: 3600,
+            }),
+        ]
+
+        it('counts only runs for time and sessions, not strength or other workouts', () => {
+            render(<WeekStripView items={items} today="2026-11-19" mode="run" />)
+
+            expect(screen.getByTestId('week-tile-time-value')).toHaveTextContent('24m')
+            expect(screen.getByTestId('week-tile-sessions-value')).toHaveTextContent('2')
+            expect(screen.getByTestId('week-tile-run-value')).toHaveTextContent('4.0 km')
+        })
+
+        it('still shows the load tile', () => {
+            render(<WeekStripView items={items} today="2026-11-19" mode="run" />)
+
+            expect(screen.getByTestId('week-tile-load')).toBeInTheDocument()
+        })
+    })
+
     describe('in strength mode', () => {
         const items = [
             makeItem({

@@ -11,8 +11,8 @@ import {
     IconX,
 } from '@tabler/icons-react'
 import { HYROX_DIVISIONS } from '@/_bff/core/constants/hyrox.constants'
-import { requiredPaceMps } from '@/_bff/core/helpers/race-pace.helper'
-import { formatClock, formatPace } from '@/_bff/core/utils/formatters.utils'
+import { formatClock, formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
+import { racePaceSPerKm } from '@/_bff/core/utils/race-pace.utils'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -68,10 +68,7 @@ export function RaceCardView({
     const [lastConfirmation, setLastConfirmation] = useState<Exclude<Confirming, null>>('cancel')
     const { id } = race
     const upcoming = race.status === 'upcoming'
-    const pace =
-        upcoming && race.raceType === 'running' && race.distanceM !== null
-            ? formatPace(requiredPaceMps(race.distanceM, race.targetTimeS))
-            : null
+    const pace = upcoming ? formatPaceSeconds(racePaceSPerKm(race)) : null
     const delta = formatDelta(race.targetTimeS, race.resultTimeS)
 
     return (

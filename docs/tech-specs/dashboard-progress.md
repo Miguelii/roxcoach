@@ -293,9 +293,9 @@ stack in one column, the headline stats in a 2 by 2 grid, exercise cards one bel
 high). From `md`: the headline stats in one row, chart 208 px high; from `lg` the exercise cards go in two
 columns.
 
-The week strip above the charts follows the mode: in strength mode there is no run distance tile,
-and time and sessions count strength workouts only (the load ratio still uses every activity). In
-running mode it is unchanged.
+The week strip above the charts follows the mode: time and sessions count the workouts of the mode
+only (runs in running mode, strength workouts in strength mode), and strength mode has no run
+distance tile. The load ratio always uses every activity.
 
 ### Mode switch and range
 
