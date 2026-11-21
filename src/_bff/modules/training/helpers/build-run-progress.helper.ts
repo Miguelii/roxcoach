@@ -1,0 +1,143 @@
+import {
+    zoneOfHeartRate,
+    type HrZoneBounds,
+    type ZoneNumber,
+} from '@/_bff/core/constants/hr-zones.constants'
+import { MIN_ZONE_SAMPLE_S, type ProgressRange } from '@/_bff/core/constants/progress.constants'
+import { bucketStartOf, bucketStarts, rangeBounds } from '@/_bff/core/utils/progress-range.utils'
+import { DAY_MS, parseIsoDate } from '@/_bff/core/utils/week-dates.utils'
+import type { RaceDTO } from '@/_bff/modules/races/types'
+import type {
+    HrHistogram,
+    RunBucketDTO,
+    RunGoalDTO,
+    RunProgressDTO,
+    RunZonePointDTO,
+} from '@/_bff/modules/training/types/progress'
+
+type RunRow = {
+    localDate: string
+    distanceM: number | null
+    movingTimeS: number | null
+    hrHistogram: HrHistogram | null
+}
+
+type Input = {
+    runs: RunRow[]
+    today: string
+    range: ProgressRange
+    zoneBounds: HrZoneBounds[] | null
+    goalRace: RaceDTO | null
+}
+
+type ZoneTotals = { timeS: number; distanceM: number }
+
+type Accumulator = {
+    distanceM: number
+    movingTimeS: number
+    runs: number
+    zones: Map<ZoneNumber, ZoneTotals>
+}
+
+const ZONES: ZoneNumber[] = [1, 2, 3, 4, 5]
+
+const paceOf = (movingTimeS: number, distanceM: number) =>
+    distanceM > 0 ? movingTimeS / (distanceM / 1000) : null
+
+function buildGoal(goalRace: RaceDTO | null, today: string): RunGoalDTO | null {
+    if (goalRace === null || goalRace.distanceM === null) return null
+    const days = Math.round(
+        (parseIsoDate(goalRace.raceDate).getTime() - parseIsoDate(today).getTime()) / DAY_MS
+    )
+    return {
+        raceId: goalRace.id,
+        name: goalRace.name,
+        raceDate: goalRace.raceDate,
+        daysLeft: Math.max(0, days),
+        distanceM: goalRace.distanceM,
+        targetTimeS: goalRace.targetTimeS,
+        paceSecPerKm: goalRace.targetTimeS / (goalRace.distanceM / 1000),
+    }
+}
+
+function addHistogram(acc: Accumulator, histogram: HrHistogram, bounds: HrZoneBounds[] | null) {
+    if (bounds === null) return
+    for (const [bpm, timeS, distanceM] of histogram.bins) {
+        const zone = zoneOfHeartRate(bpm, bounds)
+        const totals = acc.zones.get(zone) ?? { timeS: 0, distanceM: 0 }
+        totals.timeS += timeS
+        totals.distanceM += distanceM
+        acc.zones.set(zone, totals)
+    }
+}
+
+function zonePoints(acc: Accumulator): RunZonePointDTO[] {
+    return ZONES.map((zone) => {
+        const totals = acc.zones.get(zone)
+        if (totals === undefined) return { zone, paceSecPerKm: null, minutes: 0 }
+        const enough = totals.timeS >= MIN_ZONE_SAMPLE_S
+        return {
+            zone,
+            paceSecPerKm: enough ? paceOf(totals.timeS, totals.distanceM) : null,
+            minutes: totals.timeS / 60,
+        }
+    })
+}
+
+export function buildRunProgress({
+    runs,
+    today,
+    range,
+    zoneBounds,
+    goalRace,
+}: Input): RunProgressDTO {
+    const { from, granularity } = rangeBounds(today, range)
+    const accumulators = new Map<string, Accumulator>()
+    for (const start of bucketStarts(from, today, granularity)) {
+        accumulators.set(start, { distanceM: 0, movingTimeS: 0, runs: 0, zones: new Map() })
+    }
+
+    for (const run of runs) {
+        const acc = accumulators.get(bucketStartOf(run.localDate, granularity))
+        if (acc === undefined) continue
+        const { distanceM, movingTimeS } = run
+        if (distanceM !== null && movingTimeS !== null && distanceM > 0 && movingTimeS > 0) {
+            acc.distanceM += distanceM
+            acc.movingTimeS += movingTimeS
+            acc.runs += 1
+        }
+        if (run.hrHistogram !== null) addHistogram(acc, run.hrHistogram, zoneBounds)
+    }
+
+    const buckets: RunBucketDTO[] = [...accumulators].map(([start, acc]) => ({
+        start,
+        paceSecPerKm: paceOf(acc.movingTimeS, acc.distanceM),
+        distanceKm: acc.distanceM / 1000,
+        runs: acc.runs,
+        zones: zonePoints(acc),
+    }))
+
+    const totalDistanceM = [...accumulators.values()].reduce((sum, a) => sum + a.distanceM, 0)
+    const totalMovingS = [...accumulators.values()].reduce((sum, a) => sum + a.movingTimeS, 0)
+    const recentPace = buckets.findLast((b) => b.paceSecPerKm !== null)?.paceSecPerKm ?? null
+    const goal = buildGoal(goalRace, today)
+
+    return {
+        range,
+        granularity,
+        buckets,
+        zoneBounds,
+        hasZoneData:
+            zoneBounds !== null &&
+            buckets.some((b) => b.zones.some((z) => z.paceSecPerKm !== null)),
+        goal,
+        kpis: {
+            avgPaceSecPerKm: paceOf(totalMovingS, totalDistanceM),
+            distanceKm: totalDistanceM / 1000,
+            runs: buckets.reduce((sum, b) => sum + b.runs, 0),
+            recentPaceSecPerKm: recentPace,
+            goalDeltaSecPerKm:
+                recentPace !== null && goal !== null ? recentPace - goal.paceSecPerKm : null,
+        },
+    }
+}
