@@ -95,15 +95,15 @@ describe('buildRunProgress buckets', () => {
         expect(dto.buckets.at(-1)?.paceSecPerKm).toBe(360)
     })
 
-    it('uses monthly buckets for 12m', () => {
+    it('uses 52 weekly buckets for 12m', () => {
         const dto = buildRunProgress({
             ...base,
             range: '12m',
             runs: [run('2026-11-02', 1000, 300)],
         })
-        expect(dto.granularity).toBe('month')
-        expect(dto.buckets).toHaveLength(12)
-        expect(dto.buckets.at(-1)?.start).toBe('2026-11-01')
+        expect(dto.granularity).toBe('week')
+        expect(dto.buckets).toHaveLength(52)
+        expect(dto.buckets.at(-1)?.start).toBe('2026-11-16')
     })
 })
 

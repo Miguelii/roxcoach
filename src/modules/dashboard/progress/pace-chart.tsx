@@ -13,7 +13,7 @@ import {
 import { formatClock, formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
 import type { RunBucketDTO, RunGoalDTO } from '@/_bff/modules/training/types/progress'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
-import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
+import { bucketLabel, bucketRangeLabel } from '@/modules/dashboard/progress/progress-utils'
 import {
     AXIS_COLOR,
     GOAL_COLOR,
@@ -35,6 +35,7 @@ export function PaceChart({ buckets, goal, granularity }: Props) {
     const reduceMotion = usePrefersReducedMotion()
     const data = buckets.map((bucket) => ({
         label: bucketLabel(bucket.start, granularity),
+        range: bucketRangeLabel(bucket.start, granularity),
         pace: bucket.paceSecPerKm,
     }))
     const values = [
@@ -75,6 +76,7 @@ export function PaceChart({ buckets, goal, granularity }: Props) {
                         borderRadius: 12,
                         fontSize: 12,
                     }}
+                    labelFormatter={(label, payload) => payload[0]?.payload.range ?? label}
                     formatter={(value) => [formatPaceSeconds(Number(value)) ?? '-', 'Pace']}
                 />
                 {goal === null ? null : (

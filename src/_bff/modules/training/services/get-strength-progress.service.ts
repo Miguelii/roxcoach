@@ -40,7 +40,7 @@ export const getStrengthProgress = Effect.fn('getStrengthProgress')(function* (
     const supabase = yield* deps.createClient()
     const timezone = yield* deps.getTimezone(user)
     const today = todayIn(timezone, deps.now())
-    const { from } = rangeBounds(today, range, true)
+    const { from } = rangeBounds(today, range)
 
     const workouts = yield* selectStrengthWorkoutsInRange(supabase, user.id, from, today)
     const sets = yield* selectSetsForActivities(

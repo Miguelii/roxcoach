@@ -43,7 +43,7 @@ const usableLoad = (set: SetRow) =>
 // Volume, workouts and sets per bucket over every exercise, with empty buckets present so the
 // axis has no gaps.
 function buildBuckets({ range, today, workouts, sets }: Input) {
-    const { from, granularity } = rangeBounds(today, range, true)
+    const { from, granularity } = rangeBounds(today, range)
     const buckets = new Map<string, StrengthBucketDTO & { ids: Set<string> }>(
         bucketStarts(from, today, granularity).map((start) => [
             start,

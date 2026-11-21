@@ -13,7 +13,7 @@ import type { ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
 import { formatClock, formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
 import type { RunBucketDTO } from '@/_bff/modules/training/types/progress'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
-import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
+import { bucketLabel, bucketRangeLabel } from '@/modules/dashboard/progress/progress-utils'
 import { AXIS_COLOR, GRID_COLOR, ZONE_STYLES } from '@/modules/dashboard/progress/series-styles'
 import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
@@ -37,6 +37,7 @@ export function ZonePaceChart({ buckets, zones, granularity }: Props) {
     const reduceMotion = usePrefersReducedMotion()
     const data = buckets.map((bucket) => ({
         label: bucketLabel(bucket.start, granularity),
+        range: bucketRangeLabel(bucket.start, granularity),
         ...Object.fromEntries(
             zones.flatMap((zone) => [
                 [`z${zone}`, zoneOf(bucket, zone)?.paceSecPerKm ?? null],
@@ -81,6 +82,7 @@ export function ZonePaceChart({ buckets, zones, granularity }: Props) {
                         borderRadius: 12,
                         fontSize: 12,
                     }}
+                    labelFormatter={(label, payload) => payload[0]?.payload.range ?? label}
                     formatter={(value, name, item) => {
                         const zone = Number(String(name).slice(1))
                         const minutes: unknown = item.payload?.[`m${zone}`]

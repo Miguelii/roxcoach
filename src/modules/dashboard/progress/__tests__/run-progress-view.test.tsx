@@ -200,7 +200,7 @@ describe('ProgressHero', () => {
         view()
         fireEvent.click(screen.getByTestId('hero-previous'))
 
-        expect(screen.getByTestId('hero-eyebrow')).toHaveTextContent('Week of 2 Nov')
+        expect(screen.getByTestId('hero-eyebrow')).toHaveTextContent('Week 45 · 2 to 8 Nov')
         expect(screen.getByTestId('hero-value')).toHaveTextContent('20.0 km')
         expect(screen.getByTestId('hero-next')).not.toBeDisabled()
         fireEvent.click(screen.getByTestId('hero-next'))

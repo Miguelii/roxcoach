@@ -123,6 +123,12 @@ Behaviour in the UI:
 
 - The Races page lists upcoming races sorted by date with days remaining, then a collapsed
   history of completed and cancelled ones.
+- The card is a double-bezel surface (outer shell, inner core) toned by state: amber for a target
+  race, blue for a tune-up, slate for a training race or a cancelled one, green once completed. It
+  shows the priority pill with a flag, the name as a display heading, the date and location with
+  icons, the days to go in a tinted panel, then a data grid (race type, goal, required pace or
+  result), a goal-versus-result chip and the notes. Actions carry icons and are 44 px tall on a
+  phone.
 - The card offers Edit for upcoming races, and Complete only for upcoming races dated today or
   earlier (the server is permissive and accepts a result for a future-dated race; the UI hides it). New and Edit open a drawer (right side
   on desktop, bottom sheet on mobile) with the shared form layout: a bold title and close control,

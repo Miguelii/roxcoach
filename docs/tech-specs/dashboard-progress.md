@@ -173,10 +173,10 @@ and how many workouts ago the best estimated 1RM was. Zero changes read "no chan
 
 ### Buckets
 
-The range decides the resolution: `3m` and `6m` use ISO weeks (Monday start, existing
-`week-dates.utils`), `12m` uses calendar months. Strength mode is always weekly: its `12m` is 52
-ISO weeks (`rangeBounds(today, range, true)`), and its training volume and workouts charts are
-stacked at full width so the weekly bars have room. A bucket is keyed by its first date.
+The range decides the resolution: every range uses ISO weeks (Monday start, existing
+`week-dates.utils`): `3m` is 13, `6m` 26 and `12m` 52 weeks. In strength mode the training volume and
+workouts charts are stacked at full width so the weekly bars have room. A bucket is keyed by its
+first date.
 The axis shows the short start date (`16 Nov`), and the tooltip title names the whole bucket:
 `Week 47 · 16 to 22 Nov` (`30 Nov to 6 Dec` across a month) or `November 2026` (`bucketRangeLabel`). Buckets with
 no data are present in the response with `null` values so the x axis is continuous.
@@ -418,7 +418,7 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 ## Calls made by the author (to be checked)
 
 - Karvonen zones with fixed floors (60, 70, 80, 90%) and both heart rates required.
-- `3m` and `6m` weekly, `12m` monthly; default `12m`; range kept in the URL, not in the profile.
+- every range weekly (13, 26 and 52 weeks); default `12m`; range kept in the URL, not in the profile.
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
 - Top 4 exercises by number of workouts by default, each in its own card with its own axis (loads

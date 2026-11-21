@@ -99,7 +99,7 @@ export function RacesList({
             ) : null}
 
             {upcoming.length > 0 ? (
-                <div data-testid="races-upcoming" className="grid gap-4 md:grid-cols-2">
+                <div data-testid="races-upcoming" className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {upcoming.map((race) => card(race))}
                 </div>
             ) : null}
@@ -109,7 +109,7 @@ export function RacesList({
                     <summary className="cursor-pointer text-sm font-medium">
                         History ({history.length})
                     </summary>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                         {history.map((race) => card(race))}
                     </div>
                 </details>

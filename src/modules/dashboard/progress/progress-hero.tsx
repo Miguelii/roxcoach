@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChangeBadge } from '@/modules/dashboard/progress/change-badge'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
-import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
+import { bucketLabel, bucketRangeLabel } from '@/modules/dashboard/progress/progress-utils'
 
 type Props = {
     data: RunProgressDTO
@@ -75,7 +75,7 @@ export function ProgressHero({ data }: Props) {
         index === last
             ? `This ${period}`
             : granularity === 'week'
-              ? `Week of ${bucketLabel(bucket.start, granularity)}`
+              ? bucketRangeLabel(bucket.start, granularity)
               : bucketLabel(bucket.start, granularity)
 
     return (

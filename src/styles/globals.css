@@ -163,3 +163,19 @@ html {
         scroll-behavior: auto !important;
     }
 }
+
+.recharts-responsive-container,
+.recharts-responsive-container *,
+[class*='recharts-'] {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.recharts-responsive-container :focus,
+.recharts-responsive-container :focus-visible,
+.recharts-responsive-container:focus,
+.recharts-responsive-container:focus-visible,
+[class*='recharts-']:focus,
+[class*='recharts-']:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
