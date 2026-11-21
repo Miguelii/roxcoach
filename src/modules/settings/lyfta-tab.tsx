@@ -150,8 +150,13 @@ export function LyftaTab() {
                                 </FormItem>
                             )}
                         />
-                        <div className="flex flex-row w-full md:flex-wrap gap-3">
-                            <Button type="submit" data-testid="lyfta-connect" disabled={busy}>
+                        <div className="flex flex-col md:flex-row w-full md:flex-wrap gap-3">
+                            <Button
+                                className="w-full md:w-fit"
+                                type="submit"
+                                data-testid="lyfta-connect"
+                                disabled={busy}
+                            >
                                 {lyfta.isConnecting ? (
                                     <Loader2Icon className="animate-spin" />
                                 ) : null}
@@ -159,6 +164,7 @@ export function LyftaTab() {
                             </Button>
                             {connected ? (
                                 <Button
+                                    className="w-full md:max-w-17.5"
                                     type="button"
                                     variant="outline"
                                     data-testid="lyfta-replace-cancel"
