@@ -75,12 +75,9 @@ export function RaceCardView({
         <div
             data-testid={`race-card-${id}`}
             data-tone={toneOf(race)}
-            className={cn(
-                'flex h-full flex-col rounded-[var(--radius-surface)] border border-ink/10 bg-muted p-1.5',
-                race.status === 'cancelled' && 'opacity-80'
-            )}
+            className={cn('flex h-full flex-col ', race.status === 'cancelled' && 'opacity-80')}
         >
-            <div className="flex flex-1 flex-col gap-5 rounded-[var(--radius-surface-inner)] bg-card p-4 md:p-5">
+            <div className="flex flex-1 flex-col gap-5 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6">
                 <div className="space-y-3">
                     <div className="min-w-0 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">

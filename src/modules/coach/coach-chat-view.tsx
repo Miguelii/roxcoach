@@ -76,7 +76,7 @@ export function CoachChatView(props: Props) {
         // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
         return (
             // A white bar in a faint bezel with a soft shadow: it lifts off the page without shouting.
-            <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/5 p-1.5 ring-1 ring-ink/10 shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--color-ink)_35%,transparent)] md:block">
+            <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/5 p-1.5 shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--color-ink)_35%,transparent)] md:block">
                 <div className="group flex h-12 items-center rounded-full bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5">
                     <button
                         type="button"

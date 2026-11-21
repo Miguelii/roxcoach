@@ -15,7 +15,7 @@ export function ChartCard({ title, takeaway, testId, controls, footnote, childre
         <section
             data-testid={testId}
             aria-label={title}
-            className="min-w-0 space-y-4 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4 md:p-5"
+            className="min-w-0 space-y-4 rounded-[var(--radius-surface)] shadow-soft bg-card p-4 md:p-5"
         >
             <header className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">

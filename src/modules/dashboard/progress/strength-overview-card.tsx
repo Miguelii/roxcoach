@@ -86,12 +86,8 @@ export function StrengthOverviewCard({ exercises }: Props) {
     ]
 
     return (
-        <section
-            data-testid={TEST_ID}
-            aria-label="Progress summary"
-            className="min-w-0 rounded-[var(--radius-surface)] border border-ink/10 bg-muted p-1.5"
-        >
-            <div className="space-y-5 rounded-[var(--radius-surface-inner)] bg-card p-4 md:p-5">
+        <section data-testid={TEST_ID} aria-label="Progress summary" className="min-w-0">
+            <div className="space-y-5 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6">
                 <header className="space-y-1">
                     <h2 className="display text-xl">Progress summary</h2>
                     <p

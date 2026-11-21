@@ -94,9 +94,8 @@ export function StrengthSummary({
             data-testid="strength-summary"
             data-tone={KINDS.strength.tone}
             aria-label="Workout summary"
-            className="rounded-[var(--radius-surface)] border border-ink/10 bg-muted p-1.5"
         >
-            <div className="space-y-4 rounded-[var(--radius-surface-inner)] bg-card p-4">
+            <div className="space-y-4 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft">
                 {metrics.length > 0 && (
                     <dl
                         data-testid="activity-metrics"

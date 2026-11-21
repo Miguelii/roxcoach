@@ -26,6 +26,9 @@ Never hardcode colors: use semantic tokens (`bg-primary`, `text-muted-foreground
   with their deep shade.
 - **Elevation:** `shadow-soft` and `shadow-lift` (very diffused, never dark). Cards use a hairline
   ring plus `shadow-soft` instead of a border.
+- **Cards are single layer:** white `bg-card` with `shadow-soft` and the 28px radius, no outline, no
+  outer frame or ring. (The nested shell-and-core look was tried and dropped: its frame read as an
+  outline.)
 - **Radii:** `--radius` 16px; 22px inner cards (`--radius-surface-inner`), 28px outer cards and
   sheets (`--radius-surface`), full for buttons, pills and the nav. Nested cards use concentric
   radii (inner = outer minus the padding).
@@ -234,7 +237,7 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
   values remain honest. An activity without sets gets an empty state.
 - Strength detail, all derived from stored sets (helpers in
   `src/_bff/core/helpers/strength-detail.helper.ts`, used by the server and the UI):
-    - One summary card (outer shell, inner core) holds the whole workout, so nothing about it sits
+    - One summary card holds the whole workout, so nothing about it sits
       apart: the headline numbers (duration, total volume, body weight, calories when stored,
       heart rate and effort when present), then what was done (exercises, sets, total reps, heaviest
       set with its exercise, density as volume per minute with a volume and a duration), then a

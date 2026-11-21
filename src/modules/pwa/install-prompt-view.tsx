@@ -33,7 +33,7 @@ export function InstallPromptView({ variant, onInstall, onDismiss }: Props) {
                         alt=""
                         width={64}
                         height={64}
-                        className="size-16 rounded-[1.1rem] ring-1 ring-ink/10"
+                        className="size-16 rounded-[1.1rem]"
                     />
                     <DrawerTitle className="display text-2xl">Install Roxcoach</DrawerTitle>
                     <DrawerDescription data-testid="install-prompt-description">

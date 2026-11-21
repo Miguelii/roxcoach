@@ -25,7 +25,7 @@ export function RecentRuns({ items }: Props) {
         <section
             data-testid="recent-runs"
             aria-label="Recent runs"
-            className="space-y-1 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4"
+            className="space-y-1 rounded-[var(--radius-surface)] shadow-soft bg-card p-4"
         >
             <h2 className="display pb-2 text-lg">Recent runs</h2>
             <ul className="divide-y divide-hairline">

@@ -210,7 +210,7 @@ export function RunProgressView({ data, items, today }: ViewProps) {
                 {race}
                 <p
                     data-testid="run-progress-empty"
-                    className="rounded-[var(--radius-surface)] border border-ink/10 bg-card p-5 text-sm text-muted-foreground"
+                    className="rounded-[var(--radius-surface)] shadow-soft bg-card p-5 text-sm text-muted-foreground"
                 >
                     Upload a run to see your pace.
                 </p>

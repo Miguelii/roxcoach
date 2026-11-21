@@ -35,7 +35,7 @@ export function WeekDots({ items, today }: Props) {
         <section
             data-testid="week-dots"
             aria-label="Runs this week"
-            className="space-y-3 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4"
+            className="space-y-3 rounded-[var(--radius-surface)] shadow-soft bg-card p-4"
         >
             <header className="flex items-baseline justify-between gap-3">
                 <h2 className="display text-lg">This week</h2>

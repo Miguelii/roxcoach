@@ -24,7 +24,7 @@ export function WeekView({ days, today, items, onSelectDay }: Props) {
                         data-testid={`week-day-${date}`}
                         data-today={date === today}
                         className={cn(
-                            'rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-2.5 md:min-h-64',
+                            'rounded-[var(--radius-surface-inner)] shadow-soft bg-card p-2.5 md:min-h-64',
                             date === today && 'ring-2 ring-ink'
                         )}
                     >

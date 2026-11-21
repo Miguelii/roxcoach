@@ -40,7 +40,7 @@ export function StrengthProgressView({ data }: Props) {
         return (
             <p
                 data-testid="strength-progress-empty"
-                className="rounded-[var(--radius-surface)] border border-ink/10 bg-card p-5 text-sm text-muted-foreground"
+                className="rounded-[var(--radius-surface)] shadow-soft bg-card p-5 text-sm text-muted-foreground"
             >
                 <Link href="/settings" className="underline">
                     Sync Lyfta

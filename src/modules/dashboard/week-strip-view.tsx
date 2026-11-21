@@ -23,7 +23,7 @@ function Tile({ id, label, value, hint }: TileProps) {
     return (
         <div
             data-testid={`week-tile-${id}`}
-            className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4"
+            className="rounded-[var(--radius-surface-inner)] shadow-soft bg-card p-4"
         >
             <p className="eyebrow text-muted-foreground">{label}</p>
             <p data-testid={`week-tile-${id}-value`} className="display mt-1 text-3xl">
