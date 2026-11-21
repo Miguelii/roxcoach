@@ -97,6 +97,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 | Route              | Access    | Job                                                            |
 | ------------------ | --------- | -------------------------------------------------------------- |
 | `/login`           | public    | sign in                                                        |
+| `/signup`          | public    | create an account with an access code (404 while closed)       |
 | `/dashboard`       | protected | training progress overview                                     |
 | `/calendar`        | protected | activity and race calendar, activity upload                    |
 | `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
@@ -108,8 +109,14 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ### Login
 
 A centered card on the paper ground: logo, email, password, one primary button. Inline field
-errors, a single generic failure message, a loading state on submit. No links to sign up or reset
-a password. Follows the BrewStock form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
+errors, a single generic failure message, a loading state on submit. No link to reset a password;
+a link to `/signup` shows only while sign-up is open. Follows the BrewStock form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
+
+### Sign-up
+
+The login card with three fields: email, password (8 to 72 characters) and access code, one primary
+button ("Create account") and a link back to sign in. One generic failure message for every
+refusal. The page is a 404 while sign-up is closed. See [signup-access-code.md](signup-access-code.md).
 
 ### Dashboard
 

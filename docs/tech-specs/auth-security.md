@@ -11,14 +11,19 @@ to change.
 - The user already exists in `auth.users` if they use the other app, or is created by hand in the
   Supabase dashboard (Authentication, Users, email + password, auto-confirmed).
 - **Access is an explicit flag.** A one-time SQL snippet, `db/seed/grant-access.sql` (run as
-  `postgres` in the SQL editor, steps in `db/README.md`), grants it:
+  `postgres` in the SQL editor, steps in `db/README.md`), grants it through
+  `roxcoach.grant_access`, which runs this statement:
   `update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"roxcoach": true}'::jsonb where email = '<email>';`
   The flag appears in the JWT as `app_metadata.roxcoach` after the next sign-in. Only the service role
   can write `app_metadata`, so a user cannot grant it to themselves.
 - Then insert the matching `athlete_profiles` row (same seed snippet).
-- Do **not** disable "Allow new users to sign up": the other app may depend on it. Roxcoach does not
-  need it, because there is no sign-up route, form or tRPC procedure, and because the access flag
-  makes any other account useless here.
+- **New users** can instead sign up on `/signup` with the shared access code. The server creates the
+  confirmed user and calls the same grant (`roxcoach.grant_access`, migration `0017`), so nothing
+  runs by hand. The script stays for accounts that already exist (see
+  [signup-access-code.md](signup-access-code.md)).
+- Do **not** disable "Allow new users to sign up": the other app may depend on it. Roxcoach's own
+  sign-up goes through the admin API, and the access flag makes any account created elsewhere
+  useless here.
 - No password reset, OTP or OAuth login in Roxcoach. If the password is lost it is reset in the
   dashboard (this also affects the other app if it is the same account).
 
@@ -54,10 +59,18 @@ page never reveals that the account exists in the other app.
 | Success           | redirect to `/dashboard`                                                             |
 | Failure           | one generic message ("Invalid email or password"), never reveal which part was wrong |
 | Already signed in | the proxy redirects `/login` to `/dashboard`                                         |
+| Sign-up           | a link to `/signup` shows only while sign-up is open                                 |
 | Logout            | app shell action calling `auth.logout` (local scope), then redirect to `/login`      |
 
 The login form follows BrewStock's form pattern and visual style (see
 [ux-design.md](ux-design.md)). There is no marketing content on the page.
+
+## Sign-up page
+
+`/signup` (email, password, access code) creates an account and grants access in one step. It is
+specified in [signup-access-code.md](signup-access-code.md): the code check, the admin
+`createUser`, `roxcoach.grant_access`, the cleanup on failure, the generic failure and the
+`NEXT_SIGNUP_ACCESS_CODE` env var (unset means closed).
 
 ## Session and proxy
 
@@ -73,12 +86,12 @@ The login form follows BrewStock's form pattern and visual style (see
 
 Redirect rules in `sbProxy`:
 
-| Condition                                       | Result                              |
-| ----------------------------------------------- | ----------------------------------- |
-| No claims and path starts with a protected path | redirect to `/login`                |
-| Claims without the flag on a protected path     | redirect to `/login`                |
-| Claims with the flag and path is `/login`       | redirect to `/dashboard`            |
-| Anything else                                   | pass through with refreshed cookies |
+| Condition                                              | Result                              |
+| ------------------------------------------------------ | ----------------------------------- |
+| No claims and path starts with a protected path        | redirect to `/login`                |
+| Claims without the flag on a protected path            | redirect to `/login`                |
+| Claims with the flag and path is `/login` or `/signup` | redirect to `/dashboard`            |
+| Anything else                                          | pass through with refreshed cookies |
 
 The decision is the pure function `decideAuthRedirect` in
 `src/_bff/core/helpers/auth-redirect.helper.ts`. A protected prefix only matches on a path-segment
@@ -87,7 +100,8 @@ session cookies and Supabase's no-cache headers, like the pass-through response,
 those headers, so a response that sets a session cookie is never cacheable.
 
 Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client code):
-`AUTH_PAGE_PATH = '/login'`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
+`AUTH_PAGE_PATH = '/login'`, `SIGNUP_PAGE_PATH = '/signup'`,
+`PUBLIC_AUTH_PATHS = [AUTH_PAGE_PATH, SIGNUP_PAGE_PATH]`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
 `PROTECTED_PATHS = ['/dashboard', '/calendar', '/activities', '/races', '/settings']`.
 
 The proxy matcher excludes `_next`, `api/` (route handlers there authenticate themselves),
@@ -123,14 +137,18 @@ repositories.
 
 ## Auth module (`src/_bff/modules/auth/`)
 
-| File                                    | Purpose                                                           |
-| --------------------------------------- | ----------------------------------------------------------------- |
-| `controllers/sb-login.controller.ts`    | public procedure, input `{ email, password }`                     |
-| `controllers/sb-logout.controller.ts`   | public procedure (must work with an expired or unflagged session) |
-| `services/sb-login.service.ts`          | `signInWithPassword`, tagged errors                               |
-| `services/sb-logout.service.ts`         | `signOut({ scope: 'local' })`                                     |
-| `services/get-session.service.ts`       | `getUser()` once per request via React `cache()`                  |
-| `services/get-cached-claims.service.ts` | `getClaims()` for rendering UI without a network call             |
+| File                                      | Purpose                                                           |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `controllers/sb-login.controller.ts`      | public procedure, input `{ email, password }`                     |
+| `controllers/sb-logout.controller.ts`     | public procedure (must work with an expired or unflagged session) |
+| `controllers/sb-sign-up.controller.ts`    | public procedure, input `{ email, password, accessCode }`         |
+| `services/sb-sign-up.service.ts`          | access code check, admin `createUser`, grant, sign-in             |
+| `repositories/access-grant.repository.ts` | rpc `roxcoach.grant_access`                                       |
+| `helpers/access-code.helper.ts`           | constant-time code comparison                                     |
+| `services/sb-login.service.ts`            | `signInWithPassword`, tagged errors                               |
+| `services/sb-logout.service.ts`           | `signOut({ scope: 'local' })`                                     |
+| `services/get-session.service.ts`         | `getUser()` once per request via React `cache()`                  |
+| `services/get-cached-claims.service.ts`   | `getClaims()` for rendering UI without a network call             |
 
 Copied from BrewStock, minus the OTP services and the OAuth callback route. `protectedProcedure`
 in `src/_bff/trpc/server.ts` matches BrewStock's (it runs `getSession()`, returns 401 without a

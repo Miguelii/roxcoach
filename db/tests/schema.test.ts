@@ -93,6 +93,7 @@ describe('schema layout', () => {
             '0014_coach_usage.sql',
             '0015_dashboard_progress.sql',
             '0016_race_readiness.sql',
+            '0017_grant_access_fn.sql',
         ])
     })
 

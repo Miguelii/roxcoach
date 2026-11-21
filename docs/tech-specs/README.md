@@ -15,6 +15,7 @@ before touching its code, and update it in the same change.
 | [architecture.md](architecture.md)                 | `_bff` layering, module map, tRPC, Effect, env, code placement                                                         |
 | [database.md](database.md)                         | Supabase schema, enums, RLS, migrations                                                                                |
 | [auth-security.md](auth-security.md)               | Login page, Supabase session, proxy, CSP, key usage                                                                    |
+| [signup-access-code.md](signup-access-code.md)     | `/signup` page: shared access code, automatic access grant with `roxcoach.grant_access`                                |
 | [athlete-races.md](athlete-races.md)               | Starting point (profile, weekly availability) and races with goals                                                     |
 | [manual-logging.md](manual-logging.md)             | Station times, loads and strength sets entered by hand                                                                 |
 | [manual-upload.md](manual-upload.md)               | FIT, TCX and GPX upload from the dashboard, parsing, file storage                                                      |
@@ -26,23 +27,23 @@ before touching its code, and update it in the same change.
 
 ## Decisions log
 
-| Decision       | Choice                                                                                                                                                                                                                 |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Users          | One athlete today, created by hand in Supabase (no sign-up, no password reset). The schema and queries are multi-user from day one: `user_id` on every table, composite foreign keys, explicit `userId` in every query |
-| Login          | Email and password only, one `/login` page, same Supabase implementation as BrewStock                                                                                                                                  |
-| Coach          | A chat on the dashboard, grounded in the athlete's data (context block plus read-only tools), with saved conversations. Inside the app (AI SDK + Gemini free tier, behind a provider interface), not MCP               |
-| Feedback       | Only when the athlete asks in the chat. No automatic or per-workout feedback                                                                                                                                           |
-| Data sources   | Manual upload and manual logging, plus read-only manual Lyfta workout sync. No Strava sync, Garmin or Hevy                                                                                                             |
-| Language       | UI copy and coach output in English. Code in English                                                                                                                                                                   |
-| Races          | One or many. Each has its own goal (target time). Hyrox and running races supported                                                                                                                                    |
-| Design         | Exactly BrewStock's design system (tokens, fonts, shadcn base-ui components)                                                                                                                                           |
-| Supabase       | Existing project shared with another app (free plan limit), own schema `roxcoach`, access flag `app_metadata.roxcoach`. Region is France                                                                               |
-| Backend layout | Same `_bff` structure as BrewStock                                                                                                                                                                                     |
+| Decision       | Choice                                                                                                                                                                                                                                               |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Users          | One athlete today, created by hand in Supabase or through the access-code `/signup` page (no password reset). The schema and queries are multi-user from day one: `user_id` on every table, composite foreign keys, explicit `userId` in every query |
+| Login          | Email and password only, one `/login` page, same Supabase implementation as BrewStock. New users join on `/signup` with a shared access code (closed unless `NEXT_SIGNUP_ACCESS_CODE` is set)                                                        |
+| Coach          | A chat on the dashboard, grounded in the athlete's data (context block plus read-only tools), with saved conversations. Inside the app (AI SDK + Gemini free tier, behind a provider interface), not MCP                                             |
+| Feedback       | Only when the athlete asks in the chat. No automatic or per-workout feedback                                                                                                                                                                         |
+| Data sources   | Manual upload and manual logging, plus read-only manual Lyfta workout sync. No Strava sync, Garmin or Hevy                                                                                                                                           |
+| Language       | UI copy and coach output in English. Code in English                                                                                                                                                                                                 |
+| Races          | One or many. Each has its own goal (target time). Hyrox and running races supported                                                                                                                                                                  |
+| Design         | Exactly BrewStock's design system (tokens, fonts, shadcn base-ui components)                                                                                                                                                                         |
+| Supabase       | Existing project shared with another app (free plan limit), own schema `roxcoach`, access flag `app_metadata.roxcoach`. Region is France                                                                                                             |
+| Backend layout | Same `_bff` structure as BrewStock                                                                                                                                                                                                                   |
 
 ## Out of scope for v1
 
-- Registration, invite flow, password reset, OTP, OAuth login
-- A second athlete's sign-up and invitation flow, billing, public pages, SEO (the data model already supports more users)
+- Invite flow, per-user codes, email verification, password reset, OTP, OAuth login
+- Billing, public pages, SEO (the data model already supports more users)
 - MCP server (the coach is the in-app chat)
 - A weekly report, a stored plan and any scheduled job
 - Automatic or background Lyfta sync

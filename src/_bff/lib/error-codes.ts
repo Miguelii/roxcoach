@@ -14,6 +14,19 @@ export enum ErrorCode {
     AUTH_LOGOUT_SB_CLIENT = 'n8r4j1tc',
     AUTH_LOGOUT_SIGN_OUT = 'z6e9u3pl',
 
+    // Auth - Sign-up
+    AUTH_SIGNUP_CLOSED = 'sg3k8wqe',
+    AUTH_SIGNUP_BAD_CODE = 'sg6m2xdj',
+    AUTH_SIGNUP_SB_CLIENT = 'sg9t5nca',
+    AUTH_SIGNUP_CREATE_USER = 'sg1v7hrb',
+    AUTH_SIGNUP_CREATE_USER_ERR = 'sg4p0yfz',
+    AUTH_SIGNUP_GRANT = 'sg8d3ujl',
+    AUTH_SIGNUP_GRANT_ERR = 'sg2w6kmn',
+    AUTH_SIGNUP_CLEANUP = 'sg5q9bte',
+    AUTH_SIGNUP_SIGN_IN = 'sg7c1zgx',
+    // The one code every sign-up failure shows the client
+    AUTH_SIGNUP_FAILED = 'sg0r4aow',
+
     // Training - Activities repository
     TRAINING_ACTIVITY_INSERT = 'ljlybdci',
     TRAINING_ACTIVITY_INSERT_ERR = 'krro5o2k',

@@ -57,6 +57,18 @@ describe('LoginCard', () => {
         expect(screen.queryByTestId('login-error')).not.toBeInTheDocument()
     })
 
+    it('shows the sign-up link only when sign-up is open', () => {
+        const { rerender } = render(<LoginCard />)
+        expect(screen.queryByTestId('signup-link')).not.toBeInTheDocument()
+
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <LoginCard signupOpen />
+            </QueryClientProvider>
+        )
+        expect(screen.getByTestId('signup-link')).toHaveAttribute('href', '/signup')
+    })
+
     it('shows field errors and skips the mutation for empty fields', async () => {
         render(<LoginCard />)
         submit()
