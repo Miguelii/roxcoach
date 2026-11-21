@@ -77,7 +77,8 @@ respected, screen-reader labels on every icon-only control and on every calendar
   through without a session), and in the root layout `viewportFit: 'cover'`, `themeColor` and
   `appleWebApp` so it runs full screen on a phone. The icon is a rising line ending in a dot on the
   ink color. It needs HTTPS to be offered for installation. On a phone, a bottom sheet
-  (`InstallPrompt`, mounted in the authenticated layout) offers installing the app about 1.5 s
+  (`InstallPrompt`, mounted in the root layout so it is offered on the login page too, before
+  signing in) offers installing the app about 1.5 s
   after opening it: with the browser's `beforeinstallprompt` event (Chrome, Edge) an "Install app"
   button opens the native install dialog; on iOS Safari, which cannot install from code, the sheet
   shows the Share, Add to Home Screen steps and a "Got it" button. "Not now", swiping the sheet away

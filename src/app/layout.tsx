@@ -4,6 +4,7 @@ import '@/styles/globals.css'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
+import { InstallPrompt } from '@/modules/pwa/install-prompt'
 import { TrpcContextProvider } from '@/providers/trpc-provider'
 
 const geistSans = Geist({
@@ -58,6 +59,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                     <TrpcContextProvider>{children}</TrpcContextProvider>
                 </NuqsAdapter>
                 <Toaster />
+                {/* In the root layout so it is offered on the login page too, before signing in. */}
+                <InstallPrompt />
             </body>
         </html>
     )
