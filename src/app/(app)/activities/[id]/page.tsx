@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createCaller } from '@/_bff/trpc/caller'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ActivityDetail } from '@/modules/activity/activity-detail'
+import { capitalizeFirstLetter } from '@/lib/utils'
 
 type Props = PageProps<'/activities/[id]'>
 
@@ -22,7 +23,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const result = await loadActivity(id)
 
-    return { title: result?.activity.name ?? 'Activity' }
+    const title = result?.activity.name ?? 'Activity'
+
+    return { title: capitalizeFirstLetter(title) }
 }
 
 export default function ActivityPage({ params }: Props) {

@@ -5,7 +5,6 @@ import type { ErrorCode } from '@/_bff/lib/error-codes'
 
 type ServiceErrorFields = { cause: unknown; error_hash: ErrorCode }
 
-// Auth
 export class CreateSbClientError extends Data.TaggedError(
     'CreateSbClientError'
 )<ServiceErrorFields> {}
@@ -22,7 +21,6 @@ export class InvalidAccessCodeError extends Data.TaggedError(
 export class CreateUserError extends Data.TaggedError('CreateUserError')<ServiceErrorFields> {}
 export class GrantAccessError extends Data.TaggedError('GrantAccessError')<ServiceErrorFields> {}
 
-// Athlete
 export class AccountDeletionError extends Data.TaggedError(
     'AccountDeletionError'
 )<ServiceErrorFields> {}
@@ -39,7 +37,6 @@ export class AvailabilityValidationError extends Data.TaggedError('AvailabilityV
     ServiceErrorFields & { reason: string }
 > {}
 
-// Races
 export class RaceQueryError extends Data.TaggedError('RaceQueryError')<ServiceErrorFields> {}
 // `field` names the race field that failed validation.
 export class RaceValidationError extends Data.TaggedError('RaceValidationError')<
@@ -48,7 +45,6 @@ export class RaceValidationError extends Data.TaggedError('RaceValidationError')
 export class RaceNotFoundError extends Data.TaggedError('RaceNotFoundError')<ServiceErrorFields> {}
 export class RaceStateError extends Data.TaggedError('RaceStateError')<ServiceErrorFields> {}
 
-// Coach
 export class CoachQueryError extends Data.TaggedError('CoachQueryError')<ServiceErrorFields> {}
 export class CoachWriteError extends Data.TaggedError('CoachWriteError')<ServiceErrorFields> {}
 export class DailyCapReachedError extends Data.TaggedError(
@@ -58,7 +54,6 @@ export class ConversationNotFoundError extends Data.TaggedError(
     'ConversationNotFoundError'
 )<ServiceErrorFields> {}
 
-// Training
 export class ActivityQueryError extends Data.TaggedError(
     'ActivityQueryError'
 )<ServiceErrorFields> {}
@@ -84,7 +79,6 @@ export class InvalidDateRangeError extends Data.TaggedError(
     'InvalidDateRangeError'
 )<ServiceErrorFields> {}
 
-// Lyfta
 export class LyftaConfigurationError extends Data.TaggedError(
     'LyftaConfigurationError'
 )<ServiceErrorFields> {}

@@ -10,7 +10,7 @@ type Granularity = 'week' | 'month'
 
 type RangeBounds = { from: string; granularity: Granularity }
 
-const WEEKS_BY_RANGE = { '3m': 13, '6m': 26 } as const
+const WEEKS_BY_RANGE = { '3m': 13, '6m': 26, '12m': 52 } as const
 
 const firstOfMonth = (iso: string) => `${iso.slice(0, 7)}-01`
 
@@ -24,9 +24,12 @@ const nextBucketStart = (start: string, granularity: Granularity) => {
     return formatIsoDate(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)))
 }
 
-/** Start date and bucket size of a progress range ending with the bucket that contains `today`. */
-export function rangeBounds(today: string, range: ProgressRange): RangeBounds {
-    if (range === '12m') {
+/**
+ * Start date and bucket size of a progress range ending with the bucket that contains `today`.
+ * The 12 month range is monthly unless `weeksOnly` asks for 52 weekly buckets.
+ */
+export function rangeBounds(today: string, range: ProgressRange, weeksOnly = false): RangeBounds {
+    if (range === '12m' && !weeksOnly) {
         const d = parseIsoDate(today)
         const from = formatIsoDate(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 11, 1)))
         return { from, granularity: 'month' }

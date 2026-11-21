@@ -14,7 +14,6 @@ import { selectStrengthWorkoutsInRange } from '@/_bff/modules/training/repositor
 import { selectSetsForActivities } from '@/_bff/modules/training/repositories/strength-sets.repository'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 
-// Injectable so tests pass fakes instead of mocking modules.
 type StrengthProgressDeps = {
     createClient: () => Effect.Effect<TrainingClient, CreateSbClientError>
     getTimezone: (user: User) => Effect.Effect<string, ProfileQueryError | CreateSbClientError>
@@ -41,7 +40,7 @@ export const getStrengthProgress = Effect.fn('getStrengthProgress')(function* (
     const supabase = yield* deps.createClient()
     const timezone = yield* deps.getTimezone(user)
     const today = todayIn(timezone, deps.now())
-    const { from } = rangeBounds(today, range)
+    const { from } = rangeBounds(today, range, true)
 
     const workouts = yield* selectStrengthWorkoutsInRange(supabase, user.id, from, today)
     const sets = yield* selectSetsForActivities(

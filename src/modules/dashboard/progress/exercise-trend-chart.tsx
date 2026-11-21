@@ -2,8 +2,9 @@
 
 import {
     Area,
-    AreaChart,
+    Bar,
     CartesianGrid,
+    ComposedChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -13,7 +14,12 @@ import { formatKg } from '@/_bff/core/utils/formatters.utils'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
 import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
-import { AXIS_COLOR, GRID_COLOR, PACE_COLOR } from '@/modules/dashboard/progress/series-styles'
+import {
+    AXIS_COLOR,
+    GRID_COLOR,
+    PACE_COLOR,
+    REPS_COLOR,
+} from '@/modules/dashboard/progress/series-styles'
 
 type Props = {
     exercise: TopExerciseDTO
@@ -28,7 +34,9 @@ export function ExerciseTrendChart({ exercise }: Props) {
     const data = exercise.points.map((point) => ({
         label: bucketLabel(point.date, 'week'),
         kg: point.topSetKg,
+        reps: point.topSetReps,
     }))
+    const maxReps = Math.max(...exercise.points.map((point) => point.topSetReps))
     const values = exercise.points.map((point) => point.topSetKg)
     const low = Math.max(0, Math.floor(Math.min(...values) - PADDING_KG))
     const high = Math.ceil(Math.max(...values) + PADDING_KG)
@@ -36,7 +44,7 @@ export function ExerciseTrendChart({ exercise }: Props) {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
+            <ComposedChart
                 data={data}
                 accessibilityLayer
                 margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
@@ -63,6 +71,7 @@ export function ExerciseTrendChart({ exercise }: Props) {
                     allowDecimals={false}
                     tick={{ fill: AXIS_COLOR, fontSize: 11 }}
                 />
+                <YAxis yAxisId="reps" hide domain={[0, maxReps * 3]} />
                 <Tooltip
                     contentStyle={{
                         background: 'var(--color-card)',
@@ -70,10 +79,25 @@ export function ExerciseTrendChart({ exercise }: Props) {
                         borderRadius: 12,
                         fontSize: 12,
                     }}
-                    formatter={(value) => [formatKg(Number(value)) ?? '-', 'Top set']}
+                    formatter={(value, name) =>
+                        name === 'Reps'
+                            ? [`${value} reps`, 'Reps']
+                            : [formatKg(Number(value)) ?? '-', 'Top set']
+                    }
+                />
+                <Bar
+                    yAxisId="reps"
+                    dataKey="reps"
+                    name="Reps"
+                    fill={REPS_COLOR}
+                    fillOpacity={0.55}
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={14}
+                    isAnimationActive={!reduceMotion}
                 />
                 <Area
                     dataKey="kg"
+                    name="Top set"
                     type="monotone"
                     stroke={PACE_COLOR}
                     strokeWidth={2.5}
@@ -87,7 +111,7 @@ export function ExerciseTrendChart({ exercise }: Props) {
                     activeDot={{ r: 5 }}
                     isAnimationActive={!reduceMotion}
                 />
-            </AreaChart>
+            </ComposedChart>
         </ResponsiveContainer>
     )
 }

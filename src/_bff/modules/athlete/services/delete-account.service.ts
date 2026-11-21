@@ -14,7 +14,6 @@ import {
 type AdminClient = ReturnType<typeof createDBAdminClient>
 type ServerClient = Awaited<ReturnType<typeof createDBServerClient>>
 
-// Injectable so tests pass fakes instead of mocking modules.
 export type DeleteAccountDeps = {
     createAdminClient: () => AdminClient
     createServerClient: () => Promise<ServerClient>

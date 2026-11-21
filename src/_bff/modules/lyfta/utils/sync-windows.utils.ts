@@ -3,7 +3,6 @@ import { SYNC_HISTORY_DAYS, SYNC_WINDOW_DAYS } from '@/_bff/modules/lyfta/consta
 type SyncWindow = {
     from: string
     to: string
-    // True when the window ends today, so completing it completes the sync.
     isLast: boolean
 }
 

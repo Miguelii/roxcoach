@@ -23,10 +23,12 @@ seconds, on a phone, from charts that are readable first and pretty second.
   are looking at (distance, time or runs, with the change from the previous one and a bar per
   week to pick another), the goal pace, the latest runs, then the pace trend with the goal pace
   as a reference line, pace by heart rate zone and average heart rate.
-- Strength mode: training volume and workouts per week or month (bars), then one card per exercise
-  for the top 4 most used by default, one below the other, each with its picture, the latest top
-  set and a chart of its top set over time. A filter chooses one exercise instead (any of the 12
-  most used). The dashboard has no data tables: every series is a chart.
+- Strength mode: first one card per exercise for the top 4 most used by default, one below the
+  other, each with its picture, the latest top
+  set (kg and its reps) and a chart of its top set over time with the reps of each top set as
+  bars underneath (the top set is the heaviest set of the workout, more reps wins a tie on load;
+  `points` carry `topSetKg` and `topSetReps`). A filter chooses one exercise instead (any of the 12
+  most used), then the training volume and workouts per week (bars, full width). The dashboard has no data tables: every series is a chart.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -161,10 +163,22 @@ helpers, per the layering in [architecture.md](architecture.md)):
 Cross-module reads go through services: the training services call the athlete service for the
 profile and the races service for the goal race.
 
+### Exercise insights
+
+Each exercise card with at least two workouts in the range shows a progress panel computed in the
+client from its `points` (`exerciseInsights`): the change in load, reps and estimated 1RM (Epley,
+sets of 1 to 12 reps) from the first to the latest workout, a verdict from the 1RM (up 2% or more
+"Progressing", down 2% or more "Slipping", else "Holding steady"; none when a set is above 12 reps)
+and how many workouts ago the best estimated 1RM was. Zero changes read "no change".
+
 ### Buckets
 
 The range decides the resolution: `3m` and `6m` use ISO weeks (Monday start, existing
-`week-dates.utils`), `12m` uses calendar months. A bucket is keyed by its first date. Buckets with
+`week-dates.utils`), `12m` uses calendar months. Strength mode is always weekly: its `12m` is 52
+ISO weeks (`rangeBounds(today, range, true)`), and its training volume and workouts charts are
+stacked at full width so the weekly bars have room. A bucket is keyed by its first date.
+The axis shows the short start date (`16 Nov`), and the tooltip title names the whole bucket:
+`Week 47 · 16 to 22 Nov` (`30 Nov to 6 Dec` across a month) or `November 2026` (`bucketRangeLabel`). Buckets with
 no data are present in the response with `null` values so the x axis is continuous.
 
 ### Running payload
@@ -248,10 +262,14 @@ Strength mode
 | +----------------------------------------------------------------+ |
 | | [img]  Back squat                                  5 workouts  | |
 | |  Latest top set            Best                                | |
-| |  100 kg  +10 kg            105 kg                              | |
-| |   area chart of the top set of every workout (own axis)        | |
+| |  100 kg x 5 reps  +10 kg   105 kg x 5                          | |
+| |   area chart of the top set of every workout (own axis) with   | |
+| |   the reps of that set as soft bars underneath                 | |
 | +----------------------------------------------------------------+ |
 | | [img]  Bench press ... (one card per exercise, 4 by default)   | |
+| +----------------------------------------------------------------+ |
+| Training volume per week (full width bars)                         |
+| Workouts per week (full width bars)                                |
 ```
 
 On a phone: the title row, then the range (full width) and the actions; cards
@@ -275,7 +293,7 @@ running mode it is unchanged.
   form. Changing it updates the UI immediately (optimistic cache update) and calls
   `athlete.setDashboardMode`; on failure it reverts and shows a toast.
 - The range is a second segmented control (3M, 6M, 1Y), kept in the URL with nuqs (`range`) so a
-  refresh restores it. It is not saved in the profile. Default `6m`.
+  refresh restores it. It is not saved in the profile. Default `12m`.
 - The page prefetches on the server, behind one `Suspense` whose fallback is `DashboardContent`
   itself (not a skeleton): it reads the client cache, so a return visit within the cache lifetime
   shows the last data at once instead of a skeleton on every navigation, and with an empty cache it
@@ -400,7 +418,7 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 ## Calls made by the author (to be checked)
 
 - Karvonen zones with fixed floors (60, 70, 80, 90%) and both heart rates required.
-- `3m` and `6m` weekly, `12m` monthly; default `6m`; range kept in the URL, not in the profile.
+- `3m` and `6m` weekly, `12m` monthly; default `12m`; range kept in the URL, not in the profile.
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
 - Top 4 exercises by number of workouts by default, each in its own card with its own axis (loads

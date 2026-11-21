@@ -20,7 +20,6 @@ import { pickNextRace } from '@/_bff/modules/training/helpers/pick-next-race.hel
 import { selectRunsInRange } from '@/_bff/modules/training/repositories/activities.repository'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 
-// Injectable so tests pass fakes instead of mocking modules.
 type RunProgressDeps = {
     createClient: () => Effect.Effect<TrainingClient, CreateSbClientError>
     getTimezone: (user: User) => Effect.Effect<string, ProfileQueryError | CreateSbClientError>

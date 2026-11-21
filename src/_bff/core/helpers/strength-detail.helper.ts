@@ -45,8 +45,11 @@ export const exerciseKeyOf = (set: KeyInput) =>
 const isLoaded = (set: SetInput): set is { reps: number; loadKg: number } =>
     set.reps !== null && set.reps >= 1 && set.loadKg !== null && set.loadKg > 0
 
-// Epley estimate; one rep is the load itself.
-const epley = (loadKg: number, reps: number) => (reps === 1 ? loadKg : loadKg * (1 + reps / 30))
+// Epley estimate (one rep is the load itself) for a set of 1 to 12 reps, otherwise null.
+export const estimateOneRepMax = (loadKg: number, reps: number) => {
+    if (reps < 1 || reps > MAX_E1RM_REPS) return null
+    return reps === 1 ? loadKg : loadKg * (1 + reps / 30)
+}
 
 export function summarizeExercise(sets: SetInput[]): ExerciseSummary {
     let totalReps = 0
@@ -72,10 +75,8 @@ export function summarizeExercise(sets: SetInput[]): ExerciseSummary {
             topSetKg = set.loadKg
             topSetReps = set.reps
         }
-        if (set.reps <= MAX_E1RM_REPS) {
-            const estimate = epley(set.loadKg, set.reps)
-            if (e1rm === null || estimate > e1rm) e1rm = estimate
-        }
+        const estimate = estimateOneRepMax(set.loadKg, set.reps)
+        if (estimate !== null && (e1rm === null || estimate > e1rm)) e1rm = estimate
     }
 
     return {

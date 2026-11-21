@@ -37,9 +37,6 @@ const STRENGTH_NUMBER_FORMATTER = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
 })
 
-export const E1RM_HINT =
-    'Estimated one-rep max: the heaviest weight you could lift once, worked out from your best set of 1 to 12 reps (Epley formula). It is an estimate, not a tested max.'
-
 export const DENSITY_HINT =
     'Total volume divided by the workout time. Higher means more work packed into each minute.'
 

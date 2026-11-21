@@ -60,3 +60,17 @@ describe('bucketStarts', () => {
         expect(starts.at(-1)).toBe('2026-11-01')
     })
 })
+
+describe('rangeBounds with weeksOnly', () => {
+    it('makes the 12 month range 52 weeks ending with the current week', () => {
+        expect(rangeBounds('2026-11-20', '12m', true)).toEqual({
+            from: '2025-11-24',
+            granularity: 'week',
+        })
+    })
+
+    it('leaves the 3 and 6 month ranges weekly and the default 12 month range monthly', () => {
+        expect(rangeBounds('2026-11-20', '6m', true)).toEqual(rangeBounds('2026-11-20', '6m'))
+        expect(rangeBounds('2026-11-20', '12m').granularity).toBe('month')
+    })
+})

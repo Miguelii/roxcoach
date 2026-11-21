@@ -7,7 +7,11 @@ import type { StrengthProgressDTO } from '@/_bff/modules/training/types/progress
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ExerciseCard } from '@/modules/dashboard/progress/exercise-card'
 import { ExerciseFilter, TOP_FILTER } from '@/modules/dashboard/progress/exercise-filter'
-import { bucketLabel, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
+import {
+    bucketLabel,
+    bucketRangeLabel,
+    rangeLabel,
+} from '@/modules/dashboard/progress/progress-utils'
 import { FREQUENCY_COLOR, VOLUME_COLOR } from '@/modules/dashboard/progress/series-styles'
 
 type Props = {
@@ -46,39 +50,6 @@ export function StrengthProgressView({ data }: Props) {
 
     return (
         <div data-testid="strength-progress" className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <BucketChartCard
-                    testId="volume-chart"
-                    title="Training volume"
-                    takeaway={`${formatVolumeKg(totalVolume) ?? '-'} lifted over ${rangeLabel(range)}.`}
-                    ariaLabel={`Volume lifted per ${granularity}, ${formatVolumeKg(totalVolume) ?? '-'} in total.`}
-                    kind="bar"
-                    color={VOLUME_COLOR}
-                    data={buckets.map((bucket) => ({
-                        label: bucketLabel(bucket.start, granularity),
-                        value: bucket.volumeKg > 0 ? bucket.volumeKg : null,
-                    }))}
-                    format={(value) => formatVolumeKg(value) ?? ''}
-                    formatAxis={formatCompact}
-                    valueName="Volume"
-                />
-                <BucketChartCard
-                    testId="workouts-chart"
-                    title="Workouts"
-                    takeaway={`${totalWorkouts} workouts, ${round1(totalWorkouts / buckets.length)} per ${granularity}.`}
-                    ariaLabel={`Workouts per ${granularity}, ${totalWorkouts} in total.`}
-                    kind="bar"
-                    color={FREQUENCY_COLOR}
-                    data={buckets.map((bucket) => ({
-                        label: bucketLabel(bucket.start, granularity),
-                        value: bucket.workouts > 0 ? bucket.workouts : null,
-                    }))}
-                    format={(value) => `${value} ${value === 1 ? 'workout' : 'workouts'}`}
-                    formatAxis={(value) => String(value)}
-                    valueName="Workouts"
-                />
-            </div>
-
             <section aria-label="Top exercises" className="space-y-3">
                 <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div className="space-y-1">
@@ -116,6 +87,40 @@ export function StrengthProgressView({ data }: Props) {
                     </div>
                 )}
             </section>
+            <div className="grid grid-cols-1 gap-4">
+                <BucketChartCard
+                    testId="volume-chart"
+                    title="Training volume"
+                    takeaway={`${formatVolumeKg(totalVolume) ?? '-'} lifted over ${rangeLabel(range)}.`}
+                    ariaLabel={`Volume lifted per ${granularity}, ${formatVolumeKg(totalVolume) ?? '-'} in total.`}
+                    kind="bar"
+                    color={VOLUME_COLOR}
+                    data={buckets.map((bucket) => ({
+                        label: bucketLabel(bucket.start, granularity),
+                        range: bucketRangeLabel(bucket.start, granularity),
+                        value: bucket.volumeKg > 0 ? bucket.volumeKg : null,
+                    }))}
+                    format={(value) => formatVolumeKg(value) ?? ''}
+                    formatAxis={formatCompact}
+                    valueName="Volume"
+                />
+                <BucketChartCard
+                    testId="workouts-chart"
+                    title="Workouts"
+                    takeaway={`${totalWorkouts} workouts, ${round1(totalWorkouts / buckets.length)} per ${granularity}.`}
+                    ariaLabel={`Workouts per ${granularity}, ${totalWorkouts} in total.`}
+                    kind="bar"
+                    color={FREQUENCY_COLOR}
+                    data={buckets.map((bucket) => ({
+                        label: bucketLabel(bucket.start, granularity),
+                        range: bucketRangeLabel(bucket.start, granularity),
+                        value: bucket.workouts > 0 ? bucket.workouts : null,
+                    }))}
+                    format={(value) => `${value} ${value === 1 ? 'workout' : 'workouts'}`}
+                    formatAxis={(value) => String(value)}
+                    valueName="Workouts"
+                />
+            </div>
         </div>
     )
 }

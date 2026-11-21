@@ -12,7 +12,12 @@ import { cn } from '@/lib/utils'
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
-import { bucketLabel, paceSummary, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
+import {
+    bucketLabel,
+    bucketRangeLabel,
+    paceSummary,
+    rangeLabel,
+} from '@/modules/dashboard/progress/progress-utils'
 import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
 import { RaceBanner } from '@/modules/dashboard/progress/race-banner'
 import { RaceReadinessCard } from '@/modules/dashboard/progress/race-readiness-card'
@@ -190,6 +195,7 @@ function HeartRateCard({ data }: Props) {
             color={HEART_RATE_COLOR}
             data={buckets.map((bucket) => ({
                 label: bucketLabel(bucket.start, granularity),
+                range: bucketRangeLabel(bucket.start, granularity),
                 value: bucket.avgHrBpm,
             }))}
             format={(value) => `${value} bpm`}

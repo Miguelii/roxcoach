@@ -167,7 +167,9 @@ describe('getStrengthProgress', () => {
         expect(chains[1]?.in).toHaveBeenCalledWith('activity_id', ['w1'])
         expect(dto.exercises.map((exercise) => exercise.name)).toEqual(['Squat'])
         expect(dto.exercises[0]?.imageUrl).toBe('https://lyfta.app/images/exercises/squat.png')
-        expect(dto.exercises[0]?.points).toEqual([{ date: '2026-11-10', topSetKg: 100 }])
+        expect(dto.exercises[0]?.points).toEqual([
+            { date: '2026-11-10', topSetKg: 100, topSetReps: 5 },
+        ])
     })
 
     it('returns empty series for an empty history without querying sets', async () => {

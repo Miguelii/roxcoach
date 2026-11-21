@@ -136,7 +136,7 @@ charts for the athlete's chosen mode. The **Running** or **Strength** choice is 
 desktop sidebar and in its own Settings tab, Dashboard (so a phone user, who has no sidebar, can change it); it is
 saved in `athlete_profiles.dashboard_mode` (applied at once, reverted with a toast if the save
 fails) and is not on the dashboard page. A control on the page sets the range (3M, 6M, 1Y), kept in the URL
-(`range`, default `6m`). Running follows a training-app layout: the next race banner and the readiness card (see [dashboard-progress.md](dashboard-progress.md), Race readiness), the days of this week, a headline
+(`range`, default `12m`). Running follows a training-app layout: the next race banner and the readiness card (see [dashboard-progress.md](dashboard-progress.md), Race readiness), the days of this week, a headline
 with a bar per week (distance, time or runs, tap a bar or step with the arrows), the goal pace, the
 latest runs, the pace trend with the goal pace line, pace by heart rate zone and average heart rate; Strength shows training volume and workouts per week as bars, then one card per top exercise (the top 4 by default, one below the other, or one exercise chosen from a
 dropdown on desktop and a bottom drawer on a phone), each with its

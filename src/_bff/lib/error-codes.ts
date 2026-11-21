@@ -1,20 +1,16 @@
 // Distinct 8-character lowercase alphanumeric codes, one per failure point
 export enum ErrorCode {
-    // Auth - Session
     AUTH_SESSION_SB_CLIENT = 'k4m7x2qd',
     AUTH_SESSION_GET_USER = 'p9w3h6vn',
 
-    // Auth - Login
     AUTH_LOGIN_SB_CLIENT = 'b2t8c5jr',
     AUTH_LOGIN_SIGN_IN = 'f7y1n4zm',
     AUTH_LOGIN_SIGN_IN_ERR = 'h3d6s9gx',
     AUTH_LOGIN_NO_ACCESS = 'v5q2k8wa',
 
-    // Auth - Logout
     AUTH_LOGOUT_SB_CLIENT = 'n8r4j1tc',
     AUTH_LOGOUT_SIGN_OUT = 'z6e9u3pl',
 
-    // Athlete - Account deletion
     ATHLETE_DELETE_SB_CLIENT = 'ad2k7xqe',
     ATHLETE_DELETE_FILES_LIST = 'ad5m1wcj',
     ATHLETE_DELETE_FILES_LIST_ERR = 'ad8t4nrb',
@@ -24,7 +20,6 @@ export enum ErrorCode {
     ATHLETE_DELETE_USER_ERR = 'ad0w8kmc',
     ATHLETE_DELETE_SIGN_OUT = 'ad3q5bte',
 
-    // Auth - Sign-up
     AUTH_SIGNUP_CLOSED = 'sg3k8wqe',
     AUTH_SIGNUP_BAD_CODE = 'sg6m2xdj',
     AUTH_SIGNUP_SB_CLIENT = 'sg9t5nca',
@@ -37,7 +32,6 @@ export enum ErrorCode {
     // The one code every sign-up failure shows the client
     AUTH_SIGNUP_FAILED = 'sg0r4aow',
 
-    // Training - Activities repository
     TRAINING_ACTIVITY_INSERT = 'ljlybdci',
     TRAINING_ACTIVITY_INSERT_ERR = 'krro5o2k',
     TRAINING_ACTIVITY_START_LOOKUP = 'c7m2x9qd',
@@ -51,7 +45,6 @@ export enum ErrorCode {
     TRAINING_ACTIVITY_BY_ID_ERR = '4motkowx',
     TRAINING_ACTIVITY_BY_ID_PARSE = 'wojlgflc',
 
-    // Training - Activity laps repository
     TRAINING_LAPS_DELETE = 'rmnen1n8',
     TRAINING_LAPS_DELETE_ERR = 'behzgpse',
     TRAINING_LAPS_INSERT = 'ok7qtvcf',
@@ -71,12 +64,10 @@ export enum ErrorCode {
     TRAINING_LYFTA_ACTIVITY_UPSERT = 'lyfta015',
     TRAINING_LYFTA_ACTIVITY_UPSERT_ERR = 'lyfta016',
 
-    // Training - Queries
     TRAINING_SB_CLIENT = 'hct8vnt6',
     TRAINING_RANGE_INVALID = 't3vf1ezs',
     TRAINING_RANGE_TOO_LONG = 'jqc9i19q',
 
-    // Training - Activity files
     TRAINING_FILE_UNSUPPORTED = 'u4f7n2xc',
     TRAINING_FILE_PARSE = 'p9k3w6ze',
     TRAINING_FILE_DUPLICATE = 'd3n8r5kz',
@@ -106,7 +97,6 @@ export enum ErrorCode {
     TRAINING_PROGRESS_SETS_SELECT_ERR = 'ps1h7d4z',
     TRAINING_PROGRESS_SETS_SELECT_PARSE = 'ps7u3g9w',
 
-    // Athlete - Profiles repository
     ATHLETE_PROFILE_SELECT = '9l42kdu7',
     ATHLETE_PROFILE_SELECT_ERR = 'v141ij6l',
     ATHLETE_PROFILE_SELECT_PARSE = 'm6dy8w79',
@@ -119,7 +109,6 @@ export enum ErrorCode {
     ATHLETE_DASHBOARD_MODE_UPDATE = 'dm4k7w2q',
     ATHLETE_DASHBOARD_MODE_UPDATE_ERR = 'dm9c3x6v',
     ATHLETE_PROFILE_INVALID = 'z8u3c7to',
-    // Athlete - Availability slots repository and services
     ATHLETE_AVAILABILITY_SELECT = 'a7n2p4ke',
     ATHLETE_AVAILABILITY_SELECT_ERR = 'b3x9r6wq',
     ATHLETE_AVAILABILITY_SELECT_PARSE = 'e8k1t5mz',
@@ -133,7 +122,6 @@ export enum ErrorCode {
     ATHLETE_AVAILABILITY_INVALID = 'u2i4v8hg',
     ATHLETE_AVAILABILITY_SB_CLIENT = 'w7o5e1bn',
 
-    // Races - Repository and services
     RACES_SELECT = 'c4r8k2ma',
     RACES_SELECT_ERR = 'd7t3n6xb',
     RACES_SELECT_PARSE = 'e1y9p5qc',
@@ -158,7 +146,6 @@ export enum ErrorCode {
     RACES_STATE_COMPLETED = 'z2s6m8gx',
     RACES_SB_CLIENT = 'a5t1n4hy',
 
-    // Coach - Conversations and messages repositories, services
     COACH_SB_CLIENT = 'cs4b9k2x',
     COACH_CONVERSATIONS_SELECT = 'cl7q3m5d',
     COACH_CONVERSATIONS_SELECT_ERR = 'cl2w8n6f',
@@ -187,10 +174,8 @@ export enum ErrorCode {
     COACH_CONVERSATION_NOT_FOUND = 'cn1v5w8j',
     COACH_DAILY_CAP_REACHED = 'dc6k2m9p',
 
-    // Athlete - Queries
     ATHLETE_SB_CLIENT = 'xq3k7m2d',
 
-    // Lyfta
     LYFTA_CONFIGURATION = 'lyfta001',
     LYFTA_CREDENTIAL = 'lyfta002',
     LYFTA_CONNECTION_QUERY = 'lyfta003',

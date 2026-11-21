@@ -56,8 +56,19 @@ describe('buildStrengthProgress', () => {
         )
 
         expect(dto.exercises[0]?.points).toEqual([
-            { date: '2026-11-01', topSetKg: 120 },
-            { date: '2026-11-08', topSetKg: 125 },
+            { date: '2026-11-01', topSetKg: 120, topSetReps: 5 },
+            { date: '2026-11-08', topSetKg: 125, topSetReps: 3 },
+        ])
+    })
+
+    it('takes the set with more reps when two sets share the heaviest load', () => {
+        const dto = run(
+            [wk('a', '2026-11-01')],
+            [set('a', 'Squat', 5, 100), set('a', 'Squat', 8, 100), set('a', 'Squat', 6, 100)]
+        )
+
+        expect(dto.exercises[0]?.points).toEqual([
+            { date: '2026-11-01', topSetKg: 100, topSetReps: 8 },
         ])
     })
 
@@ -73,7 +84,9 @@ describe('buildStrengthProgress', () => {
             ]
         )
 
-        expect(dto.exercises[0]?.points).toEqual([{ date: '2026-11-08', topSetKg: 80 }])
+        expect(dto.exercises[0]?.points).toEqual([
+            { date: '2026-11-08', topSetKg: 80, topSetReps: 5 },
+        ])
     })
 
     it('excludes exercises with no usable load before ranking', () => {

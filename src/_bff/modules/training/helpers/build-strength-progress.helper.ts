@@ -33,7 +33,7 @@ type ExerciseAcc = {
     workouts: Set<string>
     totalSets: number
     // The heaviest set per workout date.
-    topSets: Map<string, number>
+    topSets: Map<string, { loadKg: number; reps: number }>
 }
 
 // A set counts for the top set only with reps and a positive load (bodyweight work has no load).
@@ -43,7 +43,7 @@ const usableLoad = (set: SetRow) =>
 // Volume, workouts and sets per bucket over every exercise, with empty buckets present so the
 // axis has no gaps.
 function buildBuckets({ range, today, workouts, sets }: Input) {
-    const { from, granularity } = rangeBounds(today, range)
+    const { from, granularity } = rangeBounds(today, range, true)
     const buckets = new Map<string, StrengthBucketDTO & { ids: Set<string> }>(
         bucketStarts(from, today, granularity).map((start) => [
             start,
@@ -96,7 +96,7 @@ export function buildStrengthProgress(input: Input): StrengthProgressDTO {
             imageDate: '',
             workouts: new Set<string>(),
             totalSets: 0,
-            topSets: new Map<string, number>(),
+            topSets: new Map<string, { loadKg: number; reps: number }>(),
         }
         if (date >= acc.nameDate) {
             acc.name = set.exercise
@@ -110,7 +110,15 @@ export function buildStrengthProgress(input: Input): StrengthProgressDTO {
         acc.workouts.add(set.activityId)
         acc.totalSets += 1
         const load = usableLoad(set)
-        if (load !== null) acc.topSets.set(date, Math.max(acc.topSets.get(date) ?? 0, load))
+        const current = acc.topSets.get(date)
+        if (
+            load !== null &&
+            set.reps !== null &&
+            (current === undefined ||
+                load > current.loadKg ||
+                (load === current.loadKg && set.reps > current.reps))
+        )
+            acc.topSets.set(date, { loadKg: load, reps: set.reps })
         exercises.set(key, acc)
     }
 
@@ -129,7 +137,7 @@ export function buildStrengthProgress(input: Input): StrengthProgressDTO {
             imageUrl: acc.imageUrl,
             workouts: acc.workouts.size,
             points: [...acc.topSets]
-                .map(([date, topSetKg]) => ({ date, topSetKg }))
+                .map(([date, top]) => ({ date, topSetKg: top.loadKg, topSetReps: top.reps }))
                 .toSorted((a, b) => a.date.localeCompare(b.date)),
         }))
 

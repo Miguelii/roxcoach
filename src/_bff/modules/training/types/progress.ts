@@ -42,8 +42,8 @@ export type RunProgressDTO = {
     }
 }
 
-// The heaviest set of one workout date.
-type ExercisePointDTO = { date: string; topSetKg: number }
+// The heaviest set of one workout date, with its reps (more reps wins a tie on load).
+type ExercisePointDTO = { date: string; topSetKg: number; topSetReps: number }
 
 export type TopExerciseDTO = {
     key: string

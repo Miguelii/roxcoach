@@ -7,6 +7,9 @@ import { formatKg } from '@/_bff/core/utils/formatters.utils'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChangeBadge } from '@/modules/dashboard/progress/change-badge'
+import { ExerciseProgressInsights } from '@/modules/dashboard/progress/exercise-insights'
+import { exerciseInsights } from '@/modules/dashboard/progress/progress-utils'
+import { PACE_COLOR, REPS_COLOR } from '@/modules/dashboard/progress/series-styles'
 
 type Props = {
     exercise: TopExerciseDTO
@@ -25,8 +28,8 @@ const chartLabel = (exercise: TopExerciseDTO) => {
     const last = exercise.points.at(-1)
     if (first === undefined || last === undefined) return `${exercise.name} top set.`
     if (exercise.points.length === 1)
-        return `${exercise.name} top set, ${formatKg(last.topSetKg) ?? '-'} in 1 workout.`
-    return `${exercise.name} top set, from ${formatKg(first.topSetKg) ?? '-'} to ${formatKg(last.topSetKg) ?? '-'} over ${exercise.points.length} workouts.`
+        return `${exercise.name} top set, ${formatKg(last.topSetKg) ?? '-'} for ${last.topSetReps} reps in 1 workout.`
+    return `${exercise.name} top set, from ${formatKg(first.topSetKg) ?? '-'} for ${first.topSetReps} reps to ${formatKg(last.topSetKg) ?? '-'} for ${last.topSetReps} reps over ${exercise.points.length} workouts.`
 }
 
 // One exercise: its picture, the latest top set, how far it climbed, and a chart of the heaviest
@@ -34,7 +37,13 @@ const chartLabel = (exercise: TopExerciseDTO) => {
 export function ExerciseCard({ exercise }: Props) {
     const first = exercise.points[0]
     const last = exercise.points.at(-1)
-    const best = Math.max(...exercise.points.map((point) => point.topSetKg))
+    const insights = exerciseInsights(exercise.points)
+    const best = exercise.points.reduce((top, point) =>
+        point.topSetKg > top.topSetKg ||
+        (point.topSetKg === top.topSetKg && point.topSetReps > top.topSetReps)
+            ? point
+            : top
+    )
     const delta =
         first === undefined || last === undefined || exercise.points.length < 2
             ? null
@@ -81,6 +90,14 @@ export function ExerciseCard({ exercise }: Props) {
                         >
                             {formatKg(last?.topSetKg) ?? '-'}
                         </span>
+                        {last !== undefined && (
+                            <span
+                                data-testid="exercise-latest-reps"
+                                className="font-mono text-sm tabular-nums text-muted-foreground"
+                            >
+                                x {last.topSetReps} reps
+                            </span>
+                        )}
                         {delta !== null && delta !== 0 && (
                             <ChangeBadge
                                 delta={delta}
@@ -93,10 +110,12 @@ export function ExerciseCard({ exercise }: Props) {
                 <div className="space-y-1 text-right">
                     <p className="eyebrow text-muted-foreground">Best</p>
                     <p data-testid="exercise-best" className="text-lg font-medium tabular-nums">
-                        {formatKg(best)}
+                        {formatKg(best.topSetKg)} x {best.topSetReps}
                     </p>
                 </div>
             </div>
+
+            {insights !== null && <ExerciseProgressInsights insights={insights} />}
 
             <div
                 role="img"
@@ -106,6 +125,25 @@ export function ExerciseCard({ exercise }: Props) {
             >
                 <ExerciseTrendChart exercise={exercise} />
             </div>
+
+            <p className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                    <span
+                        aria-hidden="true"
+                        className="h-0.5 w-4 rounded-full"
+                        style={{ background: PACE_COLOR }}
+                    />
+                    Top set (kg)
+                </span>
+                <span className="flex items-center gap-1.5">
+                    <span
+                        aria-hidden="true"
+                        className="size-2.5 rounded-[3px] opacity-60"
+                        style={{ background: REPS_COLOR }}
+                    />
+                    Reps of the top set
+                </span>
+            </p>
         </section>
     )
 }

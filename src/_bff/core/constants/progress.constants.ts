@@ -11,7 +11,7 @@ export const MAX_HR_BPM = 250
 
 export const PROGRESS_RANGES = ['3m', '6m', '12m'] as const
 export type ProgressRange = (typeof PROGRESS_RANGES)[number]
-export const DEFAULT_PROGRESS_RANGE: ProgressRange = '6m'
+export const DEFAULT_PROGRESS_RANGE: ProgressRange = '12m'
 
 // Minimum time in a zone for a bucket to report a pace for it.
 export const MIN_ZONE_SAMPLE_S = 300

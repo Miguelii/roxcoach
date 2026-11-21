@@ -20,7 +20,6 @@ type ServerClient = Awaited<ReturnType<typeof createDBServerClient>>
 
 type SignUpInput = { displayName: string; email: string; password: string; accessCode: string }
 
-// Injectable so tests pass fakes instead of mocking modules.
 export type SignUpDeps = {
     expectedCode: string | undefined
     createAdminClient: () => AdminClient

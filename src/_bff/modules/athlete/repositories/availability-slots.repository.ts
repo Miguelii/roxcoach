@@ -72,7 +72,6 @@ export const upsertSlots = Effect.fn('upsertSlots')(function* (
     userId: string,
     slots: AvailabilitySlotDTO[]
 ) {
-    // Nothing to write: an empty upsert is a pointless round trip.
     if (slots.length === 0) return
 
     const { error } = yield* Effect.tryPromise({

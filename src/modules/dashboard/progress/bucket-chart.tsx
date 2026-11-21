@@ -14,7 +14,8 @@ import {
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
 import { AXIS_COLOR, GRID_COLOR } from '@/modules/dashboard/progress/series-styles'
 
-export type BucketPoint = { label: string; value: number | null }
+// `range` is the full name of the bucket, shown as the tooltip title instead of the short label.
+export type BucketPoint = { label: string; value: number | null; range?: string }
 
 type Props = {
     kind: 'bar' | 'line'
@@ -66,6 +67,7 @@ export function BucketChart({ kind, data, color, format, formatAxis, name }: Pro
             <Tooltip
                 cursor={kind === 'bar' ? { fill: 'var(--color-muted)', opacity: 0.5 } : undefined}
                 contentStyle={TOOLTIP_STYLE}
+                labelFormatter={(label, payload) => payload[0]?.payload.range ?? label}
                 formatter={(value) => [format(Number(value)), name]}
             />
         </>

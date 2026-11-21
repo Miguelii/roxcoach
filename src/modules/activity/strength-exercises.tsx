@@ -5,8 +5,8 @@ import type { ExerciseComparisonDTO, StrengthSetDTO } from '@/_bff/modules/train
 import { shortDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
 import { InfoTip } from '@/components/ui/info-tip'
+import { E1RM_HINT } from '@/lib/constants'
 import {
-    E1RM_HINT,
     formatStrengthNumber,
     lyftaRecordTypesOf,
     RECORD_LABELS,

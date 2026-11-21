@@ -41,14 +41,14 @@ afterEach(() => {
 const exercise = (
     key: string,
     name: string,
-    points: [string, number][],
+    points: [string, number, number?][],
     imageUrl: string | null = null
 ): TopExerciseDTO => ({
     key,
     name,
     imageUrl,
     workouts: points.length,
-    points: points.map(([date, topSetKg]) => ({ date, topSetKg })),
+    points: points.map(([date, topSetKg, topSetReps = 5]) => ({ date, topSetKg, topSetReps })),
 })
 
 const SQUAT = exercise(
@@ -100,7 +100,13 @@ describe('ExerciseCard', () => {
         )
         expect(screen.getByTestId('exercise-latest')).toHaveTextContent('100 kg')
         expect(screen.getByTestId('exercise-change')).toHaveTextContent('+10 kg')
-        expect(screen.getByTestId('exercise-best')).toHaveTextContent('105 kg')
+        expect(screen.getByTestId('exercise-best')).toHaveTextContent('105 kg x 5')
+        expect(screen.getByTestId('exercise-latest-reps')).toHaveTextContent('x 5 reps')
+        expect(screen.getByTestId('exercise-verdict')).toHaveTextContent('Progressing')
+        expect(screen.getByTestId('exercise-insight-load')).toHaveTextContent('+10 kg')
+        expect(screen.getByTestId('exercise-insight-reps')).toHaveTextContent('no change')
+        expect(screen.getByTestId('exercise-insight-e1rm')).toHaveTextContent('+11.7 kg')
+        expect(screen.getByTestId('exercise-insight-best')).toHaveTextContent('1 workout ago')
     })
 
     it('uses a placeholder when the exercise has no picture', () => {
@@ -113,7 +119,7 @@ describe('ExerciseCard', () => {
         const { unmount } = render(<ExerciseCard exercise={BENCH} />)
         expect(screen.getByTestId('exercise-chart-figure')).toHaveAttribute(
             'aria-label',
-            'Bench press top set, from 70 kg to 80 kg over 2 workouts.'
+            'Bench press top set, from 70 kg for 5 reps to 80 kg for 5 reps over 2 workouts.'
         )
         expect(screen.queryByTestId('exercise-table-bench-toggle')).toBeNull()
         unmount()
@@ -121,9 +127,10 @@ describe('ExerciseCard', () => {
         render(<ExerciseCard exercise={CURL} />)
         expect(screen.getByTestId('exercise-chart-figure')).toHaveAttribute(
             'aria-label',
-            'Curl top set, 20 kg in 1 workout.'
+            'Curl top set, 20 kg for 5 reps in 1 workout.'
         )
         expect(screen.queryByTestId('exercise-change')).toBeNull()
+        expect(screen.queryByTestId('exercise-insights')).toBeNull()
     })
 
     it('hides the change when the top set did not move', () => {

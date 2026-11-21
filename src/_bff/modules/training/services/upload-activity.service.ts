@@ -39,7 +39,6 @@ type UploadInput = { bytes: Uint8Array; originalName: string; isHyrox: boolean }
 
 type UploadClient = { supabase: TrainingClient; storage: StorageClient }
 
-// Injectable so tests pass fakes instead of mocking modules.
 type UploadDeps = {
     getTimezone: (user: User) => Effect.Effect<string, ProfileQueryError | CreateSbClientError>
     createClient: () => Effect.Effect<UploadClient, CreateSbClientError>

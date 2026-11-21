@@ -21,7 +21,6 @@ export type LyftaCompletedSet = {
     reps: number | null
     loadKg: number | null
     rir: number | null
-    // Left out when the set broke no record.
     records?: LyftaSetRecord[]
 }
 
