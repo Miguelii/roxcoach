@@ -34,7 +34,7 @@ export const viewport: Viewport = {
     initialScale: 1,
     // Lets the page use the safe areas of a notched phone when it runs as an installed app.
     viewportFit: 'cover',
-    themeColor: '#f7f4ee',
+    themeColor: '#f5f5f3',
 }
 
 export const metadata: Metadata = {

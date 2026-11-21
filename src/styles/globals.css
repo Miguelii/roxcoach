@@ -4,9 +4,6 @@
 @import './font.css';
 @import './theme.css';
 @import './tone.css';
-@import './theme-dark.css';
-
-@custom-variant dark (&:is(.dark *));
 
 html {
     scroll-behavior: smooth;

@@ -1,6 +1,5 @@
 'use client'
 
-import { useTheme } from 'next-themes'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 import {
     CircleCheckIcon,
@@ -12,12 +11,11 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile'
 
 const Toaster = ({ ...props }: ToasterProps) => {
-    const { theme = 'system' } = useTheme()
     const isMobile = useIsMobile()
 
     return (
         <Sonner
-            theme={theme as ToasterProps['theme']}
+            theme="light"
             position={isMobile ? 'top-center' : 'bottom-right'}
             className="toaster group"
             icons={{
