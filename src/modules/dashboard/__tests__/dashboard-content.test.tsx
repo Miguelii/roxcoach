@@ -6,6 +6,7 @@ import { DashboardContent } from '@/modules/dashboard/dashboard-content'
 const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
     getCalendarQuery: vi.fn(),
+    getRunProgressQuery: vi.fn(),
     mutate: vi.fn(),
     useMutation: vi.fn(),
 }))
@@ -28,6 +29,7 @@ vi.mock('@/lib/trpc', () => ({
         },
         training: {
             getCalendar: { useQuery: mocks.getCalendarQuery },
+            getRunProgress: { useQuery: mocks.getRunProgressQuery },
         },
     },
 }))
@@ -49,6 +51,11 @@ describe('DashboardContent', () => {
         mocks.getProfileQuery.mockReturnValue(profile('run'))
         mocks.useMutation.mockReturnValue({ mutate: mocks.mutate })
         mocks.mutate.mockReset()
+        mocks.getRunProgressQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
         mocks.getCalendarQuery.mockReturnValue({
             data: [],
             isPending: false,
@@ -74,6 +81,17 @@ describe('DashboardContent', () => {
         expect(screen.getByTestId('mode-tab-strength')).toHaveAttribute('aria-selected', 'true')
         fireEvent.click(screen.getByTestId('mode-tab-run'))
         expect(mocks.mutate).toHaveBeenCalledWith({ mode: 'run' })
+    })
+
+    it('shows the running progress in run mode and a placeholder in strength mode', () => {
+        const { unmount } = renderContent()
+        expect(screen.getByTestId('run-progress-skeleton')).toBeInTheDocument()
+        unmount()
+
+        mocks.getProfileQuery.mockReturnValue(profile('strength'))
+        renderContent()
+        expect(screen.queryByTestId('run-progress-skeleton')).toBeNull()
+        expect(screen.getByTestId('progress-placeholder')).toBeInTheDocument()
     })
 
     it('shows the skeleton while the profile loads and an error with retry when it fails', () => {

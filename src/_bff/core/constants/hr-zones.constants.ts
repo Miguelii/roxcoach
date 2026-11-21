@@ -8,7 +8,7 @@ type HrZone = { zone: ZoneNumber; label: string; name: string; floorPct: number 
 type ProfileHeartRates = { maxHr: number | null; restingHr: number | null }
 
 // Karvonen floors as a share of the heart rate reserve. Z1 is everything below Z2.
-const HR_ZONES: ReadonlyArray<HrZone> = [
+export const HR_ZONES: ReadonlyArray<HrZone> = [
     { zone: 1, label: 'Z1', name: 'Recovery', floorPct: 0 },
     { zone: 2, label: 'Z2', name: 'Easy', floorPct: 0.6 },
     { zone: 3, label: 'Z3', name: 'Moderate', floorPct: 0.7 },

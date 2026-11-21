@@ -8,12 +8,14 @@ type Props = {
     columns: string[]
     rows: (string | number | null)[][]
     testId: string
+    // Open from the start, for series too short to draw.
+    defaultOpen?: boolean
 }
 
 // The same numbers as the chart, as a real table: the fallback for screen readers and for series
 // too short to draw. Collapsed until asked for.
-export function ChartDataTable({ caption, columns, rows, testId }: Props) {
-    const [open, setOpen] = useState(false)
+export function ChartDataTable({ caption, columns, rows, testId, defaultOpen = false }: Props) {
+    const [open, setOpen] = useState(defaultOpen)
 
     return (
         <div className="space-y-2">

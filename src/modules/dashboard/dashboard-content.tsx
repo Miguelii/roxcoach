@@ -5,6 +5,7 @@ import { ActivityActions } from '@/components/activity-actions'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardControls } from '@/modules/dashboard/dashboard-controls'
+import { RunProgress } from '@/modules/dashboard/progress/run-progress'
 import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
 import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
@@ -47,7 +48,11 @@ export function DashboardContent() {
                 />
             </header>
             <WeekStrip today={today} />
-            <div data-testid="progress-placeholder" data-mode={profile.data.dashboardMode} />
+            {profile.data.dashboardMode === 'run' ? (
+                <RunProgress range={range} />
+            ) : (
+                <div data-testid="progress-placeholder" data-mode="strength" />
+            )}
         </div>
     )
 }
