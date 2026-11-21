@@ -14,7 +14,7 @@ import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
 import { bucketLabel, paceSummary } from '@/modules/dashboard/progress/progress-utils'
 import { RunKpis } from '@/modules/dashboard/progress/run-kpis'
 import { ZONE_STYLES } from '@/modules/dashboard/progress/series-styles'
-import { ZoneMarker } from '@/modules/dashboard/progress/zone-marker'
+import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
 type Props = {
     data: RunProgressDTO
@@ -83,7 +83,7 @@ function ZoneCard({ data }: Props) {
                         )}
                     >
                         <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-                            <ZoneMarker kind={style.marker} color={style.color} />
+                            <SeriesMarker kind={style.marker} color={style.color} />
                         </svg>
                         Z{zone}
                     </button>

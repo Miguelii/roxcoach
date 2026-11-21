@@ -10,8 +10,7 @@ to see, at a glance and without digging:
 
 - Running: how their pace is evolving, how it relates to the goal of their next race, and how their
   pace behaves inside each heart rate zone (Z1 to Z5).
-- Strength: whether the load on their most used exercises keeps going up, and how their body weight
-  is moving.
+- Strength: whether the heaviest set of their most used exercises keeps going up.
 
 Success means the athlete can answer "am I getting better, and am I on track for my goal?" in a few
 seconds, on a phone, from charts that are readable first and pretty second.
@@ -21,8 +20,8 @@ seconds, on a phone, from charts that are readable first and pretty second.
 - A Running/Strength mode switch on the dashboard, persisted in `athlete_profiles`.
 - Running mode: pace trend with the goal pace as a reference line, pace by heart rate zone, and a
   small KPI strip.
-- Strength mode: load progression for the 5 most used exercises (small multiples), and the body
-  weight trend.
+- Strength mode: one chart with the top set of the 5 most used exercises over time, each with its
+  picture.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -148,7 +147,7 @@ helpers, per the layering in [architecture.md](architecture.md)):
 | Procedure                      | Input                              | Output                                       |
 | ------------------------------ | ---------------------------------- | -------------------------------------------- |
 | `training.getRunProgress`      | `{ range: '3m' \| '6m' \| '12m' }` | pace and zone series, KPIs, goal (see below) |
-| `training.getStrengthProgress` | `{ range: '3m' \| '6m' \| '12m' }` | top exercises series and body weight series  |
+| `training.getStrengthProgress` | `{ range: '3m' \| '6m' \| '12m' }` | top exercises with their top sets over time  |
 | `athlete.setDashboardMode`     | `{ mode: 'run' \| 'strength' }`    | `{ status: 200 }`                            |
 
 `athlete.getProfile` (`ProfileDTO`) gains `dashboardMode`. `updateProfile` never writes it, and
@@ -183,11 +182,13 @@ no data are present in the response with `null` values so the x axis is continuo
   lower-cased, trimmed name; the displayed name is the most recent one. Ranked by the number of
   distinct workouts in the range, ties broken by total sets, then name. The first
   `TOP_EXERCISES` (5) are returned.
-- Per exercise and workout (one point per workout date): `topSetKg` (the highest `load_kg` among
-  sets with reps and load) and `estimatedOneRmKg` (Epley, `load * (1 + reps / 30)`, best of the
-  sets with 1 to 12 reps, otherwise `null`).
-- **Body weight**: one point per date from `activities.body_weight_kg` of strength workouts (the
-  last one when a date has several).
+- Per exercise and workout date: `topSetKg`, the highest `load_kg` among the sets with reps and a
+  positive load. Dates with no usable set have no point, so a point is never null. Two workouts on
+  the same date collapse to one point.
+- **Picture**: `imageUrl` is `exercise_image_url` of the most recent workout that has one (null
+  when none does). The images are Lyfta URLs shown through `next/image` (the hosts are in
+  `next.config` `images.remotePatterns`).
+- There is no body weight series and no estimated 1RM: the dashboard does not use them.
 
 All aggregation lives in pure helpers under `_bff/modules/training/helpers`, fed by repository
 queries that always filter by `user_id`. Queries select only the columns they need and are bounded
@@ -217,19 +218,23 @@ Running mode
 +--------------------------------------------------------------------+
 
 Strength mode
-| Top exercises                                  [ Top set | Est. 1RM ] |
-| +-------------+ +-------------+ +-------------+                    |
-| | Back squat  | | Bench press | | Deadlift    |  small multiples,   |
-| | 120 kg +10  | | 85 kg +5    | | 150 kg +7.5 |  one axis each      |
-| |  ~~~~/      | |  ~~/~~      | |  ~/~~~      |                    |
-| +-------------+ +-------------+ +-------------+  (2 more)          |
-| Body weight                                                        |
-|  line, latest and change                                           |
+| Top exercises                                [ Top set | Change ]   |
+| [img] Back squat  o  [img] Bench press []  [img] Deadlift <>        |
+|       120 kg +10 kg        85 kg +5 kg           150 kg +7.5 kg     |
+|  (legend entries: picture, line marker, latest top set, change;     |
+|   each one also shows or hides its line)                            |
+|                                                                     |
+|   one line per exercise over the workout dates                      |
+|   (kg, or the change in % since each lift's first workout)          |
 ```
 
 On a phone: the title row, then the mode switch (full width) and the range, then the actions; cards
-stack in one column, KPI tiles in a 2 by 2 grid, small multiples in one column. From `md`: KPI strip
-in one row, small multiples in two columns, from `xl` in three.
+stack in one column, KPI tiles in a 2 by 2 grid, legend entries in one column. From `md`: KPI strip
+in one row, legend entries in two columns, from `xl` in three.
+
+The week strip above the charts follows the mode: in strength mode there is no run distance tile,
+and time and sessions count strength workouts only (the load ratio still uses every activity). In
+running mode it is unchanged.
 
 ### Mode switch and range
 
@@ -260,17 +265,20 @@ borders, `display` headings, tabular numbers for every figure (`font-variant-num
 tabular-nums`). Chart colors are tokens (`var(--...)`), never raw hex, so dark mode follows
 `theme-dark.css`.
 
-| Series         | Token and treatment                 | On white |
-| -------------- | ----------------------------------- | -------- |
-| Pace trend     | `--blue`, solid, round markers      | 7.6:1    |
-| Goal pace      | `--tangerine`, dashed 6 4, label    | 4.5:1    |
-| Z1             | `--slate`, solid, circle marker     | 8.1:1    |
-| Z2             | `--blue`, solid, square marker      | 7.6:1    |
-| Z3             | `--green`, solid, diamond marker    | 4.4:1    |
-| Z4             | `--tangerine`, solid, triangle      | 4.5:1    |
-| Z5             | `--tangerine-deep`, dashed, cross   | 8.2:1    |
-| Strength lines | `--blue`, one color per small chart | 7.6:1    |
-| Body weight    | `--slate-deep`, solid               | high     |
+| Series     | Token and treatment               | On white |
+| ---------- | --------------------------------- | -------- |
+| Pace trend | `--blue`, solid, round markers    | 7.6:1    |
+| Goal pace  | `--tangerine`, dashed 6 4, label  | 4.5:1    |
+| Z1         | `--slate`, solid, circle marker   | 8.1:1    |
+| Z2         | `--blue`, solid, square marker    | 7.6:1    |
+| Z3         | `--green`, solid, diamond marker  | 4.4:1    |
+| Z4         | `--tangerine`, solid, triangle    | 4.5:1    |
+| Z5         | `--tangerine-deep`, dashed, cross | 8.2:1    |
+| Exercise 1 | `--blue`, solid, circle marker    | 7.6:1    |
+| Exercise 2 | `--green`, solid, square marker   | 4.4:1    |
+| Exercise 3 | `--tangerine`, solid, diamond     | 4.5:1    |
+| Exercise 4 | `--slate`, solid, triangle        | 8.1:1    |
+| Exercise 5 | `--tangerine-deep`, dashed, cross | 8.2:1    |
 
 `--amber` (1.9:1 on white) is not used for data. The contrast of every series against the card is
 verified in light and dark (3:1 minimum for lines, 4.5:1 for text) during implementation.
@@ -313,7 +321,7 @@ The cache is cleared on logout as today.
 - Pure helpers, unit tested: `buildHrHistogram` (pause gaps, stopped intervals, missing heart rate,
   cumulative distance versus speed), zone bounds and `zoneOfHeartRate` (edges, values above max),
   bucketing (week and month), pace aggregation, zone aggregation with the minimum sample rule, goal
-  selection, top exercise ranking and tie breaks, Epley, body weight per date.
+  selection, top exercise ranking and tie breaks, top set per date, exercise picture.
 - Parsers: each of FIT, TCX and GPX returns a histogram for its fixture, and `null`-safe output for
   a file without heart rate.
 - Services with a fake Supabase client; the backfill service with fake storage; repositories check
@@ -347,6 +355,7 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 - `3m` and `6m` weekly, `12m` monthly; default `6m`; range kept in the URL, not in the profile.
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
-- Top 5 exercises by number of workouts; load shown as top set, with estimated 1RM as a toggle.
-- The week strip stays in both modes.
-- Small multiples (one axis per exercise) instead of one shared chart, because loads differ too much.
+- Top 5 exercises by number of workouts; the chart shows the top set of each, in kg or as the
+  change in % since the first workout (so lifts of very different loads can be compared).
+- The week strip stays in both modes; in strength mode it drops the run distance tile and counts
+  strength workouts only for time and sessions.

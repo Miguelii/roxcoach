@@ -1,7 +1,7 @@
-import type { ZoneMarkerKind } from '@/modules/dashboard/progress/series-styles'
+import type { SeriesMarkerKind } from '@/modules/dashboard/progress/series-styles'
 
 type Props = {
-    kind: ZoneMarkerKind
+    kind: SeriesMarkerKind
     color: string
     // Center of the marker, in the coordinates of the surrounding SVG.
     x?: number
@@ -11,7 +11,7 @@ type Props = {
 const R = 4
 
 // The same small kind in the chart (as a point) and in the legend (as a swatch).
-export function ZoneMarker({ kind, color, x = 0, y = 0 }: Props) {
+export function SeriesMarker({ kind, color, x = 0, y = 0 }: Props) {
     const at = `translate(${x} ${y})`
     if (kind === 'circle') return <circle transform={at} r={R} fill={color} />
     if (kind === 'square')

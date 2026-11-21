@@ -418,7 +418,6 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
 const strengthWorkoutRowSchema = z.object({
     id: z.string(),
     local_date: z.string(),
-    body_weight_kg: numeric,
 })
 
 // Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
@@ -432,7 +431,7 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
         try: () =>
             supabase
                 .from(TABLE)
-                .select('id, local_date, body_weight_kg')
+                .select('id, local_date')
                 .eq('user_id', userId)
                 .eq('category', 'strength')
                 .is('deleted_at', null)
@@ -458,6 +457,5 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
     return parsed.data.map((row) => ({
         activityId: row.id,
         localDate: row.local_date,
-        bodyWeightKg: row.body_weight_kg,
     }))
 })

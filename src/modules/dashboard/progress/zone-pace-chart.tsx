@@ -15,7 +15,7 @@ import type { RunBucketDTO } from '@/_bff/modules/training/types/progress'
 import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion'
 import { bucketLabel } from '@/modules/dashboard/progress/progress-utils'
 import { AXIS_COLOR, GRID_COLOR, ZONE_STYLES } from '@/modules/dashboard/progress/series-styles'
-import { ZoneMarker } from '@/modules/dashboard/progress/zone-marker'
+import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
 type Props = {
     buckets: RunBucketDTO[]
@@ -104,7 +104,7 @@ export function ZonePaceChart({ buckets, zones, granularity }: Props) {
                                     <g key={`${zone}-${cx}-${cy}`} />
                                 ) : (
                                     <g key={`${zone}-${cx}-${cy}`}>
-                                        <ZoneMarker
+                                        <SeriesMarker
                                             kind={style.marker}
                                             color={style.color}
                                             x={cx}

@@ -1,130 +1,165 @@
 import { describe, expect, it } from 'vitest'
 import { buildStrengthProgress } from '@/_bff/modules/training/helpers/build-strength-progress.helper'
 
-type SetArg = Parameters<typeof buildStrengthProgress>[0]['sets'][number]
+type SetInput = {
+    activityId: string
+    exercise: string
+    exerciseImageUrl: string | null
+    sourceExerciseId: string | null
+    reps: number | null
+    loadKg: number | null
+}
+
+const wk = (activityId: string, localDate: string) => ({ activityId, localDate })
 
 const set = (
     activityId: string,
     exercise: string,
     reps: number | null,
     loadKg: number | null,
-    sourceExerciseId: string | null = null
-): SetArg => ({ activityId, exercise, sourceExerciseId, reps, loadKg })
-
-const wk = (activityId: string, localDate: string, bodyWeightKg: number | null = null) => ({
+    overrides: Partial<SetInput> = {}
+): SetInput => ({
     activityId,
-    localDate,
-    bodyWeightKg,
+    exercise,
+    exerciseImageUrl: null,
+    sourceExerciseId: null,
+    reps,
+    loadKg,
+    ...overrides,
 })
 
-const build = (workouts: ReturnType<typeof wk>[], sets: SetArg[]) =>
-    buildStrengthProgress({ range: '3m', today: '2026-11-20', workouts, sets })
+const run = (workouts: ReturnType<typeof wk>[], sets: SetInput[]) =>
+    buildStrengthProgress({ range: '3m', today: '2026-11-21', workouts, sets })
 
 describe('buildStrengthProgress', () => {
     it('echoes the range and handles no data', () => {
-        const dto = build([], [])
-        expect(dto).toEqual({ range: '3m', exercises: [], bodyWeight: [] })
+        expect(run([], [])).toEqual({ range: '3m', exercises: [] })
     })
 
-    it('computes top set and Epley estimate, ignoring 15-rep sets for 1RM', () => {
-        const dto = build(
-            [wk('a', '2026-11-01')],
-            [set('a', 'Squat', 5, 100), set('a', 'Squat', 15, 120)]
+    it('keeps the heaviest set of every workout date, ascending', () => {
+        const dto = run(
+            [wk('a', '2026-11-01'), wk('b', '2026-11-08')],
+            [
+                set('a', 'Squat', 5, 100),
+                set('a', 'Squat', 5, 120),
+                set('a', 'Squat', 8, 90),
+                set('b', 'Squat', 3, 125),
+            ]
         )
+
         expect(dto.exercises[0]?.points).toEqual([
-            { date: '2026-11-01', topSetKg: 120, estimatedOneRmKg: 116.7 },
+            { date: '2026-11-01', topSetKg: 120 },
+            { date: '2026-11-08', topSetKg: 125 },
         ])
     })
 
-    it('never produces NaN for null reps or load', () => {
-        const dto = build(
-            [wk('a', '2026-11-01')],
-            [set('a', 'Squat', null, 100), set('a', 'Squat', 5, null), set('a', 'Squat', 5, 80)]
+    it('never produces NaN or zero for null reps or load', () => {
+        const dto = run(
+            [wk('a', '2026-11-01'), wk('b', '2026-11-08')],
+            [
+                set('a', 'Squat', null, 100),
+                set('a', 'Squat', 5, null),
+                set('a', 'Squat', 0, 100),
+                set('a', 'Squat', 5, 0),
+                set('b', 'Squat', 5, 80),
+            ]
         )
-        expect(dto.exercises[0]?.points[0]).toEqual({
-            date: '2026-11-01',
-            topSetKg: 80,
-            estimatedOneRmKg: 93.3,
-        })
+
+        expect(dto.exercises[0]?.points).toEqual([{ date: '2026-11-08', topSetKg: 80 }])
     })
 
     it('excludes exercises with no usable load before ranking', () => {
-        const dto = build(
-            [wk('a', '2026-11-01'), wk('b', '2026-11-02')],
+        const dto = run(
+            [wk('a', '2026-11-01'), wk('b', '2026-11-02'), wk('c', '2026-11-03')],
             [
-                set('a', 'Plank', null, null),
-                set('b', 'Plank', null, null),
-                set('a', 'Squat', 5, 100),
+                set('a', 'Push-up', 20, null),
+                set('b', 'Push-up', 20, null),
+                set('c', 'Push-up', 20, null),
+                set('c', 'Squat', 5, 100),
             ]
         )
-        expect(dto.exercises.map((e) => e.name)).toEqual(['Squat'])
+
+        expect(dto.exercises.map((exercise) => exercise.name)).toEqual(['Squat'])
     })
 
     it('ranks by workouts, then sets, then name', () => {
-        const dto = build(
+        const dto = run(
             [wk('a', '2026-11-01'), wk('b', '2026-11-02')],
             [
-                set('a', 'Bench', 5, 60),
-                set('a', 'Bench', 5, 60),
-                set('a', 'Row', 5, 50),
-                set('b', 'Row', 5, 50),
-                set('a', 'Curl', 5, 20),
-                set('b', 'Curl', 5, 20),
-                set('a', 'Alpha', 5, 20),
+                set('a', 'Curl', 10, 20),
+                set('b', 'Curl', 10, 20),
+                set('a', 'Bench', 5, 80),
+                set('b', 'Bench', 5, 80),
+                set('b', 'Bench', 5, 80),
+                set('a', 'Row', 5, 60),
+                set('b', 'Dip', 5, 10),
+                set('b', 'Dip', 5, 10),
+                set('b', 'Dip', 5, 10),
             ]
         )
-        expect(dto.exercises.map((e) => e.name)).toEqual(['Curl', 'Row', 'Bench', 'Alpha'])
-        expect(dto.exercises[0]?.workouts).toBe(2)
+
+        expect(dto.exercises.map((exercise) => exercise.name)).toEqual([
+            'Bench',
+            'Curl',
+            'Dip',
+            'Row',
+        ])
     })
 
     it('keys by source id else lower-cased name and shows the most recent name', () => {
-        const dto = build(
+        const dto = run(
             [wk('a', '2026-11-01'), wk('b', '2026-11-08')],
             [
-                set('a', 'Back Squat', 5, 100, 'sq'),
-                set('b', 'Squat (barbell)', 5, 105, 'sq'),
-                set('a', ' Bench ', 5, 60),
-                set('b', 'bench', 5, 62),
+                set('a', 'Back Squat', 5, 100, { sourceExerciseId: '7' }),
+                set('b', 'Squat (barbell)', 5, 105, { sourceExerciseId: '7' }),
+                set('a', ' Bench ', 5, 80),
+                set('b', 'bench', 5, 82),
             ]
         )
-        const byKey = Object.fromEntries(dto.exercises.map((e) => [e.key, e]))
-        expect(byKey['sq']?.name).toBe('Squat (barbell)')
-        expect(byKey['bench']?.name).toBe('bench')
-        expect(byKey['bench']?.workouts).toBe(2)
+
+        expect(dto.exercises).toHaveLength(2)
+        expect(dto.exercises.map((exercise) => exercise.name).toSorted()).toEqual([
+            'Squat (barbell)',
+            'bench',
+        ])
     })
 
-    it('collapses two workouts on the same date to one point with the max', () => {
-        const dto = build(
-            [wk('a', '2026-11-01'), wk('b', '2026-11-01')],
-            [set('a', 'Squat', 5, 100), set('b', 'Squat', 3, 110)]
-        )
-        const points = dto.exercises[0]?.points
-        expect(points).toHaveLength(1)
-        expect(points?.[0]?.topSetKg).toBe(110)
-        expect(points?.[0]?.estimatedOneRmKg).toBe(121)
-        expect(dto.exercises[0]?.workouts).toBe(2)
-    })
-
-    it('returns only the first five exercises, points ascending', () => {
-        const names = ['A', 'B', 'C', 'D', 'E', 'F']
-        const dto = build(
-            [wk('a', '2026-11-08'), wk('b', '2026-11-01')],
-            [...names.map((n) => set('a', n, 5, 50)), set('b', 'A', 5, 50)]
-        )
-        expect(dto.exercises).toHaveLength(5)
-        expect(dto.exercises[0]?.points.map((p) => p.date)).toEqual(['2026-11-01', '2026-11-08'])
-    })
-
-    it('keeps the last body weight per date and skips nulls', () => {
-        const dto = build(
+    it('uses the picture of the most recent workout that has one', () => {
+        const dto = run(
+            [wk('a', '2026-11-01'), wk('b', '2026-11-08'), wk('c', '2026-11-15')],
             [
-                wk('a', '2026-11-02', 80),
-                wk('b', '2026-11-02', 81),
-                wk('c', '2026-11-01', null),
-                wk('d', '2026-11-03', 0),
-            ],
-            []
+                set('a', 'Squat', 5, 100, {
+                    exerciseImageUrl: 'https://lyfta.app/images/exercises/old.png',
+                }),
+                set('b', 'Squat', 5, 105, {
+                    exerciseImageUrl: 'https://lyfta.app/images/exercises/new.png',
+                }),
+                set('c', 'Squat', 5, 110),
+            ]
         )
-        expect(dto.bodyWeight).toEqual([{ date: '2026-11-02', kg: 81 }])
+
+        expect(dto.exercises[0]?.imageUrl).toBe('https://lyfta.app/images/exercises/new.png')
+    })
+
+    it('has no picture when no set carries one', () => {
+        expect(
+            run([wk('a', '2026-11-01')], [set('a', 'Squat', 5, 100)]).exercises[0]?.imageUrl
+        ).toBeNull()
+    })
+
+    it('returns only the first five exercises', () => {
+        const names = ['A', 'B', 'C', 'D', 'E', 'F']
+        const dto = run(
+            [wk('a', '2026-11-01')],
+            names.map((name) => set('a', name, 5, 50))
+        )
+
+        expect(dto.exercises).toHaveLength(5)
+    })
+
+    it('ignores sets of workouts outside the given list', () => {
+        const dto = run([wk('a', '2026-11-01')], [set('x', 'Squat', 5, 100)])
+
+        expect(dto.exercises).toEqual([])
     })
 })

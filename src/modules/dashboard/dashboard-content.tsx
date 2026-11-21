@@ -48,7 +48,7 @@ export function DashboardContent() {
                     onRangeChange={(next) => void setRange(next)}
                 />
             </header>
-            <WeekStrip today={today} />
+            <WeekStrip today={today} mode={profile.data.dashboardMode} />
             {profile.data.dashboardMode === 'run' ? (
                 <RunProgress range={range} />
             ) : (

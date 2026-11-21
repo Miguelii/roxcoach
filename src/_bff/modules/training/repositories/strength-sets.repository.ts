@@ -142,6 +142,7 @@ export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
 const progressSetRowSchema = z.object({
     activity_id: z.string(),
     exercise: z.string(),
+    exercise_image_url: z.string().nullable(),
     source_exercise_id: z.string().nullable(),
     reps: z.number().int().nullable(),
     load_kg: numeric,
@@ -167,7 +168,9 @@ export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(func
                     try: () =>
                         supabase
                             .from(TABLE)
-                            .select('activity_id, exercise, source_exercise_id, reps, load_kg')
+                            .select(
+                                'activity_id, exercise, exercise_image_url, source_exercise_id, reps, load_kg'
+                            )
                             .eq('user_id', userId)
                             .in('activity_id', chunk),
                     catch: (cause) =>
@@ -195,6 +198,7 @@ export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(func
     return results.flat().map((row) => ({
         activityId: row.activity_id,
         exercise: row.exercise,
+        exerciseImageUrl: row.exercise_image_url,
         sourceExerciseId: row.source_exercise_id,
         reps: row.reps,
         loadKg: row.load_kg,

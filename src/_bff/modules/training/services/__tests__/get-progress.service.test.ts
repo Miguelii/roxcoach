@@ -123,13 +123,14 @@ describe('getStrengthProgress', () => {
         now: () => new Date('2026-11-21T12:00:00Z'),
     })
 
-    it('returns top exercises and body weight', async () => {
+    it('returns the top exercises with their picture', async () => {
         const { chains, supabase } = makeFakeDb([
-            okRows([{ id: 'w1', local_date: '2026-11-10', body_weight_kg: 82 }]),
+            okRows([{ id: 'w1', local_date: '2026-11-10' }]),
             okRows([
                 {
                     activity_id: 'w1',
                     exercise: 'Squat',
+                    exercise_image_url: 'https://lyfta.app/images/exercises/squat.png',
                     source_exercise_id: '7',
                     reps: 5,
                     load_kg: 100,
@@ -140,8 +141,9 @@ describe('getStrengthProgress', () => {
 
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-21')
         expect(chains[1]?.in).toHaveBeenCalledWith('activity_id', ['w1'])
-        expect(dto.bodyWeight).toEqual([{ date: '2026-11-10', kg: 82 }])
         expect(dto.exercises.map((exercise) => exercise.name)).toEqual(['Squat'])
+        expect(dto.exercises[0]?.imageUrl).toBe('https://lyfta.app/images/exercises/squat.png')
+        expect(dto.exercises[0]?.points).toEqual([{ date: '2026-11-10', topSetKg: 100 }])
     })
 
     it('returns empty series for an empty history without querying sets', async () => {
@@ -152,6 +154,5 @@ describe('getStrengthProgress', () => {
 
         expect(from).toHaveBeenCalledTimes(1)
         expect(dto.exercises).toEqual([])
-        expect(dto.bodyWeight).toEqual([])
     })
 })

@@ -13,4 +13,3 @@ export const DEFAULT_PROGRESS_RANGE: ProgressRange = '6m'
 export const MIN_ZONE_SAMPLE_S = 300
 export const TOP_EXERCISES = 5
 // Epley is only trusted for sets up to this many reps.
-export const ONE_RM_MAX_REPS = 12

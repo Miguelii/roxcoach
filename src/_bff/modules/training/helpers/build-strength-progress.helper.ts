@@ -1,17 +1,13 @@
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { ONE_RM_MAX_REPS, TOP_EXERCISES } from '@/_bff/core/constants/progress.constants'
-import type {
-    BodyWeightPointDTO,
-    ExercisePointDTO,
-    StrengthProgressDTO,
-    TopExerciseDTO,
-} from '@/_bff/modules/training/types/progress'
+import { TOP_EXERCISES } from '@/_bff/core/constants/progress.constants'
+import type { StrengthProgressDTO, TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 
-type WorkoutRow = { activityId: string; localDate: string; bodyWeightKg: number | null }
+type WorkoutRow = { activityId: string; localDate: string }
 
 type SetRow = {
     activityId: string
     exercise: string
+    exerciseImageUrl: string | null
     sourceExerciseId: string | null
     reps: number | null
     loadKg: number | null
@@ -27,37 +23,20 @@ type Input = {
 type ExerciseAcc = {
     name: string
     nameDate: string
+    imageUrl: string | null
+    imageDate: string
     workouts: Set<string>
     totalSets: number
-    points: Map<string, ExercisePointDTO>
+    // The heaviest set per workout date.
+    topSets: Map<string, number>
 }
 
-const maxOrNull = (a: number | null, b: number | null) =>
-    a === null ? b : b === null ? a : Math.max(a, b)
+// A set counts for the top set only with reps and a positive load (bodyweight work has no load).
+const usableLoad = (set: SetRow) =>
+    set.reps !== null && set.reps >= 1 && set.loadKg !== null && set.loadKg > 0 ? set.loadKg : null
 
-const round1 = (n: number) => Math.round(n * 10) / 10
-
-function buildBodyWeight(workouts: WorkoutRow[]): BodyWeightPointDTO[] {
-    const byDate = new Map<string, number>()
-    for (const w of workouts) {
-        if (w.bodyWeightKg !== null && w.bodyWeightKg > 0) byDate.set(w.localDate, w.bodyWeightKg)
-    }
-    return [...byDate]
-        .map(([date, kg]) => ({ date, kg }))
-        .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function metricsOf(set: SetRow): Pick<ExercisePointDTO, 'topSetKg' | 'estimatedOneRmKg'> {
-    const { reps, loadKg } = set
-    if (reps === null || loadKg === null || reps < 1 || loadKg <= 0) {
-        return { topSetKg: null, estimatedOneRmKg: null }
-    }
-    return {
-        topSetKg: loadKg,
-        estimatedOneRmKg: reps <= ONE_RM_MAX_REPS ? round1(loadKg * (1 + reps / 30)) : null,
-    }
-}
-
+// The most used exercises with the heaviest set of every workout date. `workouts` and `sets` are
+// already bounded by the range and come in ascending workout order.
 export function buildStrengthProgress({ range, workouts, sets }: Input): StrengthProgressDTO {
     const dateOf = new Map(workouts.map((w) => [w.activityId, w.localDate]))
     const order = new Map(workouts.map((w, index) => [w.activityId, index]))
@@ -74,31 +53,30 @@ export function buildStrengthProgress({ range, workouts, sets }: Input): Strengt
         const acc = exercises.get(key) ?? {
             name: set.exercise,
             nameDate: date,
+            imageUrl: null,
+            imageDate: '',
             workouts: new Set<string>(),
             totalSets: 0,
-            points: new Map<string, ExercisePointDTO>(),
+            topSets: new Map<string, number>(),
         }
         if (date >= acc.nameDate) {
             acc.name = set.exercise
             acc.nameDate = date
         }
+        // The picture of the most recent workout that has one.
+        if (set.exerciseImageUrl !== null && date >= acc.imageDate) {
+            acc.imageUrl = set.exerciseImageUrl
+            acc.imageDate = date
+        }
         acc.workouts.add(set.activityId)
         acc.totalSets += 1
-        const metrics = metricsOf(set)
-        const existing = acc.points.get(date)
-        acc.points.set(date, {
-            date,
-            topSetKg: maxOrNull(existing?.topSetKg ?? null, metrics.topSetKg),
-            estimatedOneRmKg: maxOrNull(
-                existing?.estimatedOneRmKg ?? null,
-                metrics.estimatedOneRmKg
-            ),
-        })
+        const load = usableLoad(set)
+        if (load !== null) acc.topSets.set(date, Math.max(acc.topSets.get(date) ?? 0, load))
         exercises.set(key, acc)
     }
 
-    const ranked = [...exercises]
-        .filter(([, acc]) => [...acc.points.values()].some((p) => p.topSetKg !== null))
+    const top: TopExerciseDTO[] = [...exercises]
+        .filter(([, acc]) => acc.topSets.size > 0)
         .toSorted(
             ([, a], [, b]) =>
                 b.workouts.size - a.workouts.size ||
@@ -106,13 +84,15 @@ export function buildStrengthProgress({ range, workouts, sets }: Input): Strengt
                 a.name.localeCompare(b.name)
         )
         .slice(0, TOP_EXERCISES)
+        .map(([key, acc]) => ({
+            key,
+            name: acc.name,
+            imageUrl: acc.imageUrl,
+            workouts: acc.workouts.size,
+            points: [...acc.topSets]
+                .map(([date, topSetKg]) => ({ date, topSetKg }))
+                .toSorted((a, b) => a.date.localeCompare(b.date)),
+        }))
 
-    const top: TopExerciseDTO[] = ranked.map(([key, acc]) => ({
-        key,
-        name: acc.name,
-        workouts: acc.workouts.size,
-        points: [...acc.points.values()].toSorted((a, b) => a.date.localeCompare(b.date)),
-    }))
-
-    return { range, exercises: top, bodyWeight: buildBodyWeight(workouts) }
+    return { range, exercises: top }
 }

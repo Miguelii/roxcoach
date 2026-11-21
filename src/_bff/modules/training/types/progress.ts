@@ -38,25 +38,21 @@ export type RunProgressDTO = {
     }
 }
 
-export type ExercisePointDTO = {
-    date: string
-    topSetKg: number | null
-    estimatedOneRmKg: number | null
-}
+// The heaviest set of one workout date.
+type ExercisePointDTO = { date: string; topSetKg: number }
 
 export type TopExerciseDTO = {
     key: string
     name: string
+    // The exercise picture from the workout source, when it has one.
+    imageUrl: string | null
     workouts: number
     points: ExercisePointDTO[]
 }
 
-export type BodyWeightPointDTO = { date: string; kg: number }
-
 export type StrengthProgressDTO = {
     range: ProgressRange
     exercises: TopExerciseDTO[]
-    bodyWeight: BodyWeightPointDTO[]
 }
 
 // `t` is epoch ms, `distanceM` is cumulative distance in meters.

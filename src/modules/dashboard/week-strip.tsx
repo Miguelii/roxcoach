@@ -1,3 +1,4 @@
+import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import { Skeleton } from '@/components/ui/skeleton'
 import { QueryError } from '@/components/query-error'
 import { trpcClient } from '@/lib/trpc'
@@ -7,9 +8,10 @@ import { WeekStripView } from '@/modules/dashboard/week-strip-view'
 
 type Props = {
     today: string
+    mode: DashboardMode
 }
 
-export function WeekStrip({ today }: Props) {
+export function WeekStrip({ today, mode }: Props) {
     const query = trpcClient.training.getCalendar.useQuery(
         { from: addDays(today, -34), to: today },
         { staleTime: DASHBOARD_QUERY_STALE_TIME }
@@ -27,7 +29,7 @@ export function WeekStrip({ today }: Props) {
 
     return (
         <>
-            <WeekStripView items={query.data} today={today} />
+            <WeekStripView items={query.data} today={today} mode={mode} />
             {query.isError && (
                 <QueryError
                     message="Could not refresh this week's training."
