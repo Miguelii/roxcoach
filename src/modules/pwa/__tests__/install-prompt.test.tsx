@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InstallPrompt } from '@/modules/pwa/install-prompt'
-import { INSTALL_PROMPT_DISMISSED_KEY } from '@/modules/pwa/constants'
+import {
+    INSTALL_PROMPT_DISMISS_TTL_MS,
+    INSTALL_PROMPT_DISMISSED_KEY,
+} from '@/modules/pwa/constants'
 
 const mocks = vi.hoisted(() => ({ isMobile: true }))
 
@@ -20,6 +23,9 @@ const setMatchMedia = (standalone: boolean) =>
 
 const setUserAgent = (userAgent: string) =>
     Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
+
+// The time saved when the sheet was dismissed, 0 when nothing is saved.
+const savedAt = () => Number(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) ?? 0)
 
 const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/126.0 Mobile Safari/537.36'
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari/604.1'
@@ -76,9 +82,7 @@ describe('InstallPrompt', () => {
 
         fireEvent.click(await screen.findByTestId('install-prompt-install'))
 
-        await waitFor(() =>
-            expect(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)).toBe('1')
-        )
+        await waitFor(() => expect(savedAt()).toBeCloseTo(Date.now(), -3))
         await waitFor(() => expect(screen.queryByTestId('install-prompt')).toBeNull())
     })
 
@@ -87,7 +91,7 @@ describe('InstallPrompt', () => {
         fireInstallEvent()
         fireEvent.click(await screen.findByTestId('install-prompt-dismiss'))
 
-        expect(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)).toBe('1')
+        expect(savedAt()).toBeCloseTo(Date.now(), -3)
         await waitFor(() => expect(screen.queryByTestId('install-prompt')).toBeNull())
         first.unmount()
 
@@ -97,6 +101,33 @@ describe('InstallPrompt', () => {
             await new Promise((resolve) => setTimeout(resolve, 20))
         })
         expect(screen.queryByTestId('install-prompt')).toBeNull()
+    })
+
+    it.each([
+        ['71 hours ago', INSTALL_PROMPT_DISMISS_TTL_MS - 60 * 60 * 1000, false],
+        ['73 hours ago', INSTALL_PROMPT_DISMISS_TTL_MS + 60 * 60 * 1000, true],
+    ])('a dismissal from %s %s the sheet', async (_label, ageMs, shows) => {
+        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, String(Date.now() - ageMs))
+        render(<InstallPrompt delayMs={0} />)
+        fireInstallEvent()
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 30))
+        })
+
+        expect(screen.queryByTestId('install-prompt') !== null).toBe(shows)
+    })
+
+    it.each([
+        ['an old flag', '1'],
+        ['a corrupt value', 'soon'],
+        ['a time in the future', String(Date.now() + 86_400_000)],
+    ])('treats %s as stale, shows the sheet and removes the value', async (_label, value) => {
+        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, value)
+        render(<InstallPrompt delayMs={0} />)
+        fireInstallEvent()
+
+        expect(await screen.findByTestId('install-prompt')).toBeInTheDocument()
+        expect(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)).toBeNull()
     })
 
     it('stays hidden when the app already runs installed', async () => {
@@ -151,7 +182,7 @@ describe('InstallPrompt', () => {
         expect(screen.queryByTestId('install-prompt-install')).toBeNull()
         expect(screen.getByTestId('install-prompt-dismiss')).toHaveTextContent('Got it')
         fireEvent.click(screen.getByTestId('install-prompt-dismiss'))
-        expect(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)).toBe('1')
+        expect(savedAt()).toBeCloseTo(Date.now(), -3)
     })
 
     it('still works when storage is blocked, it just does not remember the choice', async () => {

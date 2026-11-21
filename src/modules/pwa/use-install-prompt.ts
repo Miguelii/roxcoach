@@ -1,7 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { INSTALL_PROMPT_DELAY_MS, INSTALL_PROMPT_DISMISSED_KEY } from '@/modules/pwa/constants'
+import {
+    INSTALL_PROMPT_DELAY_MS,
+    INSTALL_PROMPT_DISMISS_TTL_MS,
+    INSTALL_PROMPT_DISMISSED_KEY,
+} from '@/modules/pwa/constants'
 
 // The browser's install prompt event (Chrome and Edge, not in the DOM typings).
 type InstallPromptEvent = Event & {
@@ -19,9 +23,21 @@ export type InstallPromptState =
 const isInstallPromptEvent = (event: Event): event is InstallPromptEvent =>
     'prompt' in event && 'userChoice' in event
 
+// A dismissal counts for 72 hours. A value that is not a past time (an old flag, a corrupt value,
+// a clock that moved back) counts as stale, and a stale one is removed.
 const readDismissed = () => {
     try {
-        return window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) === '1'
+        const dismissedAt = Number(window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY))
+        const age = Date.now() - dismissedAt
+        if (
+            Number.isFinite(dismissedAt) &&
+            dismissedAt > 0 &&
+            age >= 0 &&
+            age < INSTALL_PROMPT_DISMISS_TTL_MS
+        )
+            return true
+        window.localStorage.removeItem(INSTALL_PROMPT_DISMISSED_KEY)
+        return false
     } catch {
         // Storage can be blocked (private mode): then the choice just is not remembered.
         return false
@@ -30,7 +46,7 @@ const readDismissed = () => {
 
 const writeDismissed = () => {
     try {
-        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, '1')
+        window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, String(Date.now()))
     } catch {
         // Not remembered; the sheet closes for this visit anyway.
     }
@@ -45,8 +61,9 @@ const isIosSafari = () =>
     /iphone|ipad|ipod/iu.test(navigator.userAgent) ||
     (/macintosh/iu.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
 
-// Decides whether to offer installing the app: never when it already runs installed or the
-// choice was dismissed, and only after `delayMs`. A dismissal is saved in localStorage.
+// Decides whether to offer installing the app: never when it already runs installed or it was
+// dismissed in the last 72 hours, and only after `delayMs`. A dismissal is saved in localStorage
+// with its time.
 export function useInstallPrompt(delayMs = INSTALL_PROMPT_DELAY_MS): InstallPromptState {
     const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null)
     const [ios, setIos] = useState(false)

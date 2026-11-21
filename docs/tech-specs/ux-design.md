@@ -81,8 +81,9 @@ respected, screen-reader labels on every icon-only control and on every calendar
   after opening it: with the browser's `beforeinstallprompt` event (Chrome, Edge) an "Install app"
   button opens the native install dialog; on iOS Safari, which cannot install from code, the sheet
   shows the Share, Add to Home Screen steps and a "Got it" button. "Not now", swiping the sheet away
-  or declining the native dialog saves `roxcoach:install-prompt-dismissed` in localStorage and the
-  sheet does not come back on that browser; it never shows when the app already runs installed
+  or declining the native dialog saves `roxcoach:install-prompt-dismissed` in localStorage (the time of the dismissal) and the
+  sheet stays away for 72 hours, after which the value is stale (and removed) and the sheet is
+  offered again; an old flag or a corrupt or future value counts as stale; it never shows when the app already runs installed
   (`display-mode: standalone`) or on a wide screen. When storage is blocked the choice is simply not
   remembered. Out of scope on purpose: web push
   notifications (they need VAPID keys, a stored subscription and a sender) and offline caching with
