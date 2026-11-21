@@ -39,8 +39,8 @@ export function DashboardContent() {
                     </p>
                 </div>
                 {/* One row: the range on the left, the two drawer actions at the far right. On a
-                    phone the actions wrap under the range. */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                    phone the actions come first and the range sits below them. */}
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <DashboardControls
                         range={range}
                         onRangeChange={(next) => void setRange(next)}

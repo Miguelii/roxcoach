@@ -33,7 +33,7 @@ export function DashboardControls({ range, onRangeChange }: Props) {
                             key={value}
                             value={value}
                             data-testid={`range-tab-${value}`}
-                            className="h-11 sm:h-8 sm:px-4"
+                            className="h-9 sm:h-8 sm:px-4"
                         >
                             {RANGE_LABELS[value]}
                         </TabsTrigger>
