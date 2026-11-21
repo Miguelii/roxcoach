@@ -21,7 +21,9 @@ export function ActivityActions({ inline = false }: Props) {
             <div
                 className={cn(
                     'flex flex-wrap md:flex-row items-center gap-3 w-full',
-                    inline && 'sm:w-auto sm:flex-nowrap'
+                    // The buttons are w-full by default; inline they take their own width.
+                    inline &&
+                        'sm:w-auto sm:flex-nowrap sm:[&_button]:w-auto sm:[&_button]:max-w-none sm:[&_button]:shrink-0'
                 )}
             >
                 <UploadActivity />
