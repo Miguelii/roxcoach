@@ -3,7 +3,9 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatKg,
     formatPace,
+    formatPaceSeconds,
     parseClock,
 } from '@/_bff/core/utils/formatters.utils'
 
@@ -56,5 +58,30 @@ describe('parseClock', () => {
         expect(parseClock('10:75')).toBeNull()
         expect(parseClock('1:75:00')).toBeNull()
         expect(parseClock('90:00')).toBe(5400)
+    })
+})
+
+describe('formatPaceSeconds', () => {
+    it('formats seconds per kilometer as a pace', () => {
+        expect(formatPaceSeconds(295)).toBe('4:55 /km')
+        expect(formatPaceSeconds(370)).toBe('6:10 /km')
+    })
+
+    it('returns null for missing or non-positive values', () => {
+        expect(formatPaceSeconds(null)).toBeNull()
+        expect(formatPaceSeconds(0)).toBeNull()
+        expect(formatPaceSeconds(-5)).toBeNull()
+    })
+})
+
+describe('formatKg', () => {
+    it('keeps at most one decimal', () => {
+        expect(formatKg(82.5)).toBe('82.5 kg')
+        expect(formatKg(80)).toBe('80 kg')
+        expect(formatKg(116.66)).toBe('116.7 kg')
+    })
+
+    it('returns null for a missing value', () => {
+        expect(formatKg(null)).toBeNull()
     })
 })
