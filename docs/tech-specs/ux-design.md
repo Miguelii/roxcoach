@@ -74,8 +74,8 @@ respected, screen-reader labels on every icon-only control and on every calendar
 - Mobile first: the athlete will mostly check this on a phone.
 - Installable app (PWA), following the Next.js PWA guide: `src/app/manifest.ts` (name Roxcoach,
   `start_url` `/dashboard`, `standalone`, paper color for background and theme, 192 and 512 icons
-  plus a maskable one), the icons in `public/` (`web-app-manifest-192x192.png`,
-  `web-app-manifest-512x512.png`, `apple-touch-icon.png`; the proxy matcher already lets these names
+  plus a maskable one), the icons in `public/` (`android-chrome-192x192.png`,
+  `android-chrome-512x512.png`, `apple-touch-icon.png`; the proxy matcher already lets these names
   through without a session), and in the root layout `viewportFit: 'cover'`, `themeColor` and
   `appleWebApp` so it runs full screen on a phone. The icon is a rising line ending in a dot on the
   ink color. It needs HTTPS to be offered for installation. On a phone, a bottom sheet
@@ -84,9 +84,13 @@ respected, screen-reader labels on every icon-only control and on every calendar
   after opening it: with the browser's `beforeinstallprompt` event (Chrome, Edge) an "Install app"
   button opens the native install dialog; on iOS Safari, which cannot install from code, the sheet
   shows the Share, Add to Home Screen steps and a "Got it" button. "Not now", swiping the sheet away
-  or declining the native dialog saves `roxcoach:install-prompt-dismissed` in localStorage (the time of the dismissal) and the
-  sheet stays away for 72 hours, after which the value is stale (and removed) and the sheet is
-  offered again; an old flag or a corrupt or future value counts as stale; it never shows when the app already runs installed
+  or declining the native dialog saves `roxcoach:install-prompt-dismissed` in localStorage (JSON
+  with the time of the dismissal and the build it was made on, `{ at, build }`) and the sheet stays
+  away for 72 hours on that same build. After 72 hours, or once a new build is deployed, the value is
+  stale (and removed) and the sheet is offered again. The build is `NEXT_BUILD_ID` (the commit
+  SHA on Vercel), read by the root layout and passed to `InstallPrompt`; when it is unknown (local
+  dev) only the 72 hours apply. An old flag, the old bare time, or a corrupt or future value
+  counts as stale; it never shows when the app already runs installed
   (`display-mode: standalone`) or on a wide screen. When storage is blocked the choice is simply not
   remembered. Out of scope on purpose: web push
   notifications (they need VAPID keys, a stored subscription and a sender) and offline caching with

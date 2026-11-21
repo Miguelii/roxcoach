@@ -29,7 +29,7 @@ export function InstallPromptView({ variant, onInstall, onDismiss }: Props) {
             <DrawerContent data-testid="install-prompt" className="bg-paper">
                 <DrawerHeader className="items-center gap-3 pt-2">
                     <Image
-                        src="/web-app-manifest-192x192.png"
+                        src="/android-chrome-192x192.png"
                         alt=""
                         width={64}
                         height={64}

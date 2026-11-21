@@ -152,20 +152,23 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 
 ## Environment variables
 
-| Name                             | Scope  | Used by                                                            |
-| -------------------------------- | ------ | ------------------------------------------------------------------ |
-| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                               |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                               |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                         |
-| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                     |
-| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length |
-| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                           |
-| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                      |
+| Name                             | Scope  | Used by                                                                      |
+| -------------------------------- | ------ | ---------------------------------------------------------------------------- |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                                         |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                                         |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                                   |
+| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                               |
+| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length           |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                                     |
+| `NEXT_BUILD_ID`                  | server | install prompt build check, optional (falls back to `VERCEL_GIT_COMMIT_SHA`) |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                                |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
 `NEXT_LYFTA_ENCRYPTION_KEY` is also optional at startup, but must be a valid base64-encoded
 32-byte key when set. Lyfta connection and sync operations fail explicitly when it is absent.
+`NEXT_BUILD_ID` identifies the deployed build and defaults to Vercel's `VERCEL_GIT_COMMIT_SHA`; when
+both are unset the install prompt only uses its 72 hour expiry.
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
 `http://localhost:3000` when unset or empty. `.env.example` is maintained by the owner and must list the
 Gemini variable names. The repo rule is that `.env.example` lists every

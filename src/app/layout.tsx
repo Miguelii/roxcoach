@@ -3,6 +3,7 @@ import { Anton, Geist, Geist_Mono } from 'next/font/google'
 import '@/styles/globals.css'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
+import { ServerEnv } from '@/env/server'
 import { cn } from '@/lib/utils'
 import { InstallPrompt } from '@/modules/pwa/install-prompt'
 import { TrpcContextProvider } from '@/providers/trpc-provider'
@@ -60,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                 </NuqsAdapter>
                 <Toaster />
                 {/* In the root layout so it is offered on the login page too, before signing in. */}
-                <InstallPrompt />
+                <InstallPrompt buildId={ServerEnv.NEXT_BUILD_ID ?? null} />
             </body>
         </html>
     )
