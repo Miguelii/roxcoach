@@ -62,7 +62,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
-  keeps a small account menu with Log out. On mobile use a compact top bar and a floating bottom
+  has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
   `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.

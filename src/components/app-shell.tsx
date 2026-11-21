@@ -14,12 +14,6 @@ import {
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { trpcClient } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
@@ -55,32 +49,19 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
 
 const MOBILE_NAV_ITEMS = PRIMARY_NAV_ITEMS
 
-// The phone top bar keeps a small menu; the desktop sidebar has a direct Log out button instead.
-function MobileAccountMenu({ isPending, onLogout }: AccountMenuProps) {
+// The phone top bar has a direct Log out icon button; the desktop sidebar has a labelled one.
+function MobileLogoutButton({ isPending, onLogout }: AccountMenuProps) {
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger
-                render={
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label="Account menu"
-                        data-testid="account-menu-trigger-mobile"
-                    />
-                }
-            >
-                <span className="font-mono text-xs">MG</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                    data-testid="logout-button-mobile"
-                    disabled={isPending}
-                    onClick={onLogout}
-                >
-                    <IconLogout /> Log out
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+            variant="outline"
+            size="icon"
+            aria-label="Log out"
+            data-testid="logout-button-mobile"
+            disabled={isPending}
+            onClick={onLogout}
+        >
+            <IconLogout className="size-5" aria-hidden="true" />
+        </Button>
     )
 }
 
@@ -190,7 +171,7 @@ export function AppShell({ children }: Props) {
                     <Link href="/dashboard" className="display text-xl text-ink">
                         ROXCOACH
                     </Link>
-                    <MobileAccountMenu isPending={logout.isPending} onLogout={onLogout} />
+                    <MobileLogoutButton isPending={logout.isPending} onLogout={onLogout} />
                 </header>
 
                 <div className="pb-28 md:pb-6">{children}</div>

@@ -143,6 +143,30 @@ describe('AppShell navigation', () => {
         expect(screen.queryByTestId('account-menu-trigger')).toBeNull()
     })
 
+    it('has a Log out icon button in the phone top bar, with no account dropdown', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByTestId('logout-button-mobile')).toHaveAccessibleName('Log out')
+        expect(screen.queryByTestId('account-menu-trigger-mobile')).toBeNull()
+    })
+
+    it('logs out from the phone top bar button', async () => {
+        mocks.mutateAsync.mockResolvedValue({ status: 200 })
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        fireEvent.click(screen.getByTestId('logout-button-mobile'))
+
+        await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/login'))
+    })
+
     it('has the dashboard mode switch at the bottom of the sidebar and saves a change', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>

@@ -21,7 +21,7 @@ export function SettingsTabs({ profile, dashboard, availability, lyfta }: Props)
                     Dashboard
                 </TabsTrigger>
                 <TabsTrigger value="availability" data-testid="settings-tab-availability">
-                    Weekly availability
+                    Availability
                 </TabsTrigger>
                 <TabsTrigger value="lyfta" data-testid="settings-tab-lyfta">
                     Lyfta
