@@ -64,12 +64,6 @@
     --input: var(--hairline-strong);
     --ring: rgba(18, 18, 20, 0.4);
 
-    /* Removed by the orange-meaning task once their call sites move. */
-    --tangerine: var(--signal);
-    --tangerine-soft: var(--signal-soft);
-    --tangerine-deep: var(--signal-deep);
-    --accent-blue: var(--ink);
-
     --shadow-soft: 0 1px 2px rgba(18, 18, 20, 0.04), 0 12px 32px -18px rgba(18, 18, 20, 0.18);
     --shadow-lift: 0 2px 4px rgba(18, 18, 20, 0.04), 0 24px 48px -24px rgba(18, 18, 20, 0.28);
 
@@ -109,11 +103,6 @@
     --color-red: var(--red);
     --color-red-soft: var(--red-soft);
     --color-red-deep: var(--red-deep);
-
-    --color-tangerine: var(--tangerine);
-    --color-tangerine-soft: var(--tangerine-soft);
-    --color-tangerine-deep: var(--tangerine-deep);
-    --color-accent-blue: var(--accent-blue);
 
     /* Contextual palette, remapped per section by [data-tone] in tone.css */
     --color-tone: var(--tone);

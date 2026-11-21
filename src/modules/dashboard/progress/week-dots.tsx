@@ -59,7 +59,7 @@ export function WeekDots({ items, today }: Props) {
                             className={cn(
                                 'flex size-9 items-center justify-center rounded-full text-xs font-medium transition-colors sm:size-11',
                                 day.ran
-                                    ? 'bg-tangerine text-on-brand'
+                                    ? 'bg-blue text-on-brand'
                                     : 'border border-ink/15 text-muted-foreground',
                                 day.date === today &&
                                     'ring-2 ring-ink ring-offset-2 ring-offset-card'

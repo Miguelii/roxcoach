@@ -15,7 +15,7 @@ type Props = {
 const VERDICTS = {
     progressing: { label: 'Progressing', tone: 'green', Icon: IconTrendingUp },
     steady: { label: 'Holding steady', tone: 'slate', Icon: IconMinus },
-    declining: { label: 'Slipping', tone: 'tangerine', Icon: IconTrendingDown },
+    declining: { label: 'Slipping', tone: 'red', Icon: IconTrendingDown },
 } as const
 
 const signOf = (value: number) => (value > 0 ? '+' : value < 0 ? '-' : '')

@@ -252,7 +252,7 @@ export function ActivityView({
                                                 className="px-4 py-2 font-sans"
                                             >
                                                 {lap.station ? (
-                                                    <span className="rounded-full bg-tangerine-soft px-2 py-0.5 text-xs text-tangerine-deep">
+                                                    <span className="rounded-full bg-signal-soft px-2 py-0.5 text-xs text-signal-deep">
                                                         {HYROX_STATION_LABELS[lap.station]}
                                                     </span>
                                                 ) : (

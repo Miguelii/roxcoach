@@ -12,7 +12,7 @@ type Props = {
 }
 
 const MARGIN = { top: 8, right: 4, bottom: 0, left: 0 }
-const SELECTED_COLOR = 'var(--color-tangerine)'
+const SELECTED_COLOR = 'var(--color-ink)'
 const MUTED_COLOR = 'color-mix(in srgb, var(--color-ink) 22%, transparent)'
 
 // A bar per week or month; tapping a bar selects it and the selected one takes the accent color.

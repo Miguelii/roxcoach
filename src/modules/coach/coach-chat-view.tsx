@@ -84,7 +84,7 @@ export function CoachChatView(props: Props) {
                         onClick={() => onOpenChange(true)}
                         className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2 text-left text-sm text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
                     >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tangerine/10 text-tangerine transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-signal/10 text-signal-strong transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
                             <MessageCircleIcon className="size-4" strokeWidth={1.75} />
                         </span>
                         <span className="truncate">Ask Migueli Coach...</span>

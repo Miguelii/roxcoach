@@ -165,7 +165,7 @@ export function StrengthOverviewCard({ exercises }: Props) {
                         {summary.slipping.length === 0 ? null : (
                             <li
                                 data-testid={`${TEST_ID}-slipping`}
-                                data-tone="tangerine"
+                                data-tone="red"
                                 className="grid gap-2 rounded-[var(--radius-surface-inner)] border border-tone/30 bg-card px-3 py-2.5 text-sm text-tone-deep"
                             >
                                 <span className="flex items-center gap-1.5 font-medium">

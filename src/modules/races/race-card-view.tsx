@@ -173,7 +173,7 @@ export function RaceCardView({
                         data-testid={`race-delta-${id}`}
                         data-tone={
                             race.resultTimeS !== null && race.resultTimeS > race.targetTimeS
-                                ? 'tangerine'
+                                ? 'red'
                                 : 'green'
                         }
                         className="inline-flex rounded-full bg-tone-soft px-3 py-1 text-sm font-medium text-tone-deep"

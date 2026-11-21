@@ -92,6 +92,16 @@ describe('RaceCardView', () => {
         expect(screen.getByTestId('race-delta-r-done')).toHaveTextContent('1:00 faster than goal')
     })
 
+    it('marks a slower result than target in red', () => {
+        setup(DONE_RACE)
+        expect(screen.getByTestId('race-delta-r-done')).toHaveAttribute('data-tone', 'red')
+    })
+
+    it('marks a faster result than target in green', () => {
+        setup({ ...DONE_RACE, resultTimeS: 2340 })
+        expect(screen.getByTestId('race-delta-r-done')).toHaveAttribute('data-tone', 'green')
+    })
+
     it('has no actions but no Delete when a result exists', () => {
         setup(DONE_RACE)
         expect(screen.queryByTestId('race-delete-r-done')).not.toBeInTheDocument()
