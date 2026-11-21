@@ -91,6 +91,12 @@ type Props = PageProps<'/dashboard/[id]'>
 type Props = LayoutProps<'/dashboard'>
 ```
 
+### Dialogs and drawers: ALWAYS the shared components
+
+- To confirm an action (delete, cancel, disconnect, a short yes/no or a one-field prompt) use `ConfirmDialog` (`src/components/ui/confirm-dialog.tsx`). It is a popup on desktop and the `DrawerFormLayout` drawer on mobile. Pass `form` when it holds a field.
+- For forms in a drawer use `DrawerFormLayout` (`src/components/ui/drawer-form-layout.tsx`) inside `Drawer` + `DrawerContent`.
+- NEVER compose the base `Dialog*` or `Drawer*` primitives directly in a module to build a new dialog or sheet. If neither shared component fits, extend it instead of bypassing it. The only code that may use the primitives is `src/components/ui/` itself.
+
 ### Forms (react-hook-form + shadcn)
 
 Logic lives in a hook, UI in the component.

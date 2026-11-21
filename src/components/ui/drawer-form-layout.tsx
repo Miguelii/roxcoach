@@ -8,21 +8,25 @@ import { DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/dr
 type Props = {
     title: string
     description: string
+    descriptionTestId?: string
     closeLabel: string
     closeTestId: string
     cancelTestId: string
+    cancelLabel?: string
     closeDisabled: boolean
     onDismiss: () => void
     primaryAction: ReactNode
-    children: ReactNode
+    children?: ReactNode
 }
 
 export function DrawerFormLayout({
     title,
     description,
+    descriptionTestId,
     closeLabel,
     closeTestId,
     cancelTestId,
+    cancelLabel = 'Cancel',
     closeDisabled,
     onDismiss,
     primaryAction,
@@ -39,7 +43,9 @@ export function DrawerFormLayout({
                         >
                             {title}
                         </DrawerTitle>
-                        <DrawerDescription>{description}</DrawerDescription>
+                        <DrawerDescription data-testid={descriptionTestId}>
+                            {description}
+                        </DrawerDescription>
                     </div>
                     <Button
                         type="button"
@@ -54,7 +60,11 @@ export function DrawerFormLayout({
                     </Button>
                 </div>
             </DrawerHeader>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">{children}</div>
+            {children ? (
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
+                    {children}
+                </div>
+            ) : null}
             <div
                 data-testid="drawer-form-footer"
                 className="mt-0 flex w-full shrink-0 flex-col gap-2 border-t border-hairline bg-paper p-4 md:flex-row md:items-center sm:p-6"
@@ -67,7 +77,7 @@ export function DrawerFormLayout({
                     disabled={closeDisabled}
                     onClick={onDismiss}
                 >
-                    Cancel
+                    {cancelLabel}
                 </Button>
                 <div
                     data-testid="drawer-form-primary-action"

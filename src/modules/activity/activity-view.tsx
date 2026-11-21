@@ -6,12 +6,15 @@ import {
     formatDuration,
     formatKm,
     formatPace,
+    formatPaceSeconds,
 } from '@/_bff/core/utils/formatters.utils'
 import type { ActivityDTO, LapDTO, StrengthSetDTO } from '@/_bff/modules/training/types'
 import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
 import { cn } from '@/lib/utils'
+import { toRunSplits } from '@/modules/activity/run-chart-utils'
+import { RunSplits } from '@/modules/activity/run-splits'
 import { StrengthExercises } from '@/modules/activity/strength-exercises'
 
 type Props = {
@@ -52,8 +55,18 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
     const isStrengthActivity = activity.category === 'strength'
+    const isRun = activity.category === 'run'
     const totalVolumeKgReps =
         activity.lyftaTotalVolumeKgReps ?? calculateTotalVolumeKgReps(strengthSets)
+
+    const fastestSplit =
+        isRun && laps.length > 0
+            ? toRunSplits(laps).reduce<ReturnType<typeof toRunSplits>[number] | null>(
+                  (best, split) =>
+                      best === null || split.paceSPerKm < best.paceSPerKm ? split : best,
+                  null
+              )
+            : null
 
     const metrics: Metric[] = [
         {
@@ -88,6 +101,15 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                       value: paceOf(activity.avgSpeedMps, activity.distanceM, timeS),
                   },
               ]),
+        ...(fastestSplit
+            ? [
+                  {
+                      id: 'fastest-split',
+                      label: 'Fastest split',
+                      value: formatPaceSeconds(fastestSplit.paceSPerKm),
+                  },
+              ]
+            : []),
         {
             id: 'avg-hr',
             label: 'Avg heart rate',
@@ -133,7 +155,9 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
             <dl
                 data-testid="activity-metrics"
                 className={cn(
-                    'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5',
+                    'grid grid-cols-2 gap-3 sm:grid-cols-3',
+                    !isStrengthActivity && present.length === 5 && 'lg:grid-cols-5',
+                    !isStrengthActivity && present.length === 4 && 'sm:grid-cols-4',
                     isStrengthActivity &&
                         'gap-x-6 gap-y-4 border-y border-hairline py-4 sm:grid-cols-3'
                 )}
@@ -142,7 +166,7 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                     <div
                         key={metric.id}
                         className={cn(
-                            'rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4',
+                            'rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4 max-sm:last:odd:col-span-2',
                             isStrengthActivity && 'rounded-none border-0 bg-transparent p-0'
                         )}
                     >
@@ -161,7 +185,9 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                 ))}
             </dl>
 
-            {laps.length > 0 && (
+            {isRun && laps.length > 0 && <RunSplits laps={laps} />}
+
+            {!isRun && laps.length > 0 && (
                 <section aria-label="Laps" className="space-y-3">
                     <h2 className="display text-3xl">Laps</h2>
                     <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card">

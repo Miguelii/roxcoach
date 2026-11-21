@@ -4,14 +4,7 @@ import { useState } from 'react'
 import { Loader2Icon } from 'lucide-react'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import { Button } from '@/components/ui/button'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 type Action = 'cancel' | 'delete'
 
@@ -40,56 +33,37 @@ export function RaceConfirmationDialog({ race, action, open, onOpenChange, onCon
     }
 
     return (
-        <Dialog
+        <ConfirmDialog
             open={open}
-            onOpenChange={(next) => {
-                if (!submitting || next) onOpenChange(next)
-            }}
-        >
-            <DialogContent
-                role="alertdialog"
-                showCloseButton={!submitting}
-                data-testid={`race-confirm-dialog-${race.id}`}
-                className="md:max-w-md"
-            >
-                <DialogHeader>
-                    <DialogTitle>
-                        {deleting ? `Delete ${race.name}?` : `Cancel ${race.name}?`}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {deleting
-                            ? 'This permanently removes the race. Your coach will no longer see it. This cannot be undone.'
-                            : 'This moves the race to your history. It will not be deleted.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        data-testid={`race-confirm-no-${race.id}`}
-                        disabled={submitting}
-                        onClick={() => onOpenChange(false)}
-                    >
-                        Keep race
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        data-testid={`race-confirm-yes-${race.id}`}
-                        disabled={submitting}
-                        onClick={() => void confirm()}
-                    >
-                        {submitting ? <Loader2Icon className="animate-spin" /> : null}
-                        {submitting
-                            ? deleting
-                                ? 'Deleting...'
-                                : 'Canceling...'
-                            : deleting
-                              ? 'Delete race'
-                              : 'Cancel race'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            onOpenChange={onOpenChange}
+            title={deleting ? `Delete ${race.name}?` : `Cancel ${race.name}?`}
+            description={
+                deleting
+                    ? 'This permanently removes the race. Your coach will no longer see it. This cannot be undone.'
+                    : 'This moves the race to your history. It will not be deleted.'
+            }
+            testId={`race-confirm-dialog-${race.id}`}
+            cancelLabel="Keep race"
+            cancelTestId={`race-confirm-no-${race.id}`}
+            busy={submitting}
+            primaryAction={
+                <Button
+                    type="button"
+                    variant="destructive"
+                    data-testid={`race-confirm-yes-${race.id}`}
+                    disabled={submitting}
+                    onClick={() => void confirm()}
+                >
+                    {submitting ? <Loader2Icon className="animate-spin" /> : null}
+                    {submitting
+                        ? deleting
+                            ? 'Deleting...'
+                            : 'Canceling...'
+                        : deleting
+                          ? 'Delete race'
+                          : 'Cancel race'}
+                </Button>
+            }
+        />
     )
 }

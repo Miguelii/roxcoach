@@ -38,6 +38,12 @@ vi.mock('@/lib/trpc', () => ({
 
 describe('LyftaTab', () => {
     beforeEach(() => {
+        // jsdom has no matchMedia; the confirm dialog reads it through useIsMobile (desktop here).
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }))
         vi.clearAllMocks()
         mocks.statusQuery.data = { connected: false, lastSyncedAt: '' }
         mocks.statusQuery.isPending = false

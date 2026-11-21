@@ -164,6 +164,11 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
   root title template (`| Roxcoach`).
 - Key numbers: distance, time, average pace, average and max heart rate, effort.
 - Laps table with pace per lap and station tags (Hyrox).
+- Runs (`category = run`) replace the laps table with Strava-style sections: Splits (km, pace, a
+  bar per split where the fastest is longest, average HR), a Pace area chart and a Heart rate area
+  chart. Charts are plain server-rendered SVG at lap resolution (track points are not stored, see
+  `manual-upload.md`), drawn only when there are enough splits (and HR for the HR chart). Elevation
+  is not shown because it is not stored per lap.
 - Strength activities show duration, total volume and body weight when available. Lyfta's total
   volume is preferred; otherwise it is calculated only when every set has reps and load. Exercise
   groups follow the stored workout order and show the name with Lyfta's optional image. Sets appear
@@ -300,3 +305,17 @@ Every element tested is located by `data-testid`. Target state: end-to-end smoke
 objects in `e2e/pos/*.po.ts` (there is no `e2e` directory yet; today only unit and component tests
 exist, and the mock data is gone). Initial flows: login success and failure, the calendar renders
 activities from seeded data, create a race, save weekly availability.
+
+## Dialogs and drawers
+
+Two shared components cover every overlay, and they are the only ones a module may use:
+
+| Case                                                         | Component                                                              |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Confirming an action (delete, cancel, disconnect, one field) | `ConfirmDialog`: popup on desktop, `DrawerFormLayout` drawer on mobile |
+| A form (several fields, create or edit)                      | `DrawerFormLayout` inside `Drawer` + `DrawerContent`                   |
+
+Both share the look: bold display title, description, close button in the header, hairline
+separators and a footer with Cancel plus the primary action. The base `Dialog*` and `Drawer*`
+primitives are never composed directly in a module. If a case does not fit, extend the shared
+component.

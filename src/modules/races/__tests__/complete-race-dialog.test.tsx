@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CompleteRaceDialog } from '@/modules/races/complete-race-dialog'
 import { RUN_RACE } from '@/modules/races/__tests__/fixtures'
@@ -12,6 +12,19 @@ const setup = (onSubmit = vi.fn().mockResolvedValue(null)) => {
 }
 
 describe('CompleteRaceDialog', () => {
+    beforeEach(() => {
+        // jsdom has no matchMedia; the confirm dialog reads it through useIsMobile (desktop here).
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }))
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
     it('shows the goal and no delta before typing', () => {
         setup()
         expect(screen.getByTestId('complete-goal')).toHaveTextContent('Goal 40:00')

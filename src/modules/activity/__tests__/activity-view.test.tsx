@@ -44,6 +44,21 @@ describe('ActivityView', () => {
         expect(screen.getByTestId('lap-2-time')).toHaveTextContent('4:00')
     })
 
+    it('shows splits and charts for a run instead of the laps table', () => {
+        render(
+            <ActivityView
+                activity={makeActivity()}
+                laps={[makeLap({ lapIndex: 1 }), makeLap({ lapIndex: 2, movingTimeS: 290 })]}
+                strengthSets={[]}
+            />
+        )
+
+        expect(screen.getByTestId('run-splits')).toBeInTheDocument()
+        expect(screen.getByTestId('run-pace-chart')).toBeInTheDocument()
+        expect(screen.queryByTestId('laps-table')).toBeNull()
+        expect(screen.getByTestId('metric-fastest-split-value')).toHaveTextContent('4:50 /km')
+    })
+
     it('omits the laps section without laps', () => {
         render(<ActivityView activity={makeActivity()} laps={[]} strengthSets={[]} />)
 

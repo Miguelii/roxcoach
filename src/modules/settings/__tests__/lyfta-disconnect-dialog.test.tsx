@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { LyftaDisconnectDialog } from '@/modules/settings/lyfta-disconnect-dialog'
 
@@ -19,6 +19,19 @@ const setup = (overrides: Partial<Parameters<typeof LyftaDisconnectDialog>[0]> =
 }
 
 describe('LyftaDisconnectDialog', () => {
+    beforeEach(() => {
+        // jsdom has no matchMedia; the confirm dialog reads it through useIsMobile (desktop here).
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }))
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
     it('explains what stays and asks to confirm', () => {
         setup()
 

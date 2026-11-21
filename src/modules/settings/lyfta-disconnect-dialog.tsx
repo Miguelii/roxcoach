@@ -2,14 +2,7 @@
 
 import { Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 type Props = {
     open: boolean
@@ -20,8 +13,7 @@ type Props = {
     error: string | null
 }
 
-// Asks before disconnecting Lyfta, like deleting a race: a popup on desktop and a sheet from the
-// bottom on a phone (the shared Dialog does both).
+// Asks before disconnecting Lyfta: a popup on desktop and a sheet from the bottom on a phone.
 export function LyftaDisconnectDialog({
     open,
     onOpenChange,
@@ -30,56 +22,37 @@ export function LyftaDisconnectDialog({
     error,
 }: Props) {
     return (
-        <Dialog
+        <ConfirmDialog
             open={open}
-            onOpenChange={(next) => {
-                if (!disconnecting || next) onOpenChange(next)
-            }}
+            onOpenChange={onOpenChange}
+            title="Disconnect Lyfta?"
+            description="Imported workouts and sets will stay in your training history. You can connect again with your API key."
+            testId="lyfta-disconnect-dialog"
+            cancelLabel="Keep connected"
+            cancelTestId="lyfta-disconnect-cancel"
+            busy={disconnecting}
+            primaryAction={
+                <Button
+                    type="button"
+                    variant="destructive"
+                    data-testid="lyfta-disconnect-confirm"
+                    disabled={disconnecting}
+                    onClick={onConfirm}
+                >
+                    {disconnecting ? <Loader2Icon className="animate-spin" /> : null}
+                    {disconnecting ? 'Disconnecting...' : 'Disconnect Lyfta'}
+                </Button>
+            }
         >
-            <DialogContent
-                role="alertdialog"
-                showCloseButton={!disconnecting}
-                data-testid="lyfta-disconnect-dialog"
-                className="md:max-w-md"
-            >
-                <DialogHeader>
-                    <DialogTitle>Disconnect Lyfta?</DialogTitle>
-                    <DialogDescription>
-                        Imported workouts and sets will stay in your training history. You can
-                        connect again with your API key.
-                    </DialogDescription>
-                </DialogHeader>
-                {error === null ? null : (
-                    <p
-                        role="alert"
-                        data-testid="lyfta-disconnect-error"
-                        className="text-sm text-destructive"
-                    >
-                        {error}
-                    </p>
-                )}
-                <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        data-testid="lyfta-disconnect-cancel"
-                        disabled={disconnecting}
-                        onClick={() => onOpenChange(false)}
-                    >
-                        Keep connected
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        data-testid="lyfta-disconnect-confirm"
-                        disabled={disconnecting}
-                        onClick={onConfirm}
-                    >
-                        {disconnecting ? <Loader2Icon className="animate-spin" /> : null}
-                        {disconnecting ? 'Disconnecting...' : 'Disconnect Lyfta'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            {error === null ? null : (
+                <p
+                    role="alert"
+                    data-testid="lyfta-disconnect-error"
+                    className="text-sm text-destructive"
+                >
+                    {error}
+                </p>
+            )}
+        </ConfirmDialog>
     )
 }

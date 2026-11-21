@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RaceCardView } from '@/modules/races/race-card-view'
 import {
@@ -22,6 +22,19 @@ const setup = (race: RaceDTO) => {
 }
 
 describe('RaceCardView', () => {
+    beforeEach(() => {
+        // jsdom has no matchMedia; the confirm dialog reads it through useIsMobile (desktop here).
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }))
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
     it('shows the main facts of an upcoming hyrox race', () => {
         setup(HYROX_RACE)
         expect(screen.getByTestId('race-card-r-hyrox')).toHaveTextContent('Hyrox Lisbon')

@@ -5,14 +5,7 @@ import { Loader2Icon } from 'lucide-react'
 import { formatClock } from '@/_bff/core/utils/formatters.utils'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import { Button } from '@/components/ui/button'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
     Form,
     FormControl,
@@ -38,22 +31,24 @@ type Props = {
 
 type BodyProps = {
     race: RaceDTO
-    onClose: () => void
+    open: boolean
+    onOpenChange: (open: boolean) => void
     onSubmit: (id: string, resultTimeS: number) => Promise<void>
 }
 
-function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
+function CompleteRaceBody({ race, open, onOpenChange, onSubmit }: BodyProps) {
     const form = useCompleteRaceForm()
     // useWatch, not form.watch: the React Compiler memoizes watch() and the delta would go stale.
     const typed = useWatch({ control: form.control, name: 'resultTime' })
     const delta = formatDelta(race.targetTimeS, parseResultTime(typed))
+    const submitting = form.formState.isSubmitting
 
     const submit = async (values: CompleteRaceValues) => {
         const seconds = parseResultTime(values.resultTime)
         if (seconds === null) return
         try {
             await onSubmit(race.id, seconds)
-            onClose()
+            onOpenChange(false)
         } catch {
             // The caller reports the failure (toast); the dialog stays open for another try.
         }
@@ -61,18 +56,24 @@ function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
 
     return (
         <Form {...form}>
-            <form
-                data-testid="complete-form"
-                onSubmit={form.handleSubmit(submit)}
-                className="grid gap-4"
-                noValidate
+            <ConfirmDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                title={`Complete ${race.name}`}
+                description={`Goal ${formatClock(race.targetTimeS)}`}
+                descriptionTestId="complete-goal"
+                testId="complete-dialog"
+                cancelLabel="Cancel"
+                cancelTestId="complete-cancel"
+                busy={submitting}
+                form={{ onSubmit: form.handleSubmit(submit), testId: 'complete-form' }}
+                primaryAction={
+                    <Button type="submit" data-testid="complete-submit" disabled={submitting}>
+                        {submitting ? <Loader2Icon className="animate-spin" /> : null}
+                        Save result
+                    </Button>
+                }
             >
-                <DialogHeader>
-                    <DialogTitle>Complete {race.name}</DialogTitle>
-                    <DialogDescription data-testid="complete-goal">
-                        Goal {formatClock(race.targetTimeS)}
-                    </DialogDescription>
-                </DialogHeader>
                 <FormField
                     control={form.control}
                     name="resultTime"
@@ -95,44 +96,13 @@ function CompleteRaceBody({ race, onClose, onSubmit }: BodyProps) {
                         {delta}
                     </p>
                 ) : null}
-                <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        data-testid="complete-cancel"
-                        disabled={form.formState.isSubmitting}
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="submit"
-                        data-testid="complete-submit"
-                        disabled={form.formState.isSubmitting}
-                    >
-                        {form.formState.isSubmitting ? (
-                            <Loader2Icon className="animate-spin" />
-                        ) : null}
-                        Save result
-                    </Button>
-                </DialogFooter>
-            </form>
+            </ConfirmDialog>
         </Form>
     )
 }
 
 export function CompleteRaceDialog({ race, open, onOpenChange, onSubmit }: Props) {
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent data-testid="complete-dialog" className="md:max-w-md">
-                {race ? (
-                    <CompleteRaceBody
-                        race={race}
-                        onClose={() => onOpenChange(false)}
-                        onSubmit={onSubmit}
-                    />
-                ) : null}
-            </DialogContent>
-        </Dialog>
-    )
+    return race ? (
+        <CompleteRaceBody race={race} open={open} onOpenChange={onOpenChange} onSubmit={onSubmit} />
+    ) : null
 }
