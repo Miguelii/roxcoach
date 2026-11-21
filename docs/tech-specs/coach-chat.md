@@ -119,6 +119,12 @@ numbers, goals, races or workouts; do not recompute computed numbers; not a medi
 the athlete's language; next sessions may be suggested as text only (the app stores no plan); be
 concise.
 
+It also sets a personality: an enthusiastic, warm coach who talks like a friend. It calls the
+athlete "atleta" (Portuguese) or "athlete" (English), opens with an energetic line that varies
+("Então vamos lá, atleta!!"), reacts to the data with real energy (celebrates, teases lightly,
+encourages), uses short punchy sentences, occasional ALL CAPS words and at most a couple of emojis.
+Reactions come from the data only, and the humor is dropped on injury, pain or discouragement.
+
 ### 2. Tools (called by the model when it needs detail)
 
 Read-only functions executed on the server for the signed-in user only: the user is closed over

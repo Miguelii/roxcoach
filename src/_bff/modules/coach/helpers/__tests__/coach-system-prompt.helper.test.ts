@@ -26,6 +26,13 @@ describe('buildCoachSystemPrompt', () => {
         expect(prompt).toContain('Be concise')
     })
 
+    it('gives the coach an energetic personality that stays grounded in the data', () => {
+        expect(prompt).toContain('Personality:')
+        expect(prompt).toContain('Então vamos lá, atleta!!')
+        expect(prompt).toContain('must always come from the data')
+        expect(prompt).toContain('drop the jokes on injury')
+    })
+
     it('has no em-dash', () => {
         expect(prompt).not.toContain(String.fromCodePoint(0x2014))
     })
