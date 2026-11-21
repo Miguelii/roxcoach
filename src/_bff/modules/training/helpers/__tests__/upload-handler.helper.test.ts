@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable no-await-in-loop -- requests run one after another to count them */
 import type { User } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
 import {

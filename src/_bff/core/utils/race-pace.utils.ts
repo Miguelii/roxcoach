@@ -6,7 +6,7 @@ type RaceLike = { raceType: string; distanceM: number | null; targetTimeS: numbe
 function hyroxRunPace(targetTimeS: number): number {
     const tiers = HYROX_RUN_PACE_TIERS
     const first = tiers[0]!
-    const last = tiers[tiers.length - 1]!
+    const last = tiers.at(-1)!
     if (targetTimeS <= first.goalS) return first.paceSPerKm
     if (targetTimeS >= last.goalS) return last.paceSPerKm
     const upperIndex = tiers.findIndex((tier) => tier.goalS >= targetTimeS)

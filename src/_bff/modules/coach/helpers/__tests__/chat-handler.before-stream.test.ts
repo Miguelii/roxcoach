@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable no-await-in-loop -- one request per case, in order */
 import { Effect } from 'effect'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorCode } from '@/_bff/lib/error-codes'

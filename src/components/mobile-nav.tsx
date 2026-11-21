@@ -116,9 +116,9 @@ export function MobileNav({ items, isActive, onCoach }: Props) {
     }
 
     const bubbleTransform =
-        dragX !== null
-            ? `translate3d(${dragX}px,0,0) scale(1.14, 1.08)`
-            : `translate3d(${slotOf(Math.max(previewIndex, 0)) * 100}%,0,0)`
+        dragX === null
+            ? `translate3d(${slotOf(Math.max(previewIndex, 0)) * 100}%,0,0)`
+            : `translate3d(${dragX}px,0,0) scale(1.14, 1.08)`
 
     return (
         <nav

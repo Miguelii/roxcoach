@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { readFileSync } from 'node:fs'
 import { Encoder, Profile } from '@garmin/fitsdk'
 import { Effect, Result } from 'effect'

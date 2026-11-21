@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useState } from 'react'
 import { HR_ZONES, type ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
-import { formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
 import type { CalendarItem } from '@/_bff/modules/training/types'
 import type { RunBucketDTO, RunProgressDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,7 +15,6 @@ import {
     bucketLabel,
     bucketRangeLabel,
     paceSummary,
-    rangeLabel,
 } from '@/modules/dashboard/progress/progress-utils'
 import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
 import { RaceBanner } from '@/modules/dashboard/progress/race-banner'
@@ -24,11 +22,7 @@ import { RaceReadinessCard } from '@/modules/dashboard/progress/race-readiness-c
 import { ProgressHero } from '@/modules/dashboard/progress/progress-hero'
 import { RecentRuns } from '@/modules/dashboard/progress/recent-runs'
 import { WeekDots } from '@/modules/dashboard/progress/week-dots'
-import {
-    ZONE_STYLES,
-    PACE_COLOR,
-    HEART_RATE_COLOR,
-} from '@/modules/dashboard/progress/series-styles'
+import { ZONE_STYLES, HEART_RATE_COLOR } from '@/modules/dashboard/progress/series-styles'
 import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
 type Props = {
@@ -118,30 +112,23 @@ function ZoneCard({ data }: Props) {
                 to see zones.
             </ZoneEmpty>
         )
-    else if (!hasZoneData)
+    else if (hasZoneData)
+        body =
+            visible.length === 0 ? (
+                <ZoneEmpty testId="zone-chart-all-hidden">Every zone is hidden.</ZoneEmpty>
+            ) : (
+                <ChartFrame
+                    testId="zone-chart-figure"
+                    label={`Pace in each heart rate zone, ${visible.map((z) => `Z${z}`).join(', ')}.`}
+                >
+                    <ZonePaceChart buckets={buckets} zones={visible} granularity={granularity} />
+                </ChartFrame>
+            )
+    else
         body = (
             <ZoneEmpty testId="zone-chart-empty-data">
                 No zone data yet. Upload a run with heart rate.
             </ZoneEmpty>
-        )
-    else
-        body = (
-            <>
-                {visible.length === 0 ? (
-                    <ZoneEmpty testId="zone-chart-all-hidden">Every zone is hidden.</ZoneEmpty>
-                ) : (
-                    <ChartFrame
-                        testId="zone-chart-figure"
-                        label={`Pace in each heart rate zone, ${visible.map((z) => `Z${z}`).join(', ')}.`}
-                    >
-                        <ZonePaceChart
-                            buckets={buckets}
-                            zones={visible}
-                            granularity={granularity}
-                        />
-                    </ChartFrame>
-                )}
-            </>
         )
 
     return (
@@ -199,7 +186,7 @@ function HeartRateCard({ data }: Props) {
                 value: bucket.avgHrBpm,
             }))}
             format={(value) => `${value} bpm`}
-            formatAxis={(value) => String(value)}
+            formatAxis={String}
             valueName="Heart rate"
         />
     )

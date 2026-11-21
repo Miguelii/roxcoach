@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

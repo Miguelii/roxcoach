@@ -77,7 +77,7 @@ export function LyftaCard() {
                             {lyfta.isSyncing ? <Loader2Icon className="animate-spin" /> : null}
                             Sync workouts
                         </Button>
-                        {!lyfta.showKeyForm ? (
+                        {lyfta.showKeyForm ? null : (
                             <>
                                 <Button
                                     className="w-full md:max-w-37.5"
@@ -104,7 +104,7 @@ export function LyftaCard() {
                                     Disconnect
                                 </Button>
                             </>
-                        ) : null}
+                        )}
                     </div>
                 </div>
             ) : null}
@@ -117,7 +117,7 @@ export function LyftaCard() {
                         className="grid gap-4"
                         noValidate
                     >
-                        {!connected ? (
+                        {connected ? null : (
                             <p className="max-w-prose text-sm text-muted-foreground">
                                 Create a personal API key in{' '}
                                 <a
@@ -130,7 +130,7 @@ export function LyftaCard() {
                                 </a>
                                 .
                             </p>
-                        ) : null}
+                        )}
                         <FormField
                             control={lyfta.form.control}
                             name="apiKey"

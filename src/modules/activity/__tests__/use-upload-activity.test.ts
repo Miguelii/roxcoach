@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { detectHyroxHint, useUploadActivity } from '@/modules/activity/use-upload-activity'
@@ -7,7 +8,9 @@ type Deferred = { file: File; release: (text: string) => void }
 // A tcx file whose first-bytes read resolves only when released.
 function deferredTcx(name: string): Deferred {
     let release: (text: string) => void = () => {}
-    const pending = new Promise<string>((resolve) => (release = resolve))
+    const pending = new Promise<string>((resolve) => {
+        release = resolve
+    })
     const file = new File(['x'], name)
     // SAFETY: only text() is read by the hook.
     file.slice = () => ({ text: () => pending }) as Blob
@@ -61,7 +64,12 @@ describe('useUploadActivity', () => {
 
     it('uploads once when submit is called twice', async () => {
         let resolve: (r: Response) => void = () => {}
-        const upload = vi.fn(() => new Promise<Response>((r) => (resolve = r)))
+        const upload = vi.fn(
+            () =>
+                new Promise<Response>((r) => {
+                    resolve = r
+                })
+        )
         const { result } = renderHook(() => useUploadActivity({ upload }))
         await act(async () => {
             await result.current.selectFile(new File(['x'], 'a.fit'))

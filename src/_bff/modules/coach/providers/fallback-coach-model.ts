@@ -38,6 +38,7 @@ export const createFallbackCoachModel = (
             let committed = false
 
             try {
+                // oxlint-disable-next-line no-await-in-loop -- events must be consumed in order
                 for await (const event of model.stream(request)) {
                     if (signal.aborted) return
                     // The wrapper alone announces the model: drop any provider-emitted event.

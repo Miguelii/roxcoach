@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { Effect, Result } from 'effect'
 import { describe, expect, it } from 'vitest'
 import { gpxSamples, parseGpx } from '@/_bff/modules/training/helpers/parse-gpx.helper'

@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable no-await-in-loop, max-lines-per-function -- one describe for the stream; requests run in order */
 import { Effect } from 'effect'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorCode } from '@/_bff/lib/error-codes'
@@ -145,7 +147,7 @@ describe('createChatHandler: the stream', () => {
 
     it('an abort after a model event saves nothing and emits no done', async () => {
         const controller = new AbortController()
-        let release: () => void = () => undefined
+        let release: () => void = () => {}
         const gate = new Promise<void>((resolve) => {
             release = resolve
         })
@@ -159,9 +161,12 @@ describe('createChatHandler: the stream', () => {
             post({ conversationId: MINE, message: 'hi' }, { signal: controller.signal })
         )
         const reader = response.body!.getReader()
-        await reader.read() // meta
-        await reader.read() // model
-        await reader.read() // partial
+        // meta
+        await reader.read()
+        // model
+        await reader.read()
+        // partial
+        await reader.read()
         controller.abort()
         release()
         const rest = await reader.read()
@@ -206,7 +211,7 @@ describe('createChatHandler: the stream', () => {
 
     it('a cancelled request keeps the user message and saves no assistant message', async () => {
         const controller = new AbortController()
-        let release: () => void = () => undefined
+        let release: () => void = () => {}
         const gate = new Promise<void>((resolve) => {
             release = resolve
         })
@@ -220,8 +225,10 @@ describe('createChatHandler: the stream', () => {
             post({ conversationId: MINE, message: 'hi' }, { signal: controller.signal })
         )
         const reader = response.body!.getReader()
-        await reader.read() // meta
-        await reader.read() // partial
+        // meta
+        await reader.read()
+        // partial
+        await reader.read()
         controller.abort()
         expect(requests[0]?.signal.aborted).toBe(true)
         release()
@@ -234,9 +241,9 @@ describe('createChatHandler: the stream', () => {
     it('cancelling the response body aborts the model signal and saves nothing', async () => {
         const { handler, store, requests } = setup(async function* (request) {
             yield { type: 'text', delta: 'partial' }
-            await new Promise<void>((resolve) =>
+            await new Promise<void>((resolve) => {
                 request.signal.addEventListener('abort', () => resolve())
-            )
+            })
         })
         const response = await handler(post({ conversationId: MINE, message: 'hi' }))
         const reader = response.body!.getReader()

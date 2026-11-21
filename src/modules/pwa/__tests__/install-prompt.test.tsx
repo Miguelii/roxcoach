@@ -39,7 +39,7 @@ const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari
 
 // The browser's install event, with a prompt that answers `outcome`.
 const fireInstallEvent = (outcome: 'accepted' | 'dismissed' = 'accepted') => {
-    const prompt = vi.fn().mockResolvedValue(undefined)
+    const prompt = vi.fn().mockResolvedValue(null)
     const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
         prompt,
         userChoice: Promise.resolve({ outcome }),
@@ -105,7 +105,9 @@ describe('InstallPrompt', () => {
         render(<InstallPrompt delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 20)
+            })
         })
         expect(screen.queryByTestId('install-prompt')).toBeNull()
     })
@@ -118,7 +120,9 @@ describe('InstallPrompt', () => {
         render(<InstallPrompt delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 30))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 30)
+            })
         })
 
         expect(screen.queryByTestId('install-prompt') !== null).toBe(shows)
@@ -152,7 +156,9 @@ describe('InstallPrompt', () => {
         render(<InstallPrompt buildId="build-a" delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 30))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 30)
+            })
         })
 
         expect(screen.queryByTestId('install-prompt')).toBeNull()
@@ -172,7 +178,9 @@ describe('InstallPrompt', () => {
         render(<InstallPrompt delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 20)
+            })
         })
 
         expect(screen.queryByTestId('install-prompt')).toBeNull()
@@ -183,7 +191,9 @@ describe('InstallPrompt', () => {
         render(<InstallPrompt delayMs={0} />)
         fireInstallEvent()
         await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 20)
+            })
         })
 
         expect(screen.queryByTestId('install-prompt')).toBeNull()

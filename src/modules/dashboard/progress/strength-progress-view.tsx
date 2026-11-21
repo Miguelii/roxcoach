@@ -122,7 +122,7 @@ export function StrengthProgressView({ data }: Props) {
                         value: bucket.workouts > 0 ? bucket.workouts : null,
                     }))}
                     format={(value) => `${value} ${value === 1 ? 'workout' : 'workouts'}`}
-                    formatAxis={(value) => String(value)}
+                    formatAxis={String}
                     valueName="Workouts"
                 />
             </div>

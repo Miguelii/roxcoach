@@ -25,8 +25,6 @@ export const findKnownZeppTrackIds = Effect.fn('findKnownZeppTrackIds')(function
     return yield* selectSourceIds(context.supabase, user.id, 'zepp', trackIds)
 })
 
-const msOf = (iso: string) => Date.parse(iso)
-
 // The runs that start within the duplicate window of an activity the athlete already has from
 // another source (for example a Zepp file uploaded by hand), found with one query for all of them.
 export const findZeppDuplicateTrackIds = Effect.fn('findZeppDuplicateTrackIds')(function* (
@@ -45,7 +43,7 @@ export const findZeppDuplicateTrackIds = Effect.fn('findZeppDuplicateTrackIds')(
         new Date(Math.max(...startsMs) + windowMs).toISOString(),
         'zepp'
     )
-    const existingMs = existing.map(msOf)
+    const existingMs = existing.map((iso) => Date.parse(iso))
     return new Set(
         trackIds.filter((id) =>
             existingMs.some((start) => Math.abs(start - Number(id) * 1000) <= windowMs)

@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines, max-lines-per-function -- one component renders the exercise cards; splitting it would only move props around */
 import Image from 'next/image'
 import { IconArrowDownRight, IconArrowUpRight, IconBarbell, IconTrophy } from '@tabler/icons-react'
 import { exerciseKeyOf, summarizeExercise } from '@/_bff/core/helpers/strength-detail.helper'
@@ -42,11 +43,11 @@ function groupStrengthSets(sets: StrengthSetDTO[]): StrengthExerciseGroup[] {
 
     for (const set of sets) {
         const key =
-            set.exerciseIndex !== null
-                ? `order:${set.exerciseIndex}`
-                : set.sourceExerciseId === null
-                  ? `name:${set.exercise.toLowerCase()}`
-                  : `source:${set.sourceExerciseId}`
+            set.exerciseIndex === null
+                ? set.sourceExerciseId === null
+                    ? `name:${set.exercise.toLowerCase()}`
+                    : `source:${set.sourceExerciseId}`
+                : `order:${set.exerciseIndex}`
         const group = groups.get(key)
 
         if (group) {
@@ -100,7 +101,9 @@ function Delta({ testId, delta, unit }: DeltaProps) {
     )
 }
 
-export function StrengthExercises({ strengthSets, comparisons = [], records = [] }: Props) {
+const NONE: never[] = []
+
+export function StrengthExercises({ strengthSets, comparisons = NONE, records = NONE }: Props) {
     const exerciseGroups = groupStrengthSets(strengthSets)
     const hasRir = strengthSets.some((set) => set.rir !== null)
     const workoutVolumeKg = strengthSets.reduce((total, set) => total + (volumeOf(set) ?? 0), 0)

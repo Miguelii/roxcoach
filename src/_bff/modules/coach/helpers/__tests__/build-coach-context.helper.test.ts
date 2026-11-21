@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 import { describe, expect, it } from 'vitest'
 import { buildCoachContext } from '@/_bff/modules/coach/helpers/build-coach-context.helper'
 import type { CoachContextInput } from '@/_bff/modules/coach/types'

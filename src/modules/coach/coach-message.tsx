@@ -1,8 +1,17 @@
+import type { ComponentProps } from 'react'
 import Markdown from 'react-markdown'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/modules/coach/use-coach-chat'
 
 type Props = { message: ChatMessage }
+
+function ExternalLink({ href, children }: ComponentProps<'a'>) {
+    return (
+        <a href={href} target="_blank" rel="noopener noreferrer">
+            {children}
+        </a>
+    )
+}
 
 // No raw HTML (react-markdown escapes it), no images, and the default URL filter drops
 // javascript: links. Links open in a new tab without opener access.
@@ -31,13 +40,7 @@ export function CoachMessage({ message }: Props) {
                         <Markdown
                             disallowedElements={DISALLOWED}
                             unwrapDisallowed
-                            components={{
-                                a: ({ href, children }) => (
-                                    <a href={href} target="_blank" rel="noopener noreferrer">
-                                        {children}
-                                    </a>
-                                ),
-                            }}
+                            components={{ a: ExternalLink }}
                         >
                             {message.content}
                         </Markdown>

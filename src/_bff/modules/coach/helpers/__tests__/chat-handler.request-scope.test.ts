@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {

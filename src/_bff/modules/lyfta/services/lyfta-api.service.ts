@@ -9,7 +9,7 @@ import {
     LyftaRateLimitError,
     LyftaResponseError,
 } from '@/_bff/lib/errors'
-import type { LyftaWorkoutPage, LyftaWorkoutRange } from '@/_bff/modules/lyfta/types'
+import type { LyftaWorkoutRange } from '@/_bff/modules/lyfta/types'
 import { parseLyftaWorkoutPage } from '@/_bff/modules/lyfta/utils/workouts.utils'
 
 type LyftaApiFailure =

@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { UploadActivityDrawer } from '@/modules/dashboard/upload-activity-drawer'
@@ -120,7 +121,12 @@ describe('UploadActivityDrawer', () => {
 
     it('disables submit and keeps the drawer open while uploading', async () => {
         let resolve: (r: Response) => void = () => {}
-        const upload = vi.fn(() => new Promise<Response>((r) => (resolve = r)))
+        const upload = vi.fn(
+            () =>
+                new Promise<Response>((r) => {
+                    resolve = r
+                })
+        )
         await open({ upload })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))

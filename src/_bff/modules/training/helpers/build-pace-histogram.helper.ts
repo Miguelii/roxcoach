@@ -42,7 +42,7 @@ export function buildPaceHistogram(samples: HrSample[]): PaceHistogram {
         acc.set(bin, entry)
     }
     const bins = [...acc.entries()]
-        .sort(([a], [b]) => a - b)
+        .toSorted(([a], [b]) => a - b)
         .map(([pace, e]): PaceBin => [pace, Math.round(e.timeS * 10) / 10, Math.round(e.distanceM)])
     return { v: 1, bins }
 }

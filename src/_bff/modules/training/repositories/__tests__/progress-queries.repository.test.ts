@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
@@ -157,8 +158,8 @@ describe('selectSetsForActivities', () => {
         expect(from).toHaveBeenCalledTimes(3)
         const sizes = chains.map((chain) => {
             const calls: unknown[][] = chain.in.mock.calls
-            const ids = calls[0]?.[1]
-            return Array.isArray(ids) ? ids.length : -1
+            const requested = calls[0]?.[1]
+            return Array.isArray(requested) ? requested.length : -1
         })
         expect(sizes).toEqual([100, 100, 50])
         for (const chain of chains) expect(chain.eq).toHaveBeenCalledWith('user_id', USER_ID)

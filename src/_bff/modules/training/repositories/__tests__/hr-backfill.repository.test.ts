@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'

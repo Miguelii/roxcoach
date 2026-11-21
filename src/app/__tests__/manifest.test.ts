@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable no-await-in-loop -- icons are read one at a time */
 import { readFile } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 import manifest from '@/app/manifest'

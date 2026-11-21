@@ -69,10 +69,10 @@ describe('ZeppCard', () => {
         mocks.statusQuery.isError = false
         mocks.connect.mutateAsync.mockResolvedValue({ connected: true, lastSyncedAt: null })
         mocks.sync.mutateAsync.mockResolvedValue({ imported: 2, skipped: 1, remaining: 3 })
-        mocks.disconnect.mutateAsync.mockResolvedValue(undefined)
-        mocks.invalidateStatus.mockResolvedValue(undefined)
-        mocks.invalidateCalendar.mockResolvedValue(undefined)
-        mocks.invalidateRunProgress.mockResolvedValue(undefined)
+        mocks.disconnect.mutateAsync.mockResolvedValue(null)
+        mocks.invalidateStatus.mockResolvedValue(null)
+        mocks.invalidateCalendar.mockResolvedValue(null)
+        mocks.invalidateRunProgress.mockResolvedValue(null)
     })
 
     it('shows a loading skeleton and a retry on a status error', () => {

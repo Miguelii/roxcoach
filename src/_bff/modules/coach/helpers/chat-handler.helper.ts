@@ -43,11 +43,13 @@ const readCapped = async (request: Request): Promise<string | null> => {
     const chunks: Uint8Array[] = []
     let total = 0
     for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- body chunks must be read in order
         const { done, value } = await reader.read()
         if (done) break
         total += value.byteLength
         if (total > MAX_BODY_BYTES) {
-            await reader.cancel().catch(() => undefined)
+            // oxlint-disable-next-line no-await-in-loop -- runs once, right before the loop ends
+            await reader.cancel().catch(() => {})
             return null
         }
         chunks.push(value)

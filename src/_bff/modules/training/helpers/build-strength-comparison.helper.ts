@@ -28,7 +28,7 @@ export function buildStrengthComparison({
     history,
     sets,
 }: Input): ExerciseComparisonDTO[] {
-    const keys = [...new Set(current.map(exerciseKeyOf))]
+    const keys = [...new Set(current.map((set) => exerciseKeyOf(set)))]
     const byWorkout = new Map<string, Map<string, HistorySet[]>>()
 
     for (const set of sets) {

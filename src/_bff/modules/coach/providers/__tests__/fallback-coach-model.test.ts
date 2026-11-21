@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable max-lines, max-lines-per-function -- one suite per module, one case per behavior */
 import { describe, expect, it } from 'vitest'
 import { createFallbackCoachModel } from '@/_bff/modules/coach/providers/fallback-coach-model'
 import type {

@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable no-await-in-loop -- requests are sent one after another on purpose: each one counts toward the cap */
 import type { User } from '@supabase/supabase-js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildCoachSystemPrompt } from '@/_bff/modules/coach/helpers/coach-system-prompt.helper'
@@ -26,7 +28,8 @@ describe('createChatHandler: daily cap', () => {
         seed(store, 49)
         const fiftieth = await handler(post({ conversationId: MINE, message: 'fifty' }))
         expect(fiftieth.status).toBe(200)
-        await fiftieth.text() // a failed attempt still counted
+        // a failed attempt still counted
+        await fiftieth.text()
         const writesBefore = store.writes.length
         const response = await handler(post({ conversationId: null, message: 'fifty one' }))
         expect(response.status).toBe(429)
@@ -37,9 +40,9 @@ describe('createChatHandler: daily cap', () => {
 
     it('counts a cancelled attempt toward the cap', async () => {
         const { handler, store } = setup(async function* (request) {
-            await new Promise<void>((resolve) =>
+            await new Promise<void>((resolve) => {
                 request.signal.addEventListener('abort', () => resolve())
-            )
+            })
             yield* []
         })
         seed(store, 49)
@@ -76,8 +79,8 @@ describe('createChatHandler: daily cap', () => {
         expect(fiftieth.status).toBe(200)
         await fiftieth.text()
 
-        store.conversations.splice(0, store.conversations.length)
-        store.messages.splice(0, store.messages.length)
+        store.conversations.splice(0)
+        store.messages.splice(0)
 
         const next = await handler(post({ conversationId: null, message: 'fifty one' }))
         expect(next.status).toBe(429)

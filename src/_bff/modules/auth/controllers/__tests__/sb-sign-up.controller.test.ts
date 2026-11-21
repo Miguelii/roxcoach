@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable no-await-in-loop -- sign-ups run one after another to hit the limit */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'

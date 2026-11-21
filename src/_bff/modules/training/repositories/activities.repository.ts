@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- every query of the activities table lives in this one repository */
 import 'server-only'
 
 import type { PostgrestError } from '@supabase/supabase-js'

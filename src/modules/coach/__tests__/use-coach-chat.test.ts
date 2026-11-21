@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useCoachChat, type SendBody } from '@/modules/coach/use-coach-chat'
@@ -211,7 +212,10 @@ describe('useCoachChat control', () => {
         // A reader that ignores cancel(), like a misbehaving transport: its late data must not land.
         let deliver!: (result: { done: boolean; value?: Uint8Array }) => void
         const reader = {
-            read: () => new Promise<{ done: boolean; value?: Uint8Array }>((r) => (deliver = r)),
+            read: () =>
+                new Promise<{ done: boolean; value?: Uint8Array }>((r) => {
+                    deliver = r
+                }),
             cancel: () => Promise.resolve(),
         }
         const response = new Response(null, { status: 200 })
@@ -227,7 +231,9 @@ describe('useCoachChat control', () => {
                 done: false,
                 value: new TextEncoder().encode(ndjson(meta, text('stale'), { type: 'done' })),
             })
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 20)
+            })
         })
         expect(result.current.messages).toEqual([])
         expect(result.current.conversationId).toBeNull()
@@ -253,7 +259,12 @@ describe('useCoachChat control', () => {
         ) => void
         const loadMessages = vi
             .fn()
-            .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        resolveFirst = resolve
+                    })
+            )
             .mockResolvedValueOnce([{ id: 'b', role: 'assistant', content: 'second', model: null }])
         const { result } = setup(vi.fn(), { loadMessages })
         act(() => void result.current.openConversation('a'))
@@ -405,7 +416,10 @@ describe('useCoachChat model caption and switch note', () => {
     it('ignores model events of a superseded request', async () => {
         let deliver!: (result: { done: boolean; value?: Uint8Array }) => void
         const reader = {
-            read: () => new Promise<{ done: boolean; value?: Uint8Array }>((r) => (deliver = r)),
+            read: () =>
+                new Promise<{ done: boolean; value?: Uint8Array }>((r) => {
+                    deliver = r
+                }),
             cancel: () => Promise.resolve(),
         }
         const response = new Response(null, { status: 200 })
@@ -422,7 +436,9 @@ describe('useCoachChat model caption and switch note', () => {
                     ndjson(meta, modelEvent(M2, M1), text('late'), { type: 'done' })
                 ),
             })
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => {
+                setTimeout(resolve, 20)
+            })
         })
         expect(result.current.modelId).toBeNull()
         expect(result.current.messages).toEqual([])

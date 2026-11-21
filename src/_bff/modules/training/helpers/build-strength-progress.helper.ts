@@ -137,7 +137,11 @@ export function buildStrengthProgress(input: Input): StrengthProgressDTO {
             imageUrl: acc.imageUrl,
             workouts: acc.workouts.size,
             points: [...acc.topSets]
-                .map(([date, top]) => ({ date, topSetKg: top.loadKg, topSetReps: top.reps }))
+                .map(([date, topSet]) => ({
+                    date,
+                    topSetKg: topSet.loadKg,
+                    topSetReps: topSet.reps,
+                }))
                 .toSorted((a, b) => a.date.localeCompare(b.date)),
         }))
 

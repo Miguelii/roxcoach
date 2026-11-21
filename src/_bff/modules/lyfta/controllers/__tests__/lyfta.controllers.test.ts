@@ -137,7 +137,7 @@ describe('Lyfta controllers', () => {
         mocks.syncWorkouts.mockReturnValue(
             Effect.succeed({ created: 2, updated: 1, lastSyncedAt: '2026-11-20T08:30:00.000Z' })
         )
-        mocks.disconnect.mockReturnValue(Effect.succeed(undefined))
+        mocks.disconnect.mockReturnValue(Effect.void)
 
         await expect(caller.lyfta.syncWorkouts()).resolves.toMatchObject({
             created: 2,

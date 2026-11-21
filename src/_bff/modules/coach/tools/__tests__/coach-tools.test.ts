@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable no-await-in-loop, max-lines, max-lines-per-function -- one suite for all the tools, each case runs in order */
 import { describe, expect, it } from 'vitest'
 import type { User } from '@supabase/supabase-js'
 import { makeCoachTools } from '@/_bff/modules/coach/tools/coach-tools'

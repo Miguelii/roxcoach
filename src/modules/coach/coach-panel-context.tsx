@@ -19,9 +19,9 @@ type Props = {
 // Without a provider (isolated tests) the panel is closed, enabled, and setters are no-ops.
 const CoachPanelContext = createContext<CoachPanelState>({
     open: false,
-    setOpen: () => undefined,
+    setOpen: () => {},
     enabled: true,
-    setEnabled: () => undefined,
+    setEnabled: () => {},
 })
 
 // Shares the coach panel state between the nav, the sidebar toggle and the chat island.

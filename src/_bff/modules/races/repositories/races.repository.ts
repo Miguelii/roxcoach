@@ -151,7 +151,7 @@ export const selectRaces = Effect.fn('selectRaces')(function* (
         SELECT_CODES,
         rowList
     )
-    return rows.map(toDTO)
+    return rows.map((row) => toDTO(row))
 })
 
 // Null when no race with this id belongs to the user.

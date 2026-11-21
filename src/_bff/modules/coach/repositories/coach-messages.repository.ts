@@ -92,5 +92,5 @@ export const selectLatestMessages = Effect.fn('selectLatestMessages')(function* 
         SELECT_CODES,
         rowList
     )
-    return rows.map(toDTO).reverse()
+    return rows.map((row) => toDTO(row)).toReversed()
 })

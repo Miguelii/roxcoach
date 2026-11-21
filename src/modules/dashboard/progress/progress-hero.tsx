@@ -65,7 +65,7 @@ export function ProgressHero({ data }: Props) {
     const last = buckets.length - 1
     const index = Math.min(picked ?? last, last)
     const bucket = buckets[index]
-    const previous = index > 0 ? buckets[index - 1] : undefined
+    const previous = buckets.slice(Math.max(index - 1, 0), index)[0]
     if (bucket === undefined) return null
 
     const period = granularity === 'week' ? 'week' : 'month'

@@ -120,6 +120,7 @@ export function StrengthOverviewCard({ exercises }: Props) {
                     >
                         {segments.map((verdict, index) => (
                             <span
+                                // oxlint-disable-next-line react/no-array-index-key -- the bar is static and the index drives the staggered delay
                                 key={index}
                                 data-tone={SEGMENT_TONES[verdict]}
                                 style={{ animationDelay: `${index * 45}ms` }}

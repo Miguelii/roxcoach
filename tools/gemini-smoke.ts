@@ -49,9 +49,10 @@ export async function runGeminiSmoke(options: SmokeOptions): Promise<SmokeResult
 // Checks one model id, or every listed id in order; returns true when all are OK.
 export async function runModelChecks(options: CheckOptions): Promise<boolean> {
     const ids =
-        options.modelId !== undefined ? [options.modelId] : COACH_MODELS.map((model) => model.id)
+        options.modelId === undefined ? COACH_MODELS.map((model) => model.id) : [options.modelId]
     let allOk = true
     for (const id of ids) {
+        // oxlint-disable-next-line no-await-in-loop -- models are checked one at a time to keep the output in order
         const result = await runGeminiSmoke({
             apiKey: options.apiKey,
             model: id,
@@ -67,10 +68,10 @@ export async function runModelChecks(options: CheckOptions): Promise<boolean> {
     return allOk
 }
 
-const MODEL_ID_PATTERN = /^[\w.:-]+$/
+const MODEL_ID_PATTERN = /^[\w.:-]+$/u
 
 // Validates the optional CLI model id: absent means all models, anything else must look like an id.
-export function parseModelArg(arg: string | undefined): ModelArg {
+export function parseModelArg(arg?: string): ModelArg {
     if (arg === undefined) return { ok: true, modelId: undefined }
     return MODEL_ID_PATTERN.test(arg) ? { ok: true, modelId: arg } : { ok: false }
 }

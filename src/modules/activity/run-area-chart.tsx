@@ -65,8 +65,8 @@ export function RunAreaChart({ testId, label, kind, points }: Props) {
     const ys = points.map((point) => point.y)
     const ticks = niceTicks(Math.min(...ys) - yStep * 0.5, Math.max(...ys) + yStep * 0.5, yStep)
     const yMin = ticks[0]!
-    const yMax = ticks[ticks.length - 1]!
-    const totalKm = points[points.length - 1]!.x
+    const yMax = ticks.at(-1)!
+    const totalKm = points.at(-1)!.x
 
     const plotW = WIDTH - PAD.left - PAD.right
     const plotH = HEIGHT - PAD.top - PAD.bottom

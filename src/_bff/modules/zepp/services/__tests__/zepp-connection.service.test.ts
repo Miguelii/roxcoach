@@ -125,6 +125,7 @@ describe('decryptZeppConnectionToken', () => {
             failureTag(await Effect.runPromiseExit(decryptZeppConnectionToken('nope', KEY)))
         ).toBe('ZeppCredentialError')
         expect(
+            // oxlint-disable-next-line unicorn/no-useless-undefined -- the key parameter is required: undefined means it is not configured
             failureTag(await Effect.runPromiseExit(decryptZeppConnectionToken(good, undefined)))
         ).toBe('ZeppConfigurationError')
     })

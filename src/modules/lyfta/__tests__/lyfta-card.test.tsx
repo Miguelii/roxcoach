@@ -74,10 +74,10 @@ describe('LyftaCard', () => {
             hasMore: false,
             lastSyncedAt: '2026-11-20T08:30:00.000Z',
         })
-        mocks.disconnect.mutateAsync.mockResolvedValue(undefined)
-        mocks.invalidate.mockResolvedValue(undefined)
-        mocks.invalidateCalendar.mockResolvedValue(undefined)
-        mocks.invalidateStrength.mockResolvedValue(undefined)
+        mocks.disconnect.mutateAsync.mockResolvedValue(null)
+        mocks.invalidate.mockResolvedValue(null)
+        mocks.invalidateCalendar.mockResolvedValue(null)
+        mocks.invalidateStrength.mockResolvedValue(null)
     })
 
     it('shows an empty password field and validates before connecting', async () => {

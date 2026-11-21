@@ -48,9 +48,9 @@ export function toChartPoints(
         return y === null ? [] : [{ x: (split.startM + split.distanceM / 2) / 1000, y }]
     })
     const first = mids[0]
-    const last = mids[mids.length - 1]
+    const last = mids.at(-1)
     if (!first || !last) return []
-    const last_split = splits[splits.length - 1]
+    const last_split = splits.at(-1)
     const totalKm = last_split ? (last_split.startM + last_split.distanceM) / 1000 : last.x
     return [{ x: 0, y: first.y }, ...mids, { x: totalKm, y: last.y }]
 }
@@ -68,7 +68,8 @@ export function smoothPath(points: { x: number; y: number }[]): string {
         const a = points[i]!
         const b = points[i + 1]!
         dx.push(b.x - a.x)
-        slope.push(dx[i]! === 0 ? 0 : (b.y - a.y) / dx[i]!)
+        const run = dx[i] ?? 0
+        slope.push(run === 0 ? 0 : (b.y - a.y) / run)
     }
     const tangent: number[] = [slope[0]!]
     for (let i = 1; i < n - 1; i++) {

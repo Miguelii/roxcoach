@@ -25,6 +25,7 @@ const pointSchema = z.object({
     extensions: z
         .object({ TrackPointExtension: z.object({ hr: leaf }).optional() })
         .optional()
+        // oxlint-disable-next-line unicorn/no-useless-undefined -- zod needs the fallback value spelled out
         .catch(undefined),
 })
 // An empty element arrives as '' and is read as an empty container.
@@ -106,13 +107,13 @@ function build(root: XmlTree): ParsedActivity | null {
     const segments = trks.flatMap((t) => t.trkseg.map((s) => s.trkpt.map(readPoint)))
     const points = segments.flat()
     const times = points.flatMap((p) => p.time ?? []).map((t) => Date.parse(t))
-    if (!times.length) return null
+    if (times.length === 0) return null
     const min = times.reduce((a, b) => Math.min(a, b), Infinity)
     const max = times.reduce((a, b) => Math.max(a, b), -Infinity)
     const first = new Date(min).toISOString()
     const elapsed = Math.round((max - min) / 1000)
 
-    const stats = segments.map(segmentStats)
+    const stats = segments.map((segment) => segmentStats(segment))
     const distance = stats.some((s) => s.positions > 1) ? sumOf(stats.map((s) => s.distance)) : null
     const gain = stats.some((s) => s.eles > 0) ? sumOf(stats.map((s) => s.gain)) : null
     const hrs = points.flatMap((p) => p.hr ?? [])
@@ -131,8 +132,8 @@ function build(root: XmlTree): ParsedActivity | null {
         movingTimeS: elapsed,
         elapsedTimeS: elapsed,
         elevationGainM: gain,
-        avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
-        maxHr: hrs.length ? Math.round(hrs.reduce((a, b) => Math.max(a, b), -Infinity)) : null,
+        avgHr: hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
+        maxHr: hrs.length > 0 ? Math.round(hrs.reduce((a, b) => Math.max(a, b), -Infinity)) : null,
         avgSpeedMps: distance !== null && elapsed > 0 ? distance / elapsed : null,
         calories: null,
         noteText: null,

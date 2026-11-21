@@ -80,7 +80,7 @@ export const selectConversations = Effect.fn('selectConversations')(function* (
         LIST_CODES,
         rowList
     )
-    return rows.map(toDTO)
+    return rows.map((row) => toDTO(row))
 })
 
 // Null when no conversation with this id belongs to the user.

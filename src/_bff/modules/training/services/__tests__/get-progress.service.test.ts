@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'

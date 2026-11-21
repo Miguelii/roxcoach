@@ -97,8 +97,8 @@ function fromRecords(records: FitMessage[]) {
     return {
         startedAt: first,
         elapsedTimeS: elapsed,
-        avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
-        maxHr: hrs.length ? hrs.reduce((a, b) => Math.max(a, b), -Infinity) : null,
+        avgHr: hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
+        maxHr: hrs.length > 0 ? hrs.reduce((a, b) => Math.max(a, b), -Infinity) : null,
     }
 }
 

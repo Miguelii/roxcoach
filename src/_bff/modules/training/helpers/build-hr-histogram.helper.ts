@@ -41,7 +41,7 @@ export function buildHrHistogram(samples: HrSample[]): HrHistogram {
         acc.set(bpm, entry)
     }
     const bins = [...acc.entries()]
-        .sort(([a], [b]) => a - b)
+        .toSorted(([a], [b]) => a - b)
         .map(([bpm, e]): HrBin => [bpm, Math.round(e.timeS * 10) / 10, Math.round(e.distanceM)])
     return { v: 1, bins }
 }

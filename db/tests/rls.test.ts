@@ -1,4 +1,5 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createUser, seedUserGraph } from '@db/tests/helpers/fixtures'
 import { createTestDb, type Claims, type TestDb } from '@db/tests/helpers/pglite'

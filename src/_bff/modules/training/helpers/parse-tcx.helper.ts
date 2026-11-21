@@ -13,6 +13,7 @@ type LapWithMax = { lap: ParsedLap; maxHr: number | null }
 
 // parseTagValue is off, so every leaf is a string.
 const leaf = z.string().optional()
+// oxlint-disable-next-line unicorn/no-useless-undefined -- zod needs the fallback value spelled out
 const hrSchema = z.object({ Value: leaf }).optional().catch(undefined)
 const trackpointSchema = z.object({
     Time: leaf,
@@ -46,7 +47,7 @@ type TcxLap = z.infer<typeof lapSchema>
 const textOf = (v: Maybe<string>): string | null => (v && v.trim() !== '' ? v.trim() : null)
 const sum = (values: (number | null)[]): number | null => {
     const present = values.filter((v): v is number => v !== null)
-    return present.length ? present.reduce((a, b) => a + b, 0) : null
+    return present.length > 0 ? present.reduce((a, b) => a + b, 0) : null
 }
 const hrValue = (v: Maybe<{ Value?: Maybe<string> }>): number | null => numOf(v?.Value)
 
@@ -97,7 +98,7 @@ function parseLap(lap: TcxLap, index: number): LapWithMax | null {
 // Mean of the lap averages weighted by lap duration (plain mean when a duration is missing).
 function weightedAvgHr(laps: ParsedLap[]): number | null {
     const withHr = laps.filter((l) => l.avgHr !== null)
-    if (!withHr.length) return null
+    if (withHr.length === 0) return null
     const weighted = withHr.every((l) => (l.elapsedTimeS ?? 0) > 0)
     const weights = withHr.map((l) => (weighted ? (l.elapsedTimeS ?? 0) : 1))
     const total = weights.reduce((a, b) => a + b, 0)
@@ -128,7 +129,8 @@ function build(root: XmlTree): ParsedActivity | null {
         elapsedTimeS: elapsed,
         elevationGainM: null,
         avgHr: weightedAvgHr(laps),
-        maxHr: maxes.length ? Math.round(maxes.reduce((a, b) => Math.max(a, b), -Infinity)) : null,
+        maxHr:
+            maxes.length > 0 ? Math.round(maxes.reduce((a, b) => Math.max(a, b), -Infinity)) : null,
         avgSpeedMps: elapsed && distance !== null ? distance / elapsed : null,
         calories: sum(laps.map((l) => l.calories)),
         noteText: note,

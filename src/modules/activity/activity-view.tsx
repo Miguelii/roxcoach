@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- the activity page composes all its sections in one view */
 // oxlint-disable max-lines-per-function
 import Link from 'next/link'
 import { IconArrowLeft } from '@tabler/icons-react'
@@ -29,6 +30,8 @@ import {
     formatStrengthNumber,
     recordsAreKnown,
 } from '@/modules/activity/strength-utils'
+
+const NO_COMPARISONS: ExerciseComparisonDTO[] = []
 
 type Props = {
     activity: ActivityDTO
@@ -62,7 +65,12 @@ function calculateTotalVolumeKgReps(sets: StrengthSetDTO[]): number | null {
     return total
 }
 
-export function ActivityView({ activity, laps, strengthSets, strengthComparisons = [] }: Props) {
+export function ActivityView({
+    activity,
+    laps,
+    strengthSets,
+    strengthComparisons = NO_COMPARISONS,
+}: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
     const isStrengthActivity = activity.category === 'strength'
@@ -182,8 +190,8 @@ export function ActivityView({ activity, laps, strengthSets, strengthComparisons
 
             {isStrengthActivity ? (
                 <StrengthSummary
-                    metrics={present.flatMap(({ id, label, value, detail }) =>
-                        value === null ? [] : [{ id, label, value, detail }]
+                    metrics={present.flatMap((metric) =>
+                        metric.value === null ? [] : [{ ...metric, value: metric.value }]
                     )}
                     strengthSets={strengthSets}
                     durationS={timeS}
@@ -307,7 +315,7 @@ export function ActivityView({ activity, laps, strengthSets, strengthComparisons
                                 <tbody className="font-mono">
                                     {strengthSets.map((set, index) => (
                                         <tr
-                                            key={`${set.exercise}-${set.setIndex}-${index}`}
+                                            key={`${set.exerciseIndex}-${set.setIndex}`}
                                             className="border-t border-hairline"
                                         >
                                             <td

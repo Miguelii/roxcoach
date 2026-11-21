@@ -134,7 +134,7 @@ describe('Zepp controllers', () => {
         mocks.syncActivities.mockReturnValue(
             Effect.succeed({ imported: 2, skipped: 1, remaining: 0 })
         )
-        mocks.disconnect.mockReturnValue(Effect.succeed(undefined))
+        mocks.disconnect.mockReturnValue(Effect.void)
 
         await expect(caller.zepp.syncActivities()).resolves.toEqual({
             imported: 2,

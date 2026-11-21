@@ -1,3 +1,5 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 // oxlint-disable max-lines-per-function
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -10,6 +12,8 @@ const ID = '11111111-1111-4111-8111-111111111111'
 const meta = { type: 'meta', conversationId: ID }
 const text = (delta: string) => ({ type: 'text', delta })
 const done = { type: 'done' }
+
+const noop = () => {}
 
 type HarnessProps = {
     send?: (body: SendBody, signal: AbortSignal) => Promise<Response>
@@ -27,7 +31,7 @@ function Harness({
     send,
     loadMessages,
     conversations,
-    onDelete = () => {},
+    onDelete = noop,
     startOpen = true,
 }: HarnessProps) {
     const chat = useCoachChat({ send, loadMessages })
@@ -160,7 +164,7 @@ describe('CoachChatView', () => {
     it('has no microphone control', () => {
         render(<Harness />)
         expect(screen.getByTestId('coach-panel').innerHTML.toLowerCase()).not.toMatch(
-            /microphone|voice|mic\b/
+            /microphone|voice|mic\b/u
         )
     })
 
@@ -330,7 +334,7 @@ describe('CoachChatView', () => {
             expect(md.querySelector('[onerror]')).toBeNull()
             expect(md.textContent).toContain('<script>')
             const link = md.querySelector('a')
-            expect(link?.getAttribute('href') ?? '').not.toMatch(/javascript:/i)
+            expect(link?.getAttribute('href') ?? '').not.toMatch(/javascript:/iu)
         })
 
         it('renders user text as plain text, not markdown', async () => {
@@ -397,7 +401,12 @@ describe('CoachChatView', () => {
             let resolve!: (
                 v: { id: string; role: 'user' | 'assistant'; content: string; model: null }[]
             ) => void
-            const loadMessages = vi.fn().mockImplementation(() => new Promise((r) => (resolve = r)))
+            const loadMessages = vi.fn().mockImplementation(
+                () =>
+                    new Promise((r) => {
+                        resolve = r
+                    })
+            )
             render(<Harness conversations={conversations} loadMessages={loadMessages} />)
             fireEvent.click(screen.getByTestId('coach-menu-trigger'))
             const items = screen.getAllByTestId('coach-history-item')
@@ -515,7 +524,8 @@ describe('CoachChatView', () => {
             await sendOne()
             const assistants = screen.getAllByTestId('coach-message-assistant')
             expect(assistants).toHaveLength(2)
-            expect(assistants[0]?.previousElementSibling?.getAttribute('data-testid')).not.toBe(
+            const before = assistants[0]?.previousElementSibling
+            expect(before instanceof HTMLElement ? before.dataset.testid : null).not.toBe(
                 'coach-model-switch-note'
             )
             expect(assistants[1]?.previousElementSibling).toBe(

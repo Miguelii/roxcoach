@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { describe, expect, it } from 'vitest'
 import type { HrZoneBounds } from '@/_bff/core/constants/hr-zones.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'

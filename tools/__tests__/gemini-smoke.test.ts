@@ -131,11 +131,11 @@ describe('runModelChecks', () => {
 
 describe('parseModelArg', () => {
     it('accepts no argument and a valid id', () => {
-        expect(parseModelArg(undefined)).toEqual({ ok: true, modelId: undefined })
+        expect(parseModelArg()).toEqual({ ok: true, modelId: undefined })
         expect(parseModelArg('gemini-3.8-flash')).toEqual({ ok: true, modelId: 'gemini-3.8-flash' })
     })
 
-    it.each(['', 'bad\nid', 'bad\u001b[31mid', 'a b', 'a/b'])('rejects %j', (arg) => {
+    it.each(['', 'bad\nid', 'bad\u001B[31mid', 'a b', 'a/b'])('rejects %j', (arg) => {
         expect(parseModelArg(arg)).toEqual({ ok: false })
     })
 })

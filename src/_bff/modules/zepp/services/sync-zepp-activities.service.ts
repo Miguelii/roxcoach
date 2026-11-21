@@ -49,7 +49,10 @@ const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
     findKnownTrackIds: findKnownZeppTrackIds,
     findDuplicateTrackIds: findZeppDuplicateTrackIds,
     importActivity: importZeppActivity,
-    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    sleep: (ms) =>
+        new Promise((resolve) => {
+            setTimeout(resolve, ms)
+        }),
     now: () => new Date(),
 }
 
@@ -77,7 +80,7 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         dependencies.encryptionKey
     )
     const { summaries } = yield* fetchZeppHistory(appToken, dependencies.api)
-    const runs = summaries.filter(isImportableRun).toSorted(newestFirst)
+    const runs = summaries.filter((summary) => isImportableRun(summary)).toSorted(newestFirst)
 
     const context: ImportContext = yield* dependencies.createImportContext(user)
     const known = yield* dependencies.findKnownTrackIds(

@@ -126,7 +126,9 @@ describe('races controllers', () => {
             caught(caller.races.create({ ...INPUT, raceType: 'swim' as never })),
         ])
 
-        expect(errors.map((error) => error.code)).toEqual(Array(6).fill('BAD_REQUEST'))
+        expect(errors.map((error) => error.code)).toEqual(
+            Array.from({ length: 6 }, () => 'BAD_REQUEST')
+        )
         expect(mocks.createRace).not.toHaveBeenCalled()
         expect(mocks.updateRace).not.toHaveBeenCalled()
     })

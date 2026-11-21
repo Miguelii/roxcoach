@@ -1,3 +1,4 @@
+/* oxlint-disable no-await-in-loop -- one query per case, in order */
 import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { asClient, failureTag } from '@/_bff/lib/tests-utils'

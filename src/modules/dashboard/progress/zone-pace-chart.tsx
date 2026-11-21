@@ -101,6 +101,7 @@ export function ZonePaceChart({ buckets, zones, granularity }: Props) {
                             stroke={style.color}
                             strokeDasharray={style.dash}
                             strokeWidth={2}
+                            // oxlint-disable-next-line react/no-unstable-nested-components -- recharts calls this as a render function, not as a component
                             dot={({ cx, cy, value }: DotProps) =>
                                 cx === undefined || cy === undefined || value == null ? (
                                     <g key={`${zone}-${cx}-${cy}`} />

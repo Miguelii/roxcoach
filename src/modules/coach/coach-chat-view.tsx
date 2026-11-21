@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- the chat panel and its message list share state */
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
 import { Fragment, type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import { useWatch } from 'react-hook-form'
@@ -62,7 +63,7 @@ export function CoachChatView(props: Props) {
     // Escape closes the panel wherever the focus is, not only inside it. An Escape that something
     // inside already handled (an open menu) is left to that thing.
     useEffect(() => {
-        if (!open) return undefined
+        if (!open) return
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && !event.defaultPrevented) onOpenChange(false)
         }
@@ -178,6 +179,7 @@ function PanelBody({
     useEffect(() => {
         const list = listRef.current
         if (list && stickRef.current) list.scrollTop = list.scrollHeight
+        // oxlint-disable-next-line react/exhaustive-effect-dependencies -- scrolls when the messages change; the effect itself only reads refs
     }, [messages])
 
     // Screen readers hear the reply once, when it finishes, not every delta.

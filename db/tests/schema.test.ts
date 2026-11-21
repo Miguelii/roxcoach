@@ -1,4 +1,6 @@
 // @vitest-environment node
+/* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
     countRows,

@@ -65,7 +65,7 @@ const setup = () => {
                             row.conversation_id === filterValue(call, 'conversation_id') &&
                             row.user_id === user
                     )
-                    .reverse()
+                    .toReversed()
             )
         }
         const match = conversations.filter(

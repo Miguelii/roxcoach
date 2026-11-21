@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ExerciseComparisonDTO, StrengthSetDTO } from '@/_bff/modules/training/types'

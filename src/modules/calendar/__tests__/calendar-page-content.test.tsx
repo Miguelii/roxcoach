@@ -40,9 +40,7 @@ describe('CalendarPageContent', () => {
         render(<CalendarPageContent />)
 
         expect(screen.getByTestId('calendar-page-title')).toHaveTextContent('Calendar')
-        expect(screen.getByTestId('calendar-view').getAttribute('data-today')).toMatch(
-            /^\d{4}-\d{2}-\d{2}$/u
-        )
+        expect(screen.getByTestId('calendar-view').dataset.today).toMatch(/^\d{4}-\d{2}-\d{2}$/u)
         expect(screen.getByTestId('activity-actions')).toBeInTheDocument()
     })
 

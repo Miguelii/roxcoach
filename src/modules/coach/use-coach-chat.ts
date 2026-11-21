@@ -87,6 +87,7 @@ const httpErrorKind = (status: number): ChatErrorKind => {
     return 'busy'
 }
 
+// oxlint-disable-next-line max-lines-per-function -- one hook owns the whole chat state machine
 export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Options = {}) {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [status, setStatus] = useState<ChatStatus>('idle')
@@ -182,7 +183,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
                 fail('busy', true)
                 return
             }
-            const onAbort = () => void reader.cancel().catch(() => undefined)
+            const onAbort = () => void reader.cancel().catch(() => {})
             controller.signal.addEventListener('abort', onAbort)
 
             const decoder = new TextDecoder()
@@ -226,9 +227,10 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
 
             try {
                 for (;;) {
+                    // oxlint-disable-next-line no-await-in-loop -- stream chunks must be read in order
                     const { done, value } = await reader.read()
                     if (!alive()) {
-                        void reader.cancel().catch(() => undefined)
+                        void reader.cancel().catch(() => {})
                         return
                     }
                     if (done) break

@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 // oxlint-disable max-lines-per-function
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
