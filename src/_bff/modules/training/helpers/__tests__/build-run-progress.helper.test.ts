@@ -25,9 +25,16 @@ const run = (
     movingTimeS,
     avgHr,
     hrHistogram: bins === null ? null : { v: 1 as const, bins },
+    paceHistogram: null,
 })
 
-const base = { today: TODAY, range: '3m' as const, zoneBounds: BOUNDS, goalRace: null }
+const base = {
+    today: TODAY,
+    range: '3m' as const,
+    zoneBounds: BOUNDS,
+    goalRace: null,
+    nextRace: null,
+}
 
 const goalRace: RaceDTO = {
     id: 'g',
@@ -199,5 +206,36 @@ describe('buildRunProgress heart rate', () => {
 
         expect(dto.buckets.at(-1)?.avgHrBpm).toBeNull()
         expect(dto.buckets[0]?.avgHrBpm).toBeNull()
+    })
+})
+
+describe('buildRunProgress readiness', () => {
+    const hyrox: RaceDTO = {
+        id: 'h1',
+        name: 'Hyrox Lisbon',
+        raceType: 'hyrox',
+        raceDate: '2027-01-10',
+        location: null,
+        distanceM: null,
+        hyroxDivision: null,
+        targetTimeS: 5400,
+        priority: 'A',
+        status: 'upcoming',
+        resultTimeS: null,
+        notes: null,
+    }
+
+    it('adds the readiness of the next race with the Hyrox race pace', () => {
+        const dto = buildRunProgress({
+            ...base,
+            nextRace: hyrox,
+            runs: [run('2026-11-16', 5000, 1500)],
+        })
+        expect(dto.readiness?.race.racePaceSPerKm).toBe(355)
+        expect(dto.readiness?.race.name).toBe('Hyrox Lisbon')
+    })
+
+    it('has no readiness without a next race', () => {
+        expect(buildRunProgress({ ...base, runs: [] }).readiness).toBeNull()
     })
 })

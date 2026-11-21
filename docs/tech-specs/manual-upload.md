@@ -48,19 +48,24 @@ can be applied again by reprocessing, without asking the athlete to upload again
 Track points are not stored. The one thing derived from them is the HR histogram saved in
 `activities.hr_histogram` (migration `0015`): time and distance per heart rate, built while
 parsing (FIT records, TCX trackpoints, GPX points with the heart rate extension) and used by the
-dashboard zone chart, see [dashboard-progress.md](dashboard-progress.md). Anything else a later
-feature needs is re-parsed from the stored file.
+dashboard zone chart, see [dashboard-progress.md](dashboard-progress.md). The second one is the pace
+histogram in `activities.pace_histogram` (migration `0016`): time and distance per pace bin
+(`[pace_s_per_km, time_s, distance_m]`, 5 s/km bins, paces clamped to 150..600 s/km), built in the
+same pass with the same interval rules but without needing heart rate, only distance or speed. The
+race readiness card uses it to find work faster than race pace. Anything else a later feature needs
+is re-parsed from the stored file.
 
-### Backfill of the HR histogram
+### Backfill of the histograms
 
-Runs uploaded before `0015` have no histogram. After applying the migration, the owner runs once:
+Runs uploaded before `0015` have no HR histogram and runs uploaded before `0016` have no pace
+histogram. After applying the migration, the owner runs once:
 
 ```bash
-pnpm dlx tsx --conditions=react-server tools/backfill-hr-histograms.ts <user_id>
+pnpm dlx tsx --conditions=react-server tools/backfill-histograms.ts <user_id>
 ```
 
-It reads every parsed file of that user whose activity has no histogram, parses it again and writes
-the histogram. It is safe to rerun (only rows still without one are touched), a failing file does
+It reads every parsed file of that user whose activity lacks either histogram, parses it again and
+writes both. It is safe to rerun (only rows still missing one are touched), a failing file does
 not stop it, and it prints `updated: N, failed: M` plus one `failed <activity id>: <error code>`
 line per failure (never a path or file content). `--conditions=react-server` lets the
 server-only modules load outside Next.

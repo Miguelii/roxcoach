@@ -16,6 +16,7 @@ import { listRaces } from '@/_bff/modules/races/services/list-races.service'
 import type { RaceDTO, RaceFilter } from '@/_bff/modules/races/types'
 import { buildRunProgress } from '@/_bff/modules/training/helpers/build-run-progress.helper'
 import { pickGoalRace } from '@/_bff/modules/training/helpers/pick-goal-race.helper'
+import { pickNextRace } from '@/_bff/modules/training/helpers/pick-next-race.helper'
 import { selectRunsInRange } from '@/_bff/modules/training/repositories/activities.repository'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 
@@ -70,5 +71,6 @@ export const getRunProgress = Effect.fn('getRunProgress')(function* (
         range,
         zoneBounds: zoneBoundsBpm({ maxHr: profile.maxHr, restingHr: profile.restingHr }),
         goalRace: pickGoalRace(races),
+        nextRace: pickNextRace(races),
     })
 })

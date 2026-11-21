@@ -67,6 +67,7 @@ describe('getRunProgress', () => {
                     moving_time_s: 3000,
                     avg_hr: 150,
                     hr_histogram: { v: 1, bins: [[150, 600, 2000]] },
+                    pace_histogram: { v: 1, bins: [[300, 600, 2000]] },
                 },
             ]),
         ])
@@ -82,6 +83,28 @@ describe('getRunProgress', () => {
         expect(dto.zoneBounds).not.toBeNull()
         expect(dto.goal?.raceId).toBe('race-1')
         expect(dto.kpis.runs).toBe(1)
+    })
+
+    it('builds the readiness for an upcoming Hyrox race and survives a corrupt pace histogram', async () => {
+        const { supabase } = makeFakeDb([
+            okRows([
+                {
+                    local_date: '2026-11-10',
+                    distance_m: 10000,
+                    moving_time_s: 3000,
+                    avg_hr: 150,
+                    hr_histogram: null,
+                    pace_histogram: { v: 9, bins: 'nope' },
+                },
+            ]),
+        ])
+        const hyrox = { ...RACE, id: 'hyrox-1', raceType: 'hyrox' as const, distanceM: null }
+        const { deps } = runDeps(supabase, { races: [hyrox] })
+        const dto = await Effect.runPromise(getRunProgress(USER, '3m', deps))
+
+        expect(dto.readiness?.race.raceId).toBe('hyrox-1')
+        expect(dto.readiness?.pace.state).toBe('no_data')
+        expect(dto.goal).toBeNull()
     })
 
     it('has no zone bounds when the heart rates are missing or inverted', async () => {

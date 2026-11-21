@@ -1,6 +1,6 @@
-// Run with: pnpm dlx tsx --conditions=react-server tools/backfill-hr-histograms.ts <user_id>
-// Recomputes the HR histogram of every activity of that user that has none, from the original
-// files kept in Storage. Run it once after applying migration 0015. It is safe to rerun: only
+// Run with: pnpm dlx tsx --conditions=react-server tools/backfill-histograms.ts <user_id>
+// Recomputes the HR and pace histograms of every activity of that user missing one, from the
+// original files kept in Storage. Run it once after applying migration 0016. It is safe to rerun: only
 // activities still without a histogram are touched. `--conditions=react-server` lets the
 // server-only modules load outside Next. `main()` loads the Next env files itself and imports the
 // app code only afterwards (importing this file loads nothing, so unit tests never read a real
@@ -34,21 +34,21 @@ export function formatBackfillOutput(summary: BackfillSummary): string[] {
 async function main() {
     const parsed = parseUserIdArg(process.argv[2])
     if (!parsed.ok) {
-        console.log('Usage: backfill-hr-histograms.ts <user_id> (the athlete user id, a uuid)')
+        console.log('Usage: backfill-histograms.ts <user_id> (the athlete user id, a uuid)')
         process.exitCode = 1
         return
     }
     loadEnvConfig(process.cwd())
     const { Effect } = await import('effect')
     const { createDBAdminClient } = await import('@/_bff/core/db')
-    const { backfillHrHistograms } =
-        await import('@/_bff/modules/training/services/backfill-hr-histograms.service')
+    const { backfillHistograms } =
+        await import('@/_bff/modules/training/services/backfill-histograms.service')
 
     const summary = await Effect.runPromise(
-        backfillHrHistograms(createDBAdminClient(), parsed.userId)
+        backfillHistograms(createDBAdminClient(), parsed.userId)
     )
     for (const line of formatBackfillOutput(summary)) console.log(line)
     if (summary.failed > 0) process.exitCode = 1
 }
 
-if (process.argv[1]?.endsWith('backfill-hr-histograms.ts')) void main()
+if (process.argv[1]?.endsWith('backfill-histograms.ts')) void main()

@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { asClient } from '@/_bff/lib/tests-utils'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
-import { backfillHrHistograms } from '@/_bff/modules/training/services/backfill-hr-histograms.service'
+import { backfillHistograms } from '@/_bff/modules/training/services/backfill-histograms.service'
 import type { StorageReadClient, TrainingClient } from '@/_bff/modules/training/types'
 
 const USER_ID = 'user-1'
@@ -43,29 +43,34 @@ const makeClient = (queue: Parameters<typeof makeFakeDb>[0], files: Files) => {
 const targets = (...ids: string[]) =>
     ok(ids.map((id) => ({ id, activity_files: [{ storage_path: `user-1/${id}.tcx` }] })) as never)
 
-describe('backfillHrHistograms', () => {
+describe('backfillHistograms', () => {
     it('writes the parsed histogram of every target', async () => {
         const { client, db } = makeClient([targets('a1', 'a2'), ok()], {
             'user-1/a1.tcx': tcx(150),
             'user-1/a2.tcx': tcx(160),
         })
-        const result = await Effect.runPromise(backfillHrHistograms(client, USER_ID))
+        const result = await Effect.runPromise(backfillHistograms(client, USER_ID))
 
         expect(result).toEqual({ updated: 2, failed: 0, failures: [] })
         expect(db.chains[1]?.update).toHaveBeenCalledWith({
             hr_histogram: { v: 1, bins: [[150, 3, 9]] },
+            pace_histogram: { v: 1, bins: [[330, 3, 9]] },
         })
         expect(db.chains[2]?.update).toHaveBeenCalledWith({
             hr_histogram: { v: 1, bins: [[160, 3, 9]] },
+            pace_histogram: { v: 1, bins: [[330, 3, 9]] },
         })
     })
 
-    it('writes an empty histogram for a file without heart rate and counts it as updated', async () => {
+    it('writes an empty HR histogram and still a pace histogram for a file without heart rate and counts it as updated', async () => {
         const { client, db } = makeClient([targets('a1'), ok()], { 'user-1/a1.tcx': tcx(null) })
-        const result = await Effect.runPromise(backfillHrHistograms(client, USER_ID))
+        const result = await Effect.runPromise(backfillHistograms(client, USER_ID))
 
         expect(result.updated).toBe(1)
-        expect(db.chains[1]?.update).toHaveBeenCalledWith({ hr_histogram: { v: 1, bins: [] } })
+        expect(db.chains[1]?.update).toHaveBeenCalledWith({
+            hr_histogram: { v: 1, bins: [] },
+            pace_histogram: { v: 1, bins: [[330, 3, 9]] },
+        })
     })
 
     it('counts parse and download failures, records only id and code, and keeps going', async () => {
@@ -74,7 +79,7 @@ describe('backfillHrHistograms', () => {
             'user-1/a2.tcx': new Error('network down'),
             'user-1/a3.tcx': tcx(150),
         })
-        const result = await Effect.runPromise(backfillHrHistograms(client, USER_ID))
+        const result = await Effect.runPromise(backfillHistograms(client, USER_ID))
 
         expect(result.updated).toBe(1)
         expect(result.failed).toBe(2)
@@ -96,7 +101,7 @@ describe('backfillHrHistograms', () => {
             ],
             { 'user-1/a1.tcx': tcx(150), 'user-1/a2.tcx': tcx(150) }
         )
-        const result = await Effect.runPromise(backfillHrHistograms(client, USER_ID))
+        const result = await Effect.runPromise(backfillHistograms(client, USER_ID))
 
         expect(result).toMatchObject({ updated: 1, failed: 1 })
         expect(result.failures[0]).toEqual({
@@ -107,7 +112,7 @@ describe('backfillHrHistograms', () => {
 
     it('does nothing when no target is left', async () => {
         const { client } = makeClient([ok([])], {})
-        expect(await Effect.runPromise(backfillHrHistograms(client, USER_ID))).toEqual({
+        expect(await Effect.runPromise(backfillHistograms(client, USER_ID))).toEqual({
             updated: 0,
             failed: 0,
             failures: [],

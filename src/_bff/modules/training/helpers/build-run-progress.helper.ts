@@ -7,8 +7,10 @@ import { MIN_ZONE_SAMPLE_S, type ProgressRange } from '@/_bff/core/constants/pro
 import { bucketStartOf, bucketStarts, rangeBounds } from '@/_bff/core/utils/progress-range.utils'
 import { DAY_MS, parseIsoDate } from '@/_bff/core/utils/week-dates.utils'
 import type { RaceDTO } from '@/_bff/modules/races/types'
+import { buildRaceReadiness } from '@/_bff/modules/training/helpers/build-race-readiness.helper'
 import type {
     HrHistogram,
+    PaceHistogram,
     RunBucketDTO,
     RunGoalDTO,
     RunProgressDTO,
@@ -21,6 +23,7 @@ type RunRow = {
     movingTimeS: number | null
     avgHr: number | null
     hrHistogram: HrHistogram | null
+    paceHistogram: PaceHistogram | null
 }
 
 type Input = {
@@ -29,6 +32,8 @@ type Input = {
     range: ProgressRange
     zoneBounds: HrZoneBounds[] | null
     goalRace: RaceDTO | null
+    // The race the readiness card is about (running or Hyrox), null when there is none.
+    nextRace: RaceDTO | null
 }
 
 type ZoneTotals = { timeS: number; distanceM: number }
@@ -94,6 +99,7 @@ export function buildRunProgress({
     range,
     zoneBounds,
     goalRace,
+    nextRace,
 }: Input): RunProgressDTO {
     const { from, granularity } = rangeBounds(today, range)
     const accumulators = new Map<string, Accumulator>()
@@ -148,6 +154,7 @@ export function buildRunProgress({
             zoneBounds !== null &&
             buckets.some((b) => b.zones.some((z) => z.paceSecPerKm !== null)),
         goal,
+        readiness: buildRaceReadiness({ runs, today, zoneBounds, race: nextRace }),
         kpis: {
             avgPaceSecPerKm: paceOf(totalMovingS, totalDistanceM),
             distanceKm: totalDistanceM / 1000,

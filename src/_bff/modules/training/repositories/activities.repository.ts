@@ -12,7 +12,8 @@ import type {
     TrainingClient,
 } from '@/_bff/modules/training/types'
 import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
-import type { HrHistogram } from '@/_bff/modules/training/types/progress'
+import { parsePaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
+import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
@@ -188,7 +189,7 @@ const backfillTargetSchema = z.object({
     activity_files: z.array(z.object({ storage_path: z.string() })),
 })
 
-// Activities of the user whose histogram was never computed and that still have a parsed file.
+// Activities of the user missing the HR or the pace histogram and that still have a parsed file.
 export const selectBackfillTargets = Effect.fn('selectBackfillTargets')(function* (
     supabase: TrainingClient,
     userId: string
@@ -199,7 +200,7 @@ export const selectBackfillTargets = Effect.fn('selectBackfillTargets')(function
                 .from(TABLE)
                 .select('id, activity_files!inner(storage_path)')
                 .eq('user_id', userId)
-                .is('hr_histogram', null)
+                .or('hr_histogram.is.null,pace_histogram.is.null')
                 .is('deleted_at', null)
                 .eq('activity_files.status', 'parsed')
                 .order('started_at', { ascending: true }),
@@ -222,17 +223,20 @@ export const selectBackfillTargets = Effect.fn('selectBackfillTargets')(function
     })
 })
 
-export const updateHrHistogram = Effect.fn('updateHrHistogram')(function* (
+export const updateHistograms = Effect.fn('updateHistograms')(function* (
     supabase: TrainingClient,
     userId: string,
     activityId: string,
-    histogram: HrHistogram
+    histograms: { hrHistogram: HrHistogram; paceHistogram: PaceHistogram }
 ) {
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
                 .from(TABLE)
-                .update({ hr_histogram: histogram })
+                .update({
+                    hr_histogram: histograms.hrHistogram,
+                    pace_histogram: histograms.paceHistogram,
+                })
                 .eq('id', activityId)
                 .eq('user_id', userId),
         catch: (cause) =>
@@ -375,6 +379,7 @@ const runRowSchema = z.object({
     avg_hr: numeric,
     // Validated by parseHrHistogram: a corrupt value must not fail the whole request.
     hr_histogram: z.unknown(),
+    pace_histogram: z.unknown(),
 })
 
 // Runs bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
@@ -388,7 +393,9 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
         try: () =>
             supabase
                 .from(TABLE)
-                .select('local_date, distance_m, moving_time_s, avg_hr, hr_histogram')
+                .select(
+                    'local_date, distance_m, moving_time_s, avg_hr, hr_histogram, pace_histogram'
+                )
                 .eq('user_id', userId)
                 .eq('category', 'run')
                 .is('deleted_at', null)
@@ -414,6 +421,7 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
         movingTimeS: row.moving_time_s,
         avgHr: row.avg_hr,
         hrHistogram: parseHrHistogram(row.hr_histogram),
+        paceHistogram: parsePaceHistogram(row.pace_histogram),
     }))
 })
 

@@ -14,6 +14,8 @@ import { ChartCard } from '@/modules/dashboard/progress/chart-card'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
 import { bucketLabel, paceSummary, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
 import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
+import { RaceBanner } from '@/modules/dashboard/progress/race-banner'
+import { RaceReadinessCard } from '@/modules/dashboard/progress/race-readiness-card'
 import { ProgressHero } from '@/modules/dashboard/progress/progress-hero'
 import { RecentRuns } from '@/modules/dashboard/progress/recent-runs'
 import { WeekDots } from '@/modules/dashboard/progress/week-dots'
@@ -197,21 +199,34 @@ function HeartRateCard({ data }: Props) {
     )
 }
 
-// The running mode of the dashboard, in the order of a training app: this week, the progress
-// chart, the goal, the latest runs, then pace, zones and heart rate.
+// The running mode of the dashboard, in the order of a training app: the next race and how ready
+// you are, this week, the progress chart, the goal, the latest runs, then pace, zones and heart rate.
 export function RunProgressView({ data, items, today }: ViewProps) {
+    // The race comes first and shows even before the first run: it is what the training is for.
+    const race =
+        data.readiness === null ? null : (
+            <div className="space-y-4">
+                <RaceBanner readiness={data.readiness} />
+                <RaceReadinessCard readiness={data.readiness} />
+            </div>
+        )
+
     if (data.kpis.runs === 0)
         return (
-            <p
-                data-testid="run-progress-empty"
-                className="rounded-[var(--radius-surface)] border border-ink/10 bg-card p-5 text-sm text-muted-foreground"
-            >
-                Upload a run to see your pace.
-            </p>
+            <div data-testid="run-progress-empty-wrap" className="space-y-4">
+                {race}
+                <p
+                    data-testid="run-progress-empty"
+                    className="rounded-[var(--radius-surface)] border border-ink/10 bg-card p-5 text-sm text-muted-foreground"
+                >
+                    Upload a run to see your pace.
+                </p>
+            </div>
         )
 
     return (
         <div data-testid="run-progress" className="space-y-4">
+            {race}
             <WeekDots items={items} today={today} />
             <ProgressHero data={data} />
             <GoalPaceCard goal={data.goal} deltaSecPerKm={data.kpis.goalDeltaSecPerKm} />

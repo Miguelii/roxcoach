@@ -4,7 +4,7 @@ import { Effect } from 'effect'
 import { parseActivityFile } from '@/_bff/modules/training/helpers/parse-activity-file.helper'
 import {
     selectBackfillTargets,
-    updateHrHistogram,
+    updateHistograms,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import { getActivityFile } from '@/_bff/modules/training/repositories/activity-files-storage.repository'
 import type { StorageReadClient, TrainingClient } from '@/_bff/modules/training/types'
@@ -22,13 +22,16 @@ const processTarget = (client: BackfillClient, userId: string, target: Target) =
     Effect.gen(function* () {
         const bytes = yield* getActivityFile(client, target.storagePath)
         const parsed = yield* parseActivityFile(bytes)
-        yield* updateHrHistogram(client, userId, target.activityId, parsed.hrHistogram)
+        yield* updateHistograms(client, userId, target.activityId, {
+            hrHistogram: parsed.hrHistogram,
+            paceHistogram: parsed.paceHistogram,
+        })
     })
 
-// Recomputes the HR histogram of every activity of the user that has none, from the stored file.
+// Recomputes the HR and pace histograms of every activity of the user missing one, from the stored file.
 // Sequential and resumable: only rows still null are selected, so a rerun picks up the rest. A
 // file that fails is counted and skipped, it never stops the run.
-export const backfillHrHistograms = Effect.fn('backfillHrHistograms')(function* (
+export const backfillHistograms = Effect.fn('backfillHistograms')(function* (
     client: BackfillClient,
     userId: string
 ) {

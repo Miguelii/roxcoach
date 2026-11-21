@@ -181,6 +181,15 @@ describe('parseFit hrHistogram', () => {
         expect(result.success.avgHr).toBeNull()
     })
 
+    it('builds a pace histogram from distance without needing heart rate', () => {
+        const result = run(
+            buildFit([0, 1, 2, 3, 4].map((s) => ({ timestamp: at(s), distance: s * 4 })))
+        )
+        if (Result.isFailure(result)) throw new Error('expected success')
+        expect(result.success.paceHistogram.bins).toEqual([[250, 4, 16]])
+        expect(result.success.hrHistogram).toEqual({ v: 1, bins: [] })
+    })
+
     it('has a histogram on the real Zepp file', () => {
         const result = run(real())
         if (Result.isFailure(result)) throw new Error('expected success')
