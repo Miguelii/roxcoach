@@ -86,6 +86,7 @@ describe('ActivityView', () => {
                         loadKg: 100,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                     {
                         exercise: 'Bench Press',
@@ -97,6 +98,7 @@ describe('ActivityView', () => {
                         loadKg: 82.5,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                     {
                         exercise: 'Bench Press',
@@ -108,6 +110,7 @@ describe('ActivityView', () => {
                         loadKg: 80,
                         rir: 2,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                 ]}
             />
@@ -147,6 +150,7 @@ describe('ActivityView', () => {
                         loadKg: 20,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                     {
                         exercise: 'Arnold Press',
@@ -158,6 +162,7 @@ describe('ActivityView', () => {
                         loadKg: 12,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                 ]}
             />
@@ -200,6 +205,7 @@ describe('ActivityView', () => {
                         loadKg: 80,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                     {
                         exercise: 'Bench Press',
@@ -211,6 +217,7 @@ describe('ActivityView', () => {
                         loadKg: 80,
                         rir: null,
                         rpe: null,
+                        lyftaRecords: [],
                     },
                 ]}
             />

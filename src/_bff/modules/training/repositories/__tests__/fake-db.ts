@@ -1,7 +1,9 @@
 import { vi } from 'vitest'
 import { asClient } from '@/_bff/lib/tests-utils'
 
-type FakeRow = Record<string, string | number | null>
+type FakeValue = string | number | boolean | null | FakeValue[] | { [key: string]: FakeValue }
+
+type FakeRow = Record<string, FakeValue>
 
 type FakeData = FakeRow | FakeRow[] | null
 
@@ -45,6 +47,7 @@ const makeChain = (item: QueryResult | Error) => {
         not: vi.fn(() => chain),
         gte: vi.fn(() => chain),
         lte: vi.fn(() => chain),
+        lt: vi.fn(() => chain),
         order: vi.fn(() => chain),
         limit: vi.fn(() => chain),
         maybeSingle: vi.fn(() => chain),

@@ -430,6 +430,43 @@ const strengthWorkoutRowSchema = z.object({
     local_date: z.string(),
 })
 
+// The `limit` strength workouts that started before `startedAt`, most recent first.
+export const selectStrengthWorkoutsBefore = Effect.fn('selectStrengthWorkoutsBefore')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    startedAt: string,
+    limit: number
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id, local_date')
+                .eq('user_id', userId)
+                .eq('category', 'strength')
+                .is('deleted_at', null)
+                .lt('started_at', startedAt)
+                .order('started_at', { ascending: false })
+                .limit(limit),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_ERR)
+
+    const parsed = z.array(strengthWorkoutRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(
+            parsed.error.issues,
+            ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_PARSE
+        )
+
+    return parsed.data.map((row) => ({ activityId: row.id, localDate: row.local_date }))
+})
+
 // Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
 export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsInRange')(function* (
     supabase: TrainingClient,

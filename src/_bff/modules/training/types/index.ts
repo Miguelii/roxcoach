@@ -18,6 +18,13 @@ export type LyftaActivityRow = {
     lyfta_total_volume_kg_reps: number | null
 }
 
+// A record Lyfta flagged on a set: `type` 1 is the estimated 1RM, 3 the volume of the set.
+type StrengthSetRecord = {
+    type: number
+    level: number | null
+    value: number | null
+}
+
 export type NewStrengthSetRow = {
     exercise: string
     exercise_index: number
@@ -28,6 +35,7 @@ export type NewStrengthSetRow = {
     load_kg: number | null
     rir?: number | null
     rpe: null
+    lyfta_records?: StrengthSetRecord[] | null
 }
 
 export type StrengthSetDTO = {
@@ -40,6 +48,28 @@ export type StrengthSetDTO = {
     loadKg: number | null
     rir: number | null
     rpe: number | null
+    // Records Lyfta flagged on this set; empty for manual sets and sets without a record.
+    lyftaRecords: StrengthSetRecord[]
+}
+
+// How one exercise of a strength workout compares with the athlete's earlier workouts.
+export type ExerciseComparisonDTO = {
+    // `exerciseKeyOf` of the exercise.
+    key: string
+    // The most recent earlier workout with this exercise, or null the first time.
+    previous: {
+        localDate: string
+        topSetKg: number | null
+        topSetReps: number | null
+        volumeKg: number
+    } | null
+    // The best of each measure over every earlier workout. A record needs a strictly higher value,
+    // and a null (never measured before) can never be beaten, so a first time is no record.
+    bestPriorTopSetKg: number | null
+    // Best estimated one-rep max.
+    bestPriorE1rmKg: number | null
+    // Best volume of the exercise in a single workout.
+    bestPriorVolumeKg: number | null
 }
 
 export type LapRow = {

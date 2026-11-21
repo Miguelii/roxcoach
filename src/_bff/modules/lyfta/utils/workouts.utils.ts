@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type {
     LyftaCompletedSet,
     LyftaExercise,
+    LyftaSetRecord,
     LyftaWorkout,
     LyftaWorkoutPage,
     ParseResult,
@@ -16,6 +17,7 @@ type LyftaJsonValue =
     | { [key: string]: LyftaJsonValue }
 
 type RawExercise = z.output<typeof rawExerciseSchema>
+type RawSet = z.output<typeof rawSetSchema>
 type RawWorkout = z.output<typeof rawWorkoutSchema>
 type WeightUnit = z.output<typeof weightUnitSchema>
 
@@ -94,6 +96,10 @@ const rawSetSchema = z.object({
     reps: z.custom<LyftaJsonValue>().optional(),
     weight: z.custom<LyftaJsonValue>().optional(),
     rir: z.custom<LyftaJsonValue>().optional(),
+    // Set only on the set that broke a record: comma separated lists of the same length.
+    record_type: z.custom<LyftaJsonValue>().optional(),
+    record_level: z.custom<LyftaJsonValue>().optional(),
+    record_value: z.custom<LyftaJsonValue>().optional(),
 })
 
 const rawExerciseSchema = z.object({
@@ -141,6 +147,45 @@ const rawPageSchema = z.object({
     workouts: z.array(rawWorkoutSchema),
 })
 
+// "1,3" or 1 -> ['1', '3'] / ['1']; anything else (null, missing, an object) -> [].
+const recordListSchema = z
+    .union([z.string(), z.number().transform(String)])
+    .transform((text) =>
+        text
+            .split(',')
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+    )
+    .catch([])
+
+const splitList = (value: LyftaJsonValue | undefined): string[] => recordListSchema.parse(value)
+
+const toNonNegativeNumber = (text: string | undefined): number | null => {
+    if (text === undefined) return null
+    const number = Number(text)
+    return Number.isFinite(number) && number >= 0 ? number : null
+}
+
+// Records are extra information, never a reason to reject a workout: a malformed or unknown entry is
+// dropped instead of failing validation.
+function parseSetRecords(set: RawSet): LyftaSetRecord[] {
+    const types = splitList(set.record_type)
+    const levels = splitList(set.record_level)
+    const values = splitList(set.record_value)
+    const records: LyftaSetRecord[] = []
+
+    for (const [index, rawType] of types.entries()) {
+        const type = Number(rawType)
+        if (!Number.isInteger(type) || type < 1) continue
+        records.push({
+            type,
+            level: toNonNegativeNumber(levels[index]),
+            value: toNonNegativeNumber(values[index]),
+        })
+    }
+    return records
+}
+
 function parseCompletedSets(
     exercise: RawExercise,
     workoutIndex: number,
@@ -179,11 +224,13 @@ function parseCompletedSets(
             loadKg = toKilograms(weight.data, weightUnit)
         }
 
+        const records = parseSetRecords(set)
         result.push({
             setIndex: setIndex + 1,
             reps: reps.data,
             loadKg,
             rir: rir.data,
+            ...(records.length > 0 && { records }),
         })
     }
 

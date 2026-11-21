@@ -8,7 +8,12 @@ import {
     formatPace,
     formatPaceSeconds,
 } from '@/_bff/core/utils/formatters.utils'
-import type { ActivityDTO, LapDTO, StrengthSetDTO } from '@/_bff/modules/training/types'
+import type {
+    ActivityDTO,
+    ExerciseComparisonDTO,
+    LapDTO,
+    StrengthSetDTO,
+} from '@/_bff/modules/training/types'
 import { activityDurationS } from '@/_bff/core/utils/activity-time.utils'
 import { longDateLabel } from '@/modules/calendar/date-utils'
 import { KINDS } from '@/modules/calendar/kinds'
@@ -16,23 +21,29 @@ import { cn } from '@/lib/utils'
 import { toRunSplits } from '@/modules/activity/run-chart-utils'
 import { RunSplits } from '@/modules/activity/run-splits'
 import { StrengthExercises } from '@/modules/activity/strength-exercises'
+import { StrengthSummary } from '@/modules/activity/strength-summary'
+import {
+    findRecords,
+    formatStrengthNumber,
+    recordsAreKnown,
+} from '@/modules/activity/strength-utils'
 
 type Props = {
     activity: ActivityDTO
     laps: LapDTO[]
     strengthSets: StrengthSetDTO[]
+    strengthComparisons?: ExerciseComparisonDTO[]
 }
 
 type Metric = {
     id: string
     label: string
     value: string | null
+    // Second line under the value on a phone (strength summary only).
+    detail?: string
 }
 
 const DASH = '-'
-const STRENGTH_NUMBER_FORMATTER = new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 2,
-})
 
 // Prefers the stored speed, else derives it from distance and time.
 const paceOf = (speed: number | null, distanceM: number | null, timeS: number | null) =>
@@ -49,15 +60,17 @@ function calculateTotalVolumeKgReps(sets: StrengthSetDTO[]): number | null {
     return total
 }
 
-const formatStrengthNumber = (value: number) => STRENGTH_NUMBER_FORMATTER.format(value)
-
-export function ActivityView({ activity, laps, strengthSets }: Props) {
+export function ActivityView({ activity, laps, strengthSets, strengthComparisons = [] }: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
     const isStrengthActivity = activity.category === 'strength'
     const isRun = activity.category === 'run'
     const totalVolumeKgReps =
         activity.lyftaTotalVolumeKgReps ?? calculateTotalVolumeKgReps(strengthSets)
+
+    const records = isStrengthActivity
+        ? findRecords({ source: activity.source, strengthSets, comparisons: strengthComparisons })
+        : []
 
     const fastestSplit =
         isRun && laps.length > 0
@@ -82,7 +95,8 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                       value:
                           totalVolumeKgReps === null
                               ? null
-                              : `${formatStrengthNumber(totalVolumeKgReps)} kg x reps`,
+                              : `${formatStrengthNumber(totalVolumeKgReps)} kg`,
+                      detail: ' x reps',
                   },
                   {
                       id: 'body-weight',
@@ -91,6 +105,11 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                           activity.bodyWeightKg === null
                               ? null
                               : `${formatStrengthNumber(activity.bodyWeightKg)} kg`,
+                  },
+                  {
+                      id: 'calories',
+                      label: 'Calories',
+                      value: activity.calories ? `${Math.round(activity.calories)} kcal` : null,
                   },
               ]
             : [
@@ -152,38 +171,41 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
                 </h1>
             </header>
 
-            <dl
-                data-testid="activity-metrics"
-                className={cn(
-                    'grid grid-cols-2 gap-3 sm:grid-cols-3',
-                    !isStrengthActivity && present.length === 5 && 'lg:grid-cols-5',
-                    !isStrengthActivity && present.length === 4 && 'sm:grid-cols-4',
-                    isStrengthActivity &&
-                        'gap-x-6 gap-y-4 border-y border-hairline py-4 sm:grid-cols-3'
-                )}
-            >
-                {present.map((metric) => (
-                    <div
-                        key={metric.id}
-                        className={cn(
-                            'rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4 max-sm:last:odd:col-span-2',
-                            isStrengthActivity && 'rounded-none border-0 bg-transparent p-0'
-                        )}
-                    >
-                        <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
-                        <dd
-                            data-testid={`metric-${metric.id}-value`}
-                            className={cn(
-                                isStrengthActivity
-                                    ? 'mt-1 font-mono text-lg'
-                                    : 'display mt-1 text-2xl'
-                            )}
+            {isStrengthActivity ? (
+                <StrengthSummary
+                    metrics={present.flatMap(({ id, label, value, detail }) =>
+                        value === null ? [] : [{ id, label, value, detail }]
+                    )}
+                    strengthSets={strengthSets}
+                    durationS={timeS}
+                    records={records}
+                    recordsKnown={recordsAreKnown(activity.source, strengthComparisons)}
+                />
+            ) : (
+                <dl
+                    data-testid="activity-metrics"
+                    className={cn(
+                        'grid grid-cols-2 gap-3 sm:grid-cols-3',
+                        present.length === 5 && 'lg:grid-cols-5',
+                        present.length === 4 && 'sm:grid-cols-4'
+                    )}
+                >
+                    {present.map((metric) => (
+                        <div
+                            key={metric.id}
+                            className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4 max-sm:last:odd:col-span-2"
                         >
-                            {metric.value}
-                        </dd>
-                    </div>
-                ))}
-            </dl>
+                            <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
+                            <dd
+                                data-testid={`metric-${metric.id}-value`}
+                                className="display mt-1 text-2xl"
+                            >
+                                {metric.value}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+            )}
 
             {isRun && laps.length > 0 && <RunSplits laps={laps} />}
 
@@ -254,7 +276,13 @@ export function ActivityView({ activity, laps, strengthSets }: Props) {
             )}
 
             {isStrengthActivity ? (
-                <StrengthExercises strengthSets={strengthSets} />
+                <>
+                    <StrengthExercises
+                        strengthSets={strengthSets}
+                        comparisons={strengthComparisons}
+                        records={records}
+                    />
+                </>
             ) : (
                 strengthSets.length > 0 && (
                     <section aria-label="Strength sets" className="space-y-3">

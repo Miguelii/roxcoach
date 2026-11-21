@@ -17,3 +17,5 @@ export const DEFAULT_PROGRESS_RANGE: ProgressRange = '6m'
 export const MIN_ZONE_SAMPLE_S = 300
 // How many exercises the strength dashboard can choose from (the dashboard shows the top 4 by default).
 export const MAX_EXERCISES = 12
+// How many earlier strength workouts an activity page looks back through to compare exercises.
+export const STRENGTH_COMPARISON_HISTORY = 150

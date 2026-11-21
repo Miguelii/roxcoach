@@ -43,6 +43,7 @@ describe('strength sets repository', () => {
                 loadKg: 80,
                 rir: 2,
                 rpe: null,
+                lyftaRecords: [],
             },
         ])
         expect(from).toHaveBeenCalledWith('strength_sets')
@@ -85,7 +86,37 @@ describe('strength sets repository', () => {
                 load_kg: 50,
                 rir: null,
                 rpe: null,
+                lyfta_records: null,
             },
+        ])
+    })
+
+    it('reads the stored Lyfta records and treats a missing value as none', async () => {
+        const row = {
+            exercise: 'Bench Press',
+            exercise_index: 1,
+            exercise_image_url: null,
+            source_exercise_id: '501',
+            set_index: 1,
+            reps: 5,
+            load_kg: 80,
+            rir: null,
+            rpe: null,
+        }
+        const { supabase } = makeFakeDb([
+            ok([
+                { ...row, lyfta_records: [{ type: 1, level: 2, value: 93 }] },
+                { ...row, set_index: 2, lyfta_records: null },
+                { ...row, set_index: 3 },
+            ]),
+        ])
+
+        const result = await Effect.runPromise(selectStrengthSets(supabase, USER_ID, ACTIVITY_ID))
+
+        expect(result.map((set) => set.lyftaRecords)).toEqual([
+            [{ type: 1, level: 2, value: 93 }],
+            [],
+            [],
         ])
     })
 

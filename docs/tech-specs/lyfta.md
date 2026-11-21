@@ -156,6 +156,17 @@ clears Lyfta sync checkpoints again. The next manual sync reimports the history 
 exercise order. Existing manual rows whose order was not stored remain nullable and are grouped by
 exercise name.
 
+Migration `0019_strength_set_lyfta_records.sql` adds `strength_sets.lyfta_records` and resets the
+sync checkpoints. Lyfta flags the set that broke a personal record with `record_type`,
+`record_level` and `record_value` (comma separated lists of the same length, `null` otherwise,
+for example `"1,3"`, `"1,1"`, `"20,135"`). Checked against real payloads: type `1` is the
+estimated 1RM (Epley, rounded to a whole kg, so 35 kg x 7 gives 43) and type `3` is the volume of
+that one set (15 kg x 9 gives 135). Type `2` has not been seen and is stored but not shown.
+`record_level` meaning is unknown, so it is stored and never shown. Records are extra information:
+a malformed or unknown entry is dropped and never fails validation. The workout payload also
+carries `exercise_type`, `set_type_id`, `exercise_rest_time` (always 0 in the samples), `duration`,
+`distance` and a `user` object, none of which is imported, and no calories.
+
 Migration `0018_lyfta_resync_incomplete_sets.sql` resets the sync checkpoints once more, so the next
 manual sync rebuilds the sets of workouts imported before incomplete sets with reps or weight were
 accepted.

@@ -5,9 +5,18 @@ import { Effect } from 'effect'
 import { createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError } from '@/_bff/lib/errors'
-import { selectActivityById } from '@/_bff/modules/training/repositories/activities.repository'
+import { STRENGTH_COMPARISON_HISTORY } from '@/_bff/core/constants/progress.constants'
+import { buildStrengthComparison } from '@/_bff/modules/training/helpers/build-strength-comparison.helper'
+import {
+    selectActivityById,
+    selectStrengthWorkoutsBefore,
+} from '@/_bff/modules/training/repositories/activities.repository'
 import { selectLaps } from '@/_bff/modules/training/repositories/activity-laps.repository'
-import { selectStrengthSets } from '@/_bff/modules/training/repositories/strength-sets.repository'
+import {
+    selectSetsForActivities,
+    selectStrengthSets,
+} from '@/_bff/modules/training/repositories/strength-sets.repository'
+import type { ExerciseComparisonDTO } from '@/_bff/modules/training/types'
 
 // Runs as the signed-in user (publishable key). Returns null when the activity does not exist, is
 // soft-deleted or belongs to someone else.
@@ -23,5 +32,30 @@ export const getActivity = Effect.fn('getActivity')(function* (user: User, id: s
 
     const laps = yield* selectLaps(supabase, user.id, id)
     const strengthSets = yield* selectStrengthSets(supabase, user.id, id)
-    return { activity, laps, strengthSets }
+
+    // A strength workout is compared with the athlete's earlier ones, exercise by exercise.
+    let strengthComparisons: ExerciseComparisonDTO[] = []
+    if (activity.category === 'strength' && strengthSets.length > 0) {
+        const history = yield* selectStrengthWorkoutsBefore(
+            supabase,
+            user.id,
+            activity.startedAt,
+            STRENGTH_COMPARISON_HISTORY
+        )
+        const historySets =
+            history.length === 0
+                ? []
+                : yield* selectSetsForActivities(
+                      supabase,
+                      user.id,
+                      history.map((workout) => workout.activityId)
+                  )
+        strengthComparisons = buildStrengthComparison({
+            current: strengthSets,
+            history,
+            sets: historySets,
+        })
+    }
+
+    return { activity, laps, strengthSets, strengthComparisons }
 })

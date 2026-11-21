@@ -87,6 +87,7 @@ describe('getActivity', () => {
                 loadKg: 80,
                 rir: 2,
                 rpe: null,
+                lyftaRecords: [],
             },
         ])
         expect(from.mock.calls.map(([table]) => table)).toEqual([
@@ -98,6 +99,64 @@ describe('getActivity', () => {
         expect(chains[1]?.eq).toHaveBeenCalledWith('activity_id', ID)
         expect(chains[2]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
         expect(chains[2]?.eq).toHaveBeenCalledWith('activity_id', ID)
+    })
+
+    it('compares a strength workout with the earlier ones of the same athlete', async () => {
+        const { chains, from, supabase } = makeFakeDb([
+            { data: { ...DB_ROW, category: 'strength' }, error: null },
+            { data: [], error: null },
+            { data: [DB_STRENGTH_SET], error: null },
+            { data: [{ id: 'earlier', local_date: '2026-11-09' }], error: null },
+            {
+                data: [
+                    {
+                        activity_id: 'earlier',
+                        exercise: 'Bench Press',
+                        exercise_image_url: null,
+                        source_exercise_id: '501',
+                        reps: 5,
+                        load_kg: 75,
+                    },
+                ],
+                error: null,
+            },
+        ])
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        const result = await Effect.runPromise(getActivity(USER, ID))
+
+        expect(result?.strengthComparisons).toEqual([
+            {
+                key: '501',
+                previous: { localDate: '2026-11-09', topSetKg: 75, topSetReps: 5, volumeKg: 375 },
+                bestPriorTopSetKg: 75,
+                bestPriorE1rmKg: 87.5,
+                bestPriorVolumeKg: 375,
+            },
+        ])
+        expect(from.mock.calls.map(([table]) => table)).toEqual([
+            'activities',
+            'activity_laps',
+            'strength_sets',
+            'activities',
+            'strength_sets',
+        ])
+        expect(chains[3]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(chains[3]?.lt).toHaveBeenCalledWith('started_at', '2026-11-18T07:30:00+00:00')
+    })
+
+    it('skips the comparison for a non-strength activity', async () => {
+        const { from, supabase } = makeFakeDb([
+            { data: DB_ROW, error: null },
+            { data: [], error: null },
+            { data: [DB_STRENGTH_SET], error: null },
+        ])
+        createDBServerClientMock.mockResolvedValue(supabase)
+
+        const result = await Effect.runPromise(getActivity(USER, ID))
+
+        expect(result?.strengthComparisons).toEqual([])
+        expect(from).toHaveBeenCalledTimes(3)
     })
 
     it('returns null for a missing (or soft-deleted) id without reading laps', async () => {

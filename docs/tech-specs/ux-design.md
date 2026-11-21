@@ -191,6 +191,37 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
   in set order as a numbered list with reps, load in kg and RIR when any set has it. Do not show
   rest timers. Legacy sets without exercise order fall back to exercise name; missing images or
   values remain honest. An activity without sets gets an empty state.
+- Strength detail, all derived from stored sets (helpers in
+  `src/_bff/core/helpers/strength-detail.helper.ts`, used by the server and the UI):
+    - One summary card (outer shell, inner core) holds the whole workout, so nothing about it sits
+      apart: the headline numbers (duration, total volume, body weight, calories when stored,
+      heart rate and effort when present), then what was done (exercises, sets, total reps, heaviest
+      set with its exercise, density as volume per minute with a volume and a duration), then a
+      Records overview. On a phone the heaviest set goes last in full width so a long exercise name
+      wraps instead of being cut. Lyfta does not give calories today, so imported workouts omit them.
+    - The Records overview lists each exercise that set a record with a count, one line per
+      record type (Weight, 1RM, Set volume, Volume), its value and, when known, the set behind it
+      and the gain. A Lyfta activity shows the records Lyfta flagged on its sets (1RM and set
+      volume, all-time, no gain because Lyfta does not give the old best); the set that broke one
+      also carries a pill, and nothing from our own comparison is mixed in. Any other activity uses
+      our comparison with the last `STRENGTH_COMPARISON_HISTORY` workouts: top set (Weight),
+      estimated 1RM and the exercise's volume in the workout (Volume), each against the best of the
+      earlier workouts, with the gain. With no record it says "No new records this session." (always
+      for Lyfta, only with an earlier workout otherwise), and the section is hidden when there is
+      nothing to say.
+    - Per exercise, next to its name: top set (heaviest load, more reps on a tie), volume with its
+      share of the workout, and the estimated 1RM (Epley, one rep is the load itself, only sets of
+      1 to 12 reps count). Volume and the top set ignore sets without reps and a positive load.
+    - Per exercise, a "Last time" line against the most recent earlier strength workout with the
+      same exercise (matched by `exerciseKeyOf`: the Lyfta exercise id, else the lowercase name),
+      with the signed change in top set and in volume (each hidden when it did not move) and a
+      "Record: ..." pill naming the record types set in the exercise. A first session has no line
+      and no record.
+    - Per set: a bar scaled to the exercise's top set, a "Top set" pill on the first set that
+      matches it, and the set volume at the right.
+    - `training.getActivity` returns `strengthComparisons` (`ExerciseComparisonDTO[]`) for strength
+      activities with sets: it reads the last `STRENGTH_COMPARISON_HISTORY` (150) earlier strength
+      workouts of the user and their sets, as the signed-in user. Other categories get `[]`.
 - Station results and other activity details when present, plus "Add details" (see
   [manual-logging.md](manual-logging.md)).
 

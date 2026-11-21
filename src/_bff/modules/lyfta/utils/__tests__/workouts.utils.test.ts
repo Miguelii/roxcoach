@@ -146,6 +146,98 @@ describe('parseLyftaWorkoutPage', () => {
         ])
     })
 
+    it('reads the records Lyfta flags on a set, single or comma separated', () => {
+        const result = parseLyftaWorkoutPage(
+            {
+                ...SANDBOX_PAGE,
+                workouts: [
+                    {
+                        ...SANDBOX_PAGE.workouts[0],
+                        exercises: [
+                            {
+                                exercise_id: 1511,
+                                excercise_name: 'Skull Crusher',
+                                sets: [
+                                    {
+                                        is_completed: false,
+                                        reps: '10',
+                                        weight: '10.000',
+                                        record_type: null,
+                                        record_level: null,
+                                        record_value: null,
+                                    },
+                                    {
+                                        is_completed: false,
+                                        reps: '7',
+                                        weight: '35.000',
+                                        record_type: '1',
+                                        record_level: '2',
+                                        record_value: '43',
+                                    },
+                                    {
+                                        is_completed: false,
+                                        reps: '9',
+                                        weight: '15.000',
+                                        record_type: '1,3',
+                                        record_level: '1,1',
+                                        record_value: '20,135',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            1
+        )
+
+        expect(result.success).toBe(true)
+        if (!result.success) return
+        const sets = result.data.workouts[0]?.exercises[0]?.sets
+        expect(sets?.[0]).not.toHaveProperty('records')
+        expect(sets?.[1]?.records).toEqual([{ type: 1, level: 2, value: 43 }])
+        expect(sets?.[2]?.records).toEqual([
+            { type: 1, level: 1, value: 20 },
+            { type: 3, level: 1, value: 135 },
+        ])
+    })
+
+    it('drops malformed record entries instead of rejecting the workout', () => {
+        const result = parseLyftaWorkoutPage(
+            {
+                ...SANDBOX_PAGE,
+                workouts: [
+                    {
+                        ...SANDBOX_PAGE.workouts[0],
+                        exercises: [
+                            {
+                                exercise_id: 502,
+                                excercise_name: 'Deadlift',
+                                sets: [
+                                    {
+                                        is_completed: true,
+                                        reps: '5',
+                                        weight: '100',
+                                        record_type: 'abc,3,0',
+                                        record_level: 'x',
+                                        record_value: ',oops',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            1
+        )
+
+        expect(result.success).toBe(true)
+        if (!result.success) return
+        expect(result.data.workouts[0]?.exercises[0]?.sets[0]?.records).toEqual([
+            { type: 3, level: null, value: null },
+        ])
+    })
+
     it('keeps completed sets with no values and maps absent optional values to null', () => {
         // The incomplete set below is empty, so it is dropped; completed ones are always kept.
         const result = parseLyftaWorkoutPage(

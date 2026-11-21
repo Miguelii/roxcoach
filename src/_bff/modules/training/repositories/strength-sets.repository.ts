@@ -23,6 +23,12 @@ const numeric = z
     ])
     .nullable()
 
+const lyftaRecordSchema = z.object({
+    type: z.number().int(),
+    level: z.number().nullable(),
+    value: z.number().nullable(),
+})
+
 const strengthSetRowSchema = z.object({
     exercise: z.string(),
     exercise_index: z.number().int().nullable(),
@@ -33,6 +39,7 @@ const strengthSetRowSchema = z.object({
     load_kg: numeric,
     rir: z.number().int().nullable(),
     rpe: numeric,
+    lyfta_records: z.array(lyftaRecordSchema).nullish(),
 })
 
 const selectError = (error: ReturnedError, error_hash: ErrorCode) =>
@@ -51,7 +58,7 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
             supabase
                 .from(TABLE)
                 .select(
-                    'exercise, exercise_index, exercise_image_url, source_exercise_id, set_index, reps, load_kg, rir, rpe'
+                    'exercise, exercise_index, exercise_image_url, source_exercise_id, set_index, reps, load_kg, rir, rpe, lyfta_records'
                 )
                 .eq('user_id', userId)
                 .eq('activity_id', activityId)
@@ -84,6 +91,7 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
         loadKg: row.load_kg,
         rir: row.rir,
         rpe: row.rpe,
+        lyftaRecords: row.lyfta_records ?? [],
     }))
 })
 
@@ -125,6 +133,7 @@ export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
         load_kg: set.load_kg,
         rir: set.rir ?? null,
         rpe: null,
+        lyfta_records: set.lyfta_records ?? null,
     }))
 
     const { error } = yield* Effect.tryPromise({

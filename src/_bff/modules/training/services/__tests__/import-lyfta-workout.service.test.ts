@@ -100,6 +100,7 @@ describe('importLyftaWorkout', () => {
                 load_kg: 80,
                 rir: 2,
                 rpe: null,
+                lyfta_records: null,
             },
             {
                 user_id: USER.id,
@@ -113,6 +114,7 @@ describe('importLyftaWorkout', () => {
                 load_kg: null,
                 rir: null,
                 rpe: null,
+                lyfta_records: null,
             },
             {
                 user_id: USER.id,
@@ -126,7 +128,37 @@ describe('importLyftaWorkout', () => {
                 load_kg: 35,
                 rir: 1,
                 rpe: null,
+                lyfta_records: null,
             },
+        ])
+    })
+
+    it('stores the records Lyfta flagged on a set and null for the other sets', async () => {
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: ACTIVITY_ID }), ok(), ok()])
+        const records = [
+            { type: 1, level: 1, value: 20 },
+            { type: 3, level: 1, value: 135 },
+        ]
+        const workout: LyftaWorkout = {
+            ...WORKOUT,
+            exercises: [
+                {
+                    exerciseId: '1511',
+                    name: 'Skull Crusher',
+                    imageUrl: null,
+                    sets: [
+                        { setIndex: 1, reps: 10, loadKg: 10, rir: null },
+                        { setIndex: 2, reps: 9, loadKg: 15, rir: null, records },
+                    ],
+                },
+            ],
+        }
+
+        await Effect.runPromise(importLyftaWorkout(USER, workout, context(supabase)))
+
+        expect(chains[3]?.insert).toHaveBeenCalledWith([
+            expect.objectContaining({ set_index: 1, lyfta_records: null }),
+            expect.objectContaining({ set_index: 2, lyfta_records: records }),
         ])
     })
 

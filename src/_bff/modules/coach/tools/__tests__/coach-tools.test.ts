@@ -185,6 +185,7 @@ describe('makeCoachTools', () => {
             loadKg: 80,
             rir: 2,
             rpe: null,
+            lyftaRecords: [],
         }
         // SAFETY: the lap literal matches LapDTO.
         const found = setup({
@@ -230,6 +231,7 @@ describe('makeCoachTools', () => {
             loadKg: 100,
             rir: null,
             rpe: null,
+            lyftaRecords: [],
         }))
         const capped = setup({
             getActivity: async () => ({

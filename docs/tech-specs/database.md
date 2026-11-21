@@ -234,18 +234,19 @@ Hand-entered Hyrox station data. See [manual-logging.md](manual-logging.md).
 
 ### `strength_sets`
 
-| Column               | Type                                           | Notes                                                    |
-| -------------------- | ---------------------------------------------- | -------------------------------------------------------- |
-| `activity_id`        | uuid references `activities` on delete cascade |                                                          |
-| `exercise`           | text not null                                  | Display name from Lyfta or manual entry                  |
-| `exercise_index`     | int null                                       | Original order within the activity; null for legacy rows |
-| `exercise_image_url` | text null                                      | Optional Lyfta exercise image URL; never image bytes     |
-| `source_exercise_id` | text null                                      | Stable ID from the source, used to group progress        |
-| `set_index`          | int                                            |                                                          |
-| `reps`               | int null                                       |                                                          |
-| `load_kg`            | numeric null                                   | Always kilograms for Lyfta imports                       |
-| `rir`                | smallint null                                  | Non-negative reps in reserve from Lyfta                  |
-| `rpe`                | numeric null                                   | 1..10                                                    |
+| Column               | Type                                           | Notes                                                      |
+| -------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| `activity_id`        | uuid references `activities` on delete cascade |                                                            |
+| `exercise`           | text not null                                  | Display name from Lyfta or manual entry                    |
+| `exercise_index`     | int null                                       | Original order within the activity; null for legacy rows   |
+| `exercise_image_url` | text null                                      | Optional Lyfta exercise image URL; never image bytes       |
+| `source_exercise_id` | text null                                      | Stable ID from the source, used to group progress          |
+| `set_index`          | int                                            |                                                            |
+| `reps`               | int null                                       |                                                            |
+| `load_kg`            | numeric null                                   | Always kilograms for Lyfta imports                         |
+| `rir`                | smallint null                                  | Non-negative reps in reserve from Lyfta                    |
+| `rpe`                | numeric null                                   | 1..10                                                      |
+| `lyfta_records`      | jsonb null                                     | Array of `{ type, level, value }` Lyfta flagged on the set |
 
 Lyfta imports store completed exercise sets here. The Lyfta sync replaces imported set rows when
 updating a source workout; see [lyfta.md](lyfta.md). An index on `(user_id, source_exercise_id)`
@@ -374,6 +375,7 @@ schema:
 | `0016_race_readiness.sql`               | `activities.pace_histogram`                                                                                 |
 | `0017_grant_access_fn.sql`              | `roxcoach.grant_access(user_id, display_name)`: sets the flag and creates the profile (service role only)   |
 | `0018_lyfta_resync_incomplete_sets.sql` | Requests one full manual Lyfta resync so sets Lyfta never marked completed are imported                     |
+| `0019_strength_set_lyfta_records.sql`   | `strength_sets.lyfta_records` (records Lyfta flagged per set); requests one full manual Lyfta resync        |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

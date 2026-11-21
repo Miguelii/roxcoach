@@ -88,6 +88,7 @@ export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
             load_kg: set.loadKg,
             rir: set.rir,
             rpe: null,
+            lyfta_records: set.records ?? null,
         }))
     )
 

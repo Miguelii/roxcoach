@@ -1,0 +1,315 @@
+{
+    "user_id": 4470514,
+    "status": true,
+    "count": 1,
+    "total_records": 34,
+    "total_pages": 34,
+    "current_page": 1,
+    "limit": 1,
+    "workouts": [
+        {
+            "id": 37742077,
+            "title": "Shoulder day",
+            "body_weight": 100,
+            "workout_perform_date": "2026-11-20 19:14:52",
+            "total_volume": 4432.5,
+            "totalLiftedWeight": 4432.5,
+            "user": {
+                "username": "USER"
+            },
+            "exercises": [
+                {
+                    "exercise_id": 176,
+                    "excercise_name": "Seated Shoulder Press",
+                    "exercise_type": "db_2_simultaneous",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/04051101-Dumbbell-Seated-Shoulder-Press_Shoulders_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950122",
+                            "weight": "15.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950123",
+                            "weight": "20.000",
+                            "reps": "8",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950124",
+                            "weight": "25.000",
+                            "reps": "6",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950125",
+                            "weight": "30.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950126",
+                            "weight": "35.000",
+                            "reps": "7",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": "1",
+                            "record_level": "2",
+                            "record_value": "43"
+                        }
+                    ]
+                },
+                {
+                    "exercise_id": 2320,
+                    "excercise_name": "Lever Shoulder Press",
+                    "exercise_type": "weight_reps",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/08691101-Lever-Shoulder-Press-(plate-loaded)-II_Shoulders_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950127",
+                            "weight": "30.000",
+                            "reps": "6",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950128",
+                            "weight": "60.000",
+                            "reps": "8",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950129",
+                            "weight": "70.000",
+                            "reps": "5",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": "1",
+                            "record_level": "2",
+                            "record_value": "82"
+                        }
+                    ]
+                },
+                {
+                    "exercise_id": 4574,
+                    "excercise_name": "Lever Lateral Raise",
+                    "exercise_type": "weight_reps",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/33431101-Lever-Lateral-Raise-(VERSION-2)_Shoulders_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950130",
+                            "weight": "5.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950131",
+                            "weight": "10.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950132",
+                            "weight": "12.500",
+                            "reps": "7",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        }
+                    ]
+                },
+                {
+                    "exercise_id": 1511,
+                    "excercise_name": "Barbell Lying Triceps Extension Skull Crusher",
+                    "exercise_type": "weight_reps",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/00601101-Barbell-Lying-Triceps-Extension-Skull-Crusher_Triceps-SFIX_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950133",
+                            "weight": "5.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950134",
+                            "weight": "10.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950135",
+                            "weight": "15.000",
+                            "reps": "9",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": "1,3",
+                            "record_level": "1,1",
+                            "record_value": "20,135"
+                        }
+                    ]
+                },
+                {
+                    "exercise_id": 27426,
+                    "excercise_name": "Cable Shoulder 90 degrees External Rotation",
+                    "exercise_type": "weight_reps",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/50871101-Cable-Shoulder-90-degrees-External-Rotation_Back_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950136",
+                            "weight": "10.000",
+                            "reps": "10",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950137",
+                            "weight": "15.000",
+                            "reps": "8",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": "1",
+                            "record_level": "1",
+                            "record_value": "19"
+                        }
+                    ]
+                },
+                {
+                    "exercise_id": 107,
+                    "excercise_name": "Triceps Pushdown",
+                    "exercise_type": "weight_reps",
+                    "exercise_image": "https://apilyfta.com/static/GymvisualPNG/02411101-Cable-Triceps-Pushdown-(V-bar-attachment)_Upper-Arms_small.png",
+                    "exercise_rest_time": 0,
+                    "sets": [
+                        {
+                            "id": "709950138",
+                            "weight": "40.000",
+                            "reps": "8",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": null,
+                            "record_level": null,
+                            "record_value": null
+                        },
+                        {
+                            "id": "709950139",
+                            "weight": "50.000",
+                            "reps": "7",
+                            "rir": "",
+                            "duration": "",
+                            "distance": "",
+                            "set_type_id": "0",
+                            "is_completed": false,
+                            "record_type": "1",
+                            "record_level": "3",
+                            "record_value": "62"
+                        }
+                    ]
+                }
+            ],
+            "user_id": 4470514,
+            "weight_unit": "kg",
+            "workout_duration": "01:13:04"
+        }
+    ]
+}

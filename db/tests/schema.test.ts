@@ -95,6 +95,7 @@ describe('schema layout', () => {
             '0016_race_readiness.sql',
             '0017_grant_access_fn.sql',
             '0018_lyfta_resync_incomplete_sets.sql',
+            '0019_strength_set_lyfta_records.sql',
         ])
     })
 

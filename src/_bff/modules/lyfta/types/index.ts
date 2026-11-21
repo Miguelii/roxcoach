@@ -8,11 +8,21 @@ export type LyftaConnectionStatus = {
     lastSyncedAt: string | null
 }
 
+// A record Lyfta flagged on a set. `type` 1 is the estimated 1RM and 3 the volume of the set (see
+// lyfta.md); `level` and `value` are Lyfta's own and can be missing.
+export type LyftaSetRecord = {
+    type: number
+    level: number | null
+    value: number | null
+}
+
 export type LyftaCompletedSet = {
     setIndex: number
     reps: number | null
     loadKg: number | null
     rir: number | null
+    // Left out when the set broke no record.
+    records?: LyftaSetRecord[]
 }
 
 export type LyftaExercise = {

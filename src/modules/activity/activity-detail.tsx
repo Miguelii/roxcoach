@@ -1,13 +1,23 @@
 import { notFound } from 'next/navigation'
 import { z } from 'zod'
-import type { ActivityDTO, LapDTO, StrengthSetDTO } from '@/_bff/modules/training/types'
+import type {
+    ActivityDTO,
+    ExerciseComparisonDTO,
+    LapDTO,
+    StrengthSetDTO,
+} from '@/_bff/modules/training/types'
 import { ActivityView } from '@/modules/activity/activity-view'
+
+type Loaded = {
+    activity: ActivityDTO
+    laps: LapDTO[]
+    strengthSets: StrengthSetDTO[]
+    strengthComparisons?: ExerciseComparisonDTO[]
+}
 
 type Props = {
     params: Promise<{ id: string }>
-    load: (
-        id: string
-    ) => Promise<{ activity: ActivityDTO; laps: LapDTO[]; strengthSets: StrengthSetDTO[] } | null>
+    load: (id: string) => Promise<Loaded | null>
 }
 
 const idSchema = z.uuid()
@@ -26,6 +36,7 @@ export async function ActivityDetail({ params, load }: Props) {
             activity={found.activity}
             laps={found.laps}
             strengthSets={found.strengthSets}
+            strengthComparisons={found.strengthComparisons}
         />
     )
 }
