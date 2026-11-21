@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { CoachChat } from '@/modules/coach/coach-chat'
 import { CoachPanelProvider } from '@/modules/coach/coach-panel-context'
+import { InstallPrompt } from '@/modules/pwa/install-prompt'
 import { COACH_ENABLED_COOKIE } from '@/modules/coach/constants'
 
 type Props = {
@@ -16,6 +17,7 @@ async function CoachSession({ children }: Props) {
         <CoachPanelProvider initialEnabled={enabled}>
             <AppShell>{children}</AppShell>
             <CoachChat />
+            <InstallPrompt />
         </CoachPanelProvider>
     )
 }

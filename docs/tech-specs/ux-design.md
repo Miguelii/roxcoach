@@ -76,7 +76,15 @@ respected, screen-reader labels on every icon-only control and on every calendar
   `web-app-manifest-512x512.png`, `apple-touch-icon.png`; the proxy matcher already lets these names
   through without a session), and in the root layout `viewportFit: 'cover'`, `themeColor` and
   `appleWebApp` so it runs full screen on a phone. The icon is a rising line ending in a dot on the
-  ink color. It needs HTTPS to be offered for installation. Out of scope on purpose: web push
+  ink color. It needs HTTPS to be offered for installation. On a phone, a bottom sheet
+  (`InstallPrompt`, mounted in the authenticated layout) offers installing the app about 1.5 s
+  after opening it: with the browser's `beforeinstallprompt` event (Chrome, Edge) an "Install app"
+  button opens the native install dialog; on iOS Safari, which cannot install from code, the sheet
+  shows the Share, Add to Home Screen steps and a "Got it" button. "Not now", swiping the sheet away
+  or declining the native dialog saves `roxcoach:install-prompt-dismissed` in localStorage and the
+  sheet does not come back on that browser; it never shows when the app already runs installed
+  (`display-mode: standalone`) or on a wide screen. When storage is blocked the choice is simply not
+  remembered. Out of scope on purpose: web push
   notifications (they need VAPID keys, a stored subscription and a sender) and offline caching with
   a service worker; neither is required to install the app.
 
