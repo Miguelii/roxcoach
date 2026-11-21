@@ -18,7 +18,6 @@ export function StrengthProgressView({ data }: Props) {
     const { buckets, granularity, range } = data
     const totalWorkouts = buckets.reduce((sum, bucket) => sum + bucket.workouts, 0)
     const totalVolume = buckets.reduce((sum, bucket) => sum + bucket.volumeKg, 0)
-    const periodName = granularity === 'week' ? 'Week' : 'Month'
 
     if (totalWorkouts === 0 && data.exercises.length === 0)
         return (
@@ -50,7 +49,6 @@ export function StrengthProgressView({ data }: Props) {
                     format={(value) => formatVolumeKg(value) ?? ''}
                     formatAxis={formatCompact}
                     valueName="Volume"
-                    periodName={periodName}
                 />
                 <BucketChartCard
                     testId="workouts-chart"
@@ -66,7 +64,6 @@ export function StrengthProgressView({ data }: Props) {
                     format={(value) => `${value} ${value === 1 ? 'workout' : 'workouts'}`}
                     formatAxis={(value) => String(value)}
                     valueName="Workouts"
-                    periodName={periodName}
                 />
             </div>
 

@@ -22,7 +22,7 @@ seconds, on a phone, from charts that are readable first and pretty second.
   heart rate zone, distance per week or month (bars) and average heart rate (line).
 - Strength mode: training volume and workouts per week or month (bars), then one card per exercise
   for the 5 most used, one below the other, each with its picture, the latest top set and a chart
-  of its top set over time. The exercise cards have no table: they are charts only.
+  of its top set over time. The dashboard has no data tables: every series is a chart.
 - A shared time range (3 months, 6 months, 1 year) for both modes.
 - Real time-in-zone data: heart rate zones come from the track points of the stored files, not from
   average heart rate.
@@ -262,8 +262,8 @@ own loading, error (with retry, `QueryError`) and empty state.
 Empty states: no runs in the range ("Upload a run to see your pace"); zones need heart rate
 settings (link to Settings); no race with a distance (the goal tile says "Add a running race to see
 your goal pace", linking to Races); no strength data ("Sync Lyfta to see your progress", linking to
-the Lyfta settings tab). Fewer than 4 points in a series: show the stat tile and the table, not an
-empty-looking line.
+the Lyfta settings tab). A chart is always drawn when there is data, even with one or two points (a
+dot or a short line); a chart with no data at all becomes an empty state with a way to fill it.
 
 ### Visual design
 
@@ -307,8 +307,8 @@ Chart rules:
 ### Accessibility and motion
 
 - Each chart is `role="img"` with an `aria-label` summarising its message ("Average pace improved
-  from 5:30 to 5:12 per kilometre over 6 months"), and a "View as table" disclosure with the same
-  data as a real table (this is also the fallback for 3 points or fewer).
+  from 5:30 to 5:12 per kilometre over 6 months"). The athlete asked for charts and no tables, so
+  there is no table fallback; the tooltip carries the exact value of every point.
 - Recharts `accessibilityLayer` is on, so the chart is reachable and navigable by keyboard.
 - Animations are off when `prefers-reduced-motion` is set; otherwise at most one short entrance
   (under 400 ms, ease-out).
@@ -334,9 +334,9 @@ The cache is cleared on logout as today.
 - Services with a fake Supabase client; the backfill service with fake storage; repositories check
   the `user_id` filter.
 - PGlite SQL tests: the new columns, the check constraint on `dashboard_mode`, RLS unchanged.
-- Components: KPI tiles, cards, empty states, the table fallback and the mode switch (optimistic
-  update and revert), always located by `data-testid`. SVG drawing is not asserted; the data table
-  fallback carries the same numbers and is what the tests read.
+- Components: KPI tiles, cards, empty states, and the mode switch (optimistic update and revert),
+  always located by `data-testid`. SVG drawing is not asserted; tests read the frames with their
+  `aria-label` summaries, the takeaways, the legends and the empty states.
 
 ## Documents to update in the same change
 
@@ -363,7 +363,6 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
 - Zone points need 5 minutes of data; intervals over 10 s apart or slower than 0.5 m/s are dropped.
 - Goal pace comes from the next upcoming running race (priority A first).
 - Top 5 exercises by number of workouts, each in its own card with its own axis (loads differ too
-  much for one shared chart). A line is drawn from two workouts on; with one, the value and the
-  table are shown.
+  much for one shared chart). Its chart is drawn from one workout on.
 - The week strip stays in both modes; in strength mode it drops the run distance tile and counts
   strength workouts only for time and sessions.

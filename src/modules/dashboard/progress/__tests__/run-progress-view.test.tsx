@@ -110,7 +110,7 @@ describe('RunProgressView', () => {
         expect(screen.queryByTestId('pace-chart')).toBeNull()
     })
 
-    it('summarises the pace trend and lists every week in the table', () => {
+    it('summarises the pace trend in a chart', () => {
         render(<RunProgressView data={data()} />)
 
         expect(screen.getByTestId('pace-chart-takeaway')).toHaveTextContent(
@@ -120,22 +120,17 @@ describe('RunProgressView', () => {
             'aria-label',
             'Average pace improved from 5:30 /km to 5:12 /km over 3 months.'
         )
-        fireEvent.click(screen.getByTestId('pace-chart-table-toggle'))
-        expect(screen.getAllByTestId('pace-chart-table-row')).toHaveLength(5)
-        expect(screen.getAllByTestId('pace-chart-table-row')[0]).toHaveTextContent(
-            '12 Oct5:30 /km20.0 km3'
-        )
     })
 
-    it('shows the table instead of a line when there are fewer than four points', () => {
+    it('draws the pace chart even with few weeks of data and never shows a table', () => {
         render(
             <RunProgressView
                 data={data({ buckets: [bucket('2026-11-02', 318), bucket('2026-11-09', 312)] })}
             />
         )
 
-        expect(screen.queryByTestId('pace-chart-figure')).toBeNull()
-        expect(screen.getByTestId('pace-chart-table')).toBeInTheDocument()
+        expect(screen.getByTestId('pace-chart-figure')).toBeInTheDocument()
+        expect(screen.queryByTestId('pace-chart-table-toggle')).toBeNull()
     })
 
     it('explains the missing heart rates when the profile has no zones', () => {
@@ -154,20 +149,22 @@ describe('RunProgressView', () => {
         )
     })
 
-    it('offers a toggle only for zones with data and hides a zone from the table', () => {
+    it('offers a toggle only for zones with data and shows the zone chart', () => {
         render(<RunProgressView data={data()} />)
 
         expect(screen.queryByTestId('zone-toggle-1')).toBeNull()
         expect(screen.getByTestId('zone-toggle-2')).toHaveAttribute('aria-pressed', 'true')
         expect(screen.getByTestId('zone-toggle-3')).toHaveAttribute('aria-pressed', 'true')
+        expect(screen.getByTestId('zone-chart-figure')).toHaveAttribute(
+            'aria-label',
+            'Pace in each heart rate zone, Z2, Z3.'
+        )
 
-        fireEvent.click(screen.getByTestId('zone-chart-table-toggle'))
-        expect(screen.getByTestId('zone-chart-table')).toHaveTextContent('Z3')
         fireEvent.click(screen.getByTestId('zone-toggle-3'))
         expect(screen.getByTestId('zone-toggle-3')).toHaveAttribute('aria-pressed', 'false')
-        expect(screen.getByTestId('zone-chart-table')).not.toHaveTextContent('Z3')
-        expect(screen.getAllByTestId('zone-chart-table-row')[0]).toHaveTextContent(
-            '6:00 /km (20 min)'
+        expect(screen.getByTestId('zone-chart-figure')).toHaveAttribute(
+            'aria-label',
+            'Pace in each heart rate zone, Z2.'
         )
     })
 
@@ -203,15 +200,5 @@ describe('RunProgressView', () => {
 
         expect(screen.getByTestId('distance-chart')).toBeInTheDocument()
         expect(screen.queryByTestId('heart-rate-chart')).toBeNull()
-    })
-
-    it('lists the distance of every bucket in its table, with a dash for empty weeks', () => {
-        render(<RunProgressView data={data()} />)
-
-        fireEvent.click(screen.getByTestId('distance-chart-table-toggle'))
-        const rows = screen.getAllByTestId('distance-chart-table-row')
-        expect(rows).toHaveLength(5)
-        expect(rows[0]).toHaveTextContent('12 Oct20.0 km')
-        expect(rows[2]).toHaveTextContent('26 Oct-')
     })
 })

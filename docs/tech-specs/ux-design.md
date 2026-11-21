@@ -100,8 +100,7 @@ with a toast if the save fails). A second control sets the range (3M, 6M, 1Y), k
 (`range`, default `6m`). Running shows KPIs, the pace trend with the goal pace line, pace by
 heart rate zone, distance and average heart rate; Strength shows training volume and workouts per week as bars, then one card per top exercise (5 at most, one below the other), each with its
 picture, the latest top set and an area chart of its top set over time. In strength mode the week strip has no run distance
-tile and its time and sessions count strength workouts only. Every chart has a "View as table" fallback and a text summary; series with fewer
-than 4 points (1 for a strength exercise) show the table instead of a line. Full behavior, data and design
+tile and its time and sessions count strength workouts only. Every chart has a text summary for screen readers; there are no data tables, only charts. Full behavior, data and design
 rules are in [dashboard-progress.md](dashboard-progress.md). "Today" comes from the athlete
 timezone in `athlete.getProfile` (`todayIn(timezone)`), never from the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
 and manual Lyfta sync.

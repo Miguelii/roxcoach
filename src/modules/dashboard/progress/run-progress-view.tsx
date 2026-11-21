@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
-import { ChartDataTable } from '@/modules/dashboard/progress/chart-data-table'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
 import { bucketLabel, paceSummary, rangeLabel } from '@/modules/dashboard/progress/progress-utils'
 import { RunKpis } from '@/modules/dashboard/progress/run-kpis'
@@ -24,9 +23,6 @@ import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 type Props = {
     data: RunProgressDTO
 }
-
-// A line needs a few points to say anything; with fewer, the table is shown instead.
-const MIN_POINTS_TO_DRAW = 4
 
 const ChartSkeleton = () => <Skeleton className="h-full w-full" />
 
@@ -61,9 +57,6 @@ function ZoneCard({ data }: Props) {
         buckets.some((bucket) => zonePoint(bucket, zone)?.paceSecPerKm != null)
     )
     const visible = withData.filter((zone) => !hidden.includes(zone))
-    const pointCount = buckets.filter((bucket) =>
-        visible.some((zone) => zonePoint(bucket, zone)?.paceSecPerKm != null)
-    ).length
 
     const toggle = (zone: ZoneNumber) =>
         setHidden((current) =>
@@ -117,7 +110,9 @@ function ZoneCard({ data }: Props) {
     else
         body = (
             <>
-                {visible.length > 0 && pointCount >= MIN_POINTS_TO_DRAW ? (
+                {visible.length === 0 ? (
+                    <ZoneEmpty testId="zone-chart-all-hidden">Every zone is hidden.</ZoneEmpty>
+                ) : (
                     <ChartFrame
                         testId="zone-chart-figure"
                         label={`Pace in each heart rate zone, ${visible.map((z) => `Z${z}`).join(', ')}.`}
@@ -128,29 +123,6 @@ function ZoneCard({ data }: Props) {
                             granularity={granularity}
                         />
                     </ChartFrame>
-                ) : null}
-                {visible.length === 0 ? (
-                    <ZoneEmpty testId="zone-chart-all-hidden">Every zone is hidden.</ZoneEmpty>
-                ) : (
-                    <ChartDataTable
-                        testId="zone-chart-table"
-                        caption="Pace and minutes by heart rate zone"
-                        columns={[
-                            granularity === 'week' ? 'Week' : 'Month',
-                            ...visible.map((z) => `Z${z}`),
-                        ]}
-                        rows={buckets.map((bucket) => [
-                            bucketLabel(bucket.start, granularity),
-                            ...visible.map((zone) => {
-                                const point = zonePoint(bucket, zone)
-                                const pace = formatPaceSeconds(point?.paceSecPerKm)
-                                return pace === null || point === undefined
-                                    ? null
-                                    : `${pace} (${Math.round(point.minutes)} min)`
-                            }),
-                        ])}
-                        defaultOpen={pointCount < MIN_POINTS_TO_DRAW}
-                    />
                 )}
             </>
         )
@@ -170,7 +142,6 @@ function ZoneCard({ data }: Props) {
 
 function PaceCard({ data }: Props) {
     const { buckets, granularity, goal, range } = data
-    const pointCount = buckets.filter((bucket) => bucket.paceSecPerKm !== null).length
 
     return (
         <ChartCard
@@ -179,23 +150,9 @@ function PaceCard({ data }: Props) {
             takeaway={paceSummary(buckets, range)}
             footnote="Faster is up."
         >
-            {pointCount >= MIN_POINTS_TO_DRAW ? (
-                <ChartFrame testId="pace-chart-figure" label={paceSummary(buckets, range)}>
-                    <PaceChart buckets={buckets} goal={goal} granularity={granularity} />
-                </ChartFrame>
-            ) : null}
-            <ChartDataTable
-                testId="pace-chart-table"
-                caption="Average pace, distance and runs"
-                columns={[granularity === 'week' ? 'Week' : 'Month', 'Pace', 'Distance', 'Runs']}
-                rows={buckets.map((bucket) => [
-                    bucketLabel(bucket.start, granularity),
-                    formatPaceSeconds(bucket.paceSecPerKm),
-                    bucket.runs === 0 ? null : `${bucket.distanceKm.toFixed(1)} km`,
-                    bucket.runs === 0 ? null : bucket.runs,
-                ])}
-                defaultOpen={pointCount < MIN_POINTS_TO_DRAW}
-            />
+            <ChartFrame testId="pace-chart-figure" label={paceSummary(buckets, range)}>
+                <PaceChart buckets={buckets} goal={goal} granularity={granularity} />
+            </ChartFrame>
         </ChartCard>
     )
 }
@@ -217,7 +174,6 @@ function DistanceCard({ data }: Props) {
             format={(value) => `${value.toFixed(1)} km`}
             formatAxis={(value) => String(value)}
             valueName="Distance"
-            periodName={granularity === 'week' ? 'Week' : 'Month'}
         />
     )
 }
@@ -248,7 +204,6 @@ function HeartRateCard({ data }: Props) {
             format={(value) => `${value} bpm`}
             formatAxis={(value) => String(value)}
             valueName="Heart rate"
-            periodName={granularity === 'week' ? 'Week' : 'Month'}
         />
     )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type {
     StrengthBucketDTO,
     StrengthProgressDTO,
@@ -107,25 +107,22 @@ describe('StrengthProgressView', () => {
         expect(screen.getAllByTestId('exercise-card')).toHaveLength(3)
     })
 
-    it('lists the volume of every week in its table, with a dash for an empty week', () => {
-        render(<StrengthProgressView data={data([SQUAT])} />)
-
-        fireEvent.click(screen.getByTestId('volume-chart-table-toggle'))
-        const rows = screen.getAllByTestId('volume-chart-table-row')
-        expect(rows).toHaveLength(4)
-        expect(rows[1]).toHaveTextContent('12 Oct-')
-        expect(rows[2]).toHaveTextContent('19 Oct12,480 kg')
-    })
-
-    it('opens the table instead of drawing a bar chart when only one week has data', () => {
+    it('always draws the volume and workouts charts, even with a single week of data', () => {
         render(
             <StrengthProgressView
                 data={data([SQUAT], [bucket('2026-10-05', 9000, 2), bucket('2026-10-12', 0, 0)])}
             />
         )
 
-        expect(screen.queryByTestId('volume-chart-figure')).toBeNull()
-        expect(screen.getByTestId('volume-chart-table')).toBeInTheDocument()
+        expect(screen.getByTestId('volume-chart-figure')).toBeInTheDocument()
+        expect(screen.getByTestId('workouts-chart-figure')).toBeInTheDocument()
+    })
+
+    it('never shows a table', () => {
+        render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
+
+        expect(screen.queryByTestId('volume-chart-table-toggle')).toBeNull()
+        expect(screen.queryByTestId('workouts-chart-table-toggle')).toBeNull()
     })
 
     it('says so when workouts exist but no set has a load', () => {
