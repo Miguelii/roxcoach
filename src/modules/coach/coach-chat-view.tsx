@@ -1,5 +1,5 @@
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
@@ -17,6 +17,7 @@ import {
     type ChatStatus,
 } from '@/modules/coach/use-coach-chat'
 import { useCoachComposer } from '@/modules/coach/use-coach-composer'
+import { useLockPageScroll, useVisualViewport } from '@/modules/coach/use-visual-viewport'
 
 type Props = {
     open: boolean
@@ -37,6 +38,8 @@ type Props = {
     onDelete: (id: string) => void
     onRetry: () => void
 }
+
+type FrameProps = PropsWithChildren<Pick<Props, 'onOpenChange'>>
 
 const ERROR_COPY: Record<ChatErrorKind, string> = {
     busy: 'The coach is busy, try again in a minute',
@@ -100,11 +103,28 @@ export function CoachChatView(props: Props) {
     }
 
     return (
-        // Full screen on a phone; from md up a centered dialog over a soft scrim. Clicking the
-        // scrim (not the panel) closes it.
+        <CoachPanelFrame onOpenChange={onOpenChange}>
+            <PanelBody {...props} errorKind={errorKind} status={status} />
+        </CoachPanelFrame>
+    )
+}
+
+// Full screen on a phone; from md up a centered dialog over a soft scrim. Clicking the scrim (not
+// the panel) closes it. The frame follows the visible viewport, so with the iOS keyboard open the
+// panel still fills exactly the screen above it, and the page behind does not scroll.
+function CoachPanelFrame({ onOpenChange, children }: FrameProps) {
+    const viewport = useVisualViewport()
+    useLockPageScroll()
+
+    return (
         <div
             data-testid="coach-scrim"
             className="fixed inset-0 z-50 md:flex md:items-center md:justify-center md:bg-ink/30 md:p-6"
+            style={
+                viewport === null
+                    ? undefined
+                    : { top: viewport.offsetTop, height: viewport.height, bottom: 'auto' }
+            }
             onClick={(event) => {
                 if (event.target === event.currentTarget) onOpenChange(false)
             }}
@@ -120,7 +140,7 @@ export function CoachChatView(props: Props) {
                     'md:rounded-[var(--radius-surface)] md:border md:border-hairline md:shadow-[0_30px_80px_-30px_color-mix(in_srgb,var(--color-ink)_50%,transparent)]'
                 )}
             >
-                <PanelBody {...props} errorKind={errorKind} status={status} />
+                {children}
             </div>
         </div>
     )
@@ -207,7 +227,7 @@ function PanelBody({
                     const el = event.currentTarget
                     stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
                 }}
-                className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+                className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4"
             >
                 {status === 'loading-history' ? (
                     <div data-testid="coach-history-skeleton" className="space-y-3">

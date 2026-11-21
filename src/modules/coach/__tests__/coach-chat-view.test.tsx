@@ -362,6 +362,28 @@ describe('CoachChatView', () => {
             )
             expect(screen.getByTestId('coach-panel')).not.toHaveClass('md:right-4')
         })
+
+        it('follows the visible viewport, so the iOS keyboard does not reveal the page below', () => {
+            const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+            vi.stubGlobal('visualViewport', viewport)
+            render(<Harness />)
+            const scrim = screen.getByTestId('coach-scrim')
+            expect(scrim).toHaveStyle({ top: '0px', height: '800px' })
+
+            act(() => {
+                Object.assign(viewport, { height: 420, offsetTop: 260 })
+                viewport.dispatchEvent(new Event('resize'))
+            })
+            expect(scrim).toHaveStyle({ top: '260px', height: '420px' })
+            vi.unstubAllGlobals()
+        })
+
+        it('locks the page scroll while open and restores it when closed', () => {
+            const { unmount } = render(<Harness />)
+            expect(document.documentElement.style.overflow).toBe('hidden')
+            unmount()
+            expect(document.documentElement.style.overflow).toBe('')
+        })
     })
 
     describe('history menu', () => {

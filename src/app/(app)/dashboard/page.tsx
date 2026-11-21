@@ -5,7 +5,7 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { todayIn } from '@/_bff/core/utils/date.utils'
 import { getServerTrpc } from '@/lib/trpc-server'
 import { PROGRESS_RANGE_PARSER } from '@/modules/dashboard/constants'
-import { DashboardContent, DashboardSkeleton } from '@/modules/dashboard/dashboard-content'
+import { DashboardContent } from '@/modules/dashboard/dashboard-content'
 import { weekStripWindow } from '@/modules/dashboard/utils'
 
 type Props = PageProps<'/dashboard'>
@@ -17,7 +17,10 @@ export const metadata: Metadata = { title: 'Dashboard' }
 export default function DashboardPage({ searchParams }: Props) {
     return (
         <main className="main-container-lg">
-            <Suspense fallback={<DashboardSkeleton />}>
+            {/* The fallback is the dashboard itself, reading the client cache: a return visit shows
+                the cached data at once while the server prefetch streams in. With an empty cache it
+                draws its own skeleton. */}
+            <Suspense fallback={<DashboardContent />}>
                 <PrefetchedDashboard searchParams={searchParams} />
             </Suspense>
         </main>

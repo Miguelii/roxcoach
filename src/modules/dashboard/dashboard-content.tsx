@@ -68,7 +68,7 @@ export function DashboardContent({ initialProfile }: Props) {
     )
 }
 
-export function DashboardSkeleton() {
+function DashboardSkeleton() {
     return (
         <div data-testid="dashboard-skeleton" className="space-y-6">
             <div className="space-y-2">

@@ -276,8 +276,10 @@ running mode it is unchanged.
   `athlete.setDashboardMode`; on failure it reverts and shows a toast.
 - The range is a second segmented control (3M, 6M, 1Y), kept in the URL with nuqs (`range`) so a
   refresh restores it. It is not saved in the profile. Default `6m`.
-- The page prefetches on the server, behind one `Suspense` with the dashboard skeleton as its
-  fallback: the profile first (for the timezone and mode), then in parallel the week strip calendar
+- The page prefetches on the server, behind one `Suspense` whose fallback is `DashboardContent`
+  itself (not a skeleton): it reads the client cache, so a return visit within the cache lifetime
+  shows the last data at once instead of a skeleton on every navigation, and with an empty cache it
+  draws its own skeleton. Then the profile first (for the timezone and mode), then in parallel the week strip calendar
   window (`weekStripWindow(today)`, the last 35 days) and the progress query of the current mode
   for the `range` in the URL (parsed with the shared `PROGRESS_RANGE_PARSER`). The results reach
   the client cache through a `HydrationBoundary`, so the page opens with data and no client

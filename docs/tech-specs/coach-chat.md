@@ -295,10 +295,14 @@ Tool calls and results are not stored, only the final text. The same migration d
 A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticated app layout. See
 [ux-design.md](ux-design.md) for the full panel description.
 
-- A floating launcher bar at the bottom ("Ask your coach...") opens a non-modal panel (a plain
-  fixed `role="dialog"` container, so the calendar behind stays usable): full height on narrow
-  screens, a fixed bottom-right panel from the `md` breakpoint. Escape or the close button returns
-  to the launcher.
+- A floating launcher bar at the bottom (from `md` up; on a phone the bottom nav opens it) opens
+  the panel, a fixed `role="dialog"`: full screen on a phone, a centered dialog over a scrim from
+  the `md` breakpoint. Escape, the close button or a click on the scrim closes it.
+- On a phone the panel covers exactly the visible screen, also with the keyboard open: it follows
+  `window.visualViewport` (height and `offsetTop`), because iOS shrinks only the visual viewport
+  for the keyboard and scrolls the page, which left the page showing under a `fixed inset-0`
+  panel. While the panel is open the page behind does not scroll (`overflow: hidden` on `html`),
+  and the message list uses `overscroll-contain`.
 - Header with the coach title, a conversations menu (new conversation, past conversations, delete
   with an inline confirmation) and close. The panel opens on the latest conversation once, unless
   the athlete already started one.
