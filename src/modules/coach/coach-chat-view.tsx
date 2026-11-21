@@ -60,25 +60,30 @@ export function CoachChatView(props: Props) {
         if (!launcherEnabled) return null
         // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
         return (
-            <div className="fixed bottom-4 left-1/2 z-30 hidden h-12 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center rounded-full border border-hairline bg-paper text-sm text-muted-foreground shadow-md md:flex">
-                <button
-                    type="button"
-                    data-testid="coach-launcher"
-                    onClick={() => onOpenChange(true)}
-                    className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-5 text-left"
-                >
-                    <MessageCircleIcon className="size-4 shrink-0" />
-                    Ask Migueli Coach...
-                </button>
-                <button
-                    type="button"
-                    data-testid="coach-launcher-dismiss"
-                    aria-label="Hide coach bar"
-                    onClick={onDismissLauncher}
-                    className="mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted"
-                >
-                    <XIcon className="size-4" />
-                </button>
+            // A bezel (the outer ring) around a dark core, so the bar stands out from the page.
+            <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/10 p-1.5 ring-1 ring-ink/10 shadow-[0_18px_40px_-12px_color-mix(in_srgb,var(--color-ink)_55%,transparent)] md:block">
+                <div className="group flex h-14 items-center rounded-full bg-ink text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5">
+                    <button
+                        type="button"
+                        data-testid="coach-launcher"
+                        onClick={() => onOpenChange(true)}
+                        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2.5 text-left text-sm font-medium transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
+                    >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
+                            <MessageCircleIcon className="size-4" strokeWidth={1.75} />
+                        </span>
+                        <span className="truncate">Ask Migueli Coach...</span>
+                    </button>
+                    <button
+                        type="button"
+                        data-testid="coach-launcher-dismiss"
+                        aria-label="Hide coach bar"
+                        onClick={onDismissLauncher}
+                        className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full text-primary-foreground/70 transition-colors duration-300 hover:bg-primary-foreground/15 hover:text-primary-foreground"
+                    >
+                        <XIcon className="size-4" />
+                    </button>
+                </div>
             </div>
         )
     }
