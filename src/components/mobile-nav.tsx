@@ -196,6 +196,7 @@ function MobileNavLink({ item: { href, label, Icon }, active, current, onSelect 
     return (
         <Link
             href={href}
+            prefetch={true}
             draggable={false}
             onClick={onSelect}
             aria-current={current ? 'page' : undefined}

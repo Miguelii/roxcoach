@@ -114,6 +114,7 @@ export function AppShell({ children }: Props) {
                         <Link
                             key={href}
                             href={href}
+                            prefetch={true}
                             aria-current={isActive(href) ? 'page' : undefined}
                             className={cn(
                                 'relative flex h-11 items-center gap-3 rounded-[var(--radius-surface-inner)] px-3 text-sm font-medium transition-colors duration-300',
