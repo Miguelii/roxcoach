@@ -34,7 +34,7 @@ seconds, on a phone, from charts that are readable first and pretty second.
 
 ## Non-goals
 
-- Hyrox specific charts (stations, splits). Hyrox activities are not part of the running charts.
+- Hyrox specific charts (stations, splits). Hyrox activities are not part of the running charts. The Hyrox race itself does appear in Running mode through the race banner and readiness (below).
 - Per-activity charts (heart rate curve, map, laps). That belongs to the activity detail page.
 - Zoom, brush, export, or editing the zone model. Zones are fixed (see Heart rate zones).
 - Showing the new data to the coach. The coach tools stay as they are; feeding them progress data
@@ -149,11 +149,11 @@ links to Settings; the pace trend does not depend on zones and still works.
 New tRPC procedures in the training module (protected controllers, services, repositories, pure
 helpers, per the layering in [architecture.md](architecture.md)):
 
-| Procedure                      | Input                              | Output                                       |
-| ------------------------------ | ---------------------------------- | -------------------------------------------- |
-| `training.getRunProgress`      | `{ range: '3m' \| '6m' \| '12m' }` | pace and zone series, KPIs, goal (see below) |
-| `training.getStrengthProgress` | `{ range: '3m' \| '6m' \| '12m' }` | top exercises with their top sets over time  |
-| `athlete.setDashboardMode`     | `{ mode: 'run' \| 'strength' }`    | `{ status: 200 }`                            |
+| Procedure                      | Input                              | Output                                      |
+| ------------------------------ | ---------------------------------- | ------------------------------------------- |
+| `training.getRunProgress`      | `{ range: '3m' \| '6m' \| '12m' }` | pace and zone series, KPIs, goal, readiness |
+| `training.getStrengthProgress` | `{ range: '3m' \| '6m' \| '12m' }` | top exercises with their top sets over time |
+| `athlete.setDashboardMode`     | `{ mode: 'run' \| 'strength' }`    | `{ status: 200 }`                           |
 
 `athlete.getProfile` (`ProfileDTO`) gains `dashboardMode`. `updateProfile` never writes it, and
 `setDashboardMode` never writes anything else. The dashboard reads the mode from the profile query
@@ -397,3 +397,31 @@ sentence), [architecture.md](architecture.md) (module map and procedures), and t
   not saved; if the chosen exercise is not in the data of another range, it falls back to the top.
 - The week strip stays in both modes; in strength mode it drops the run distance tile and counts
   strength workouts only for time and sessions.
+
+## Race readiness
+
+Design: `docs/superpowers/specs/2026-11-21-race-readiness-design.md`. Running mode opens with a race
+banner and a readiness card for the next race, Hyrox included.
+
+- **Next race**: `pickNextRace` takes the upcoming races that are Hyrox or running with a distance,
+  priority A first, then the earliest date, then the name. It feeds `readiness`, while `goal`
+  (the goal pace card) keeps using `pickGoalRace`.
+- **Race pace** (`racePaceSPerKm`): distance and goal time when the race has a distance; for a Hyrox,
+  the run pace table by goal time (`HYROX_RUN_PACE_TIERS`: 60:00 is 3:58, 75:00 is 4:55, 90:00 is
+  5:55, 105:00 is 6:53 per km) with linear interpolation and the nearest tier outside it.
+- **Pace histogram**: see [manual-upload.md](manual-upload.md). Runs without it (not backfilled)
+  give `No data` on the Pace row.
+- **Rules** (constants in `race-readiness.constants.ts`), over the last 28 days:
+    - Load: `no_data` without runs. `attention` when the acute:chronic run distance ratio is outside
+      0.8 to 1.3 or, when heart rate zones exist, the share of time in Z1 and Z2 is under 70%;
+      otherwise `on_track`.
+    - Pace: a fast session is a run with at least 180 s in pace bins entirely faster than the race
+      pace. `on_track` from 3 fast sessions, otherwise `attention`; `no_data` when no run in the
+      window has a pace histogram.
+    - Taper: with 7 days or less to the race, `on_track` and `attention` become `taper`.
+- **Payload**: `RunProgressDTO.readiness` is `null` without a next race or a race pace. It carries
+  the race summary and the numbers behind both rows (weekly km and its change, ratio, easy share,
+  fast sessions and fast time); the wording is built in the frontend (`readiness-utils.ts`).
+- **UI**: `RaceBanner` (days to go, date, priority, goal, race pace, links to `/races`) and
+  `RaceReadinessCard` (Load and Pace rows, each with a state label and icon and a reason) sit above
+  the week dots, also before the first run.
