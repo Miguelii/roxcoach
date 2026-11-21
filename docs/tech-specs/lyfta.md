@@ -51,6 +51,9 @@ workout before writing it. Do not log request headers, keys or raw workout paylo
 
 Add a third `Lyfta` tab alongside Profile and Weekly availability. Keep all tab panels mounted,
 following the existing Settings tabs behavior.
+Disconnect asks first in a confirmation dialog, like deleting a race: a popup on desktop and a
+sheet from the bottom on a phone (the shared `Dialog`). "Keep connected" closes it; while the
+request runs both buttons are disabled; a failure keeps the dialog open and shows its reason there.
 
 - **Not connected:** explain that the user needs a Lyfta personal API key, provide a password-type
   key input, and a `Connect Lyfta` submit action.

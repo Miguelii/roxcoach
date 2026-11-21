@@ -169,19 +169,44 @@ describe('LyftaTab', () => {
         expect(mocks.sync.mutateAsync).not.toHaveBeenCalled()
     })
 
-    it('requires inline confirmation before disconnecting', async () => {
+    it('asks in a dialog before disconnecting, and Keep connected closes it without disconnecting', async () => {
         mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
         render(<LyftaTab />)
 
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
-        expect(screen.getByTestId('lyfta-disconnect-confirm')).toBeInTheDocument()
+        expect(await screen.findByTestId('lyfta-disconnect-dialog')).toHaveAttribute(
+            'role',
+            'alertdialog'
+        )
+        expect(screen.getByTestId('lyfta-disconnect-dialog')).toHaveTextContent('Disconnect Lyfta?')
         fireEvent.click(screen.getByTestId('lyfta-disconnect-cancel'))
-        expect(screen.queryByTestId('lyfta-disconnect-confirm')).not.toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.queryByTestId('lyfta-disconnect-dialog')).not.toBeInTheDocument()
+        })
+        expect(mocks.disconnect.mutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('disconnects when the dialog is confirmed', async () => {
+        mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
+        render(<LyftaTab />)
 
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
-        fireEvent.click(screen.getByTestId('lyfta-disconnect-confirm'))
+        fireEvent.click(await screen.findByTestId('lyfta-disconnect-confirm'))
         await waitFor(() => {
             expect(mocks.disconnect.mutateAsync).toHaveBeenCalledTimes(1)
         })
+    })
+
+    it('keeps the dialog open and shows the error inside it when disconnecting fails', async () => {
+        mocks.statusQuery.data = { connected: true, lastSyncedAt: '' }
+        mocks.disconnect.mutateAsync.mockRejectedValue(new Error('network'))
+        render(<LyftaTab />)
+
+        fireEvent.click(screen.getByTestId('lyfta-disconnect'))
+        fireEvent.click(await screen.findByTestId('lyfta-disconnect-confirm'))
+
+        expect(await screen.findByTestId('lyfta-disconnect-error')).toBeInTheDocument()
+        expect(screen.getByTestId('lyfta-disconnect-dialog')).toBeInTheDocument()
+        expect(screen.queryByTestId('lyfta-error')).not.toBeInTheDocument()
     })
 })

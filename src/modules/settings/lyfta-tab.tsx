@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LyftaDisconnectDialog } from '@/modules/settings/lyfta-disconnect-dialog'
 import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaConnection } from '@/modules/settings/use-lyfta-connection'
 
@@ -76,7 +77,7 @@ export function LyftaTab() {
                             {lyfta.isSyncing ? <Loader2Icon className="animate-spin" /> : null}
                             Sync workouts
                         </Button>
-                        {!lyfta.showKeyForm && !lyfta.confirmDisconnect ? (
+                        {!lyfta.showKeyForm ? (
                             <>
                                 <Button
                                     className="w-full md:max-w-37.5"
@@ -105,40 +106,10 @@ export function LyftaTab() {
                             </>
                         ) : null}
                     </div>
-
-                    {lyfta.confirmDisconnect ? (
-                        <div className="grid gap-3 rounded-md border border-border p-4">
-                            <p className="text-sm">
-                                Disconnect Lyfta? Imported workouts and sets will stay in your
-                                training history.
-                            </p>
-                            <div className="flex flex-wrap gap-3">
-                                <Button
-                                    variant="outline"
-                                    data-testid="lyfta-disconnect-cancel"
-                                    disabled={lyfta.isDisconnecting}
-                                    onClick={() => lyfta.setConfirmDisconnect(false)}
-                                >
-                                    Keep connected
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    data-testid="lyfta-disconnect-confirm"
-                                    disabled={busy}
-                                    onClick={() => void lyfta.disconnect()}
-                                >
-                                    {lyfta.isDisconnecting ? (
-                                        <Loader2Icon className="animate-spin" />
-                                    ) : null}
-                                    Disconnect Lyfta
-                                </Button>
-                            </div>
-                        </div>
-                    ) : null}
                 </div>
             ) : null}
 
-            {(!connected || lyfta.showKeyForm) && !lyfta.confirmDisconnect ? (
+            {!connected || lyfta.showKeyForm ? (
                 <Form {...lyfta.form}>
                     <form
                         data-testid="lyfta-key-form"
@@ -179,7 +150,7 @@ export function LyftaTab() {
                                 </FormItem>
                             )}
                         />
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-row w-full md:flex-wrap gap-3">
                             <Button type="submit" data-testid="lyfta-connect" disabled={busy}>
                                 {lyfta.isConnecting ? (
                                     <Loader2Icon className="animate-spin" />
@@ -223,11 +194,20 @@ export function LyftaTab() {
                 </p>
             ) : null}
 
-            {lyfta.errorMessage ? (
+            {/* While the confirmation is open it shows the error itself. */}
+            {lyfta.errorMessage && !lyfta.confirmDisconnect ? (
                 <p data-testid="lyfta-error" role="alert" className="text-sm text-destructive">
                     {lyfta.errorMessage}
                 </p>
             ) : null}
+
+            <LyftaDisconnectDialog
+                open={lyfta.confirmDisconnect}
+                onOpenChange={lyfta.setConfirmDisconnect}
+                onConfirm={() => void lyfta.disconnect()}
+                disconnecting={lyfta.isDisconnecting}
+                error={lyfta.errorMessage}
+            />
         </section>
     )
 }
