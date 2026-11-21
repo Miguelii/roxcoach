@@ -47,8 +47,7 @@ const clickLogout = async (queryClient: QueryClient) => {
             <AppShell>content</AppShell>
         </QueryClientProvider>
     )
-    fireEvent.click(screen.getByTestId('account-menu-trigger'))
-    fireEvent.click(await screen.findByTestId('logout-button'))
+    fireEvent.click(screen.getByTestId('logout-button'))
 }
 
 describe('AppShell logout', () => {
@@ -131,6 +130,17 @@ describe('AppShell navigation', () => {
         fireEvent.click(screen.getByTestId('coach-toggle'))
         expect(screen.getByTestId('coach-enabled')).toHaveTextContent('true')
         expect(document.cookie).toContain('coach_enabled=1')
+    })
+
+    it('has a direct Log out button at the bottom of the sidebar, with no account dropdown', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByTestId('logout-button')).toHaveTextContent('Log out')
+        expect(screen.queryByTestId('account-menu-trigger')).toBeNull()
     })
 
     it('has the dashboard mode switch at the bottom of the sidebar and saves a change', () => {

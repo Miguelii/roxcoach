@@ -61,7 +61,8 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ## Layout
 
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
-  plus an account menu for logout. On mobile use a compact top bar and a floating bottom
+  plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
+  keeps a small account menu with Log out. On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
   `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. Page content reserves `pb-28` above it.
@@ -95,7 +96,7 @@ The dashboard is focused on training progress, not the calendar. It shows the re
 summary (time, sessions, run km and the acute:chronic load ratio from the last 35 days of
 activities, with zeros and "No history yet" when there is no history) and, below it, progress
 charts for the athlete's chosen mode. The **Running** or **Strength** choice is a segmented control at the bottom of the
-desktop sidebar and in Settings, Profile (so a phone user, who has no sidebar, can change it); it is
+desktop sidebar and in its own Settings tab, Dashboard (so a phone user, who has no sidebar, can change it); it is
 saved in `athlete_profiles.dashboard_mode` (applied at once, reverted with a toast if the save
 fails) and is not on the dashboard page. A control on the page sets the range (3M, 6M, 1Y), kept in the URL
 (`range`, default `6m`). Running follows a training-app layout: the days of this week, a headline

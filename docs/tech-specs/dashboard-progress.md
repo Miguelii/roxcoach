@@ -18,7 +18,7 @@ seconds, on a phone, from charts that are readable first and pretty second.
 ## Goals
 
 - A Running/Strength mode switch, persisted in `athlete_profiles`, in the desktop sidebar and in
-  Settings (Profile tab). It is not on the dashboard page itself.
+  Settings (its own Dashboard tab). It is not on the dashboard page itself.
 - Running mode, laid out like Strava: the days of this week, a headline for the week or month you
   are looking at (distance, time or runs, with the change from the previous one and a bar per
   week to pick another), the goal pace, the latest runs, then the pace trend with the goal pace
@@ -266,8 +266,9 @@ running mode it is unchanged.
 - The mode switch is the existing `Tabs` (base-ui) as a segmented control, labels "Running" and
   "Strength", each at least 44 px tall on touch (smaller, with icons, in the sidebar). It lives in
   two places, both built from the same `DashboardModeSwitch` and wired by `DashboardModeToggle`:
-  the bottom of the desktop sidebar (above the account menu, under a "Dashboard" label), and a
-  "Dashboard" section at the top of Settings, Profile tab. The sidebar is hidden on a phone, so
+  the bottom of the desktop sidebar (above the Log out button, under a "Dashboard" label), and a
+  "Dashboard" section in its own Settings tab, apart from Profile so it is not mistaken for a
+  profile field. The sidebar is hidden on a phone, so
   Settings is where a phone user changes it. It is saved as it is picked, apart from the profile
   form. Changing it updates the UI immediately (optimistic cache update) and calls
   `athlete.setDashboardMode`; on failure it reverts and shows a toast.
