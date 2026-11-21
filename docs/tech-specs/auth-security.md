@@ -137,18 +137,18 @@ repositories.
 
 ## Auth module (`src/_bff/modules/auth/`)
 
-| File                                      | Purpose                                                           |
-| ----------------------------------------- | ----------------------------------------------------------------- |
-| `controllers/sb-login.controller.ts`      | public procedure, input `{ email, password }`                     |
-| `controllers/sb-logout.controller.ts`     | public procedure (must work with an expired or unflagged session) |
-| `controllers/sb-sign-up.controller.ts`    | public procedure, input `{ email, password, accessCode }`         |
-| `services/sb-sign-up.service.ts`          | access code check, admin `createUser`, grant, sign-in             |
-| `repositories/access-grant.repository.ts` | rpc `roxcoach.grant_access`                                       |
-| `helpers/access-code.helper.ts`           | constant-time code comparison                                     |
-| `services/sb-login.service.ts`            | `signInWithPassword`, tagged errors                               |
-| `services/sb-logout.service.ts`           | `signOut({ scope: 'local' })`                                     |
-| `services/get-session.service.ts`         | `getUser()` once per request via React `cache()`                  |
-| `services/get-cached-claims.service.ts`   | `getClaims()` for rendering UI without a network call             |
+| File                                      | Purpose                                                                |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| `controllers/sb-login.controller.ts`      | public procedure, input `{ email, password }`                          |
+| `controllers/sb-logout.controller.ts`     | public procedure (must work with an expired or unflagged session)      |
+| `controllers/sb-sign-up.controller.ts`    | public procedure, input `{ displayName, email, password, accessCode }` |
+| `services/sb-sign-up.service.ts`          | access code check, admin `createUser`, grant, sign-in                  |
+| `repositories/access-grant.repository.ts` | rpc `roxcoach.grant_access`                                            |
+| `helpers/access-code.helper.ts`           | constant-time code comparison                                          |
+| `services/sb-login.service.ts`            | `signInWithPassword`, tagged errors                                    |
+| `services/sb-logout.service.ts`           | `signOut({ scope: 'local' })`                                          |
+| `services/get-session.service.ts`         | `getUser()` once per request via React `cache()`                       |
+| `services/get-cached-claims.service.ts`   | `getClaims()` for rendering UI without a network call                  |
 
 Copied from BrewStock, minus the OTP services and the OAuth callback route. `protectedProcedure`
 in `src/_bff/trpc/server.ts` matches BrewStock's (it runs `getSession()`, returns 401 without a

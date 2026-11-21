@@ -8,7 +8,7 @@ export const ServerEnv = createEnv({
         NEXT_SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
         NEXT_GEMINI_API_KEY: z.string().optional(),
         // Shared access code of the /signup page. Unset closes sign-up.
-        NEXT_SIGNUP_ACCESS_CODE: z.string().min(16).optional(),
+        NEXT_SIGNUP_ACCESS_CODE: z.string().min(1).optional(),
         NEXT_LYFTA_ENCRYPTION_KEY: z
             .string()
             .refine((value) => {

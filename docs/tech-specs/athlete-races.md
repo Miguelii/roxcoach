@@ -157,6 +157,8 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `controllers/update-profile.controller.ts`                                        | protected mutation                                                                                |
 | `controllers/get-availability.controller.ts`                                      | protected query                                                                                   |
 | `controllers/save-availability.controller.ts`                                     | protected mutation, upsert then delete (no transaction)                                           |
+| `controllers/delete-account.controller.ts`                                        | protected mutation without input: deletes the signed-in user's data (see Delete profile)          |
+| `services/delete-account.service.ts`, `repositories/account-data.repository.ts`   | storage files, then the auth user (cascade), then local sign-out (service-role client)            |
 | `services/get-profile`, `update-profile`, `get-availability`, `save-availability` | business logic and validation, run as the signed-in user                                          |
 | `services/get-athlete-timezone.service.ts`                                        | the timezone, used by the controller and by the races services                                    |
 | `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`       | pure validation                                                                                   |
@@ -179,3 +181,28 @@ Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `u
 | `repositories/races.repository.ts`                                                        | data access, trims text and stores blank location and notes as NULL                |
 
 The mutations do not call the coach.
+
+## Delete profile
+
+`athlete.deleteAccount` (protected, no input: it always acts on `ctx.user`, never on an id sent by
+the client) deletes the user's account and everything Roxcoach stores for it.
+
+1. The original activity files in the private `activity-files` bucket (folder `<userId>/`) are
+   listed and removed through the Storage API, page by page. Storage objects are not removed by a
+   database cascade, and deleting them from SQL would leave the files behind. A failure here stops
+   everything, so nothing is lost and the user can retry.
+2. The auth user is deleted with `supabase.auth.admin.deleteUser` (service-role client). Every
+   Roxcoach table references `auth.users (id)` with `on delete cascade`, so all the user's rows go
+   with it: activities (laps, station results, strength sets and file rows), races, weekly
+   availability, coach conversations and messages, the Lyfta connection (the encrypted API key goes
+   with it), the coach usage counter and the profile. There is no delete function to maintain: a
+   table added later is covered by its own foreign key, and `db/tests/schema.test.ts` ("deleting a
+   user") fails if one does not cascade.
+3. A local sign-out clears the cookie session (best effort, logged on failure), and the client goes
+   to `/login`.
+
+- The account is removed from Supabase Auth completely. The project is shared with another app, so
+  this also removes that account from the other app; this was a conscious choice. To use Roxcoach
+  again the person signs up again on `/signup` with the access code.
+- Nothing else is stored elsewhere: the coach keeps no data outside these tables, and Lyfta data is
+  only what was imported into them.

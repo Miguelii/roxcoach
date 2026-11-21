@@ -22,7 +22,12 @@ vi.mock('@/_bff/modules/auth/services/get-cached-claims.service', () => ({
 }))
 
 const caller = router({ signUp: SB_SIGN_UP_PUBLIC_CONTROLLER }).createCaller({})
-const valid = { email: 'ana@example.com', password: 'secret-password', accessCode: 'some-code' }
+const valid = {
+    displayName: 'Ana',
+    email: 'ana@example.com',
+    password: 'secret-password',
+    accessCode: 'some-code',
+}
 
 const caught = async (promise: Promise<unknown>): Promise<TRPCError> => {
     try {
@@ -93,6 +98,8 @@ describe('SB_SIGN_UP_PUBLIC_CONTROLLER', () => {
         ['a 7 character password', { ...valid, password: '1234567' }],
         ['a 73 character password', { ...valid, password: 'a'.repeat(73) }],
         ['an empty access code', { ...valid, accessCode: '' }],
+        ['a blank name', { ...valid, displayName: '   ' }],
+        ['a 61 character name', { ...valid, displayName: 'a'.repeat(61) }],
     ])('rejects %s before reaching the service', async (_name, input) => {
         const error = await caught(caller.signUp(input))
 

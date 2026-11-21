@@ -6,6 +6,7 @@ import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTRPC } from '@/lib/trpc'
+import { DeleteProfileSection } from '@/modules/settings/delete-profile-section'
 import { ProfileForm } from '@/modules/settings/profile-form'
 import type { ProfileFormValues, ProfileValues } from '@/modules/settings/use-profile-form'
 
@@ -57,5 +58,10 @@ export function ProfileTab() {
         ])
     }
 
-    return <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />
+    return (
+        <>
+            <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />
+            <DeleteProfileSection />
+        </>
+    )
 }

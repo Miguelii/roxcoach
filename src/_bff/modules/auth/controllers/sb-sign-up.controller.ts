@@ -7,10 +7,12 @@ import { sbSignUp } from '@/_bff/modules/auth/services/sb-sign-up.service'
 
 // bcrypt ignores everything after 72 bytes.
 const MAX_PASSWORD_LENGTH = 72
+const MAX_DISPLAY_NAME_LENGTH = 60
 
 export const SB_SIGN_UP_PUBLIC_CONTROLLER = publicProcedure
     .input(
         z.object({
+            displayName: z.string().trim().min(1).max(MAX_DISPLAY_NAME_LENGTH),
             email: z.email(),
             password: z.string().min(8).max(MAX_PASSWORD_LENGTH),
             accessCode: z.string().min(1),

@@ -14,6 +14,16 @@ export enum ErrorCode {
     AUTH_LOGOUT_SB_CLIENT = 'n8r4j1tc',
     AUTH_LOGOUT_SIGN_OUT = 'z6e9u3pl',
 
+    // Athlete - Account deletion
+    ATHLETE_DELETE_SB_CLIENT = 'ad2k7xqe',
+    ATHLETE_DELETE_FILES_LIST = 'ad5m1wcj',
+    ATHLETE_DELETE_FILES_LIST_ERR = 'ad8t4nrb',
+    ATHLETE_DELETE_FILES_REMOVE = 'ad1v9hza',
+    ATHLETE_DELETE_FILES_REMOVE_ERR = 'ad4p6yfl',
+    ATHLETE_DELETE_USER = 'ad7d3ujn',
+    ATHLETE_DELETE_USER_ERR = 'ad0w8kmc',
+    ATHLETE_DELETE_SIGN_OUT = 'ad3q5bte',
+
     // Auth - Sign-up
     AUTH_SIGNUP_CLOSED = 'sg3k8wqe',
     AUTH_SIGNUP_BAD_CODE = 'sg6m2xdj',

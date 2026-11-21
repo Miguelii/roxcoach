@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconLoader2 } from '@tabler/icons-react'
+import { IconEye, IconEyeOff, IconLoader2 } from '@tabler/icons-react'
 import { AUTH_PAGE_PATH, DEFAULT_POST_AUTH_PATH } from '@/_bff/core/constants/auth.constants'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +30,7 @@ export function SignupCard() {
     const form = useSignupForm()
     const signUp = useMutation(trpc.auth.signUp.mutationOptions())
     const [failed, setFailed] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
 
     const onSubmit = async (values: SignupValues) => {
         setFailed(false)
@@ -58,6 +59,23 @@ export function SignupCard() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
                     <FormField
                         control={form.control}
+                        name="displayName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Name</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        data-testid="signup-name"
+                                        autoComplete="name"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage data-testid="signup-name-error" />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
                         name="email"
                         render={({ field }) => (
                             <FormItem>
@@ -80,14 +98,35 @@ export function SignupCard() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        data-testid="signup-password"
-                                        type="password"
-                                        autoComplete="new-password"
-                                        {...field}
-                                    />
-                                </FormControl>
+                                <div className="relative">
+                                    <FormControl>
+                                        <Input
+                                            data-testid="signup-password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            autoComplete="new-password"
+                                            className="pr-10"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <Button
+                                        data-testid="signup-password-toggle"
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={
+                                            showPassword ? 'Hide password' : 'Show password'
+                                        }
+                                        aria-pressed={showPassword}
+                                        onClick={() => setShowPassword((shown) => !shown)}
+                                        className="absolute inset-y-0 right-0 text-muted-foreground"
+                                    >
+                                        {showPassword ? (
+                                            <IconEyeOff aria-hidden="true" />
+                                        ) : (
+                                            <IconEye aria-hidden="true" />
+                                        )}
+                                    </Button>
+                                </div>
                                 <FormMessage data-testid="signup-password-error" />
                             </FormItem>
                         )}
@@ -101,9 +140,11 @@ export function SignupCard() {
                                 <FormControl>
                                     <Input
                                         data-testid="signup-access-code"
-                                        type="password"
                                         autoComplete="off"
                                         {...field}
+                                        onChange={(event) =>
+                                            field.onChange(event.target.value.toUpperCase())
+                                        }
                                     />
                                 </FormControl>
                                 <FormMessage data-testid="signup-access-code-error" />

@@ -114,7 +114,7 @@ a link to `/signup` shows only while sign-up is open. Follows the BrewStock form
 
 ### Sign-up
 
-The login card with three fields: email, password (8 to 72 characters) and access code, one primary
+The login card with four fields: name, email, password (8 to 72 characters) and access code, one primary
 button ("Create account") and a link back to sign in. One generic failure message for every
 refusal. The page is a 404 while sign-up is closed. See [signup-access-code.md](signup-access-code.md).
 
@@ -262,7 +262,11 @@ specified in [lyfta.md](lyfta.md).
   the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly
   hours cap and notes for the coach. Number fields are entered as text and converted; an empty
   optional field is saved as null. Ranges come from `PROFILE_LIMITS`
-  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server.
+  (`src/_bff/core/constants/athlete.constants.ts`), shared with the server. Below the form,
+  `DeleteProfileSection` has a **Delete profile** button that opens a `ConfirmDialog` ("Keep my
+  profile" or "Delete everything"). Confirming deletes the account and all the athlete's data (see
+  [athlete-races.md](athlete-races.md), "Delete profile"), clears the query cache and goes to
+  `/login`; a failure keeps the dialog open with one fixed message.
 - **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
   7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
   kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to

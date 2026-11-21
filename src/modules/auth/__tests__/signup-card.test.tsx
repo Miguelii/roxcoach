@@ -33,6 +33,7 @@ const render = (ui: ReactElement) =>
 const GENERIC_ERROR = 'Could not create your account. Check your details and access code.'
 
 const fill = (email: string, password: string, accessCode: string) => {
+    fireEvent.change(screen.getByTestId('signup-name'), { target: { value: 'Ana Silva' } })
     fireEvent.change(screen.getByTestId('signup-email'), { target: { value: email } })
     fireEvent.change(screen.getByTestId('signup-password'), { target: { value: password } })
     fireEvent.change(screen.getByTestId('signup-access-code'), { target: { value: accessCode } })
@@ -55,8 +56,21 @@ describe('SignupCard', () => {
             'new-password'
         )
         expect(screen.getByTestId('signup-access-code')).toHaveAttribute('autocomplete', 'off')
+        // The access code is always visible; the password is hidden until the eye is toggled.
+        expect(screen.getByTestId('signup-access-code')).not.toHaveAttribute('type', 'password')
+        expect(screen.getByTestId('signup-password')).toHaveAttribute('type', 'password')
         expect(screen.getByTestId('signup-login-link')).toHaveAttribute('href', '/login')
         expect(screen.queryByTestId('signup-error')).not.toBeInTheDocument()
+    })
+
+    it('shows and hides the password with the eye button', () => {
+        render(<SignupCard />)
+
+        fireEvent.click(screen.getByTestId('signup-password-toggle'))
+        expect(screen.getByTestId('signup-password')).toHaveAttribute('type', 'text')
+
+        fireEvent.click(screen.getByTestId('signup-password-toggle'))
+        expect(screen.getByTestId('signup-password')).toHaveAttribute('type', 'password')
     })
 
     it('shows field errors and skips the mutation for empty fields', async () => {
@@ -64,8 +78,9 @@ describe('SignupCard', () => {
         submit()
 
         await waitFor(() => {
-            expect(screen.getByTestId('signup-email-error')).toBeInTheDocument()
+            expect(screen.getByTestId('signup-name-error')).toBeInTheDocument()
         })
+        expect(screen.getByTestId('signup-email-error')).toBeInTheDocument()
         expect(screen.getByTestId('signup-password-error')).toBeInTheDocument()
         expect(screen.getByTestId('signup-access-code-error')).toBeInTheDocument()
         expect(mocks.mutateAsync).not.toHaveBeenCalled()
@@ -112,14 +127,32 @@ describe('SignupCard', () => {
             expect(mocks.replace).toHaveBeenCalledWith('/dashboard')
         })
         expect(mocks.mutateAsync).toHaveBeenCalledWith({
+            displayName: 'Ana Silva',
             email: 'ana@example.com',
             password: 'secret-password',
-            accessCode: 'some-code',
+            accessCode: 'SOME-CODE',
         })
         expect(mocks.refresh).toHaveBeenCalledTimes(1)
         expect(clearSpy.mock.invocationCallOrder[0]).toBeLessThan(
             mocks.replace.mock.invocationCallOrder[0]
         )
+    })
+
+    it('writes the access code in capitals', async () => {
+        mocks.mutateAsync.mockResolvedValue({ status: 200 })
+        render(<SignupCard />)
+        fill('ana@example.com', 'secret-password', 'miguelinr1')
+
+        expect(screen.getByTestId('signup-access-code')).toHaveValue('MIGUELINR1')
+        submit()
+        await waitFor(() => {
+            expect(mocks.mutateAsync).toHaveBeenCalledWith({
+                displayName: 'Ana Silva',
+                email: 'ana@example.com',
+                password: 'secret-password',
+                accessCode: 'MIGUELINR1',
+            })
+        })
     })
 
     it('disables the submit button while the request is pending', async () => {

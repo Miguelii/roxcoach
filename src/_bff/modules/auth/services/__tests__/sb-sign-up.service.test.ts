@@ -7,7 +7,12 @@ import { sbSignUp, type SignUpDeps } from '@/_bff/modules/auth/services/sb-sign-
 vi.mock('@/_bff/lib/server-logger', () => ({ Logger: vi.fn() }))
 
 const CODE = 'a-very-long-access-code'
-const input = { email: 'ana.silva@example.com', password: 'secret-password', accessCode: CODE }
+const input = {
+    displayName: 'Ana Silva',
+    email: 'ana.silva@example.com',
+    password: 'secret-password',
+    accessCode: CODE,
+}
 
 const createUser = vi.fn()
 const deleteUser = vi.fn()
@@ -53,7 +58,7 @@ describe('sbSignUp', () => {
         expect(args).not.toHaveProperty('app_metadata')
         expect(rpc).toHaveBeenCalledWith('grant_access', {
             p_user_id: 'user-1',
-            p_display_name: 'ana.silva',
+            p_display_name: 'Ana Silva',
         })
         expect(signInWithPassword).toHaveBeenCalledTimes(1)
         expect(signInWithPassword).toHaveBeenCalledWith({
@@ -67,12 +72,12 @@ describe('sbSignUp', () => {
         expect(failureTag(await run({ accessCode: `  ${CODE} ` }))).toBeNull()
     })
 
-    it('cuts a long display name to 60 characters', async () => {
-        await run({ email: `${'a'.repeat(80)}@example.com` })
+    it('trims the display name', async () => {
+        await run({ displayName: '  Ana Silva  ' })
 
         expect(rpc).toHaveBeenCalledWith('grant_access', {
             p_user_id: 'user-1',
-            p_display_name: 'a'.repeat(60),
+            p_display_name: 'Ana Silva',
         })
     })
 

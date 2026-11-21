@@ -18,7 +18,7 @@ import { ServerEnv } from '@/env/server'
 type AdminClient = ReturnType<typeof createDBAdminClient>
 type ServerClient = Awaited<ReturnType<typeof createDBServerClient>>
 
-type SignUpInput = { email: string; password: string; accessCode: string }
+type SignUpInput = { displayName: string; email: string; password: string; accessCode: string }
 
 // Injectable so tests pass fakes instead of mocking modules.
 export type SignUpDeps = {
@@ -27,17 +27,11 @@ export type SignUpDeps = {
     createServerClient: () => Promise<ServerClient>
 }
 
-const MAX_DISPLAY_NAME_LENGTH = 60
-
 const defaultDeps = (): SignUpDeps => ({
     expectedCode: ServerEnv.NEXT_SIGNUP_ACCESS_CODE,
     createAdminClient: createDBAdminClient,
     createServerClient: () => createDBServerClient(),
 })
-
-// The part of the email before the `@`, as the first name shown in the app.
-const displayNameFor = (email: string): string =>
-    email.split('@')[0].trim().slice(0, MAX_DISPLAY_NAME_LENGTH)
 
 // Removes a user that was created but could not be granted access, so its email is not blocked.
 // A failed cleanup is logged and never changes the result of the sign-up.
@@ -108,7 +102,7 @@ export const sbSignUp = Effect.fn('sbSignUp')(function* (
 
     const userId = created.data.user.id
 
-    yield* grantAccess(admin, userId, displayNameFor(input.email)).pipe(
+    yield* grantAccess(admin, userId, input.displayName.trim()).pipe(
         Effect.tapError(() => deleteOrphan(admin, userId))
     )
 

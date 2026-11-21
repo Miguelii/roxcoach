@@ -23,6 +23,9 @@ export class CreateUserError extends Data.TaggedError('CreateUserError')<Service
 export class GrantAccessError extends Data.TaggedError('GrantAccessError')<ServiceErrorFields> {}
 
 // Athlete
+export class AccountDeletionError extends Data.TaggedError(
+    'AccountDeletionError'
+)<ServiceErrorFields> {}
 export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<ServiceErrorFields> {}
 // `field` names the profile field that failed validation.
 export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<

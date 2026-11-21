@@ -152,15 +152,15 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 
 ## Environment variables
 
-| Name                             | Scope  | Used by                                                                |
-| -------------------------------- | ------ | ---------------------------------------------------------------------- |
-| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                                   |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                                   |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                             |
-| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                         |
-| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), 16+ characters |
-| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                               |
-| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                          |
+| Name                             | Scope  | Used by                                                            |
+| -------------------------------- | ------ | ------------------------------------------------------------------ |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                               |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                               |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                         |
+| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                     |
+| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                           |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                      |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).
