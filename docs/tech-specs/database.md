@@ -354,25 +354,26 @@ schema:
 
 ## Migrations
 
-| File                                | Content                                                                                                     |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `0001_schema_and_enums.sql`         | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                              |
-| `0002_athlete_and_races.sql`        | `athlete_profiles`, `availability_slots`, `races`                                                           |
-| `0003_strava.sql`                   | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                           |
-| `0004_training.sql`                 | `activities`, `activity_laps`, `station_results`, `strength_sets`                                           |
-| `0005_coach_and_plan.sql`           | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                    |
-| `0006_rls.sql`                      | `has_access()`, RLS on every table, policies, service-only revokes                                          |
-| `0007_remove_strava.sql`            | drops the Strava tables, `webhook_event_status` and `strava_id`                                             |
-| `0008_activity_files.sql`           | `activity_files`, private bucket `activity-files` and its policies                                          |
-| `0009_coach_chat.sql`               | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums                         |
-| `0010_lyfta.sql`                    | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                                   |
-| `0011_lyfta_progress_metrics.sql`   | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync           |
-| `0012_strength_exercise_order.sql`  | Stores exercise order for strength sets; requests one full manual Lyfta resync                              |
-| `0013_strength_exercise_images.sql` | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                            |
-| `0014_coach_usage.sql`              | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
-| `0015_dashboard_progress.sql`       | `athlete_profiles.dashboard_mode`, `activities.hr_histogram`                                                |
-| `0016_race_readiness.sql`           | `activities.pace_histogram`                                                                                 |
-| `0017_grant_access_fn.sql`          | `roxcoach.grant_access(user_id, display_name)`: sets the flag and creates the profile (service role only)   |
+| File                                    | Content                                                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `0001_schema_and_enums.sql`             | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                              |
+| `0002_athlete_and_races.sql`            | `athlete_profiles`, `availability_slots`, `races`                                                           |
+| `0003_strava.sql`                       | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                           |
+| `0004_training.sql`                     | `activities`, `activity_laps`, `station_results`, `strength_sets`                                           |
+| `0005_coach_and_plan.sql`               | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                    |
+| `0006_rls.sql`                          | `has_access()`, RLS on every table, policies, service-only revokes                                          |
+| `0007_remove_strava.sql`                | drops the Strava tables, `webhook_event_status` and `strava_id`                                             |
+| `0008_activity_files.sql`               | `activity_files`, private bucket `activity-files` and its policies                                          |
+| `0009_coach_chat.sql`                   | `coach_conversations`, `coach_messages`; drops the report and plan tables and enums                         |
+| `0010_lyfta.sql`                        | Adds `lyfta` activity source, provider source IDs and `lyfta_connections`                                   |
+| `0011_lyfta_progress_metrics.sql`       | Adds Lyfta duration, weight, volume, RIR and source exercise IDs; requests one full manual resync           |
+| `0012_strength_exercise_order.sql`      | Stores exercise order for strength sets; requests one full manual Lyfta resync                              |
+| `0013_strength_exercise_images.sql`     | Stores optional Lyfta exercise image URLs; requests one full manual Lyfta resync                            |
+| `0014_coach_usage.sql`                  | `coach_usage` and `coach_take_message_slot()` (atomic daily coach cap); `lyfta_connections.sync_started_at` |
+| `0015_dashboard_progress.sql`           | `athlete_profiles.dashboard_mode`, `activities.hr_histogram`                                                |
+| `0016_race_readiness.sql`               | `activities.pace_histogram`                                                                                 |
+| `0017_grant_access_fn.sql`              | `roxcoach.grant_access(user_id, display_name)`: sets the flag and creates the profile (service role only)   |
+| `0018_lyfta_resync_incomplete_sets.sql` | Requests one full manual Lyfta resync so sets Lyfta never marked completed are imported                     |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

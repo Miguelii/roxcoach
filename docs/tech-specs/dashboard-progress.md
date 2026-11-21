@@ -338,7 +338,8 @@ Chart rules:
   items are toggle buttons (at least 44 px tall on touch) that show and hide a zone.
 - Values are readable without hovering: the cards show latest value and change; tooltips are a bonus
   on hover and on tap.
-- A change is shown with a sign and an arrow icon plus text ("+5 kg"), never by color alone.
+- A change is shown with a sign and an arrow icon plus text ("+5 kg"), never by color alone. An
+  exercise card hides its change when the top set did not move or there is only one workout.
 - Pace is formatted `m:ss /km`, loads in kg with at most one decimal, dates in the athlete's
   locale-neutral short form. Reuse the existing formatters; add a seconds-per-km pace formatter next
   to `formatPace` (which takes meters per second) instead of duplicating.

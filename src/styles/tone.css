@@ -53,6 +53,13 @@
     --tone-ink: var(--on-brand);
 }
 
+[data-tone='plum'] {
+    --tone: var(--plum);
+    --tone-soft: var(--plum-soft);
+    --tone-deep: var(--plum-deep);
+    --tone-ink: var(--on-brand);
+}
+
 [data-tone='slate'] {
     --tone: var(--slate);
     --tone-soft: var(--slate-soft);

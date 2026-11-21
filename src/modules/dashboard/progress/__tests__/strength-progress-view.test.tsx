@@ -123,7 +123,21 @@ describe('ExerciseCard', () => {
             'aria-label',
             'Curl top set, 20 kg in 1 workout.'
         )
-        expect(screen.getByTestId('exercise-change')).toHaveTextContent('-')
+        expect(screen.queryByTestId('exercise-change')).toBeNull()
+    })
+
+    it('hides the change when the top set did not move', () => {
+        render(
+            <ExerciseCard
+                exercise={exercise('press', 'Press', [
+                    ['2026-10-01', 40],
+                    ['2026-11-02', 40],
+                ])}
+            />
+        )
+
+        expect(screen.getByTestId('exercise-latest')).toHaveTextContent('40 kg')
+        expect(screen.queryByTestId('exercise-change')).toBeNull()
     })
 })
 

@@ -10,7 +10,7 @@ There is no scheduled or background sync.
 - Add a `Lyfta` tab to `/settings`.
 - Let the athlete save, replace and disconnect a Lyfta personal API key.
 - Validate the key before saving it, then keep it encrypted at rest and server-only.
-- Add a manual `Sync workouts` action that imports completed workouts and their completed sets.
+- Add a manual `Sync workouts` action that imports completed workouts and their sets.
 - Make repeated syncs idempotent and safe to retry after partial failure.
 - Do not write, update or delete data in Lyfta.
 
@@ -129,7 +129,11 @@ Create one `activities` row per Lyfta workout:
 | `sport_type`                                               | `strength`                                                            |
 | `distance_m`, moving time, heart-rate and elevation fields | `NULL`                                                                |
 
-Create `strength_sets` rows from each exercise's sets where `is_completed === true`. Set
+Create `strength_sets` rows from each exercise's sets that are completed (`is_completed === true`)
+or carry reps or weight. Some accounts log sets with reps and weight but Lyfta never marks them
+completed (observed: every set `is_completed: false`), and ignoring those left the imported
+workout without exercises. An incomplete set with no reps and no weight, or with malformed values,
+is skipped quietly; a completed set with malformed values still fails validation. Set
 `exercise_index` from its workout order starting at 1, `source_exercise_id` from `exercise_id`,
 `exercise` from `excercise_name`, `exercise_image_url` from `exercise_image`, `set_index` from that
 exercise's set order starting at 1, `reps` from the upstream integer reps value, `load_kg` from the
@@ -137,8 +141,8 @@ upstream weight converted to kilograms, and `rir` from the upstream non-negative
 `NULL`. Store only the image URL, never the image bytes. Accept `kg`, `lb` and `lbs` as
 `weight_unit`; convert pounds to kilograms before any weight is written. A non-null weight without
 a known unit is invalid, never assume it is kg. Absent optional reps, weight or RIR values map to
-`NULL`; malformed non-empty values fail validation rather than being silently dropped. Ignore
-incomplete sets intentionally. Duration, body weight, total volume, RIR and exercise ID are
+`NULL`; malformed non-empty values of a completed set fail validation rather than being silently dropped.
+Duration, body weight, total volume, RIR and exercise ID are
 retained for progress analysis. Do not use `total_volume` or `totalLiftedWeight` as activity
 distance or duration.
 
@@ -151,6 +155,10 @@ Migration `0012_strength_exercise_order.sql` stores each exercise's position in 
 clears Lyfta sync checkpoints again. The next manual sync reimports the history with the original
 exercise order. Existing manual rows whose order was not stored remain nullable and are grouped by
 exercise name.
+
+Migration `0018_lyfta_resync_incomplete_sets.sql` resets the sync checkpoints once more, so the next
+manual sync rebuilds the sets of workouts imported before incomplete sets with reps or weight were
+accepted.
 
 Migration `0013_strength_exercise_images.sql` adds the optional exercise image URL and resets Lyfta
 sync checkpoints. The next manual sync refreshes the imported sets with the image URLs where Lyfta

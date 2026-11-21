@@ -81,11 +81,13 @@ export function ExerciseCard({ exercise }: Props) {
                         >
                             {formatKg(last?.topSetKg) ?? '-'}
                         </span>
-                        <ChangeBadge
-                            delta={delta}
-                            format={(absolute) => formatKg(absolute) ?? ''}
-                            testId="exercise-change"
-                        />
+                        {delta !== null && delta !== 0 && (
+                            <ChangeBadge
+                                delta={delta}
+                                format={(absolute) => formatKg(absolute) ?? ''}
+                                testId="exercise-change"
+                            />
+                        )}
                     </p>
                 </div>
                 <div className="space-y-1 text-right">

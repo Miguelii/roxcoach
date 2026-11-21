@@ -151,12 +151,19 @@ function parseCompletedSets(
     const result: LyftaCompletedSet[] = []
 
     for (const [setIndex, set] of exercise.sets.entries()) {
-        if (!set.is_completed) continue
-
         const reps = optionalIntegerSchema.safeParse(set.reps)
         const weight = optionalWeightSchema.safeParse(set.weight)
         const rir = optionalRirSchema.safeParse(set.rir)
         const basePath = `workouts.${workoutIndex}.exercises.${exerciseIndex}.sets.${setIndex}`
+
+        // Some accounts log sets with reps and weight but Lyfta never marks them completed, so a
+        // set is kept when it is completed or carries reps or weight. An incomplete set that is
+        // empty or malformed is skipped quietly; only completed sets fail validation.
+        if (!set.is_completed) {
+            const hasValues =
+                (reps.success && reps.data !== null) || (weight.success && weight.data !== null)
+            if (!reps.success || !weight.success || !rir.success || !hasValues) continue
+        }
 
         if (!reps.success) issues.push(`${basePath}.reps`)
         if (!weight.success) issues.push(`${basePath}.weight`)

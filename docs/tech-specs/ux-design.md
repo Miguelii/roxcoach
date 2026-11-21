@@ -22,7 +22,7 @@ deliberately instead of drifting.
 
 Page ground is warm cream (`--paper`), ink is near-black (`--ink`), cards are white (`--card`).
 Brand hues each have a base, a `-soft` tint and a `-deep` shade: blue, navy, green, amber,
-tangerine, slate. Hairlines and muted text are alpha over ink. Light text on a saturated surface
+tangerine, slate, plum (strength, apart from the run blue). Hairlines and muted text are alpha over ink. Light text on a saturated surface
 uses `--on-brand`. Never hardcode colors: use semantic tokens (`bg-primary`,
 `text-muted-foreground`, `text-primary-foreground`) and `cn()` for class merging.
 
@@ -32,7 +32,7 @@ uses `--on-brand`. Never hardcode colors: use semantic tokens (`bg-primary`,
 | -------------- | ------------------------------ |
 | Run            | blue                           |
 | Hyrox          | tangerine                      |
-| Strength       | navy                           |
+| Strength       | plum                           |
 | Cross-training | slate                          |
 | Race           | amber, always with a flag icon |
 | Rest           | slate-soft, no fill            |

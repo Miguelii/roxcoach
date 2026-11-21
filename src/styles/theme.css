@@ -29,6 +29,10 @@
     --slate-soft: #e4e6ee;
     --slate-deep: #24283a;
 
+    --plum: #7b3fa0;
+    --plum-soft: #eddcf7;
+    --plum-deep: #46176a;
+
     /*
      * Ink for anything sitting on a saturated brand surface (blue, navy, tangerine,
      * green). Use this instead of a literal white so the contrast pair stays in one
@@ -114,6 +118,9 @@
     --color-slate: var(--slate);
     --color-slate-soft: var(--slate-soft);
     --color-slate-deep: var(--slate-deep);
+    --color-plum: var(--plum);
+    --color-plum-soft: var(--plum-soft);
+    --color-plum-deep: var(--plum-deep);
 
     /* Contextual palette, remapped per section by [data-tone] in tone.css */
     --color-tone: var(--tone);

@@ -83,7 +83,71 @@ describe('parseLyftaWorkoutPage', () => {
         })
     })
 
-    it('ignores incomplete sets and maps absent optional values to null', () => {
+    it('imports sets with reps or weight even when Lyfta does not mark them completed', () => {
+        const result = parseLyftaWorkoutPage(
+            {
+                ...SANDBOX_PAGE,
+                workouts: [
+                    {
+                        ...SANDBOX_PAGE.workouts[0],
+                        exercises: [
+                            {
+                                exercise_id: 503,
+                                excercise_name: 'Chest Press',
+                                sets: [
+                                    { is_completed: false, reps: '10', weight: '60' },
+                                    { is_completed: false, reps: '8', weight: '65', rir: '1' },
+                                    { is_completed: false, reps: '', weight: '' },
+                                    { is_completed: false },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            1
+        )
+
+        expect(result.success).toBe(true)
+        if (!result.success) return
+        expect(result.data.workouts[0]?.exercises[0]?.sets).toEqual([
+            { setIndex: 1, reps: 10, loadKg: 60, rir: null },
+            { setIndex: 2, reps: 8, loadKg: 65, rir: 1 },
+        ])
+    })
+
+    it('skips an incomplete set with malformed values instead of failing the page', () => {
+        const result = parseLyftaWorkoutPage(
+            {
+                ...SANDBOX_PAGE,
+                workouts: [
+                    {
+                        ...SANDBOX_PAGE.workouts[0],
+                        exercises: [
+                            {
+                                exercise_id: 502,
+                                excercise_name: 'Deadlift',
+                                sets: [
+                                    { is_completed: false, reps: 'not-a-number', weight: '100' },
+                                    { is_completed: false, reps: '5', weight: '100' },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            1
+        )
+
+        expect(result.success).toBe(true)
+        if (!result.success) return
+        expect(result.data.workouts[0]?.exercises[0]?.sets).toEqual([
+            { setIndex: 2, reps: 5, loadKg: 100, rir: null },
+        ])
+    })
+
+    it('keeps completed sets with no values and maps absent optional values to null', () => {
+        // The incomplete set below is empty, so it is dropped; completed ones are always kept.
         const result = parseLyftaWorkoutPage(
             {
                 ...SANDBOX_PAGE,
