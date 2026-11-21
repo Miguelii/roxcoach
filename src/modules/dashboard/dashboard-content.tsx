@@ -30,18 +30,25 @@ export function DashboardContent() {
     return (
         <div data-testid="dashboard-content" className="space-y-6">
             <header className="space-y-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="space-y-2">
-                        <h1 data-testid="dashboard-title" className="display text-4xl">
-                            Progress
-                        </h1>
-                        <p className="max-w-[65ch] text-sm text-muted-foreground">
-                            A clear view of your recent training and how it is building over time.
-                        </p>
-                    </div>
-                    <ActivityActions />
+                <div className="space-y-2">
+                    <h1 data-testid="dashboard-title" className="display text-4xl">
+                        Progress
+                    </h1>
+                    <p className="max-w-[65ch] text-sm text-muted-foreground">
+                        A clear view of your recent training and how it is building over time.
+                    </p>
                 </div>
-                <DashboardControls range={range} onRangeChange={(next) => void setRange(next)} />
+                {/* One row: the range on the left, the two drawer actions at the far right. On a
+                    phone the actions wrap under the range. */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <DashboardControls
+                        range={range}
+                        onRangeChange={(next) => void setRange(next)}
+                    />
+                    <div className="max-w-full">
+                        <ActivityActions />
+                    </div>
+                </div>
             </header>
             <WeekStrip today={today} mode={profile.data.dashboardMode} />
             {profile.data.dashboardMode === 'run' ? (
