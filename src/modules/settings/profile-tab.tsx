@@ -1,10 +1,11 @@
 'use client'
 
 import { toast } from 'sonner'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { ProfileForm } from '@/modules/settings/profile-form'
 import type { ProfileFormValues, ProfileValues } from '@/modules/settings/use-profile-form'
 
@@ -21,9 +22,10 @@ const toFormValues = (profile: ProfileDTO): ProfileFormValues => ({
 
 // Thin wrapper: fetches the profile and saves it. Covered through ProfileForm; it only wires trpc.
 export function ProfileTab() {
-    const query = trpcClient.athlete.getProfile.useQuery()
-    const utils = trpcClient.useUtils()
-    const update = trpcClient.athlete.updateProfile.useMutation()
+    const trpc = useTRPC()
+    const query = useQuery(trpc.athlete.getProfile.queryOptions())
+    const queryClient = useQueryClient()
+    const update = useMutation(trpc.athlete.updateProfile.mutationOptions())
 
     if (query.isPending) return <Skeleton data-testid="profile-loading" className="h-96 max-w-xl" />
     if (query.isError)
@@ -49,9 +51,9 @@ export function ProfileTab() {
         }
         toast.success('Profile saved')
         await Promise.all([
-            utils.athlete.getProfile.invalidate(),
-            utils.athlete.getTimezone.invalidate(),
-            utils.training.getRunProgress.invalidate(),
+            queryClient.invalidateQueries(trpc.athlete.getProfile.queryFilter()),
+            queryClient.invalidateQueries(trpc.athlete.getTimezone.queryFilter()),
+            queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
         ])
     }
 

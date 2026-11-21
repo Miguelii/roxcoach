@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { trpcClient } from '@/lib/trpc'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTRPC } from '@/lib/trpc'
 import { formatLyftaTimestamp, messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 
 type SyncResult = {
@@ -18,8 +19,9 @@ type Options = {
 }
 
 export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
-    const syncMutation = trpcClient.lyfta.syncWorkouts.useMutation()
-    const utils = trpcClient.useUtils()
+    const trpc = useTRPC()
+    const syncMutation = useMutation(trpc.lyfta.syncWorkouts.mutationOptions())
+    const queryClient = useQueryClient()
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
 
@@ -44,9 +46,9 @@ export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
         onSynced?.(result)
         try {
             await Promise.all([
-                utils.lyfta.getConnectionStatus.invalidate(),
-                utils.training.getCalendar.invalidate(),
-                utils.training.getStrengthProgress.invalidate(),
+                queryClient.invalidateQueries(trpc.lyfta.getConnectionStatus.queryFilter()),
+                queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
+                queryClient.invalidateQueries(trpc.training.getStrengthProgress.queryFilter()),
             ])
         } catch {
             const message =

@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { CalendarPageContent } from '@/modules/calendar/calendar-page-content'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     getTimezoneQuery: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        athlete: {
-            getTimezone: { useQuery: mocks.getTimezoneQuery },
-        },
-    },
-}))
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.getTimezone': mocks.getTimezoneQuery }, options),
+    }
+})
 
 vi.mock('@/modules/calendar/calendar', () => ({
     Calendar: ({ today }: { today: string }) => (

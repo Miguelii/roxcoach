@@ -276,7 +276,18 @@ running mode it is unchanged.
   `athlete.setDashboardMode`; on failure it reverts and shows a toast.
 - The range is a second segmented control (3M, 6M, 1Y), kept in the URL with nuqs (`range`) so a
   refresh restores it. It is not saved in the profile. Default `6m`.
-- While the profile loads, the page shows the dashboard skeleton (no flash of the wrong mode).
+- The page prefetches on the server, behind one `Suspense` with the dashboard skeleton as its
+  fallback: the profile first (for the timezone and mode), then in parallel the week strip calendar
+  window (`weekStripWindow(today)`, the last 35 days) and the progress query of the current mode
+  for the `range` in the URL (parsed with the shared `PROGRESS_RANGE_PARSER`). The results reach
+  the client cache through a `HydrationBoundary`, so the page opens with data and no client
+  round-trip. A failed server read is left out of the cache and the client query fetches it with
+  its own loading and error states.
+- The shell's mode toggle creates the profile query before the page hydrates, so the hydrated
+  profile only lands after commit. The page also passes the server profile to `DashboardContent`
+  (`initialProfile`), which renders from it until the client query has data.
+- Without a profile (server read failed and the client query is still loading), the page shows the
+  dashboard skeleton (no flash of the wrong mode).
 
 ### Chart cards
 
@@ -343,7 +354,8 @@ Chart rules:
 
 ## Cache and refresh
 
-Both progress queries use the dashboard stale time. Uploading an activity and syncing Lyfta already
+Both progress queries and the dashboard's profile query use the dashboard stale time, so data
+hydrated from the server is not refetched as soon as the page mounts. Uploading an activity and syncing Lyfta already
 invalidate the training queries; add `training.getRunProgress` and `training.getStrengthProgress`
 to those invalidations. Changing `max_hr` or `resting_hr` in Settings invalidates
 `training.getRunProgress` (the zones follow the profile, which is the point of the histogram).

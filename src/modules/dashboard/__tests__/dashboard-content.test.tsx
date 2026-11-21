@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { withNuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DashboardContent } from '@/modules/dashboard/dashboard-content'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
@@ -12,29 +13,31 @@ const mocks = vi.hoisted(() => ({
     useMutation: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        useUtils: () => ({
-            athlete: {
-                getProfile: {
-                    cancel: vi.fn(),
-                    getData: vi.fn(),
-                    setData: vi.fn(),
-                    invalidate: vi.fn(),
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc(
+                {
+                    'athlete.getProfile': mocks.getProfileQuery,
+                    'training.getCalendar': mocks.getCalendarQuery,
+                    'training.getRunProgress': mocks.getRunProgressQuery,
+                    'training.getStrengthProgress': mocks.getStrengthProgressQuery,
                 },
-            },
+                options
+            ),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.setDashboardMode': mocks.useMutation }, options),
+        useQueryClient: () => ({
+            cancelQueries: vi.fn(),
+            getQueryData: vi.fn(),
+            setQueryData: vi.fn(),
+            invalidateQueries: vi.fn(),
         }),
-        athlete: {
-            getProfile: { useQuery: mocks.getProfileQuery },
-            setDashboardMode: { useMutation: mocks.useMutation },
-        },
-        training: {
-            getCalendar: { useQuery: mocks.getCalendarQuery },
-            getRunProgress: { useQuery: mocks.getRunProgressQuery },
-            getStrengthProgress: { useQuery: mocks.getStrengthProgressQuery },
-        },
-    },
-}))
+    }
+})
 
 vi.mock('@/components/activity-actions', () => ({
     ActivityActions: () => <div data-testid="activity-actions" />,
@@ -105,5 +108,35 @@ describe('DashboardContent', () => {
         fireEvent.click(screen.getByText('Try again'))
         expect(screen.getByTestId('dashboard-profile-error')).toBeInTheDocument()
         expect(refetch).toHaveBeenCalled()
+    })
+
+    it('renders from the server profile while the client query has no data yet', () => {
+        mocks.getProfileQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
+        mocks.getStrengthProgressQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
+        const initialProfile = {
+            displayName: 'Athlete',
+            timezone: 'UTC',
+            maxHr: null,
+            restingHr: null,
+            hyroxDivision: null,
+            weeklyHoursCap: null,
+            notes: null,
+            dashboardMode: 'strength' as const,
+        }
+        render(<DashboardContent initialProfile={initialProfile} />, {
+            wrapper: withNuqsTestingAdapter(),
+        })
+
+        expect(screen.queryByTestId('dashboard-skeleton')).toBeNull()
+        expect(screen.getByTestId('dashboard-content')).toBeInTheDocument()
+        expect(screen.getByTestId('strength-progress-skeleton')).toBeInTheDocument()
     })
 })

@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { CalendarBody } from '@/modules/calendar/calendar-body'
 import { useCalendarUrlState } from '@/modules/calendar/use-calendar-url-state'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
@@ -36,15 +36,18 @@ const visibleRange = (view: 'month' | 'week', cursor: string) => {
 }
 
 export function Calendar({ today }: Props) {
+    const trpc = useTRPC()
     const isMobile = useIsMobile()
     const { cursor, view, setCursor, setView } = useCalendarUrlState(today)
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
     const effectiveView = isMobile ? 'week' : view
-    const query = trpcClient.training.getCalendar.useQuery(visibleRange(effectiveView, cursor), {
-        placeholderData: keepPreviousData,
-        staleTime: DASHBOARD_QUERY_STALE_TIME,
-    })
+    const query = useQuery(
+        trpc.training.getCalendar.queryOptions(visibleRange(effectiveView, cursor), {
+            placeholderData: keepPreviousData,
+            staleTime: DASHBOARD_QUERY_STALE_TIME,
+        })
+    )
 
     const items = query.data ?? []
 

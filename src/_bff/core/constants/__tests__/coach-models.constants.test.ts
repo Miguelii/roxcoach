@@ -29,7 +29,7 @@ describe('COACH_MODELS', () => {
 
 describe('coachModelLabel', () => {
     it('returns the friendly name of a listed id', () => {
-        expect(coachModelLabel('gemini-3.8-flash')).toBe('Gemini 3.8 Flash')
+        expect(coachModelLabel('gemini-3.6-flash')).toBe('Gemini 3.6 Flash')
     })
 
     it('returns an unknown id unchanged', () => {

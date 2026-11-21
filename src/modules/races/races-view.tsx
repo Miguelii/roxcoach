@@ -1,25 +1,33 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { todayIn } from '@/_bff/core/utils/date.utils'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { RacesManager } from '@/modules/races/races-manager'
 
 const RACES_QUERY_STALE_TIME = 30_000
 
 export function RacesView() {
-    const timezone = trpcClient.athlete.getTimezone.useQuery(undefined, {
-        staleTime: RACES_QUERY_STALE_TIME,
-    })
-    const profile = trpcClient.athlete.getProfile.useQuery(undefined, {
-        staleTime: RACES_QUERY_STALE_TIME,
-    })
-    const races = trpcClient.races.list.useQuery(
-        {},
-        {
+    const trpc = useTRPC()
+    const timezone = useQuery(
+        trpc.athlete.getTimezone.queryOptions(undefined, {
             staleTime: RACES_QUERY_STALE_TIME,
-        }
+        })
+    )
+    const profile = useQuery(
+        trpc.athlete.getProfile.queryOptions(undefined, {
+            staleTime: RACES_QUERY_STALE_TIME,
+        })
+    )
+    const races = useQuery(
+        trpc.races.list.queryOptions(
+            {},
+            {
+                staleTime: RACES_QUERY_STALE_TIME,
+            }
+        )
     )
 
     const missingData =

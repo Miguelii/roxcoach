@@ -64,7 +64,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
-  `prefers-reduced-transparency`) with five items: Dashboard, Calendar, the coach button (centered,
+  `prefers-reduced-transparency`; a glass bubble marks the active route, springs between items and can be dragged across them, snapping to the nearest route on release; `MobileNav` in `src/components/mobile-nav.tsx`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. It sits low, like Instagram's: its bottom edge is
   at the safe area (the home indicator) with at least 8 px to the screen edge. Page content reserves
   `pb-24` above it.
@@ -246,8 +246,8 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
 ### Settings
 
 Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
-`trpcClient.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
-`trpcClient.lyfta.*` for credential management and manual workout sync. All tabs have loading and
+`trpc.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+`trpc.lyfta.*` for credential management and manual workout sync. All tabs have loading and
 error states; profile and availability show toasts on save. Lyfta connection and sync states are
 specified in [lyfta.md](lyfta.md).
 

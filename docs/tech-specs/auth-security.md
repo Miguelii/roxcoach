@@ -50,7 +50,7 @@ page never reveals that the account exists in the other app.
 | ----------------- | ------------------------------------------------------------------------------------ |
 | Route             | `/login` (the only public page)                                                      |
 | Fields            | email, password (react-hook-form + zod in `use-login-form.ts`)                       |
-| Submit            | `trpcClient.auth.login.useMutation()`                                                |
+| Submit            | `useMutation(trpc.auth.login.mutationOptions())`                                     |
 | Success           | redirect to `/dashboard`                                                             |
 | Failure           | one generic message ("Invalid email or password"), never reveal which part was wrong |
 | Already signed in | the proxy redirects `/login` to `/dashboard`                                         |

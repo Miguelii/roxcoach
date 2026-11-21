@@ -1,6 +1,7 @@
 'use client'
 
 import { todayIn } from '@/_bff/core/utils/date.utils'
+import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { ActivityActions } from '@/components/activity-actions'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,12 +12,19 @@ import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
 import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip, WeekStripSkeleton } from '@/modules/dashboard/week-strip'
 
-export function DashboardContent() {
+type Props = {
+    // The profile the server prefetched. The shell's mode toggle creates the profile query before
+    // the page hydrates, so the hydrated data only lands after commit; this covers the first render.
+    initialProfile?: ProfileDTO | null
+}
+
+export function DashboardContent({ initialProfile }: Props) {
     const { profile } = useDashboardMode()
     const { range, setRange } = useProgressRange()
+    const data = profile.data ?? initialProfile
 
-    if (profile.isPending && profile.data === undefined) return <DashboardSkeleton />
-    if (profile.data === undefined)
+    if (profile.isPending && !data) return <DashboardSkeleton />
+    if (!data)
         return (
             <QueryError
                 message="Could not load your profile."
@@ -25,7 +33,7 @@ export function DashboardContent() {
             />
         )
 
-    const today = todayIn(profile.data.timezone)
+    const today = todayIn(data.timezone)
 
     return (
         <div data-testid="dashboard-content" className="space-y-6">
@@ -50,8 +58,8 @@ export function DashboardContent() {
                     </div>
                 </div>
             </header>
-            <WeekStrip today={today} mode={profile.data.dashboardMode} />
-            {profile.data.dashboardMode === 'run' ? (
+            <WeekStrip today={today} mode={data.dashboardMode} />
+            {data.dashboardMode === 'run' ? (
                 <RunProgress range={range} today={today} />
             ) : (
                 <StrengthProgress range={range} />
@@ -60,7 +68,7 @@ export function DashboardContent() {
     )
 }
 
-function DashboardSkeleton() {
+export function DashboardSkeleton() {
     return (
         <div data-testid="dashboard-skeleton" className="space-y-6">
             <div className="space-y-2">

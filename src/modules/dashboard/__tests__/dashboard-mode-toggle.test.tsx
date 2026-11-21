@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DashboardModeSwitch } from '@/modules/dashboard/dashboard-mode-switch'
 import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
@@ -9,24 +10,23 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        useUtils: () => ({
-            athlete: {
-                getProfile: {
-                    cancel: vi.fn(),
-                    getData: vi.fn(),
-                    setData: vi.fn(),
-                    invalidate: vi.fn(),
-                },
-            },
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.getProfile': mocks.getProfileQuery }, options),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.setDashboardMode': mocks.useMutation }, options),
+        useQueryClient: () => ({
+            cancelQueries: vi.fn(),
+            getQueryData: vi.fn(),
+            setQueryData: vi.fn(),
+            invalidateQueries: vi.fn(),
         }),
-        athlete: {
-            getProfile: { useQuery: mocks.getProfileQuery },
-            setDashboardMode: { useMutation: mocks.useMutation },
-        },
-    },
-}))
+    }
+})
 
 describe('DashboardModeSwitch', () => {
     it('marks the active mode and reports a change', () => {

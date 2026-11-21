@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { UploadActivity } from '@/modules/activity/upload-activity'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     success: vi.fn(),
@@ -12,17 +13,24 @@ const mocks = vi.hoisted(() => ({
 
 // The real side effects live in this wiring component, so its hooks are the only mocked seams.
 vi.mock('sonner', () => ({ toast: { success: mocks.success } }))
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        useUtils: () => ({
-            training: {
-                getCalendar: { invalidate: mocks.invalidate },
-                getRunProgress: { invalidate: mocks.invalidateRun },
-                getStrengthProgress: { invalidate: mocks.invalidateStrength },
-            },
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQueryClient: () => ({
+            invalidateQueries: (filter: TrpcKeyed) =>
+                routeTrpc(
+                    {
+                        'training.getCalendar': mocks.invalidate,
+                        'training.getRunProgress': mocks.invalidateRun,
+                        'training.getStrengthProgress': mocks.invalidateStrength,
+                    },
+                    filter
+                ),
         }),
-    },
-}))
+    }
+})
 vi.mock('@/modules/dashboard/upload-activity-drawer', () => ({
     UploadActivityDrawer: (props: { onUploaded?: () => void }) => {
         if (props.onUploaded) mocks.handlers.push(props.onUploaded)

@@ -12,11 +12,12 @@ import {
     type Icon,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
+import { MobileNav } from '@/components/mobile-nav'
 import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 
@@ -28,11 +29,6 @@ type NavItem = {
 
 type Props = {
     children: React.ReactNode
-}
-
-type MobileNavLinkProps = {
-    item: NavItem
-    active: boolean
 }
 
 type AccountMenuProps = {
@@ -65,22 +61,6 @@ function MobileLogoutButton({ isPending, onLogout }: AccountMenuProps) {
     )
 }
 
-function MobileNavLink({ item: { href, label, Icon }, active }: MobileNavLinkProps) {
-    return (
-        <Link
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-                'flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors motion-reduce:transition-none',
-                active ? 'bg-ink/10 text-ink' : 'text-muted-foreground'
-            )}
-        >
-            <Icon className="size-5" />
-            {label}
-        </Link>
-    )
-}
-
 export function AppShell({ children }: Props) {
     const {
         setOpen: setCoachOpen,
@@ -89,9 +69,11 @@ export function AppShell({ children }: Props) {
     } = useCoachPanel()
     const pathname = usePathname()
     const router = useRouter()
+    const trpc = useTRPC()
     const queryClient = useQueryClient()
-    const logout = trpcClient.auth.logout.useMutation()
+    const logout = useMutation(trpc.auth.logout.mutationOptions())
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+    const activeIndex = PRIMARY_NAV_ITEMS.findIndex((item) => isActive(item.href))
 
     const onLogout = async () => {
         const request: Promise<{ status: 200 }> = logout.mutateAsync()
@@ -116,17 +98,27 @@ export function AppShell({ children }: Props) {
                 <nav
                     aria-label="Primary"
                     data-testid="nav-desktop"
-                    className="mt-10 flex flex-col gap-1"
+                    className="relative mt-10 flex flex-col gap-1"
                 >
+                    {activeIndex >= 0 ? (
+                        <span
+                            aria-hidden="true"
+                            data-testid="nav-desktop-indicator"
+                            style={{
+                                transform: `translateY(calc(${activeIndex} * (100% + 0.25rem)))`,
+                            }}
+                            className="pointer-events-none absolute inset-x-0 top-0 h-11 rounded-[var(--radius-surface-inner)] bg-ink transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+                        />
+                    ) : null}
                     {PRIMARY_NAV_ITEMS.map(({ href, label, Icon }) => (
                         <Link
                             key={href}
                             href={href}
                             aria-current={isActive(href) ? 'page' : undefined}
                             className={cn(
-                                'flex h-11 items-center gap-3 rounded-[var(--radius-surface-inner)] px-3 text-sm font-medium transition-colors',
+                                'relative flex h-11 items-center gap-3 rounded-[var(--radius-surface-inner)] px-3 text-sm font-medium transition-colors duration-300',
                                 isActive(href)
-                                    ? 'bg-ink text-primary-foreground'
+                                    ? 'text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             )}
                         >
@@ -177,35 +169,11 @@ export function AppShell({ children }: Props) {
                 <div className="pb-24 md:pb-6">{children}</div>
             </div>
 
-            <nav
-                aria-label="Primary"
-                data-testid="nav-mobile"
-                className={cn(
-                    'fixed inset-x-4 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-40 md:hidden',
-                    'grid grid-cols-5 items-center rounded-full p-1.5',
-                    // Liquid glass: blurred, saturated backdrop with a bright rim and a soft shadow.
-                    'border border-white/60 bg-paper/70 shadow-[0_8px_32px_rgba(23,24,28,0.14),inset_0_1px_0_rgba(255,255,255,0.7)]',
-                    'backdrop-blur-xl backdrop-saturate-150',
-                    // Solid fallback for users who asked for less transparency.
-                    '[@media(prefers-reduced-transparency:reduce)]:bg-paper [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none'
-                )}
-            >
-                {MOBILE_NAV_ITEMS.slice(0, 2).map((item) => (
-                    <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
-                ))}
-                <button
-                    type="button"
-                    data-testid="nav-coach"
-                    aria-label="Open coach chat"
-                    onClick={() => setCoachOpen(true)}
-                    className="mx-auto flex size-12 items-center justify-center rounded-full bg-ink text-primary-foreground shadow-md transition-transform active:scale-95 motion-reduce:transition-none"
-                >
-                    <IconSparkles className="size-6" />
-                </button>
-                {MOBILE_NAV_ITEMS.slice(2).map((item) => (
-                    <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
-                ))}
-            </nav>
+            <MobileNav
+                items={MOBILE_NAV_ITEMS}
+                isActive={isActive}
+                onCoach={() => setCoachOpen(true)}
+            />
         </div>
     )
 }

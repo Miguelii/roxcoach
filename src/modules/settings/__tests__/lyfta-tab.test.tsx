@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { LyftaTab } from '@/modules/settings/lyfta-tab'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     statusQuery: {
@@ -18,23 +19,35 @@ const mocks = vi.hoisted(() => ({
     disconnect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        lyfta: {
-            getConnectionStatus: { useQuery: () => mocks.statusQuery },
-            connect: { useMutation: () => mocks.connect },
-            syncWorkouts: { useMutation: () => mocks.sync },
-            disconnect: { useMutation: () => mocks.disconnect },
-        },
-        useUtils: () => ({
-            lyfta: { getConnectionStatus: { invalidate: mocks.invalidate } },
-            training: {
-                getCalendar: { invalidate: mocks.invalidateCalendar },
-                getStrengthProgress: { invalidate: mocks.invalidateStrength },
-            },
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc({ 'lyfta.getConnectionStatus': () => mocks.statusQuery }, options),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc(
+                {
+                    'lyfta.connect': () => mocks.connect,
+                    'lyfta.syncWorkouts': () => mocks.sync,
+                    'lyfta.disconnect': () => mocks.disconnect,
+                },
+                options
+            ),
+        useQueryClient: () => ({
+            invalidateQueries: (filter: TrpcKeyed) =>
+                routeTrpc(
+                    {
+                        'lyfta.getConnectionStatus': mocks.invalidate,
+                        'training.getCalendar': mocks.invalidateCalendar,
+                        'training.getStrengthProgress': mocks.invalidateStrength,
+                    },
+                    filter
+                ),
         }),
-    },
-}))
+    }
+})
 
 describe('LyftaTab', () => {
     beforeEach(() => {

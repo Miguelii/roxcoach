@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { safeReturnTo } from '@/_bff/core/helpers/safe-redirect.helper'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { trpcClient } from '@/lib/trpc'
+import { useTRPC } from '@/lib/trpc'
 import { useLoginForm, type LoginValues } from '@/modules/auth/use-login-form'
 
 type Props = {
@@ -27,10 +27,11 @@ type Props = {
 const LOGIN_ERROR_COPY = 'Invalid email or password'
 
 export function LoginCard({ returnTo }: Props) {
+    const trpc = useTRPC()
     const router = useRouter()
     const queryClient = useQueryClient()
     const form = useLoginForm()
-    const login = trpcClient.auth.login.useMutation()
+    const login = useMutation(trpc.auth.login.mutationOptions())
     const [failed, setFailed] = useState(false)
 
     const onSubmit = async (values: LoginValues) => {

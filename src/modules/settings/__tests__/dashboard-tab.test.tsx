@@ -1,30 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DashboardTab } from '@/modules/settings/dashboard-tab'
+import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
     mutate: vi.fn(),
 }))
 
-vi.mock('@/lib/trpc', () => ({
-    trpcClient: {
-        useUtils: () => ({
-            athlete: {
-                getProfile: {
-                    cancel: vi.fn(),
-                    getData: vi.fn(),
-                    setData: vi.fn(),
-                    invalidate: vi.fn(),
-                },
-            },
+vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+    const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
+    return {
+        ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+        useQuery: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.getProfile': mocks.getProfileQuery }, options),
+        useMutation: (options: TrpcKeyed) =>
+            routeTrpc({ 'athlete.setDashboardMode': () => ({ mutate: mocks.mutate }) }, options),
+        useQueryClient: () => ({
+            cancelQueries: vi.fn(),
+            getQueryData: vi.fn(),
+            setQueryData: vi.fn(),
+            invalidateQueries: vi.fn(),
         }),
-        athlete: {
-            getProfile: { useQuery: mocks.getProfileQuery },
-            setDashboardMode: { useMutation: () => ({ mutate: mocks.mutate }) },
-        },
-    },
-}))
+    }
+})
 
 describe('DashboardTab', () => {
     beforeEach(() => {

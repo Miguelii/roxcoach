@@ -435,8 +435,8 @@ describe('CoachChatView', () => {
     })
 
     describe('model caption and switch note', () => {
-        const M1 = 'gemini-4-hydrogen'
-        const M2 = 'gemini-3.8-flash'
+        const M1 = 'gemini-3.6-flash'
+        const M2 = 'gemini-3-flash-preview'
         const model = (id: string, from: string | null = null) => ({
             type: 'model',
             model: id,
@@ -460,7 +460,7 @@ describe('CoachChatView', () => {
                 .mockResolvedValue(streamOf(ndjson(meta, model(M1), text('Hi'), done)))
             render(<Harness send={send} />)
             await sendOne()
-            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 4 Hydrogen')
+            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 3.6 Flash')
             expect(screen.queryByTestId('coach-model-switch-note')).toBeNull()
         })
 
@@ -472,12 +472,12 @@ describe('CoachChatView', () => {
             await sendOne()
             const note = screen.getByTestId('coach-model-switch-note')
             expect(note).toHaveTextContent(
-                'Gemini 4 Hydrogen is not available right now. Answering with Gemini 3.8 Flash.'
+                'Gemini 3.6 Flash is not available right now. Answering with Gemini 3 Flash.'
             )
             expect(note).not.toHaveAttribute('role')
             expect(note.nextElementSibling).toBe(screen.getByTestId('coach-message-assistant'))
             const caption = screen.getByTestId('coach-model-caption')
-            expect(caption).toHaveTextContent('Gemini 3.8 Flash')
+            expect(caption).toHaveTextContent('Gemini 3 Flash')
             expect(caption).not.toHaveTextContent('not available')
             expect(screen.getByTestId('coach-live-region')).not.toHaveTextContent('reached')
         })
@@ -512,7 +512,7 @@ describe('CoachChatView', () => {
             fireEvent.change(screen.getByTestId('coach-input'), { target: { value: 'again' } })
             fireEvent.click(screen.getByTestId('coach-send'))
             await waitFor(() => expect(screen.getByTestId('coach-error')).toBeInTheDocument())
-            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 4 Hydrogen')
+            expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 3.6 Flash')
         })
 
         it('shows the raw id of an unknown model', async () => {
@@ -543,7 +543,7 @@ describe('CoachChatView', () => {
             )
             await waitFor(() =>
                 expect(screen.getByTestId('coach-model-caption')).toHaveTextContent(
-                    'Gemini 3.8 Flash'
+                    'Gemini 3 Flash'
                 )
             )
             expect(screen.queryByTestId('coach-model-switch-note')).toBeNull()
