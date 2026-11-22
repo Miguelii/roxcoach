@@ -8,6 +8,7 @@ import { KINDS } from '@/modules/calendar/kinds'
 import { InfoTip } from '@/components/ui/info-tip'
 import { E1RM_HINT } from '@/lib/constants'
 import {
+    exerciseAnchor,
     formatStrengthNumber,
     lyftaRecordTypesOf,
     RECORD_LABELS,
@@ -121,10 +122,21 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                         const position = groupIndex + 1
                         const summary = summarizeExercise(group.sets)
                         const first = group.sets[0]
+                        const key = first === undefined ? null : exerciseKeyOf(first)
+                        // An exercise done twice keeps one anchor, on its first block.
+                        const anchorId =
+                            key !== null &&
+                            exerciseGroups.findIndex(
+                                (other) =>
+                                    other.sets[0] !== undefined &&
+                                    exerciseKeyOf(other.sets[0]) === key
+                            ) === groupIndex
+                                ? exerciseAnchor(key)
+                                : undefined
                         const comparison =
                             first === undefined
                                 ? undefined
-                                : comparisons.find((entry) => entry.key === exerciseKeyOf(first))
+                                : comparisons.find((entry) => entry.key === key)
                         const previous = comparison?.previous ?? null
                         const topDelta =
                             previous === null ||
@@ -185,8 +197,9 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                         return (
                             <section
                                 key={group.key}
+                                id={anchorId}
                                 aria-labelledby={`strength-exercise-${position}-name`}
-                                className="space-y-2"
+                                className="scroll-mt-6 space-y-2"
                             >
                                 <header className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-[var(--radius-surface-inner)] bg-muted p-3 sm:flex sm:min-h-24 sm:gap-5 sm:p-4">
                                     <div

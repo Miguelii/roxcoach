@@ -4,8 +4,10 @@ import type { StrengthSetDTO } from '@/_bff/modules/training/types'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
 import { KINDS } from '@/modules/calendar/kinds'
+import { PrMedal } from '@/modules/activity/pr-medal'
 import {
     DENSITY_HINT,
+    exerciseAnchor,
     formatStrengthNumber,
     RECORD_LABELS,
     type RecordEntry,
@@ -192,32 +194,34 @@ export function StrengthSummary({
                             No new records this session.
                         </p>
                     ) : (
-                        <ul className="mt-2 grid md:grid-cols-2 md:gap-x-10">
+                        <ul className="mt-2 divide-y divide-hairline">
                             {records.map((record, index) => (
                                 <li
                                     key={record.key}
                                     data-testid={`strength-record-${index + 1}`}
-                                    className="space-y-2 border-t border-hairline py-4 first:border-t-0 md:[&:nth-child(2)]:border-t-0"
+                                    className="flex items-start gap-3.5 py-3.5 last:pb-0"
                                 >
-                                    <p
-                                        data-testid={`strength-record-${index + 1}-name`}
-                                        className="text-[15px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]"
-                                    >
-                                        {record.exercise}
-                                    </p>
-                                    <ul className="grid gap-1.5">
+                                    <PrMedal testId={`strength-record-${index + 1}-medal`} />
+                                    <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 pt-1.5">
+                                        <a
+                                            href={`#${exerciseAnchor(record.key)}`}
+                                            data-testid={`strength-record-${index + 1}-name`}
+                                            className="text-[15px] font-medium text-blue [overflow-wrap:anywhere] hover:underline max-sm:basis-full"
+                                        >
+                                            {record.exercise}
+                                        </a>
                                         {record.kinds.map((kind) => (
-                                            <li
+                                            <span
                                                 key={kind.type}
                                                 data-testid={`strength-record-${index + 1}-${kind.type}`}
-                                                className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 tabular-nums"
+                                                className="inline-flex flex-wrap items-baseline gap-x-1.5 text-[15px] tabular-nums"
                                             >
-                                                <span className="min-w-20 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                                                <span className="font-semibold text-ink">
                                                     {RECORD_LABELS[kind.type]}
                                                 </span>
                                                 <span
                                                     data-testid={`strength-record-${index + 1}-${kind.type}-value`}
-                                                    className="text-base font-semibold text-ink"
+                                                    className="text-ink"
                                                 >
                                                     {formatStrengthNumber(kind.valueKg)} kg
                                                 </span>
@@ -232,7 +236,7 @@ export function StrengthSummary({
                                                 {kind.deltaKg !== null && (
                                                     <span
                                                         data-testid={`strength-record-${index + 1}-${kind.type}-delta`}
-                                                        className="inline-flex items-center gap-0.5 rounded-full bg-green-soft px-1.5 py-0.5 text-xs font-medium text-green-deep"
+                                                        className="inline-flex items-center gap-0.5 self-center text-xs font-medium text-green-deep"
                                                     >
                                                         <IconArrowUpRight
                                                             className="size-3.5"
@@ -241,9 +245,9 @@ export function StrengthSummary({
                                                         +{formatStrengthNumber(kind.deltaKg)} kg
                                                     </span>
                                                 )}
-                                            </li>
+                                            </span>
                                         ))}
-                                    </ul>
+                                    </div>
                                 </li>
                             ))}
                         </ul>

@@ -212,7 +212,27 @@ describe('strength workout detail', () => {
         expect(screen.getByTestId('strength-record-1-weight-value')).toHaveTextContent('80 kg')
         expect(screen.getByTestId('strength-record-1-weight-set')).toHaveTextContent('80 kg x 5')
         expect(screen.getByTestId('strength-record-1-weight-delta')).toHaveTextContent('+5 kg')
+        expect(screen.getByTestId('strength-record-1-medal')).toBeInTheDocument()
         expect(screen.queryByTestId('strength-records-empty')).toBeNull()
+    })
+
+    it('links each record to its exercise in the list below', () => {
+        renderStrength([
+            {
+                key: '501',
+                previous: { localDate: '2026-11-09', topSetKg: 75, topSetReps: 5, volumeKg: 1400 },
+                bestPriorTopSetKg: 75,
+                bestPriorE1rmKg: null,
+                bestPriorVolumeKg: null,
+            },
+        ])
+
+        const anchor = screen.getByTestId('strength-record-1-name').getAttribute('href')
+        expect(anchor).toBe('#exercise-501')
+        expect(screen.getByTestId('strength-exercise-1-name').closest('section')).toHaveAttribute(
+            'id',
+            'exercise-501'
+        )
     })
 
     it('says so when there is history but no new record, and hides records without history', () => {

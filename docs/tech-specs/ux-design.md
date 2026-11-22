@@ -244,7 +244,10 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
       grid. A phone shows two columns: the heaviest set goes last in full width so a long exercise
       name wraps instead of being cut, and a lone tile before it fills its row. From `md` the column
       count follows the tile count so the last row is never a lone tile. Below the grid, one Records
-      card holds every record as a row split by hairlines (two columns from `md`). Lyfta does not
+      card lists the records like an activity feed: one row per exercise split by hairlines, a gold
+      PR medal, the exercise name as a blue link to its block in the exercise list, then each record
+      type in bold with its value, the set behind it and the gain on the same line (wrapping on a
+      phone, where the name takes its own line). Lyfta does not
       give calories today, so imported workouts omit them.
     - The Records overview lists each exercise that set a record with a count, one line per
       record type (Weight, 1RM, Set volume, Volume), its value and, when known, the set behind it
