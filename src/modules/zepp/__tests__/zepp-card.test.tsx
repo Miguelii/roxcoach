@@ -68,7 +68,12 @@ describe('ZeppCard', () => {
         mocks.statusQuery.isPending = false
         mocks.statusQuery.isError = false
         mocks.connect.mutateAsync.mockResolvedValue({ connected: true, lastSyncedAt: null })
-        mocks.sync.mutateAsync.mockResolvedValue({ imported: 2, skipped: 1, remaining: 3 })
+        mocks.sync.mutateAsync.mockResolvedValue({
+            imported: 2,
+            skipped: 1,
+            updated: 0,
+            remaining: 3,
+        })
         mocks.disconnect.mutateAsync.mockResolvedValue(null)
         mocks.invalidateStatus.mockResolvedValue(null)
         mocks.invalidateCalendar.mockResolvedValue(null)

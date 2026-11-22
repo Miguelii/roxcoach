@@ -24,17 +24,32 @@ describe('messageForZeppError', () => {
 
 describe('zeppSyncMessage', () => {
     it('counts the imported runs, in the singular too', () => {
-        expect(zeppSyncMessage({ imported: 2, skipped: 0, remaining: 0 })).toBe('Imported 2 runs.')
-        expect(zeppSyncMessage({ imported: 1, skipped: 0, remaining: 0 })).toBe('Imported 1 run.')
+        expect(zeppSyncMessage({ imported: 2, skipped: 0, updated: 0, remaining: 0 })).toBe(
+            'Imported 2 runs.'
+        )
+        expect(zeppSyncMessage({ imported: 1, skipped: 0, updated: 0, remaining: 0 })).toBe(
+            'Imported 1 run.'
+        )
     })
 
     it('adds the runs that were already there and the call to press Sync again', () => {
-        expect(zeppSyncMessage({ imported: 2, skipped: 1, remaining: 3 })).toBe(
+        expect(zeppSyncMessage({ imported: 2, skipped: 1, updated: 0, remaining: 3 })).toBe(
             'Imported 2 runs. 1 already in Roxcoach. More runs to sync. Press Sync again to continue.'
         )
     })
 
+    it('counts the runs that got their splits, alone or after the imported ones', () => {
+        expect(zeppSyncMessage({ imported: 0, skipped: 0, updated: 3, remaining: 0 })).toBe(
+            'Added splits to 3 runs.'
+        )
+        expect(zeppSyncMessage({ imported: 1, skipped: 0, updated: 1, remaining: 0 })).toBe(
+            'Imported 1 run. Added splits to 1 run.'
+        )
+    })
+
     it('says so when there is nothing new', () => {
-        expect(zeppSyncMessage({ imported: 0, skipped: 0, remaining: 0 })).toBe('No new runs.')
+        expect(zeppSyncMessage({ imported: 0, skipped: 0, updated: 0, remaining: 0 })).toBe(
+            'No new runs.'
+        )
     })
 })

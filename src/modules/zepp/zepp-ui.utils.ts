@@ -2,7 +2,12 @@ import { ErrorCode } from '@/_bff/lib/error-codes'
 
 type ZeppUiError = { message: string }
 
-export type ZeppSyncResult = { imported: number; skipped: number; remaining: number }
+export type ZeppSyncResult = {
+    imported: number
+    skipped: number
+    updated: number
+    remaining: number
+}
 
 const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
     [ErrorCode.ZEPP_LOGIN_REJECTED]: 'Zepp did not accept this email or password.',
@@ -29,9 +34,16 @@ export const messageForZeppError = ({ message }: ZeppUiError): string => {
 
 const runs = (count: number) => `${count} ${count === 1 ? 'run' : 'runs'}`
 
-export const zeppSyncMessage = ({ imported, skipped, remaining }: ZeppSyncResult): string => {
-    if (imported === 0 && skipped === 0 && remaining === 0) return 'No new runs.'
-    const parts = [`Imported ${runs(imported)}.`]
+export const zeppSyncMessage = ({
+    imported,
+    skipped,
+    updated,
+    remaining,
+}: ZeppSyncResult): string => {
+    if (imported === 0 && skipped === 0 && updated === 0 && remaining === 0) return 'No new runs.'
+    const parts: string[] = []
+    if (imported > 0 || updated === 0) parts.push(`Imported ${runs(imported)}.`)
+    if (updated > 0) parts.push(`Added splits to ${runs(updated)}.`)
     if (skipped > 0) parts.push(`${skipped} already in Roxcoach.`)
     if (remaining > 0) parts.push('More runs to sync. Press Sync again to continue.')
     return parts.join(' ')

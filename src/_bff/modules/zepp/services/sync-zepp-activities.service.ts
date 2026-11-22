@@ -11,7 +11,9 @@ import {
 import {
     findKnownZeppTrackIds,
     findZeppDuplicateTrackIds,
+    findZeppRunsWithoutLaps,
     importZeppActivity,
+    replaceZeppLaps,
 } from '@/_bff/modules/training/services/import-zepp-activity.service'
 import {
     DETAIL_REQUEST_DELAY_MS,
@@ -31,17 +33,20 @@ import {
 } from '@/_bff/modules/zepp/services/zepp-connection.service'
 import type { ZeppRunSummary } from '@/_bff/modules/zepp/types'
 import { adaptZeppRun } from '@/_bff/modules/zepp/utils/adapter.utils'
+import { buildZeppLaps } from '@/_bff/modules/zepp/utils/laps.utils'
 
 type SyncDependencies = ZeppConnectionDependencies & {
     createImportContext: typeof createImportContext
     findKnownTrackIds: typeof findKnownZeppTrackIds
     findDuplicateTrackIds: typeof findZeppDuplicateTrackIds
     importActivity: typeof importZeppActivity
+    findRunsWithoutLaps: typeof findZeppRunsWithoutLaps
+    replaceRunLaps: typeof replaceZeppLaps
     sleep: (ms: number) => Promise<void>
     now: () => Date
 }
 
-type ZeppSyncResult = { imported: number; skipped: number; remaining: number }
+type ZeppSyncResult = { imported: number; skipped: number; updated: number; remaining: number }
 
 const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
     ...DEFAULT_ZEPP_CONNECTION_DEPENDENCIES,
@@ -49,6 +54,8 @@ const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
     findKnownTrackIds: findKnownZeppTrackIds,
     findDuplicateTrackIds: findZeppDuplicateTrackIds,
     importActivity: importZeppActivity,
+    findRunsWithoutLaps: findZeppRunsWithoutLaps,
+    replaceRunLaps: replaceZeppLaps,
     sleep: (ms) =>
         new Promise((resolve) => {
             setTimeout(resolve, ms)
@@ -61,8 +68,9 @@ const isImportableRun = (summary: ZeppRunSummary) =>
 
 const newestFirst = (a: ZeppRunSummary, b: ZeppRunSummary) => Number(b.trackId) - Number(a.trackId)
 
-// Imports the runs of the Zepp history that are not in Roxcoach yet, newest first, at most
-// MAX_DETAILS_PER_SYNC per call. Safe to repeat: known runs are never fetched again.
+// Imports the runs of the Zepp history that are not in Roxcoach yet, newest first, then adds the
+// kilometre laps to runs imported before laps existed, at most MAX_DETAILS_PER_SYNC details per call
+// in all. Safe to repeat: a run is fetched again only while it has no laps.
 export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     user: User,
     dependencies: SyncDependencies = DEFAULT_SYNC_DEPENDENCIES
@@ -97,18 +105,33 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     )
     const fresh = unknown.filter((run) => !duplicates.has(run.trackId))
     const batch = fresh.slice(0, MAX_DETAILS_PER_SYNC)
+    const withoutLaps = yield* dependencies.findRunsWithoutLaps(
+        user,
+        runs.filter((run) => known.has(run.trackId)).map((run) => run.trackId),
+        context
+    )
+    const unsplit = runs.filter((run) => withoutLaps.has(run.trackId))
+    const backfill = unsplit.slice(0, MAX_DETAILS_PER_SYNC - batch.length)
+
+    let requests = 0
+    // The history just answered, so a refused detail is about this run, not the session.
+    const fetchDetail = (summary: ZeppRunSummary) =>
+        Effect.gen(function* () {
+            if (requests > 0)
+                yield* Effect.promise(() => dependencies.sleep(DETAIL_REQUEST_DELAY_MS))
+            requests += 1
+            return yield* fetchZeppDetail(appToken, summary, dependencies.api).pipe(
+                Effect.catchTags({
+                    ZeppSessionExpiredError: () => Effect.succeed(null),
+                    ZeppApiResponseError: () => Effect.succeed(null),
+                })
+            )
+        })
 
     let imported = 0
     let skipped = 0
-    for (const [index, summary] of batch.entries()) {
-        if (index > 0) yield* Effect.promise(() => dependencies.sleep(DETAIL_REQUEST_DELAY_MS))
-        // The history just answered, so a refused detail is about this run, not the session.
-        const detail = yield* fetchZeppDetail(appToken, summary, dependencies.api).pipe(
-            Effect.catchTags({
-                ZeppSessionExpiredError: () => Effect.succeed(null),
-                ZeppApiResponseError: () => Effect.succeed(null),
-            })
-        )
+    for (const summary of batch) {
+        const detail = yield* fetchDetail(summary)
         if (detail === null) {
             skipped += 1
             continue
@@ -123,11 +146,26 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         else skipped += 1
     }
 
+    let updated = 0
+    for (const summary of backfill) {
+        const activityId = withoutLaps.get(summary.trackId)
+        const detail = yield* fetchDetail(summary)
+        if (detail === null || activityId === undefined) continue
+        yield* dependencies.replaceRunLaps(
+            user,
+            activityId,
+            buildZeppLaps(summary, detail),
+            context
+        )
+        updated += 1
+    }
+
     yield* updateZeppLastSyncedAt(admin, user.id, dependencies.now().toISOString())
     const result: ZeppSyncResult = {
         imported,
         skipped,
-        remaining: fresh.length - batch.length,
+        updated,
+        remaining: fresh.length - batch.length + unsplit.length - backfill.length,
     }
     return result
 })

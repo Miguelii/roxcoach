@@ -10,11 +10,12 @@ anonymized responses). Read them before touching the integration or reading a ne
 ## Goals and scope
 
 - Sign in with email and password, keep only the encrypted `app_token`, never the password.
-- A manual `Sync` that imports new outdoor runs with their heart rate and pace histograms.
+- A manual `Sync` that imports new outdoor runs with their heart rate and pace histograms and their
+  kilometre splits.
 - Repeated syncs are idempotent and safe to retry or to press twice at once.
 - Do not write, update or delete anything in Zepp.
 
-Out of scope: Xiaomi, Google and Apple sign-ins, scheduled sync, GPS coordinates and laps, and the
+Out of scope: Xiaomi, Google and Apple sign-ins, scheduled sync, GPS coordinates, the laps the athlete marks by hand, and the
 workout types that have no mock yet: 6 (probably treadmill), 214 (Hyrox) and the rest. Type 52 looks
 like strength and stays with Lyfta.
 
@@ -56,6 +57,13 @@ entry and the running sum is the offset from `trackid`.
 | `currentDistance` | cumulative centimeters                                      |
 | `speed`           | meters per second, absolute                                 |
 
+`kilo_pace` is the exception: `;` separated entries of comma separated values, one entry per full
+kilometre. Checked against the mock run (3 entries for 3119 m): value 1 is the moving seconds of
+that kilometre, value 4 its mean heart rate, value 5 the offset from `trackid` where it ends (370,
+859, 1302), value 6 the moving milliseconds. The sum of the moving seconds plus the pauses matches the
+offsets. The other values are not understood and not read. An entry with a missing or non positive
+moving time or offset is dropped.
+
 Checked against the mock run: 721 heart rate points ending at offset 1329 (`end_time - trackid`),
 mean 143 (the summary says 143), last distance 3115 m (the summary says 3119 m).
 
@@ -64,10 +72,18 @@ mean 143 (the summary says 143), last distance 3115 m (the summary says 3119 m).
 `adaptZeppRun` (pure, `zepp/utils/adapter.utils.ts`) maps a summary and a detail to the normalized
 activity: `startedAt` is `trackid`, `elapsedTimeS` is `end_time - trackid` (it includes the pauses
 and the lead-in the watch counts before the first sample), `movingTimeS` and `distanceM` come from
-the summary, category `run`, no elevation, no laps. Samples are one per distance point, with heart
+the summary, category `run`, no elevation. Samples are one per distance point, with heart
 rate and speed carried forward. The training import builds the heart rate and pace histograms from
 them and stores the row with `source = 'zepp'` and `source_id = trackid`; there is no
 `activity_files` row.
+
+Laps (`buildZeppLaps`, `zepp/utils/laps.utils.ts`): one lap per `kilo_pace` entry, 1000 m, starting
+where the previous one ended, with the moving time and heart rate of the entry and an elapsed time
+that includes its pauses. The rest of the run after the last full kilometre becomes a last partial
+lap when it is at least 10 m and has moving time left (summary distance and moving time minus the
+full laps), with the mean heart rate of the series in that span. A run without `kilo_pace` entries
+gets one lap for the whole run. The laps are written right after the activity; if writing them fails
+the activity is deleted, so the next sync tries the run again.
 
 Sync (`syncZeppActivities`): read the connection, fetch the history, keep type 1 with distance above
 zero, newest first, drop the ids already imported, then fetch and import at most 50 details, spaced
@@ -75,15 +91,18 @@ zero, newest first, drop the ids already imported, then fetch and import at most
 another source (a hand uploaded Zepp file) is dropped before the batch is cut, with one range query,
 so it never uses up the 50 details; an earlier Zepp activity does not count, so a stopped start-up run
 cannot block the real one. A manual upload applies the same window, so a file uploaded after a sync
-is also a duplicate. A detail that Zepp refuses (HTTP error or `code` other than 1) is skipped for
+is also a duplicate. Runs imported before laps existed (a Zepp activity with no `activity_laps` row)
+are fetched again with the budget the new runs leave, newest first, and get their laps; the activity
+itself is not touched. A detail that Zepp refuses (HTTP error or `code` other than 1) is skipped for
 that run only. There is no history window: the whole history is read every time. The unique `(user_id, source, source_id)` index turns a concurrent
-second insert into "already imported". The result is `{ imported, skipped, remaining }`; the UI asks
-to press Sync again while `remaining` is above zero. An expired token aborts the sync.
+second insert into "already imported". The result is `{ imported, skipped, updated, remaining }`, where
+`updated` counts the runs that got their laps and `remaining` counts both the new runs and the runs
+still without laps; the UI asks to press Sync again while `remaining` is above zero. An expired token aborts the sync.
 
 ## Sync button
 
 The Dashboard and Calendar `Sync` button lists Zepp next to Lyfta. Its row syncs only Zepp. The result goes through a toast: "Zepp synced: Imported 2
-runs." or, while more remains, "Imported 50 runs. More runs to sync. Press Sync again to continue."
+runs.", "Added splits to 3 runs." or, while more remains, "Imported 50 runs. More runs to sync. Press Sync again to continue."
 
 ## Security
 

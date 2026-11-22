@@ -7,8 +7,11 @@ import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/f
 import {
     findKnownZeppTrackIds,
     findZeppDuplicateTrackIds,
+    findZeppRunsWithoutLaps,
     importZeppActivity,
+    replaceZeppLaps,
 } from '@/_bff/modules/training/services/import-zepp-activity.service'
+import type { ParsedLap } from '@/_bff/modules/training/types'
 import type { AdaptedActivity, ZeppRunSummary } from '@/_bff/modules/zepp/types'
 
 // SAFETY: the import service only reads the authenticated user's ID.
@@ -51,6 +54,31 @@ const ACTIVITY = (startedAt: string): AdaptedActivity => ({
     })),
 })
 
+const LAP: ParsedLap = {
+    lapIndex: 1,
+    name: null,
+    startedAt: '2026-11-17T19:18:00.000Z',
+    elapsedTimeS: 30,
+    movingTimeS: 29,
+    distanceM: 87,
+    avgHr: 150,
+    avgSpeedMps: 3,
+    calories: null,
+}
+
+const LAP_ROW = {
+    lap_index: 1,
+    name: null,
+    distance_m: 87,
+    elapsed_time_s: 30,
+    moving_time_s: 29,
+    avg_hr: 150,
+    avg_speed_mps: 3,
+    station: null,
+    user_id: USER.id,
+    activity_id: 'activity-1',
+}
+
 const context = (supabase: ReturnType<typeof makeFakeDb>['supabase'], timeZone: string) => ({
     supabase,
     timeZone,
@@ -71,7 +99,7 @@ const insertedRow = (chain: ReturnType<typeof makeFakeDb>['chains'][number] | un
 
 describe('importZeppActivity', () => {
     it('stores the run as a zepp activity with histograms built from its samples', async () => {
-        const { chains, supabase } = makeFakeDb([ok(null), ok()])
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' })])
 
         const result = await Effect.runPromise(
             importZeppActivity(
@@ -93,10 +121,50 @@ describe('importZeppActivity', () => {
         })
         expect(row.hr_histogram.bins[0]?.[0]).toBe(150)
         expect(row.pace_histogram.bins.length).toBeGreaterThan(0)
+        expect(chains).toHaveLength(2)
+    })
+
+    it('stores the laps of the run with the new activity', async () => {
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' }), ok(), ok()])
+
+        const result = await Effect.runPromise(
+            importZeppActivity(
+                USER,
+                SUMMARY,
+                { ...ACTIVITY('2026-11-17T19:18:00.000Z'), laps: [LAP] },
+                context(supabase, 'UTC')
+            )
+        )
+
+        expect(result).toEqual({ created: true })
+        expect(chains[3]?.insert).toHaveBeenCalledWith([LAP_ROW])
+    })
+
+    it('removes the new activity when its laps cannot be stored, so the next sync retries it', async () => {
+        const { chains, supabase } = makeFakeDb([
+            ok(null),
+            ok({ id: 'activity-1' }),
+            ok(),
+            { data: null, error: { code: '500', message: 'boom' } },
+            ok([{ id: 'activity-1' }]),
+        ])
+
+        const exit = await Effect.runPromiseExit(
+            importZeppActivity(
+                USER,
+                SUMMARY,
+                { ...ACTIVITY('2026-11-17T19:18:00.000Z'), laps: [LAP] },
+                context(supabase, 'UTC')
+            )
+        )
+
+        expect(exit._tag).toBe('Failure')
+        expect(chains[4]?.delete).toHaveBeenCalled()
+        expect(chains[4]?.eq).toHaveBeenCalledWith('id', 'activity-1')
     })
 
     it('uses the athlete timezone for the local date', async () => {
-        const { chains, supabase } = makeFakeDb([ok(null), ok()])
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' })])
 
         await Effect.runPromise(
             importZeppActivity(
@@ -146,7 +214,7 @@ describe('importZeppActivity', () => {
     })
 
     it('does not count an earlier Zepp activity as a duplicate (a stopped start-up run)', async () => {
-        const { chains, supabase } = makeFakeDb([ok(null), ok()])
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' })])
 
         await Effect.runPromise(
             importZeppActivity(
@@ -195,5 +263,49 @@ describe('findZeppDuplicateTrackIds', () => {
 
         expect(duplicates.size).toBe(0)
         expect(from).not.toHaveBeenCalled()
+    })
+})
+
+describe('findZeppRunsWithoutLaps', () => {
+    it('maps each imported run that has no laps to its activity id', async () => {
+        const { chains, supabase } = makeFakeDb([
+            ok([
+                { id: 'activity-1', source_id: '1' },
+                { id: 'activity-2', source_id: '2' },
+            ]),
+            ok([{ activity_id: 'activity-1' }]),
+        ])
+
+        const missing = await Effect.runPromise(
+            findZeppRunsWithoutLaps(USER, ['1', '2'], context(supabase, 'UTC'))
+        )
+
+        expect([...missing]).toEqual([['2', 'activity-2']])
+        expect(chains[0]?.eq).toHaveBeenCalledWith('source', 'zepp')
+        expect(chains[1]?.in).toHaveBeenCalledWith('activity_id', ['activity-1', 'activity-2'])
+    })
+
+    it('does not query when there are no runs', async () => {
+        const { from, supabase } = makeFakeDb([])
+
+        const missing = await Effect.runPromise(
+            findZeppRunsWithoutLaps(USER, [], context(supabase, 'UTC'))
+        )
+
+        expect(missing.size).toBe(0)
+        expect(from).not.toHaveBeenCalled()
+    })
+})
+
+describe('replaceZeppLaps', () => {
+    it('writes the laps of an imported run', async () => {
+        const { chains, supabase } = makeFakeDb([ok(), ok()])
+
+        await Effect.runPromise(
+            replaceZeppLaps(USER, 'activity-1', [LAP], context(supabase, 'UTC'))
+        )
+
+        expect(chains[0]?.delete).toHaveBeenCalled()
+        expect(chains[1]?.insert).toHaveBeenCalledWith([LAP_ROW])
     })
 })

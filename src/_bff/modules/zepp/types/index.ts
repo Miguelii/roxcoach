@@ -23,6 +23,8 @@ export type ZeppRunDetail = {
     heartRate: string
     distance: string
     speed: string
+    // One `;` separated entry per full kilometre (see `decodeKiloPace`).
+    kiloPace: string
 }
 
 export type ZeppHistory = { summaries: ZeppRunSummary[]; next: number }

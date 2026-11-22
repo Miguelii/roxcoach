@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 import { syncZeppActivities } from '@/_bff/modules/zepp/services/sync-zepp-activities.service'
+import type { ParsedLap } from '@/_bff/modules/training/types'
 import type { ZeppJson, ZeppRunSummary } from '@/_bff/modules/zepp/types'
 import { encryptZeppToken } from '@/_bff/modules/zepp/utils/credentials.utils'
 import { readMock } from '@/_bff/modules/zepp/utils/__tests__/mocks'
@@ -44,6 +45,7 @@ const setup = (
         detailBody?: ZeppJson
         created?: boolean
         connection?: boolean
+        withoutLaps?: Record<string, string>
     } = {}
 ) => {
     const admin = makeFakeDb([
@@ -64,6 +66,12 @@ const setup = (
     })
     const findKnownTrackIds = vi.fn(() => Effect.succeed(new Set(options.known ?? [])))
     const findDuplicateTrackIds = vi.fn(() => Effect.succeed(new Set(options.duplicates ?? [])))
+    const findRunsWithoutLaps = vi.fn(() =>
+        Effect.succeed(new Map(Object.entries(options.withoutLaps ?? {})))
+    )
+    const replaceRunLaps = vi.fn(
+        (_user: User, _activityId: string, _laps: ParsedLap[]) => Effect.void
+    )
     const sleep = vi.fn(async () => {})
     const dependencies = {
         createAdminClient: () => admin.supabase,
@@ -73,11 +81,22 @@ const setup = (
         findKnownTrackIds,
         findDuplicateTrackIds,
         importActivity,
+        findRunsWithoutLaps,
+        replaceRunLaps,
         sleep,
         now: () => new Date('2026-11-21T10:00:00.000Z'),
     }
     const sync = () => Effect.runPromiseExit(syncZeppActivities(USER, dependencies))
-    return { admin, fetcher, importActivity, importedTrackIds, findKnownTrackIds, sleep, sync }
+    return {
+        admin,
+        fetcher,
+        importActivity,
+        importedTrackIds,
+        findKnownTrackIds,
+        replaceRunLaps,
+        sleep,
+        sync,
+    }
 }
 
 const detailCalls = (fetcher: ReturnType<typeof setup>['fetcher']) =>
@@ -93,6 +112,7 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 1,
             skipped: 0,
+            updated: 0,
             remaining: 0,
         })
         expect(importActivity).toHaveBeenCalledTimes(1)
@@ -122,6 +142,7 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 0,
             skipped: 0,
+            updated: 0,
             remaining: 0,
         })
         expect(detailCalls(fetcher)).toHaveLength(0)
@@ -136,6 +157,7 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 0,
             skipped: 1,
+            updated: 0,
             remaining: 0,
         })
     })
@@ -149,6 +171,7 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 50,
             skipped: 0,
+            updated: 0,
             remaining: 3,
         })
         expect(sleep).toHaveBeenCalledTimes(49)
@@ -186,6 +209,7 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 5,
             skipped: 0,
+            updated: 0,
             remaining: 0,
         })
         expect(detailCalls(fetcher)).toHaveLength(5)
@@ -203,8 +227,61 @@ describe('syncZeppActivities', () => {
         expect(Exit.isSuccess(exit) && exit.value).toEqual({
             imported: 0,
             skipped: 2,
+            updated: 0,
             remaining: 0,
         })
         expect(importedTrackIds).toEqual([])
+    })
+
+    it('adds the kilometre laps to a run imported before laps existed', async () => {
+        const { fetcher, importActivity, replaceRunLaps, sync } = setup({
+            known: ['1794943080'],
+            withoutLaps: { '1794943080': 'activity-1' },
+        })
+
+        const exit = await sync()
+
+        expect(Exit.isSuccess(exit) && exit.value).toEqual({
+            imported: 0,
+            skipped: 0,
+            updated: 1,
+            remaining: 0,
+        })
+        expect(importActivity).not.toHaveBeenCalled()
+        expect(detailCalls(fetcher)).toHaveLength(1)
+        expect(replaceRunLaps.mock.calls[0]?.[1]).toBe('activity-1')
+        expect(replaceRunLaps.mock.calls[0]?.[2]).toHaveLength(4)
+    })
+
+    it('imports new runs first and leaves the laps for the next sync when the batch is full', async () => {
+        const runs = Array.from({ length: 51 }, (_, index) => run(1000 + index))
+        const { replaceRunLaps, sync } = setup({
+            historyBody: history(runs),
+            known: ['1000'],
+            withoutLaps: { '1000': 'activity-1' },
+        })
+
+        const exit = await sync()
+
+        expect(Exit.isSuccess(exit) && exit.value).toEqual({
+            imported: 50,
+            skipped: 0,
+            updated: 0,
+            remaining: 1,
+        })
+        expect(replaceRunLaps).not.toHaveBeenCalled()
+    })
+
+    it('leaves a run without laps for the next sync when Zepp refuses its detail', async () => {
+        const { replaceRunLaps, sync } = setup({
+            known: ['1794943080'],
+            withoutLaps: { '1794943080': 'activity-1' },
+            detailBody: { code: 0, message: 'no data' },
+        })
+
+        const exit = await sync()
+
+        expect(Exit.isSuccess(exit) && exit.value).toMatchObject({ updated: 0, remaining: 0 })
+        expect(replaceRunLaps).not.toHaveBeenCalled()
     })
 })

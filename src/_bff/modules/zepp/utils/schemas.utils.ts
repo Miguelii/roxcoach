@@ -43,6 +43,7 @@ const detailSchema = z.object({
         heart_rate: z.string().optional(),
         currentDistance: z.string().optional(),
         speed: z.string().optional(),
+        kilo_pace: z.string().optional(),
     }),
 })
 
@@ -58,5 +59,6 @@ export function parseZeppDetail(json: ZeppJson): ZeppRunDetail {
         heartRate: data.heart_rate ?? '',
         distance: data.currentDistance ?? '',
         speed: data.speed ?? '',
+        kiloPace: data.kilo_pace ?? '',
     }
 }

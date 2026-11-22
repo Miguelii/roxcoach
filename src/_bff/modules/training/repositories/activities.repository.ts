@@ -490,8 +490,13 @@ export const insertZeppActivity = Effect.fn('insertZeppActivity')(function* (
     userId: string,
     row: NewZeppActivityRow
 ) {
-    const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).insert({ ...row, source: 'zepp', user_id: userId }),
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .insert({ ...row, source: 'zepp', user_id: userId })
+                .select('id')
+                .single(),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -499,9 +504,45 @@ export const insertZeppActivity = Effect.fn('insertZeppActivity')(function* (
             }),
     })
 
-    if (error?.code === UNIQUE_VIOLATION) return { created: false }
+    if (error?.code === UNIQUE_VIOLATION) return { created: false as const }
     if (error) return yield* writeError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_INSERT_ERR)
-    return { created: true }
+    if (data === null)
+        return yield* new ActivityWriteError({
+            cause: 'insert returned no row',
+            error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_INSERT_ERR,
+        })
+    return { created: true as const, id: data.id }
+})
+
+// The activity id of each of these Zepp track ids the user already has.
+export const selectZeppActivityIds = Effect.fn('selectZeppActivityIds')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    sourceIds: string[]
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id, source_id')
+                .eq('user_id', userId)
+                .eq('source', 'zepp')
+                .in('source_id', sourceIds),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR)
+    const parsed = z.array(z.object({ id: z.string(), source_id: z.string() })).safeParse(data)
+    if (!parsed.success)
+        return yield* new ActivityQueryError({
+            cause: 'zepp activity rows failed schema validation',
+            error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR,
+        })
+    return parsed.data.map((row) => ({ id: row.id, sourceId: row.source_id }))
 })
 
 // Which of these provider ids the user already has as activities of that source.

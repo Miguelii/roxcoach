@@ -130,3 +130,38 @@ export const selectLaps = Effect.fn('selectLaps')(function* (
         station: row.station,
     }))
 })
+
+// Which of these activities of the user have at least one lap.
+export const selectActivityIdsWithLaps = Effect.fn('selectActivityIdsWithLaps')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    activityIds: string[]
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('activity_id')
+                .eq('user_id', userId)
+                .in('activity_id', activityIds),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_LAPS_SELECT,
+            }),
+    })
+
+    if (error)
+        return yield* new ActivityQueryError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.TRAINING_LAPS_SELECT_ERR,
+        })
+
+    const parsed = z.array(z.object({ activity_id: z.string() })).safeParse(data)
+    if (!parsed.success)
+        return yield* new ActivityQueryError({
+            cause: 'activity_id rows failed schema validation',
+            error_hash: ErrorCode.TRAINING_LAPS_SELECT_PARSE,
+        })
+    return new Set(parsed.data.map((row) => row.activity_id))
+})

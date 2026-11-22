@@ -85,6 +85,7 @@ describe('parseZeppDetail', () => {
             heartRate: '',
             distance: '',
             speed: '',
+            kiloPace: '',
         })
     })
 })

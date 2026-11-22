@@ -132,13 +132,14 @@ describe('Zepp controllers', () => {
 
     it('syncs and disconnects through protected procedures', async () => {
         mocks.syncActivities.mockReturnValue(
-            Effect.succeed({ imported: 2, skipped: 1, remaining: 0 })
+            Effect.succeed({ imported: 2, skipped: 1, updated: 0, remaining: 0 })
         )
         mocks.disconnect.mockReturnValue(Effect.void)
 
         await expect(caller.zepp.syncActivities()).resolves.toEqual({
             imported: 2,
             skipped: 1,
+            updated: 0,
             remaining: 0,
         })
         await expect(caller.zepp.disconnect()).resolves.toBeUndefined()

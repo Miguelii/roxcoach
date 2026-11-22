@@ -41,7 +41,12 @@ describe('useSyncZepp', () => {
         mocks.statusQuery.isPending = false
         mocks.statusQuery.isError = false
         mocks.invalidate.mockResolvedValue(null)
-        mocks.sync.mutateAsync.mockResolvedValue({ imported: 2, skipped: 0, remaining: 0 })
+        mocks.sync.mutateAsync.mockResolvedValue({
+            imported: 2,
+            skipped: 0,
+            updated: 0,
+            remaining: 0,
+        })
     })
 
     it('reports the connection as a status', () => {
@@ -76,7 +81,12 @@ describe('useSyncZepp', () => {
     })
 
     it('asks to press Sync again while there is more to import', async () => {
-        mocks.sync.mutateAsync.mockResolvedValue({ imported: 50, skipped: 0, remaining: 4 })
+        mocks.sync.mutateAsync.mockResolvedValue({
+            imported: 50,
+            skipped: 0,
+            updated: 0,
+            remaining: 4,
+        })
         const { result } = renderHook(() => useSyncZepp())
 
         await act(async () => {

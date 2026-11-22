@@ -32,11 +32,12 @@ const ROW: NewZeppActivityRow = {
 
 describe('insertZeppActivity', () => {
     it('inserts a zepp activity owned by the user', async () => {
-        const { chains, from, supabase } = makeFakeDb([ok()])
+        const { chains, from, supabase } = makeFakeDb([ok({ id: 'activity-1' })])
 
         const result = await Effect.runPromise(insertZeppActivity(supabase, USER_ID, ROW))
 
-        expect(result).toEqual({ created: true })
+        expect(result).toEqual({ created: true, id: 'activity-1' })
+        expect(chains[0]?.select).toHaveBeenCalledWith('id')
         expect(from).toHaveBeenCalledWith('activities')
         expect(chains[0]?.insert).toHaveBeenCalledWith({
             ...ROW,

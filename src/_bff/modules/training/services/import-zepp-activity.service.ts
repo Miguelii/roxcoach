@@ -9,13 +9,32 @@ import { ZeppImportError } from '@/_bff/lib/errors'
 import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import { buildPaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import {
+    deleteActivity,
     insertZeppActivity,
     selectIdNearStartedAt,
     selectSourceIds,
     selectStartedAtsBetween,
+    selectZeppActivityIds,
 } from '@/_bff/modules/training/repositories/activities.repository'
+import {
+    replaceLaps,
+    selectActivityIdsWithLaps,
+} from '@/_bff/modules/training/repositories/activity-laps.repository'
 import type { ImportContext } from '@/_bff/modules/training/services/import-context.service'
+import type { LapRow, ParsedLap } from '@/_bff/modules/training/types'
 import type { AdaptedActivity, ZeppRunSummary } from '@/_bff/modules/zepp/types'
+
+const toLapRows = (laps: ParsedLap[]): LapRow[] =>
+    laps.map((lap) => ({
+        lap_index: lap.lapIndex,
+        name: lap.name,
+        distance_m: lap.distanceM,
+        elapsed_time_s: lap.elapsedTimeS,
+        moving_time_s: lap.movingTimeS,
+        avg_hr: lap.avgHr,
+        avg_speed_mps: lap.avgSpeedMps,
+        station: null,
+    }))
 
 export const findKnownZeppTrackIds = Effect.fn('findKnownZeppTrackIds')(function* (
     user: User,
@@ -78,7 +97,7 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
     )
     if (nearby !== null) return { created: false }
 
-    return yield* insertZeppActivity(supabase, user.id, {
+    const inserted = yield* insertZeppActivity(supabase, user.id, {
         source_id: summary.trackId,
         sport_type: activity.sportType,
         category: activity.category,
@@ -96,4 +115,43 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
         hr_histogram: buildHrHistogram(activity.samples),
         pace_histogram: buildPaceHistogram(activity.samples),
     })
+    if (!inserted.created || activity.laps.length === 0) return { created: inserted.created }
+
+    // Without its laps the run would look imported and never be split, so it is removed and the
+    // next sync imports it again.
+    yield* replaceLaps(supabase, user.id, inserted.id, toLapRows(activity.laps)).pipe(
+        Effect.onError(() => deleteActivity(supabase, user.id, inserted.id).pipe(Effect.ignore))
+    )
+    return { created: true }
+})
+
+// The Zepp runs already imported without laps (imported before laps existed), by track id.
+export const findZeppRunsWithoutLaps = Effect.fn('findZeppRunsWithoutLaps')(function* (
+    user: User,
+    trackIds: string[],
+    context: ImportContext
+) {
+    if (trackIds.length === 0) return new Map<string, string>()
+
+    const activities = yield* selectZeppActivityIds(context.supabase, user.id, trackIds)
+    if (activities.length === 0) return new Map<string, string>()
+    const withLaps = yield* selectActivityIdsWithLaps(
+        context.supabase,
+        user.id,
+        activities.map((activity) => activity.id)
+    )
+    return new Map(
+        activities.flatMap((activity) =>
+            withLaps.has(activity.id) ? [] : [[activity.sourceId, activity.id] as const]
+        )
+    )
+})
+
+export const replaceZeppLaps = Effect.fn('replaceZeppLaps')(function* (
+    user: User,
+    activityId: string,
+    laps: ParsedLap[],
+    context: ImportContext
+) {
+    yield* replaceLaps(context.supabase, user.id, activityId, toLapRows(laps))
 })

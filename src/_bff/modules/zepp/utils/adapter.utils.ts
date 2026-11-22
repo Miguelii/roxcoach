@@ -1,5 +1,6 @@
 import type { HrSample } from '@/_bff/modules/training/types/progress'
 import type { AdaptedActivity, ZeppRunDetail, ZeppRunSummary } from '@/_bff/modules/zepp/types'
+import { buildZeppLaps } from '@/_bff/modules/zepp/utils/laps.utils'
 import {
     decodeAbsoluteSeries,
     decodeDeltaSeries,
@@ -51,7 +52,7 @@ export function adaptZeppRun(summary: ZeppRunSummary, detail: ZeppRunDetail): Ad
         avgSpeedMps: summary.movingTimeS > 0 ? summary.distanceM / summary.movingTimeS : null,
         calories: summary.calories,
         noteText: null,
-        laps: [],
+        laps: buildZeppLaps(summary, detail),
         samples: buildSamples(summary, detail),
     }
 }
