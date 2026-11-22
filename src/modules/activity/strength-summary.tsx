@@ -182,7 +182,7 @@ export function StrengthSummary({
                             {recordCount > 0 && (
                                 <span
                                     data-testid="strength-records-count"
-                                    className="rounded-full bg-tone-soft px-2 py-0.5 font-mono text-xs font-medium text-tone-deep"
+                                    className="rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper tabular-nums"
                                 >
                                     {recordCount}
                                 </span>
@@ -201,38 +201,41 @@ export function StrengthSummary({
                                     <li
                                         key={record.key}
                                         data-testid={`strength-record-${index + 1}`}
-                                        className="flex items-start gap-3 rounded-[var(--radius-surface-inner)] bg-tone-soft px-3 py-2.5 text-tone-deep"
+                                        className="flex items-start gap-3 rounded-[var(--radius-surface-inner)] bg-paper px-3.5 py-3"
                                     >
-                                        <IconTrophy
-                                            className="mt-0.5 size-4 shrink-0"
+                                        <span
                                             aria-hidden="true"
-                                        />
+                                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tone-soft text-tone-deep"
+                                        >
+                                            <IconTrophy className="size-4" />
+                                        </span>
                                         <div className="min-w-0 flex-1 space-y-1.5">
                                             <p
                                                 data-testid={`strength-record-${index + 1}-name`}
-                                                className="text-sm font-medium leading-snug [overflow-wrap:anywhere]"
+                                                className="pt-1 text-sm font-semibold leading-snug text-ink [overflow-wrap:anywhere]"
                                             >
                                                 {record.exercise}
                                             </p>
-                                            <ul className="grid gap-1">
+                                            <ul className="grid gap-1.5">
                                                 {record.kinds.map((kind) => (
                                                     <li
                                                         key={kind.type}
                                                         data-testid={`strength-record-${index + 1}-${kind.type}`}
-                                                        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm tabular-nums"
+                                                        className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 tabular-nums"
                                                     >
-                                                        <span className="eyebrow min-w-24">
+                                                        <span className="min-w-20 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
                                                             {RECORD_LABELS[kind.type]}
                                                         </span>
                                                         <span
                                                             data-testid={`strength-record-${index + 1}-${kind.type}-value`}
+                                                            className="text-base font-semibold text-ink"
                                                         >
                                                             {formatStrengthNumber(kind.valueKg)} kg
                                                         </span>
                                                         {kind.setText !== null && (
                                                             <span
                                                                 data-testid={`strength-record-${index + 1}-${kind.type}-set`}
-                                                                className="text-xs opacity-80"
+                                                                className="text-xs text-muted-foreground"
                                                             >
                                                                 {kind.setText}
                                                             </span>
@@ -240,7 +243,7 @@ export function StrengthSummary({
                                                         {kind.deltaKg !== null && (
                                                             <span
                                                                 data-testid={`strength-record-${index + 1}-${kind.type}-delta`}
-                                                                className="inline-flex items-center gap-0.5 text-xs"
+                                                                className="inline-flex items-center gap-0.5 rounded-full bg-green-soft px-1.5 py-0.5 text-xs font-medium text-green-deep"
                                                             >
                                                                 <IconArrowUpRight
                                                                     className="size-3.5"

@@ -23,7 +23,7 @@ export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
     return (
         <div
             data-testid="month-view"
-            className="overflow-hidden rounded-[var(--radius-surface)] shadow-soft bg-card"
+            className="overflow-hidden rounded-[var(--radius-surface)] shadow-soft bg-card border border-card"
         >
             <div className="grid grid-cols-7 border-b border-hairline bg-sunken/50 lg:grid-cols-[repeat(7,minmax(0,1fr))_150px]">
                 {WEEKDAY_LABELS.map((label) => (
