@@ -28,7 +28,7 @@ export function RaceBanner({ readiness }: Props) {
             href="/races"
             data-testid="race-banner"
             data-tone="amber"
-            className="group block transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700 motion-reduce:transition-none"
+            className="group block transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700 motion-reduce:transition-none shadow-soft"
         >
             <div className="flex flex-col gap-5 rounded-[var(--radius-surface)] bg-tone-soft p-5 text-tone-deep md:flex-row md:items-center md:gap-8 md:p-6">
                 <div className="space-y-2">

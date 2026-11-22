@@ -237,11 +237,11 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
   values remain honest. An activity without sets gets an empty state.
 - Strength detail, all derived from stored sets (helpers in
   `src/_bff/core/helpers/strength-detail.helper.ts`, used by the server and the UI):
-    - One summary card holds the whole workout, so nothing about it sits
-      apart: the headline numbers (duration, total volume, body weight, calories when stored,
+    - The workout summary is a set of separate tiles, like the run metrics (white card,
+      soft shadow, label and a large value): the headline numbers (duration, total volume, body weight, calories when stored,
       heart rate and effort when present), then what was done (exercises, sets, total reps, heaviest
       set with its exercise, density as volume per minute with a volume and a duration), then a
-      Records overview. On a phone the heaviest set goes last in full width so a long exercise name
+      Records overview with one tile per exercise. On a phone the heaviest set goes last in full width so a long exercise name
       wraps instead of being cut. Lyfta does not give calories today, so imported workouts omit them.
     - The Records overview lists each exercise that set a record with a count, one line per
       record type (Weight, 1RM, Set volume, Volume), its value and, when known, the set behind it

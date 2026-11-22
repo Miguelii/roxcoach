@@ -41,9 +41,9 @@ type Stat = {
     tip?: string
 }
 
-const ROW_DIVIDER = 'border-t border-hairline pt-4'
+const TILE = 'min-w-0 rounded-[var(--radius-surface-inner)] bg-card p-4 shadow-soft'
 
-// The whole workout in one card: the headline numbers, what was done (exercises, sets, reps, the
+// The whole workout as separate tiles: the headline numbers, what was done (exercises, sets, reps, the
 // heaviest lift, density) and the records set today. Every value comes from the stored sets, so it
 // never contradicts the list below.
 export function StrengthSummary({
@@ -95,22 +95,22 @@ export function StrengthSummary({
             data-tone={KINDS.strength.tone}
             aria-label="Workout summary"
         >
-            <div className="space-y-4 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft">
+            <div className="space-y-3">
                 {metrics.length > 0 && (
                     <dl
                         data-testid="activity-metrics"
-                        className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4"
+                        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
                     >
                         {metrics.map((metric) => (
-                            <div key={metric.id} className="min-w-0">
+                            <div key={metric.id} className={cn(TILE, 'max-sm:last:odd:col-span-2')}>
                                 <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
                                 <dd
                                     data-testid={`metric-${metric.id}-value`}
-                                    className="mt-1 font-mono text-lg tabular-nums"
+                                    className="display mt-1 text-2xl tabular-nums"
                                 >
                                     {metric.value}
                                     {metric.detail !== undefined && (
-                                        <span className="block text-xs text-muted-foreground sm:inline sm:text-lg sm:text-foreground">
+                                        <span className="mt-0.5 block font-sans text-xs font-normal tracking-normal text-muted-foreground">
                                             {metric.detail}
                                         </span>
                                     )}
@@ -121,17 +121,12 @@ export function StrengthSummary({
                 )}
 
                 {stats.length > 0 && (
-                    <dl
-                        className={cn(
-                            'grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 md:grid-cols-5',
-                            metrics.length > 0 && ROW_DIVIDER
-                        )}
-                    >
+                    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                         {stats.map((stat) => (
                             <div
                                 key={stat.id}
                                 className={cn(
-                                    'min-w-0',
+                                    TILE,
                                     // On a phone the heaviest set (it carries a long exercise name)
                                     // goes last in full width, and a lone short stat before it fills
                                     // its row.
@@ -154,7 +149,7 @@ export function StrengthSummary({
                                 </dt>
                                 <dd
                                     data-testid={`strength-summary-${stat.id}`}
-                                    className="mt-1 font-mono text-lg tabular-nums"
+                                    className="display mt-1 text-2xl tabular-nums"
                                 >
                                     {stat.value}
                                 </dd>
@@ -175,7 +170,7 @@ export function StrengthSummary({
                     <section
                         data-testid="strength-records"
                         aria-label="Records"
-                        className={cn('space-y-3', ROW_DIVIDER)}
+                        className="space-y-3 pt-3"
                     >
                         <p className="flex items-center gap-2">
                             <span className="eyebrow text-muted-foreground">Records</span>
@@ -196,12 +191,12 @@ export function StrengthSummary({
                                 No new records this session.
                             </p>
                         ) : (
-                            <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                            <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                                 {records.map((record, index) => (
                                     <li
                                         key={record.key}
                                         data-testid={`strength-record-${index + 1}`}
-                                        className="flex items-start gap-3 rounded-[var(--radius-surface-inner)] bg-paper px-3.5 py-3"
+                                        className="flex items-start gap-3 rounded-[var(--radius-surface-inner)] bg-card p-4 shadow-soft"
                                     >
                                         <span
                                             aria-hidden="true"
