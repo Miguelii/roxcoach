@@ -73,7 +73,7 @@ function FastSessions({ done }: { done: number }) {
     )
 }
 
-// Whether the last 4 weeks of running fit the next race: load and work faster than race pace.
+// Whether the last 4 weeks of running fit the next race: load and hard work at race pace or faster.
 export function RaceReadinessCard({ readiness }: Props) {
     const { load, pace, race } = readiness
 

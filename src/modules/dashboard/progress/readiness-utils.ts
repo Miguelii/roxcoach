@@ -36,14 +36,19 @@ export function loadReason(load: RunReadinessDTO['load']): string {
     return [`${parts.join(', ')}.`, ...notes].join(' ')
 }
 
-// The numbers behind the Pace verdict: runs with work faster than the race pace.
+// The numbers behind the Pace verdict: hard runs at race pace or faster, at most two a week.
 export function paceReason(pace: RunReadinessDTO['pace'], racePaceSPerKm: number): string {
     if (pace.state === 'no_data') return 'Add runs with pace data to see your speed work.'
 
-    const target = RACE_READINESS.FAST_SESSIONS_TARGET
     const runs = pace.fastSessions === 1 ? 'run' : 'runs'
-    const base = `${pace.fastSessions} ${runs} faster than ${formatPaceSeconds(racePaceSPerKm)} in the last 4 weeks`
-    if (pace.state === 'attention') return `${base}, aim for ${target}.`
+    const base = `${pace.fastSessions} ${runs} at ${formatPaceSeconds(racePaceSPerKm)} or faster in the last 4 weeks`
     if (pace.state === 'taper') return `${base}. Taper: no need for more fast work.`
-    return `${base}.`
+    if (pace.state === 'on_track') return `${base}.`
+
+    const max = RACE_READINESS.MAX_HARD_PER_WEEK
+    if (pace.hardLast7Days > max)
+        return `${base}. ${pace.hardLast7Days} hard runs in the last 7 days, max ${max}: keep the next runs in Z2.`
+    if (pace.backToBack)
+        return `${base}. Hard runs on back to back days: keep an easy day between them.`
+    return `${base}, aim for 1 to ${max} a week.`
 }

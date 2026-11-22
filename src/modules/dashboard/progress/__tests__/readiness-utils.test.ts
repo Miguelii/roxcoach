@@ -35,7 +35,7 @@ describe('loadReason', () => {
     it('says what to fix when it needs attention', () => {
         expect(loadReason({ ...load, state: 'attention', ratio: 1.6 })).toContain('ramping up fast')
         expect(loadReason({ ...load, state: 'attention', ratio: 0.5 })).toContain('dropping')
-        expect(loadReason({ ...load, state: 'attention', easySharePct: 50 })).toContain('70%')
+        expect(loadReason({ ...load, state: 'attention', easySharePct: 50 })).toContain('75%')
     })
 
     it('handles no data and the taper', () => {
@@ -45,25 +45,38 @@ describe('loadReason', () => {
 })
 
 describe('paceReason', () => {
-    it('counts the fast runs against the race pace and the target', () => {
-        const text = paceReason({ state: 'attention', fastSessions: 2, fastTimeS: 500 }, 276)
+    const pace = {
+        state: 'attention' as const,
+        fastSessions: 2,
+        hardLast7Days: 1,
+        backToBack: false,
+        fastTimeS: 500,
+    }
+
+    it('counts the hard runs against the race pace and the weekly target', () => {
+        const text = paceReason(pace, 276)
         expect(text).toContain('2 runs')
-        expect(text).toContain('4:36 /km')
-        expect(text).toContain('aim for 3')
+        expect(text).toContain('4:36 /km or faster')
+        expect(text).toContain('aim for 1 to 2 a week')
+    })
+
+    it('says to ease off after too many hard runs or back to back ones', () => {
+        expect(paceReason({ ...pace, fastSessions: 5, hardLast7Days: 3 }, 276)).toContain(
+            '3 hard runs in the last 7 days, max 2'
+        )
+        expect(paceReason({ ...pace, fastSessions: 5, backToBack: true }, 276)).toContain(
+            'back to back'
+        )
     })
 
     it('uses the singular and drops the target when on track', () => {
-        expect(paceReason({ state: 'on_track', fastSessions: 1, fastTimeS: 200 }, 276)).toContain(
-            '1 run '
+        expect(paceReason({ ...pace, state: 'on_track', fastSessions: 1 }, 276)).toContain('1 run ')
+        expect(paceReason({ ...pace, state: 'on_track', fastSessions: 4 }, 276)).not.toContain(
+            'aim for'
         )
-        expect(
-            paceReason({ state: 'on_track', fastSessions: 3, fastTimeS: 600 }, 276)
-        ).not.toContain('aim for')
     })
 
     it('asks for pace data when there is none', () => {
-        expect(paceReason({ state: 'no_data', fastSessions: 0, fastTimeS: 0 }, 276)).toContain(
-            'pace data'
-        )
+        expect(paceReason({ ...pace, state: 'no_data' }, 276)).toContain('pace data')
     })
 })

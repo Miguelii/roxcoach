@@ -46,12 +46,21 @@ function easyShare(runs: ReadinessRun[], zoneBounds: HrZoneBounds[] | null): num
     return totalS > 0 ? easyS / totalS : null
 }
 
-// Seconds in bins that sit entirely faster than the race pace.
+// Seconds in bins that sit entirely at race pace or faster, within the tolerance.
 const fastSeconds = (histogram: PaceHistogram, racePace: number) =>
     histogram.bins.reduce(
-        (sum, [pace, timeS]) => (pace + PACE_BIN_S <= racePace ? sum + timeS : sum),
+        (sum, [pace, timeS]) =>
+            pace + PACE_BIN_S <= racePace + RACE_READINESS.RACE_PACE_TOLERANCE_S
+                ? sum + timeS
+                : sum,
         0
     )
+
+// Two hard runs on the same day or on consecutive days.
+const hasBackToBack = (dates: string[]) => {
+    const sorted = dates.toSorted()
+    return sorted.some((date, index) => index > 0 && addDays(sorted[index - 1]!, 1) >= date)
+}
 
 // During the taper both verdicts turn neutral, whatever the numbers say.
 const withTaper = (state: ReadinessState, taper: boolean): ReadinessState =>
@@ -94,14 +103,19 @@ export function buildRaceReadiness({
 
     const withPace = windowRuns.filter((run) => run.paceHistogram !== null)
     const fastTimes = withPace.map((run) => fastSeconds(run.paceHistogram!, racePace))
-    const fastSessions = fastTimes.filter((timeS) => timeS >= RACE_READINESS.MIN_FAST_S).length
+    const hardDates = withPace
+        .filter((_, index) => fastTimes[index]! >= RACE_READINESS.MIN_FAST_S)
+        .map((run) => run.localDate)
+    const fastSessions = hardDates.length
+    const recentHard = hardDates.filter((date) => date >= addDays(today, -6))
+    const hardLast7Days = recentHard.length
+    const backToBack = hasBackToBack(recentHard)
+    const tooMuch = hardLast7Days > RACE_READINESS.MAX_HARD_PER_WEEK || backToBack
+    const tooLittle = fastSessions < RACE_READINESS.FAST_SESSIONS_TARGET
     const paceState: ReadinessState =
         withPace.length === 0
             ? 'no_data'
-            : withTaper(
-                  fastSessions >= RACE_READINESS.FAST_SESSIONS_TARGET ? 'on_track' : 'attention',
-                  taper
-              )
+            : withTaper(tooMuch || tooLittle ? 'attention' : 'on_track', taper)
 
     return {
         race: {
@@ -124,6 +138,8 @@ export function buildRaceReadiness({
         pace: {
             state: paceState,
             fastSessions,
+            hardLast7Days,
+            backToBack,
             fastTimeS: Math.round(fastTimes.reduce((sum, timeS) => sum + timeS, 0)),
         },
     }

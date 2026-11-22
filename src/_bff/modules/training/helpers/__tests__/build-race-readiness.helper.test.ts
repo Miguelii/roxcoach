@@ -108,7 +108,7 @@ describe('buildRaceReadiness', () => {
         expect(load.state).toBe('on_track')
     })
 
-    it('rates the pace on track with 3 fast sessions', () => {
+    it('rates the pace on track with 4 hard sessions spread over the weeks', () => {
         const fast = (daysAgo: number) =>
             run({
                 daysAgo,
@@ -117,16 +117,48 @@ describe('buildRaceReadiness', () => {
                     [400, 600],
                 ],
             })
-        const { pace } = build([fast(2), fast(6), fast(10)])!
-        expect(pace).toEqual({ state: 'on_track', fastSessions: 3, fastTimeS: 600 })
+        const { pace } = build([fast(2), fast(9), fast(16), fast(23)])!
+        expect(pace).toEqual({
+            state: 'on_track',
+            fastSessions: 4,
+            hardLast7Days: 1,
+            backToBack: false,
+            fastTimeS: 800,
+        })
     })
 
-    it('flags the pace with 2 fast sessions and ignores a bin that straddles the race pace', () => {
-        const fast = (daysAgo: number) => run({ daysAgo, pace: [[300, 200]] })
-        const straddle = run({ daysAgo: 12, pace: [[353, 900]] })
-        const { pace } = build([fast(2), fast(6), straddle])!
+    it('counts a race-pace session within the tolerance and ignores slower bins', () => {
+        const racePace = run({ daysAgo: 2, pace: [[355, 300]] })
+        const tolerated = run({ daysAgo: 9, pace: [[350, 300]] })
+        const slower = run({ daysAgo: 16, pace: [[361, 900]] })
+        const { pace } = build([racePace, tolerated, slower])!
         expect(pace.fastSessions).toBe(2)
+        expect(pace.fastTimeS).toBe(600)
+    })
+
+    it('flags the pace with fewer than 4 hard sessions', () => {
+        const fast = (daysAgo: number) => run({ daysAgo, pace: [[300, 200]] })
+        const { pace } = build([fast(2), fast(9), fast(16)])!
+        expect(pace.fastSessions).toBe(3)
         expect(pace.state).toBe('attention')
+    })
+
+    it('flags more than 2 hard runs in the last 7 days', () => {
+        const fast = (daysAgo: number) => run({ daysAgo, pace: [[300, 200]] })
+        const { pace } = build([fast(0), fast(2), fast(4), fast(9), fast(16)])!
+        expect(pace.hardLast7Days).toBe(3)
+        expect(pace.backToBack).toBe(false)
+        expect(pace.state).toBe('attention')
+    })
+
+    it('flags hard runs on consecutive days in the last 7 days only', () => {
+        const fast = (daysAgo: number) => run({ daysAgo, pace: [[300, 200]] })
+        const recent = build([fast(1), fast(2), fast(9), fast(16)])!.pace
+        expect(recent.backToBack).toBe(true)
+        expect(recent.state).toBe('attention')
+        const old = build([fast(2), fast(9), fast(10), fast(16)])!.pace
+        expect(old.backToBack).toBe(false)
+        expect(old.state).toBe('on_track')
     })
 
     it('reports no data for the pace when no run has a pace histogram', () => {

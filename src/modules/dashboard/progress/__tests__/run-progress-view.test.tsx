@@ -363,7 +363,13 @@ const READINESS: NonNullable<RunProgressDTO['readiness']> = {
         racePaceSPerKm: 355,
     },
     load: { state: 'on_track', weeklyKm: 38, previousWeeklyKm: 36, ratio: 1.06, easySharePct: 71 },
-    pace: { state: 'attention', fastSessions: 2, fastTimeS: 500 },
+    pace: {
+        state: 'attention',
+        fastSessions: 2,
+        hardLast7Days: 1,
+        backToBack: false,
+        fastTimeS: 500,
+    },
 }
 
 describe('RunProgressView race readiness', () => {
@@ -375,7 +381,9 @@ describe('RunProgressView race readiness', () => {
         expect(screen.getByTestId('race-banner-pace')).toHaveTextContent('5:55 /km')
         expect(screen.getByTestId('readiness-load-state')).toHaveTextContent('On track')
         expect(screen.getByTestId('readiness-pace-state')).toHaveTextContent('Needs attention')
-        expect(screen.getByTestId('readiness-pace-reason')).toHaveTextContent('aim for 3')
+        expect(screen.getByTestId('readiness-pace-reason')).toHaveTextContent(
+            'aim for 1 to 2 a week'
+        )
     })
 
     it('shows neither without a next race', () => {

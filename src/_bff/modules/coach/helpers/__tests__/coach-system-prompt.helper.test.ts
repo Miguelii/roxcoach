@@ -33,6 +33,15 @@ describe('buildCoachSystemPrompt', () => {
         expect(prompt).toContain('drop the jokes on injury')
     })
 
+    it('includes the running sessions library and the weekly hard-session cap', () => {
+        expect(prompt).toContain('Running sessions library')
+        expect(prompt).toContain('4x4 Norwegian method')
+        expect(prompt).toContain('5x1 km at race pace with 90 s rest')
+        expect(prompt).toContain('faster than the 1 km race pace')
+        expect(prompt).toContain('At most 2 hard running sessions per week')
+        expect(prompt).toContain('you may suggest other sessions')
+    })
+
     it('has no em-dash', () => {
         expect(prompt).not.toContain(String.fromCodePoint(0x2014))
     })

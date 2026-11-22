@@ -464,15 +464,18 @@ banner and a readiness card for the next race, Hyrox included.
   give `No data` on the Pace row.
 - **Rules** (constants in `race-readiness.constants.ts`), over the last 28 days:
     - Load: `no_data` without runs. `attention` when the acute:chronic run distance ratio is outside
-      0.8 to 1.3 or, when heart rate zones exist, the share of time in Z1 and Z2 is under 70%;
+      0.8 to 1.3 or, when heart rate zones exist, the share of time in Z1 and Z2 is under 75%;
       otherwise `on_track`.
-    - Pace: a fast session is a run with at least 180 s in pace bins entirely faster than the race
-      pace. `on_track` from 3 fast sessions, otherwise `attention`; `no_data` when no run in the
-      window has a pace histogram.
+    - Pace: a hard session is a run with at least 180 s in pace bins entirely at race pace or
+      faster, with a 5 s/km tolerance so a race-pace session (5x1 km) counts despite GPS wobble.
+      `attention` with fewer than 4 hard sessions in the window (at least 1 a week), with more
+      than 2 in the last 7 days, or with two of them on the same or consecutive days in the last 7
+      days (the coach's weekly rule); otherwise `on_track`. `no_data` when no run in the window
+      has a pace histogram.
     - Taper: with 7 days or less to the race, `on_track` and `attention` become `taper`.
 - **Payload**: `RunProgressDTO.readiness` is `null` without a next race or a race pace. It carries
   the race summary and the numbers behind both rows (weekly km and its change, ratio, easy share,
-  fast sessions and fast time); the wording is built in the frontend (`readiness-utils.ts`).
+  hard sessions, hard runs in the last 7 days, back to back flag and fast time); the wording is built in the frontend (`readiness-utils.ts`).
 - **UI**: `RaceBanner` (days to go, date, priority, goal, race pace, links to `/races`) and
   `RaceReadinessCard` (Load and Pace rows, each with a state label and icon and a reason) sit above
   the week dots, also before the first run.

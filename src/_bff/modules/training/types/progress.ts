@@ -107,5 +107,11 @@ export type RunReadinessDTO = {
         ratio: number | null
         easySharePct: number | null
     }
-    pace: { state: ReadinessState; fastSessions: number; fastTimeS: number }
+    pace: {
+        state: ReadinessState
+        fastSessions: number
+        hardLast7Days: number
+        backToBack: boolean
+        fastTimeS: number
+    }
 }
