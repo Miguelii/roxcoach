@@ -19,10 +19,8 @@ async function SignupContent() {
 
 export default function SignupPage() {
     return (
-        <main className="flex min-h-screen items-center justify-center bg-paper px-5 py-12">
-            <Suspense fallback={null}>
-                <SignupContent />
-            </Suspense>
-        </main>
+        <Suspense fallback={null}>
+            <SignupContent />
+        </Suspense>
     )
 }

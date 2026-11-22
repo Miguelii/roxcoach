@@ -23,10 +23,8 @@ async function LoginContent({ searchParams }: Pick<Props, 'searchParams'>) {
 
 export default function LoginPage({ searchParams }: Props) {
     return (
-        <main className="flex min-h-screen items-center justify-center bg-paper px-5 py-12">
-            <Suspense fallback={null}>
-                <LoginContent searchParams={searchParams} />
-            </Suspense>
-        </main>
+        <Suspense fallback={null}>
+            <LoginContent searchParams={searchParams} />
+        </Suspense>
     )
 }

@@ -50,7 +50,7 @@ export function SignupCard() {
     return (
         <div
             data-testid="signup-card"
-            className="w-full max-w-sm rounded-lg border border-hairline bg-card p-8"
+            className="w-full max-w-sm rounded-lg border border-hairline bg-card p-8 lg:rounded-none lg:border-0 lg:p-0"
         >
             <h1 className="display text-4xl text-ink">Roxcoach</h1>
             <p className="mt-1 mb-6 text-sm text-muted-foreground">Create your account.</p>

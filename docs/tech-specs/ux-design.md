@@ -171,9 +171,24 @@ session (the proxy sends crawlers to `/login`) and `/signup` stays `noindex` (ac
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
+### Auth layout (login and sign-up)
+
+`src/app/(auth)/layout.tsx` splits both pages side by side from `lg` (1024 px): on the left (3/5 of
+the width) the brand video `public/assets/brag.mp4` on the paper ground, sticky at full viewport
+height and shown whole (`object-contain`; its own background is paper, so the edges blend); on the
+right a white panel with a hairline border and the form centered. Below `lg` the video panel is
+hidden and the form is the bordered card centered on paper; from `lg` the card drops its border and
+padding, since the white panel already frames it.
+
+The video (`AuthVideo`, `src/modules/auth/auth-video.tsx`) is muted, looping, inline, decorative
+(`aria-hidden`) and has `preload="none"` with `brag.jpg` as the poster. It only plays while its panel
+is visible (the `lg` media query) and the user has not asked to reduce motion, so a phone never
+downloads it; a refused play leaves the poster. A ghost icon button in the bottom left corner
+pauses and plays it ("Pause video" / "Play video"), also when reduced motion kept it paused.
+
 ### Login
 
-A centered card on the paper ground: logo, email, password, one primary button. Inline field
+The form card: logo, email, password, one primary button. Inline field
 errors, a single generic failure message, a loading state on submit. No link to reset a password;
 a link to `/signup` shows only while sign-up is open. Uses the shadcn form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
 
