@@ -226,11 +226,6 @@ export function ProfileForm({ defaults, onSubmit }: Props) {
                         ) : null}
                         Save profile
                     </Button>
-                    {saved ? (
-                        <p data-testid="profile-saved" className="text-sm text-muted-foreground">
-                            Saved
-                        </p>
-                    ) : null}
                 </div>
             </form>
         </Form>
