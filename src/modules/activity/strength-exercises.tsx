@@ -201,7 +201,7 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                 aria-labelledby={`strength-exercise-${position}-name`}
                                 className="scroll-mt-6 space-y-2"
                             >
-                                <header className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-[var(--radius-surface-inner)] bg-muted p-3 sm:flex sm:min-h-24 sm:gap-5 sm:p-4">
+                                <header className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-[var(--radius-surface-inner)] bg-card p-3 shadow-soft sm:flex sm:min-h-24 sm:gap-5 sm:p-4">
                                     <div
                                         data-testid={`strength-exercise-${position}-image-frame`}
                                         className="relative size-18 shrink-0 overflow-hidden rounded-md border border-hairline bg-background sm:size-24"
@@ -237,7 +237,7 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                 {facts.map((fact) => (
                                                     <div
                                                         key={fact.id}
-                                                        className="min-w-0 rounded-lg bg-card p-2.5 sm:rounded-none sm:bg-transparent sm:p-0"
+                                                        className="min-w-0 rounded-lg bg-paper p-2.5 sm:rounded-none sm:bg-transparent sm:p-0"
                                                     >
                                                         <dt className="flex h-5 items-center gap-1.5">
                                                             <span className="eyebrow">
