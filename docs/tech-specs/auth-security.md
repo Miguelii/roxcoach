@@ -105,8 +105,8 @@ Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client
 `PROTECTED_PATHS = ['/dashboard', '/calendar', '/activities', '/races', '/settings']`.
 
 The proxy matcher excludes `_next`, `api/` (route handlers there authenticate themselves),
-static assets and the favicon. It is already defined in `src/proxy.ts` and only needs `sbProxy`
-added.
+static assets (`public/assets/`, the PWA icons), the favicon, `robots.txt` and `sitemap.xml`, so
+crawlers and share-card scrapers read them without a session. It is defined in `src/proxy.ts`.
 
 `safeReturnTo(returnTo, fallback = DEFAULT_POST_AUTH_PATH)` in
 `src/_bff/core/helpers/safe-redirect.helper.ts` replaces BrewStock's `safeRedirectUrl`, so any return

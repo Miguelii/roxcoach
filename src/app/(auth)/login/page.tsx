@@ -5,7 +5,8 @@ import { ServerEnv } from '@/env/server'
 
 export const metadata: Metadata = {
     title: 'Sign in',
-    robots: { index: false, follow: false },
+    // Protected pages redirect here with ?returnTo=, so every variant points to one URL.
+    alternates: { canonical: '/login' },
 }
 
 type Props = PageProps<'/login'>

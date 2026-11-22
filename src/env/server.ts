@@ -33,6 +33,7 @@ export const ServerEnv = createEnv({
         NEXT_GEMINI_API_KEY: process.env.NEXT_GEMINI_API_KEY,
         NEXT_SIGNUP_ACCESS_CODE: process.env.NEXT_SIGNUP_ACCESS_CODE,
         NEXT_LYFTA_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
+        // Intentional: Zepp tokens are encrypted with the same key as Lyfta, read from its variable.
         NEXT_ZEPP_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
         // Vercel sets the commit of every deployment; NEXT_BUILD_ID overrides it elsewhere.
         NEXT_BUILD_ID: process.env.NEXT_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA,

@@ -4,6 +4,7 @@ import '@/styles/globals.css'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
 import { ServerEnv } from '@/env/server'
+import { SITE_METADATA } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { InstallPrompt } from '@/modules/pwa/install-prompt'
 import { StandaloneZoomLock } from '@/modules/pwa/standalone-zoom-lock'
@@ -31,13 +32,7 @@ export const viewport: Viewport = {
     themeColor: '#f5f5f3',
 }
 
-export const metadata: Metadata = {
-    title: { default: 'Roxcoach', template: '%s | Roxcoach' },
-    description: 'A personal training assistant for Hyrox and running.',
-    robots: { index: false, follow: false },
-    icons: { apple: '/apple-touch-icon.png' },
-    appleWebApp: { capable: true, title: 'Roxcoach', statusBarStyle: 'default' },
-}
+export const metadata: Metadata = SITE_METADATA
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
     return (

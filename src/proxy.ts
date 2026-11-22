@@ -8,6 +8,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/((?!_next|api/|assets|favicon|robots[.]txt|sw[.]js|apple-touch-icon|web-app-manifest|android-chrome).*)',
+        '/((?!_next|api/|assets|favicon|robots[.]txt|sitemap[.]xml|sw[.]js|apple-touch-icon|web-app-manifest|android-chrome).*)',
     ],
 }

@@ -139,6 +139,24 @@ respected, screen-reader labels on every icon-only control and on every calendar
   blocks iOS `gesturestart`, which also stops iOS zooming into a focused input. In a browser tab
   zoom stays available, for accessibility.
 
+## SEO and share cards
+
+The app is open source and its only public, indexable page is `/login`; every other page needs a
+session (the proxy sends crawlers to `/login`) and `/signup` stays `noindex` (access code only).
+
+- **Defaults** live in `SITE_METADATA` (`src/lib/seo.ts`), exported as the root layout's
+  `metadata`: title template `%s | Roxcoach`, a description under 160 characters, keywords,
+  `robots: index, follow`, and `metadataBase` from `NEXT_PUBLIC_WEBSITE_URL`, so relative URLs
+  resolve to the deployed origin.
+- **Share card:** Open Graph (`og:type` website, site name, `en_US`) and X (`summary_large_image`)
+  both use `public/assets/brag.jpg` (1920x1080), the poster of the README video
+  `public/assets/brag.mp4`. Replacing the poster means replacing that file, same name and size.
+- **`/login`** sets `alternates.canonical: '/login'`, since protected pages redirect there with a
+  `?returnTo=` that would otherwise create duplicate URLs.
+- **`robots.txt`** (`src/app/robots.ts`) allows everything except `/api/` and links the sitemap.
+  **`sitemap.xml`** (`src/app/sitemap.ts`) lists only `/login`. Both are outside the proxy matcher.
+- Tests: `src/app/__tests__/seo.test.ts`.
+
 ## Screens
 
 | Route              | Access    | Job                                                            |
