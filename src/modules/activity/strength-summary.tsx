@@ -4,7 +4,7 @@ import type { StrengthSetDTO } from '@/_bff/modules/training/types'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
 import { KINDS } from '@/modules/calendar/kinds'
-import { PrMedal } from '@/modules/activity/pr-medal'
+import { PrMedal } from '@/components/pr-medal'
 import {
     DENSITY_HINT,
     exerciseAnchor,
