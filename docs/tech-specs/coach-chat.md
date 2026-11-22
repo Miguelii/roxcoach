@@ -297,7 +297,10 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
 
 - A floating launcher bar at the bottom (from `md` up; on a phone the bottom nav opens it) opens
   the panel, a fixed `role="dialog"`: full screen on a phone, a centered dialog over a scrim from
-  the `md` breakpoint. Escape, the close button or a click on the scrim closes it.
+  the `md` breakpoint. Escape, the close button or a click on the scrim closes it. The panel
+  slides up when it opens (from the bottom edge on a phone, 2.5rem with a fade on desktop) and
+  slides back down when it closes, with CSS transitions on `ease-spring`, so closing mid-way
+  reverses smoothly. It stays mounted and inert until its slide out ends (600ms at most).
 - On a phone the panel covers exactly the visible screen, also with the keyboard open: it follows
   `window.visualViewport` (height and `offsetTop`), because iOS shrinks only the visual viewport
   for the keyboard and scrolls the page, which left the page showing under a `fixed inset-0`
