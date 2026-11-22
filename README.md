@@ -4,7 +4,7 @@ A training coach for endurance and strength athletes: upload or sync your workou
 
 Built with Next.js, tRPC, Effect and Supabase.
 
-<video src="https://github.com/Miguelii/roxcoach/raw/main/public/assets/brag.mp4" poster="https://github.com/Miguelii/roxcoach/raw/main/public/assets/brag.jpg" controls muted width="100%"></video>
+<video src="https://github.com/user-attachments/assets/0db0816b-1006-4131-b274-ee65cc4b5586" poster="https://github.com/Miguelii/roxcoach/raw/main/public/assets/brag.jpg" controls muted width="100%"></video>
 
 ## Docs
 
