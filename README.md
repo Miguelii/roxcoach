@@ -4,7 +4,7 @@ A training coach for endurance and strength athletes: upload or sync your workou
 
 Built with Next.js, tRPC, Effect and Supabase.
 
-[![Roxcoach in 25 seconds: calendar, running and strength dashboard, race readiness and the coach](public/assets/brag.jpg)](public/assets/brag.mp4)
+<video src="https://github.com/Miguelii/roxcoach/raw/main/public/assets/brag.mp4" poster="https://github.com/Miguelii/roxcoach/raw/main/public/assets/brag.jpg" controls muted width="100%"></video>
 
 ## Docs
 
