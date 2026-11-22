@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconEye, IconEyeOff, IconLoader2 } from '@tabler/icons-react'
+import { IconLoader2 } from '@tabler/icons-react'
 import { AUTH_PAGE_PATH, DEFAULT_POST_AUTH_PATH } from '@/_bff/core/constants/auth.constants'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +16,7 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { useTRPC } from '@/lib/trpc'
 import { useSignupForm, type SignupValues } from '@/modules/auth/use-signup-form'
 
@@ -30,7 +31,6 @@ export function SignupCard() {
     const form = useSignupForm()
     const signUp = useMutation(trpc.auth.signUp.mutationOptions())
     const [failed, setFailed] = useState(false)
-    const [showPassword, setShowPassword] = useState(false)
 
     const onSubmit = async (values: SignupValues) => {
         setFailed(false)
@@ -98,35 +98,13 @@ export function SignupCard() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Password</FormLabel>
-                                <div className="relative">
-                                    <FormControl>
-                                        <Input
-                                            data-testid="signup-password"
-                                            type={showPassword ? 'text' : 'password'}
-                                            autoComplete="new-password"
-                                            className="pr-10"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <Button
-                                        data-testid="signup-password-toggle"
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={
-                                            showPassword ? 'Hide password' : 'Show password'
-                                        }
-                                        aria-pressed={showPassword}
-                                        onClick={() => setShowPassword((shown) => !shown)}
-                                        className="absolute inset-y-0 right-0 text-muted-foreground"
-                                    >
-                                        {showPassword ? (
-                                            <IconEyeOff aria-hidden="true" />
-                                        ) : (
-                                            <IconEye aria-hidden="true" />
-                                        )}
-                                    </Button>
-                                </div>
+                                <FormControl>
+                                    <PasswordInput
+                                        data-testid="signup-password"
+                                        autoComplete="new-password"
+                                        {...field}
+                                    />
+                                </FormControl>
                                 <FormMessage data-testid="signup-password-error" />
                             </FormItem>
                         )}

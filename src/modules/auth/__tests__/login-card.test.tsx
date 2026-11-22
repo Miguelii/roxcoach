@@ -57,6 +57,16 @@ describe('LoginCard', () => {
         expect(screen.queryByTestId('login-error')).not.toBeInTheDocument()
     })
 
+    it('shows and hides the password with the eye button', () => {
+        render(<LoginCard />)
+
+        fireEvent.click(screen.getByTestId('login-password-toggle'))
+        expect(screen.getByTestId('login-password')).toHaveAttribute('type', 'text')
+
+        fireEvent.click(screen.getByTestId('login-password-toggle'))
+        expect(screen.getByTestId('login-password')).toHaveAttribute('type', 'password')
+    })
+
     it('shows the sign-up link only when sign-up is open', () => {
         const { rerender } = render(<LoginCard />)
         expect(screen.queryByTestId('signup-link')).not.toBeInTheDocument()

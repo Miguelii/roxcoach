@@ -80,6 +80,21 @@ describe('LyftaCard', () => {
         mocks.invalidateStrength.mockResolvedValue(null)
     })
 
+    it('shows the API key while the eye is pressed, with a label that names the key', () => {
+        render(<LyftaCard />)
+
+        expect(screen.getByTestId('lyfta-api-key-toggle')).toHaveAttribute(
+            'aria-label',
+            'Show API key'
+        )
+        fireEvent.click(screen.getByTestId('lyfta-api-key-toggle'))
+        expect(screen.getByTestId('lyfta-api-key')).toHaveAttribute('type', 'text')
+        expect(screen.getByTestId('lyfta-api-key-toggle')).toHaveAttribute(
+            'aria-label',
+            'Hide API key'
+        )
+    })
+
     it('shows an empty password field and validates before connecting', async () => {
         render(<LyftaCard />)
 

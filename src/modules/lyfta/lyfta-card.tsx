@@ -10,7 +10,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LyftaDisconnectDialog } from '@/modules/lyfta/lyfta-disconnect-dialog'
 import { LYFTA_MORE_TO_SYNC_MESSAGE } from '@/modules/lyfta/lyfta-ui.utils'
@@ -138,9 +138,9 @@ export function LyftaCard() {
                                 <FormItem>
                                     <FormLabel>Lyfta personal API key</FormLabel>
                                     <FormControl>
-                                        <Input
+                                        <PasswordInput
                                             {...field}
-                                            type="password"
+                                            secretName="API key"
                                             autoComplete="new-password"
                                             data-testid="lyfta-api-key"
                                             disabled={busy}

@@ -1,15 +1,24 @@
 'use client'
 
 import * as React from 'react'
-import { EyeIcon, EyeOffIcon } from 'lucide-react'
+import { IconEye, IconEyeOff } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-type Props = Omit<React.ComponentProps<'input'>, 'type'> & { 'data-testid'?: string }
+type Props = Omit<React.ComponentProps<'input'>, 'type'> & {
+    'data-testid'?: string
+    secretName?: string
+}
 
-function PasswordInput({ className, disabled, 'data-testid': testId, ...props }: Props) {
+function PasswordInput({
+    className,
+    disabled,
+    secretName = 'password',
+    'data-testid': testId,
+    ...props
+}: Props) {
     const [visible, setVisible] = React.useState(false)
-    const Icon = visible ? EyeOffIcon : EyeIcon
+    const Icon = visible ? IconEyeOff : IconEye
 
     return (
         <div className="relative">
@@ -23,7 +32,7 @@ function PasswordInput({ className, disabled, 'data-testid': testId, ...props }:
             <button
                 type="button"
                 data-testid={testId && `${testId}-toggle`}
-                aria-label={visible ? 'Hide password' : 'Show password'}
+                aria-label={`${visible ? 'Hide' : 'Show'} ${secretName}`}
                 aria-pressed={visible}
                 disabled={disabled}
                 onClick={() => setVisible((shown) => !shown)}

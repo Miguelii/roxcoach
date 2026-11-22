@@ -159,6 +159,12 @@ A centered card on the paper ground: logo, email, password, one primary button. 
 errors, a single generic failure message, a loading state on submit. No link to reset a password;
 a link to `/signup` shows only while sign-up is open. Uses the shadcn form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
 
+Every secret field (login and sign-up password, Zepp password, Lyfta API key) is a `PasswordInput`
+(`src/components/ui/password-input.tsx`): an eye button at the right end of the field shows and
+hides what was typed. It is a `type="button"` with `aria-pressed` and a "Show password" / "Hide
+password" label (`secretName` changes the noun, "Show API key" for Lyfta), disabled with the input.
+Its test id is the input's plus `-toggle`.
+
 ### Sign-up
 
 The login card with four fields: name, email, password (8 to 72 characters) and access code, one primary

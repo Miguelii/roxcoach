@@ -21,6 +21,11 @@ describe('PasswordInput', () => {
         expect(input).toHaveAttribute('type', 'password')
     })
 
+    it('names the secret it hides in the eye label', () => {
+        render(<PasswordInput data-testid="secret" secretName="API key" />)
+        expect(screen.getByTestId('secret-toggle')).toHaveAttribute('aria-label', 'Show API key')
+    })
+
     it('never submits the form it sits in', () => {
         render(<PasswordInput data-testid="secret" />)
         expect(screen.getByTestId('secret-toggle')).toHaveAttribute('type', 'button')

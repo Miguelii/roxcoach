@@ -17,6 +17,7 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { useTRPC } from '@/lib/trpc'
 import { useLoginForm, type LoginValues } from '@/modules/auth/use-login-form'
 
@@ -88,9 +89,8 @@ export function LoginCard({ returnTo, signupOpen = false }: Props) {
                             <FormItem>
                                 <FormLabel>Password</FormLabel>
                                 <FormControl>
-                                    <Input
+                                    <PasswordInput
                                         data-testid="login-password"
-                                        type="password"
                                         autoComplete="current-password"
                                         {...field}
                                     />
