@@ -8,8 +8,12 @@ import {
     strengthSummary,
     dayLabel,
     daysLeftLabel,
+    defaultZone,
     paceSummary,
     rangeLabel,
+    zoneSeries,
+    zonesWithData,
+    zoneSummary,
 } from '@/modules/dashboard/progress/progress-utils'
 
 const bucket = (start: string, paceSecPerKm: number | null): RunBucketDTO => ({
@@ -21,6 +25,29 @@ const bucket = (start: string, paceSecPerKm: number | null): RunBucketDTO => ({
     avgHrBpm: null,
     zones: [],
 })
+
+const DEFAULT_MINUTES = { z2: 20, z3: 10 }
+
+const zoneBucket = (
+    start: string,
+    z2: number | null,
+    z3: number | null = null,
+    minutes = DEFAULT_MINUTES
+): RunBucketDTO => ({
+    ...bucket(start, null),
+    zones: [
+        { zone: 1, paceSecPerKm: null, minutes: 0 },
+        { zone: 2, paceSecPerKm: z2, minutes: z2 === null ? 0 : minutes.z2 },
+        { zone: 3, paceSecPerKm: z3, minutes: z3 === null ? 0 : minutes.z3 },
+        { zone: 4, paceSecPerKm: null, minutes: 0 },
+        { zone: 5, paceSecPerKm: null, minutes: 0 },
+    ],
+})
+
+const STARTS = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']
+
+const z2Weeks = (paces: Array<number | null>) =>
+    paces.map((pace, index) => zoneBucket(STARTS[index] ?? '2026-11-16', pace))
 
 describe('bucketLabel', () => {
     it('labels a week by its first day and a month by month and year', () => {
@@ -76,6 +103,82 @@ describe('paceSummary', () => {
     it('handles a single point and no data', () => {
         expect(paceSummary([bucket('a', 300)], '3m')).toBe('Average pace 5:00 /km.')
         expect(paceSummary([bucket('a', null)], '3m')).toBe('No pace data in this range.')
+    })
+})
+
+describe('zonesWithData', () => {
+    it('lists only the zones with a point in the range, lowest first', () => {
+        expect(
+            zonesWithData([
+                zoneBucket(STARTS[0] ?? '', null, 330),
+                zoneBucket(STARTS[1] ?? '', 360),
+            ])
+        ).toEqual([2, 3])
+        expect(zonesWithData([])).toEqual([])
+    })
+})
+
+describe('defaultZone', () => {
+    it('picks the zone with the most minutes, a tie going to the lower zone', () => {
+        expect(defaultZone([zoneBucket(STARTS[0] ?? '', 360, 330, { z2: 10, z3: 30 })])).toBe(3)
+        expect(defaultZone([zoneBucket(STARTS[0] ?? '', 360, 330, { z2: 15, z3: 15 })])).toBe(2)
+    })
+
+    it('is null without zone data', () => {
+        expect(defaultZone(z2Weeks([null, null]))).toBeNull()
+    })
+})
+
+describe('zoneSeries', () => {
+    it('starts at the first point and trails a trend over the last 3 points with data', () => {
+        const [series] = zoneSeries(z2Weeks([null, 360, 350, null, 340, 330]), [2])
+        const points = series?.points ?? []
+
+        expect(points.map((point) => point.start)).toEqual(STARTS.slice(1))
+        expect(points.map((point) => point.paceSecPerKm)).toEqual([360, 350, null, 340, 330])
+        expect(points.map((point) => point.trendSecPerKm)).toEqual([360, 355, null, 350, 340])
+        expect(points.map((point) => point.minutes)).toEqual([20, 20, 0, 20, 20])
+    })
+
+    it('is empty for a zone without data', () => {
+        expect(zoneSeries(z2Weeks([360]), [4])).toEqual([])
+    })
+
+    it('aligns every zone on the first bucket where any of them has data', () => {
+        const buckets = [
+            zoneBucket(STARTS[0] ?? '', null, null),
+            zoneBucket(STARTS[1] ?? '', null, 330),
+            zoneBucket(STARTS[2] ?? '', 360, 320),
+        ]
+        const series = zoneSeries(buckets, [2, 3, 4])
+
+        expect(series.map(({ zone }) => zone)).toEqual([2, 3])
+        expect(series.map(({ points }) => points.map((point) => point.start))).toEqual([
+            STARTS.slice(1, 3),
+            STARTS.slice(1, 3),
+        ])
+        expect(series[0]?.points.map((point) => point.paceSecPerKm)).toEqual([null, 360])
+    })
+})
+
+describe('zoneSummary', () => {
+    const summary = (paces: Array<number | null>) =>
+        zoneSummary(zoneSeries(z2Weeks(paces), [2])[0]?.points ?? [], 2)
+
+    it('compares the latest trend with the first full-window trend', () => {
+        expect(summary([null, 360, 350, null, 340, 330])).toBe(
+            'Z2 pace 5:40 /km, 0:10 faster than in October.'
+        )
+        expect(summary([330, 330, 330, 360])).toBe('Z2 pace 5:40 /km, 0:10 slower than in October.')
+    })
+
+    it('calls a change of 3 seconds or less steady', () => {
+        expect(summary([340, 341, 340])).toBe('Z2 pace held steady near 5:40 /km since October.')
+    })
+
+    it('asks for more runs with a single point and says so without any', () => {
+        expect(summary([360])).toBe('Z2 pace 6:00 /km. More runs needed for a trend.')
+        expect(zoneSummary([], 2)).toBe('No Z2 pace in this range.')
     })
 })
 

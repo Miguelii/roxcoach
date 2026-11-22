@@ -1,7 +1,6 @@
 'use client'
 
 import { Loader2Icon } from 'lucide-react'
-import { useState } from 'react'
 import { HYROX_DIVISIONS } from '@/_bff/core/constants/hyrox.constants'
 import { TIMEZONE_OPTIONS } from '@/_bff/core/constants/timezone.constants'
 import { Button } from '@/components/ui/button'
@@ -39,17 +38,14 @@ const NONE = 'none'
 
 export function ProfileForm({ defaults, onSubmit }: Props) {
     const form = useProfileForm(defaults)
-    const [saved, setSaved] = useState(false)
 
     const submit = async (raw: ProfileFormValues) => {
         const parsed = parseProfileValues(raw)
         if (!parsed.success) return
-        setSaved(false)
         try {
             await onSubmit(parsed.values)
-            setSaved(true)
         } catch {
-            // The caller reports the failure (toast); the form just does not claim a save.
+            // The caller reports the outcome (toast), so a rejected save is swallowed here.
         }
     }
 
@@ -63,7 +59,6 @@ export function ProfileForm({ defaults, onSubmit }: Props) {
             <form
                 data-testid="profile-form"
                 onSubmit={form.handleSubmit(submit)}
-                onChange={() => setSaved(false)}
                 className="grid max-w-xl gap-4"
                 noValidate
             >

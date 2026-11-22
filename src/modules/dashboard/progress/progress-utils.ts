@@ -1,5 +1,6 @@
+import { HR_ZONES, type ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
+import { formatClock, formatPaceSeconds } from '@/_bff/core/utils/formatters.utils'
 import type { RunBucketDTO, TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { isoWeekNumber } from '@/modules/calendar/date-utils'
@@ -7,6 +8,16 @@ import { isoWeekNumber } from '@/modules/calendar/date-utils'
 type Granularity = 'week' | 'month'
 
 type Verdict = 'progressing' | 'steady' | 'declining' | 'mixed'
+
+export type ZoneSeriesPoint = {
+    start: string
+    paceSecPerKm: number | null
+    minutes: number
+    // Mean of this point and the points with data before it, up to `ZONE_TREND_WINDOW` of them.
+    trendSecPerKm: number | null
+}
+
+export type ZoneSeries = { zone: ZoneNumber; points: ZoneSeriesPoint[] }
 
 export type ExerciseInsights = {
     // From the top set of the first and the latest workout: more weight with the same or more reps,
@@ -92,6 +103,92 @@ export const paceSummary = (buckets: RunBucketDTO[], range: ProgressRange) => {
     if (Math.abs(last - first) <= PACE_STEADY_SECONDS)
         return `Average pace held steady near ${to} over ${span}.`
     return `Average pace ${last < first ? 'improved' : 'slowed'} from ${from} to ${to} over ${span}.`
+}
+
+export const ZONE_TREND_WINDOW = 3
+
+const zonePointOf = (bucket: RunBucketDTO, zone: ZoneNumber) =>
+    bucket.zones.find((point) => point.zone === zone)
+
+/** The zones that have at least one point in the range, lowest first. */
+export const zonesWithData = (buckets: RunBucketDTO[]) =>
+    HR_ZONES.map((zone) => zone.zone).filter((zone) =>
+        buckets.some((bucket) => zonePointOf(bucket, zone)?.paceSecPerKm != null)
+    )
+
+/** The zone shown first: the one with the most minutes in the range (a tie goes to the lower zone). */
+export const defaultZone = (buckets: RunBucketDTO[]): ZoneNumber | null => {
+    let best: { zone: ZoneNumber; minutes: number } | null = null
+    for (const zone of zonesWithData(buckets)) {
+        const minutes = buckets.reduce((sum, bucket) => {
+            const point = zonePointOf(bucket, zone)
+            return sum + (point?.paceSecPerKm == null ? 0 : point.minutes)
+        }, 0)
+        if (best === null || minutes > best.minutes) best = { zone, minutes }
+    }
+    return best?.zone ?? null
+}
+
+const firstIndexWithData = (buckets: RunBucketDTO[], zone: ZoneNumber) =>
+    buckets.findIndex((bucket) => zonePointOf(bucket, zone)?.paceSecPerKm != null)
+
+/**
+ * The points of each zone, all from the first bucket where any of them has data to the end of the
+ * range, so the chart does not open on empty months and every series shares the same buckets. Each
+ * point carries a trailing trend that smooths the weekly noise. A zone without data is left out.
+ */
+export const zoneSeries = (buckets: RunBucketDTO[], zones: ZoneNumber[]): ZoneSeries[] => {
+    const withData = zones.flatMap((zone) => {
+        const start = firstIndexWithData(buckets, zone)
+        return start === -1 ? [] : [{ zone, start }]
+    })
+    if (withData.length === 0) return []
+    const shared = buckets.slice(Math.min(...withData.map(({ start }) => start)))
+
+    return withData.map(({ zone }) => ({ zone, points: trailingTrend(shared, zone) }))
+}
+
+const trailingTrend = (buckets: RunBucketDTO[], zone: ZoneNumber): ZoneSeriesPoint[] => {
+    const recent: number[] = []
+    return buckets.map((bucket) => {
+        const point = zonePointOf(bucket, zone)
+        const pace = point?.paceSecPerKm ?? null
+        if (pace === null)
+            return { start: bucket.start, paceSecPerKm: null, minutes: 0, trendSecPerKm: null }
+
+        recent.push(pace)
+        if (recent.length > ZONE_TREND_WINDOW) recent.shift()
+        return {
+            start: bucket.start,
+            paceSecPerKm: pace,
+            minutes: point?.minutes ?? 0,
+            trendSecPerKm: recent.reduce((sum, value) => sum + value, 0) / recent.length,
+        }
+    })
+}
+
+const MONTH_NAME = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' })
+
+/**
+ * The zone chart takeaway. The change compares the latest trend with the first trend built on a
+ * full window (or the last one, with fewer points), so one odd week neither starts nor ends it.
+ */
+export const zoneSummary = (points: ZoneSeriesPoint[], zone: ZoneNumber) => {
+    const withData = points.filter((point) => point.trendSecPerKm !== null)
+    const label = `Z${zone}`
+    const first = withData[0]
+    const last = withData.at(-1)
+    if (first === undefined || last === undefined) return `No ${label} pace in this range.`
+
+    const now = formatPaceSeconds(last.trendSecPerKm) ?? ''
+    if (withData.length < 2) return `${label} pace ${now}. More runs needed for a trend.`
+
+    const baseline = withData[Math.min(ZONE_TREND_WINDOW, withData.length) - 1] ?? first
+    const delta = (last.trendSecPerKm ?? 0) - (baseline.trendSecPerKm ?? 0)
+    const since = MONTH_NAME.format(new Date(`${first.start}T00:00:00Z`))
+    if (Math.abs(delta) <= PACE_STEADY_SECONDS)
+        return `${label} pace held steady near ${now} since ${since}.`
+    return `${label} pace ${now}, ${formatClock(Math.abs(delta)) ?? ''} ${delta < 0 ? 'faster' : 'slower'} than in ${since}.`
 }
 
 const verdictOf = (loadDeltaKg: number, repsDelta: number): Verdict => {

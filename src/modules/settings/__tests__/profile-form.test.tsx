@@ -36,7 +36,7 @@ describe('ProfileForm', () => {
         expect(onSubmit).not.toHaveBeenCalled()
     })
 
-    it('submits converted values and shows the saved note', async () => {
+    it('submits converted values', async () => {
         const onSubmit = vi.fn().mockResolvedValue(null)
         render(<ProfileForm defaults={DEFAULTS} onSubmit={onSubmit} />)
         fireEvent.change(screen.getByTestId('profile-resting-hr'), { target: { value: '' } })
@@ -51,6 +51,5 @@ describe('ProfileForm', () => {
             weeklyHoursCap: 8,
             notes: 'Left knee',
         })
-        expect(await screen.findByTestId('profile-saved')).toBeInTheDocument()
     })
 })

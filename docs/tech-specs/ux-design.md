@@ -278,6 +278,10 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
     - `training.getActivity` returns `strengthComparisons` (`ExerciseComparisonDTO[]`) for strength
       activities with sets: it reads the last `STRENGTH_COMPARISON_HISTORY` (150) earlier strength
       workouts of the user and their sets, as the signed-in user. Other categories get `[]`.
+    - `training.getActivity` reads the activity, its laps and its sets in one parallel round-trip
+      (laps and sets also filter by `user_id`, so nothing leaks before ownership is known; on a
+      miss they are discarded). Only the strength comparison waits on the activity, because it
+      needs `started_at`.
 - Station results and other activity details when present, plus "Add details" (see
   [manual-logging.md](manual-logging.md)).
 

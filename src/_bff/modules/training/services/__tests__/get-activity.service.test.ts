@@ -159,14 +159,23 @@ describe('getActivity', () => {
         expect(from).toHaveBeenCalledTimes(3)
     })
 
-    it('returns null for a missing (or soft-deleted) id without reading laps', async () => {
-        const { from, supabase } = makeFakeDb([{ data: null, error: null }])
+    // Laps and sets are read alongside the activity, not after it, so a miss still issues all three.
+    it('returns null for a missing (or soft-deleted) id without the strength comparison', async () => {
+        const { from, supabase } = makeFakeDb([
+            { data: null, error: null },
+            { data: [], error: null },
+            { data: [DB_STRENGTH_SET], error: null },
+        ])
         createDBServerClientMock.mockResolvedValue(supabase)
 
         const result = await Effect.runPromise(getActivity(USER, ID))
 
         expect(result).toBeNull()
-        expect(from).toHaveBeenCalledTimes(1)
+        expect(from.mock.calls.map(([table]) => table)).toEqual([
+            'activities',
+            'activity_laps',
+            'strength_sets',
+        ])
     })
 
     it('fails with CreateSbClientError when the client cannot be created', async () => {

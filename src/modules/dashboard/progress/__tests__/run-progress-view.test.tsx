@@ -308,28 +308,43 @@ describe('RunProgressView', () => {
         )
     })
 
-    it('offers a toggle only for zones with data and shows the zone chart', () => {
+    it('shows one zone at a time, starting with the zone with the most minutes', () => {
         view()
 
-        expect(screen.queryByTestId('zone-toggle-1')).toBeNull()
-        expect(screen.getByTestId('zone-toggle-2')).toHaveAttribute('aria-pressed', 'true')
-        expect(screen.getByTestId('zone-chart-figure')).toHaveAttribute(
-            'aria-label',
-            'Pace in each heart rate zone, Z2, Z3.'
+        expect(screen.queryByTestId('zone-tab-1')).toBeNull()
+        expect(screen.getByTestId('zone-tab-2')).toHaveAttribute('aria-selected', 'true')
+        expect(screen.getByTestId('zone-tab-3')).toHaveAttribute('aria-selected', 'false')
+        expect(screen.getByTestId('zone-chart-takeaway')).toHaveTextContent(
+            'Z2 pace 5:50 /km, 0:05 faster than in October.'
         )
-        fireEvent.click(screen.getByTestId('zone-toggle-3'))
         expect(screen.getByTestId('zone-chart-figure')).toHaveAttribute(
             'aria-label',
-            'Pace in each heart rate zone, Z2.'
+            'Z2 pace 5:50 /km, 0:05 faster than in October.'
         )
     })
 
-    it('says so when every zone is hidden', () => {
+    it('switches the chart and the takeaway to the picked zone', () => {
         view()
-        fireEvent.click(screen.getByTestId('zone-toggle-2'))
-        fireEvent.click(screen.getByTestId('zone-toggle-3'))
+        fireEvent.click(screen.getByTestId('zone-tab-3'))
 
-        expect(screen.getByTestId('zone-chart-all-hidden')).toBeInTheDocument()
+        expect(screen.getByTestId('zone-tab-3')).toHaveAttribute('aria-selected', 'true')
+        expect(screen.getByTestId('zone-chart-takeaway')).toHaveTextContent(
+            'Z3 pace 5:20 /km, 0:05 faster than in October.'
+        )
+    })
+
+    it('shows every zone together under All', () => {
+        view()
+        fireEvent.click(screen.getByTestId('zone-tab-all'))
+
+        expect(screen.getByTestId('zone-tab-all')).toHaveAttribute('aria-selected', 'true')
+        expect(screen.getByTestId('zone-chart-takeaway')).toHaveTextContent(
+            'The trend of every zone. Pick one to see its weekly points.'
+        )
+        expect(screen.getByTestId('zone-chart-figure')).toHaveAttribute(
+            'aria-label',
+            'Z2 pace 5:50 /km, 0:05 faster than in October. Z3 pace 5:20 /km, 0:05 faster than in October.'
+        )
     })
 
     it('shows the average heart rate chart only when some run has a heart rate', () => {

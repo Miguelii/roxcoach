@@ -20,6 +20,9 @@ import type { ExerciseComparisonDTO } from '@/_bff/modules/training/types'
 
 // Runs as the signed-in user (publishable key). Returns null when the activity does not exist, is
 // soft-deleted or belongs to someone else.
+// The activity, its laps and its sets are read in one parallel round-trip: laps and sets are
+// filtered by `user_id` too, so reading them before the activity is confirmed leaks nothing, and on
+// a miss they are simply discarded.
 export const getActivity = Effect.fn('getActivity')(function* (user: User, id: string) {
     const supabase = yield* Effect.tryPromise({
         try: () => createDBServerClient(),
@@ -27,11 +30,15 @@ export const getActivity = Effect.fn('getActivity')(function* (user: User, id: s
             new CreateSbClientError({ cause, error_hash: ErrorCode.TRAINING_SB_CLIENT }),
     })
 
-    const activity = yield* selectActivityById(supabase, user.id, id)
+    const [activity, laps, strengthSets] = yield* Effect.all(
+        [
+            selectActivityById(supabase, user.id, id),
+            selectLaps(supabase, user.id, id),
+            selectStrengthSets(supabase, user.id, id),
+        ],
+        { concurrency: 3 }
+    )
     if (activity === null) return null
-
-    const laps = yield* selectLaps(supabase, user.id, id)
-    const strengthSets = yield* selectStrengthSets(supabase, user.id, id)
 
     // A strength workout is compared with the athlete's earlier ones, exercise by exercise.
     let strengthComparisons: ExerciseComparisonDTO[] = []

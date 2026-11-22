@@ -268,8 +268,9 @@ Running mode (the order of a training app, like Strava)
 | Pace trend                                         faster is up    |
 |  line + dashed goal line "Goal 4:30 (Lisbon 10K, in 23 days)"      |
 +--------------------------------------------------------------------+
-| Pace by heart rate zone     [Z1] [Z2] [Z3] [Z4] [Z5]  (toggles)    |
-|  one line per zone, gaps where under 5 minutes                     |
+| Pace by heart rate zone     [Z1] [Z2] [Z3] [Z4] [Z5] [All]          |
+|  "Z2 pace 6:05 /km, 0:20 faster than in June."                     |
+|  faint bucket markers + 3-point trend line, from the first point   |
 +--------------------------------------------------------------------+
 | Average heart rate (only with heart rate data)                     |
 +--------------------------------------------------------------------+
@@ -368,10 +369,27 @@ verified in light and dark (3:1 minimum for lines, 4.5:1 for text) during implem
 Chart rules:
 
 - One chart answers one question. Lines for trends, no pies, no 3D. Grid lines are low contrast.
-- The pace axis is reversed (faster is higher) and says so ("faster is up"), because a falling
-  number is an improvement and the picture must match the feeling.
-- Zones are never told apart by color alone: each has its own dash style and marker, and the legend
-  items are toggle buttons (at least 44 px tall on touch) that show and hide a zone.
+- Pace axes are reversed (faster is higher) and say so ("Faster is up"), because a falling number
+  is an improvement and the picture must match the feeling. This matches Strava.
+- Zones are never told apart by color alone: each has its own dash style and marker, shown in the
+  zone picker too.
+- The zone chart shows one zone at a time, picked in a segmented control (`zone-tab-<n>`, at least
+  44 px tall on touch) that offers only the zones with a point in the range. It opens on the zone
+  with the most minutes (a tie goes to the lower zone), since the five zone paces sit close
+  together and five overlaid lines cross into noise. With two or more zones the control ends with
+  "All" (`zone-tab-all`): every zone's trend line together, without the bucket markers, each line
+  named at its last point ("Z2") so none relies on color alone; the takeaway then asks to pick a
+  zone for its weekly points. Helpers in `progress-utils.ts`:
+  `zonesWithData`, `defaultZone`, `zoneSeries` and `zoneSummary`.
+- `zoneSeries` takes the zones to draw and starts all of them at the first bucket where any has
+  data (the range does not open on empty months, and the series share their buckets). It gives
+  each point a trailing trend: the mean of it and the points with data before it,
+  up to `ZONE_TREND_WINDOW` (3). The chart draws the bucket averages as faint markers and the trend
+  as the line; the pace axis covers the drawn values only (the bucket averages for one zone, the
+  trends under "All"), with round ticks.
+- `zoneSummary` is the takeaway and the chart label (under "All", the label joins every zone's): the latest trend against the first trend built
+  on a full window (or the last one with fewer points), "faster" or "slower" with the change, or
+  "held steady" within 3 seconds. One point asks for more runs.
 - Values are readable without hovering: the cards show latest value and change; tooltips are a bonus
   on hover and on tap.
 - A change is shown with a sign and an arrow icon plus text ("+5 kg"), never by color alone. An

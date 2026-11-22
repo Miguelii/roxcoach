@@ -3,18 +3,23 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useState } from 'react'
-import { HR_ZONES, type ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
+import type { ZoneNumber } from '@/_bff/core/constants/hr-zones.constants'
 import type { CalendarItem } from '@/_bff/modules/training/types'
-import type { RunBucketDTO, RunProgressDTO } from '@/_bff/modules/training/types/progress'
+import type { RunProgressDTO } from '@/_bff/modules/training/types/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
 import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
 import {
     bucketLabel,
     bucketRangeLabel,
+    defaultZone,
     paceSummary,
+    ZONE_TREND_WINDOW,
+    zoneSeries,
+    zonesWithData,
+    zoneSummary,
 } from '@/modules/dashboard/progress/progress-utils'
 import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
 import { RaceBanner } from '@/modules/dashboard/progress/race-banner'
@@ -35,6 +40,8 @@ type ViewProps = Props & {
     today: string
 }
 
+type ZonePick = ZoneNumber | 'all'
+
 const ChartSkeleton = () => <Skeleton className="h-full w-full" />
 
 const PaceChart = dynamic(
@@ -49,9 +56,6 @@ const ZonePaceChart = dynamic(
     { ssr: false, loading: ChartSkeleton }
 )
 
-const zonePoint = (bucket: RunBucketDTO, zone: ZoneNumber) =>
-    bucket.zones.find((point) => point.zone === zone)
-
 function ZoneEmpty({ testId, children }: { testId: string; children: React.ReactNode }) {
     return (
         <p data-testid={testId} className="text-sm text-muted-foreground">
@@ -60,46 +64,75 @@ function ZoneEmpty({ testId, children }: { testId: string; children: React.React
     )
 }
 
+const ZONE_TAKEAWAY = 'Average pace inside each zone, so you see if the same effort gets faster.'
+const ALL_ZONES_TAKEAWAY = 'The trend of every zone. Pick one to see its weekly points.'
+
 function ZoneCard({ data }: Props) {
-    const [hidden, setHidden] = useState<ZoneNumber[]>([])
     const { buckets, granularity, zoneBounds, hasZoneData } = data
+    const [picked, setPicked] = useState<ZonePick | null>(null)
 
-    const withData = HR_ZONES.map((zone) => zone.zone).filter((zone) =>
-        buckets.some((bucket) => zonePoint(bucket, zone)?.paceSecPerKm != null)
-    )
-    const visible = withData.filter((zone) => !hidden.includes(zone))
+    const withData = zonesWithData(buckets)
+    const pick: ZonePick | null =
+        picked === 'all' || (picked !== null && withData.includes(picked))
+            ? picked
+            : defaultZone(buckets)
+    const series = pick === null ? [] : zoneSeries(buckets, pick === 'all' ? withData : [pick])
+    const showChart = zoneBounds !== null && hasZoneData && series.length > 0
+    const summaries = series.map(({ zone, points }) => zoneSummary(points, zone))
+    let takeaway = ZONE_TAKEAWAY
+    if (showChart) takeaway = pick === 'all' ? ALL_ZONES_TAKEAWAY : (summaries[0] ?? ZONE_TAKEAWAY)
+    const footnote =
+        pick === 'all'
+            ? `Faster is up. Each line smooths the last ${ZONE_TREND_WINDOW} points of its zone. A point needs 5 minutes in the zone.`
+            : `Faster is up. Markers are each ${granularity}'s average and the line smooths the last ${ZONE_TREND_WINDOW}. A point needs 5 minutes in the zone.`
 
-    const toggle = (zone: ZoneNumber) =>
-        setHidden((current) =>
-            current.includes(zone) ? current.filter((z) => z !== zone) : [...current, zone]
-        )
-
-    const legend = (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Zones shown">
-            {withData.map((zone) => {
-                const style = ZONE_STYLES[zone]
-                const shown = !hidden.includes(zone)
-                return (
-                    <button
-                        key={zone}
-                        type="button"
-                        data-testid={`zone-toggle-${zone}`}
-                        aria-pressed={shown}
-                        onClick={() => toggle(zone)}
-                        className={cn(
-                            'inline-flex h-11 items-center gap-2 rounded-full border border-ink/15 px-3 text-sm font-medium sm:h-8',
-                            shown ? 'bg-card' : 'bg-muted text-muted-foreground line-through'
-                        )}
-                    >
-                        <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-                            <SeriesMarker kind={style.marker} color={style.color} />
-                        </svg>
-                        Z{zone}
-                    </button>
-                )
-            })}
-        </div>
-    )
+    const picker =
+        showChart && pick !== null ? (
+            <Tabs
+                value={pick}
+                onValueChange={(value) => {
+                    const next = value === 'all' ? 'all' : withData.find((zone) => zone === value)
+                    if (next !== undefined) setPicked(next)
+                }}
+                className="w-full sm:w-auto"
+            >
+                <TabsList
+                    aria-label="Heart rate zone"
+                    className="grid h-auto w-full auto-cols-fr grid-flow-col sm:w-fit"
+                >
+                    {withData.map((value) => {
+                        const style = ZONE_STYLES[value]
+                        return (
+                            <TabsTrigger
+                                key={value}
+                                value={value}
+                                data-testid={`zone-tab-${value}`}
+                                className="h-11 sm:h-8 sm:px-3"
+                            >
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="-6 -6 12 12"
+                                    aria-hidden="true"
+                                >
+                                    <SeriesMarker kind={style.marker} color={style.color} />
+                                </svg>
+                                Z{value}
+                            </TabsTrigger>
+                        )
+                    })}
+                    {withData.length > 1 ? (
+                        <TabsTrigger
+                            value="all"
+                            data-testid="zone-tab-all"
+                            className="h-11 sm:h-8 sm:px-3"
+                        >
+                            All
+                        </TabsTrigger>
+                    ) : null}
+                </TabsList>
+            </Tabs>
+        ) : undefined
 
     let body: React.ReactNode
     if (zoneBounds === null)
@@ -112,18 +145,12 @@ function ZoneCard({ data }: Props) {
                 to see zones.
             </ZoneEmpty>
         )
-    else if (hasZoneData)
-        body =
-            visible.length === 0 ? (
-                <ZoneEmpty testId="zone-chart-all-hidden">Every zone is hidden.</ZoneEmpty>
-            ) : (
-                <ChartFrame
-                    testId="zone-chart-figure"
-                    label={`Pace in each heart rate zone, ${visible.map((z) => `Z${z}`).join(', ')}.`}
-                >
-                    <ZonePaceChart buckets={buckets} zones={visible} granularity={granularity} />
-                </ChartFrame>
-            )
+    else if (showChart)
+        body = (
+            <ChartFrame testId="zone-chart-figure" label={summaries.join(' ')}>
+                <ZonePaceChart series={series} granularity={granularity} />
+            </ChartFrame>
+        )
     else
         body = (
             <ZoneEmpty testId="zone-chart-empty-data">
@@ -135,9 +162,9 @@ function ZoneCard({ data }: Props) {
         <ChartCard
             testId="zone-chart"
             title="Pace by heart rate zone"
-            takeaway={`Average pace inside each zone, per ${granularity}.`}
-            controls={zoneBounds !== null && hasZoneData ? legend : undefined}
-            footnote="Zones come from your max and resting heart rate. A point needs at least 5 minutes in the zone."
+            takeaway={takeaway}
+            controls={picker}
+            footnote={showChart ? footnote : undefined}
         >
             {body}
         </ChartCard>
