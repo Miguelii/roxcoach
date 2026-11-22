@@ -75,12 +75,9 @@ export function RaceCardView({
         <div
             data-testid={`race-card-${id}`}
             data-tone={toneOf(race)}
-            className={cn(
-                'flex h-full flex-col rounded-[var(--radius-surface)] border border-ink/10 bg-muted p-1.5',
-                race.status === 'cancelled' && 'opacity-80'
-            )}
+            className={cn('flex h-full flex-col ', race.status === 'cancelled' && 'opacity-80')}
         >
-            <div className="flex flex-1 flex-col gap-5 rounded-[var(--radius-surface-inner)] bg-card p-4 md:p-5">
+            <div className="flex flex-1 flex-col gap-5 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6">
                 <div className="space-y-3">
                     <div className="min-w-0 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +135,7 @@ export function RaceCardView({
                     </div>
                     <div className="min-w-0">
                         <p data-testid={`race-goal-${id}`}>
-                            <span className="eyebrow block text-muted-foreground">Goal</span>{' '}
+                            <span className="eyebrow block text-muted-foreground w-fit">Goal</span>{' '}
                             <span className="mt-1 block font-mono text-lg tabular-nums">
                                 {formatClock(race.targetTimeS)}
                             </span>
@@ -147,7 +144,7 @@ export function RaceCardView({
                     {pace ? (
                         <div className="min-w-0">
                             <p data-testid={`race-pace-${id}`}>
-                                <span className="eyebrow block text-muted-foreground">
+                                <span className="eyebrow block text-muted-foreground w-fit">
                                     Required pace
                                 </span>{' '}
                                 <span className="mt-1 block font-mono text-lg tabular-nums">
@@ -159,7 +156,9 @@ export function RaceCardView({
                     {race.resultTimeS === null ? null : (
                         <div className="min-w-0">
                             <p data-testid={`race-result-${id}`}>
-                                <span className="eyebrow block text-muted-foreground">Result</span>{' '}
+                                <span className="eyebrow block text-muted-foreground w-fit">
+                                    Result
+                                </span>{' '}
                                 <span className="mt-1 block font-mono text-lg tabular-nums">
                                     {formatClock(race.resultTimeS)}
                                 </span>
@@ -173,7 +172,7 @@ export function RaceCardView({
                         data-testid={`race-delta-${id}`}
                         data-tone={
                             race.resultTimeS !== null && race.resultTimeS > race.targetTimeS
-                                ? 'tangerine'
+                                ? 'red'
                                 : 'green'
                         }
                         className="inline-flex rounded-full bg-tone-soft px-3 py-1 text-sm font-medium text-tone-deep"

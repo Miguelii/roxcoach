@@ -31,7 +31,7 @@ export function CalendarBody({
         return (
             <div
                 data-testid="calendar-error"
-                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4 text-sm"
+                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-surface-inner)] shadow-soft bg-card p-4 text-sm"
             >
                 <p className="text-muted-foreground">
                     Could not load your activities. Check your connection and try again.

@@ -134,6 +134,43 @@ describe('CoachChatView', () => {
         expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
     })
 
+    it('keeps the panel mounted while it slides out, then removes it', () => {
+        render(<Harness />)
+        fireEvent.click(screen.getByTestId('coach-close'))
+
+        const panel = screen.getByTestId('coach-panel')
+        expect(panel).toHaveAttribute('data-state', 'closed')
+        expect(screen.getByTestId('coach-scrim')).toHaveClass(
+            'data-[state=closed]:pointer-events-none'
+        )
+        expect(screen.getByTestId('coach-launcher')).toBeInTheDocument()
+
+        fireEvent.transitionEnd(panel)
+        expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
+    })
+
+    it('reopens from the middle of the slide out without remounting', () => {
+        render(<Harness />)
+        fireEvent.click(screen.getByTestId('coach-close'))
+        fireEvent.click(screen.getByTestId('coach-launcher'))
+
+        expect(screen.getByTestId('coach-panel')).toHaveAttribute('data-state', 'open')
+    })
+
+    it('removes a closing panel even when no transition fires', () => {
+        vi.useFakeTimers()
+        try {
+            render(<Harness />)
+            fireEvent.click(screen.getByTestId('coach-close'))
+            act(() => {
+                vi.advanceTimersByTime(600)
+            })
+            expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
     it('closes with the close button and Escape', () => {
         render(<Harness />)
         fireEvent.click(screen.getByTestId('coach-close'))

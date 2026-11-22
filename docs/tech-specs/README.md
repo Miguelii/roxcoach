@@ -24,7 +24,7 @@ before touching its code, and update it in the same change.
 | [coach-chat.md](coach-chat.md)                     | Dashboard chat with the AI coach: context, tools, route, storage                                                       |
 | [coach-model-fallback.md](coach-model-fallback.md) | Ordered list of Gemini models, automatic retry on the next one when a model is rate limited, model caption in the chat |
 | [dashboard-progress.md](dashboard-progress.md)     | Running and Strength dashboard modes, progress charts, HR zones from per-run histograms (implemented)                  |
-| [ux-design.md](ux-design.md)                       | Design system (from BrewStock), screens, calendar, states                                                              |
+| [ux-design.md](ux-design.md)                       | Design system (Soft Studio), screens, calendar, states                                                                 |
 
 ## Decisions log
 

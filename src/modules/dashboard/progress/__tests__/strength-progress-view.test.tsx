@@ -183,7 +183,7 @@ describe('StrengthProgressView', () => {
         const { unmount } = render(<StrengthProgressView data={data([SQUAT, BENCH, CURL])} />)
 
         expect(screen.getByTestId('strength-overview-best-gain')).toHaveTextContent(
-            'Biggest gain: Back squat'
+            'Biggest gainBack squat+'
         )
         expect(screen.getByTestId('strength-overview-best-gain-image')).toHaveAttribute('alt', '')
         unmount()

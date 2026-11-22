@@ -8,6 +8,7 @@ import { KINDS } from '@/modules/calendar/kinds'
 import { InfoTip } from '@/components/ui/info-tip'
 import { E1RM_HINT } from '@/lib/constants'
 import {
+    exerciseAnchor,
     formatStrengthNumber,
     lyftaRecordTypesOf,
     RECORD_LABELS,
@@ -121,10 +122,21 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                         const position = groupIndex + 1
                         const summary = summarizeExercise(group.sets)
                         const first = group.sets[0]
+                        const key = first === undefined ? null : exerciseKeyOf(first)
+                        // An exercise done twice keeps one anchor, on its first block.
+                        const anchorId =
+                            key !== null &&
+                            exerciseGroups.findIndex(
+                                (other) =>
+                                    other.sets[0] !== undefined &&
+                                    exerciseKeyOf(other.sets[0]) === key
+                            ) === groupIndex
+                                ? exerciseAnchor(key)
+                                : undefined
                         const comparison =
                             first === undefined
                                 ? undefined
-                                : comparisons.find((entry) => entry.key === exerciseKeyOf(first))
+                                : comparisons.find((entry) => entry.key === key)
                         const previous = comparison?.previous ?? null
                         const topDelta =
                             previous === null ||
@@ -185,10 +197,11 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                         return (
                             <section
                                 key={group.key}
+                                id={anchorId}
                                 aria-labelledby={`strength-exercise-${position}-name`}
-                                className="space-y-2"
+                                className="scroll-mt-6 space-y-2"
                             >
-                                <header className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-[var(--radius-surface-inner)] bg-muted p-3 sm:flex sm:min-h-24 sm:gap-5 sm:p-4">
+                                <header className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-[var(--radius-surface-inner)] bg-card p-3 shadow-soft sm:flex sm:min-h-24 sm:gap-5 sm:p-4">
                                     <div
                                         data-testid={`strength-exercise-${position}-image-frame`}
                                         className="relative size-18 shrink-0 overflow-hidden rounded-md border border-hairline bg-background sm:size-24"
@@ -224,10 +237,12 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                 {facts.map((fact) => (
                                                     <div
                                                         key={fact.id}
-                                                        className="min-w-0 rounded-lg bg-card p-2.5 sm:rounded-none sm:bg-transparent sm:p-0"
+                                                        className="min-w-0 rounded-lg bg-paper p-2.5 sm:rounded-none sm:bg-transparent sm:p-0"
                                                     >
-                                                        <dt className="eyebrow flex items-center gap-1.5 text-muted-foreground">
-                                                            {fact.label}
+                                                        <dt className="flex h-5 items-center gap-1.5">
+                                                            <span className="eyebrow">
+                                                                {fact.label}
+                                                            </span>
                                                             {fact.hint !== undefined && (
                                                                 <InfoTip
                                                                     label={fact.label}
@@ -239,7 +254,7 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                         </dt>
                                                         <dd
                                                             data-testid={`strength-exercise-${position}-${fact.id}`}
-                                                            className="font-mono text-sm tabular-nums"
+                                                            className="mt-1 font-mono text-sm tabular-nums"
                                                         >
                                                             {fact.value}
                                                             {fact.detail !== undefined && (
@@ -351,29 +366,37 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                                 RIR {set.rir ?? DASH}
                                                             </span>
                                                         )}
-                                                        {topSetIndex === set.setIndex && (
-                                                            <span
-                                                                data-testid={`strength-exercise-${position}-set-${set.setIndex}-top`}
-                                                                className="rounded-full bg-tone-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-tone-deep"
-                                                            >
-                                                                Top set
-                                                            </span>
-                                                        )}
-                                                        {lyftaRecordTypesOf(set).length > 0 && (
-                                                            <span
-                                                                data-testid={`strength-exercise-${position}-set-${set.setIndex}-record`}
-                                                                className="inline-flex items-center gap-1 rounded-full bg-tone-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-tone-deep"
-                                                            >
-                                                                <IconTrophy
-                                                                    className="size-3"
-                                                                    aria-hidden="true"
-                                                                />
-                                                                {lyftaRecordTypesOf(set)
-                                                                    .map(
-                                                                        (type) =>
-                                                                            RECORD_LABELS[type]
-                                                                    )
-                                                                    .join(', ')}
+                                                        {(topSetIndex === set.setIndex ||
+                                                            lyftaRecordTypesOf(set).length > 0) && (
+                                                            <span className="inline-flex items-center gap-2 self-center">
+                                                                {topSetIndex === set.setIndex && (
+                                                                    <span
+                                                                        data-testid={`strength-exercise-${position}-set-${set.setIndex}-top`}
+                                                                        className="inline-flex items-center rounded-full bg-tone-soft px-2 py-0.5 text-[10px] leading-4 font-medium uppercase tracking-wider text-tone-deep"
+                                                                    >
+                                                                        Top set
+                                                                    </span>
+                                                                )}
+                                                                {lyftaRecordTypesOf(set).length >
+                                                                    0 && (
+                                                                    <span
+                                                                        data-testid={`strength-exercise-${position}-set-${set.setIndex}-record`}
+                                                                        className="inline-flex items-center gap-1 rounded-full bg-tone-soft px-2 py-0.5 text-[10px] leading-4 font-medium uppercase tracking-wider text-tone-deep"
+                                                                    >
+                                                                        <IconTrophy
+                                                                            className="size-3"
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        {lyftaRecordTypesOf(set)
+                                                                            .map(
+                                                                                (type) =>
+                                                                                    RECORD_LABELS[
+                                                                                        type
+                                                                                    ]
+                                                                            )
+                                                                            .join(', ')}
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         )}
                                                     </div>

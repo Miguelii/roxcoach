@@ -19,9 +19,9 @@ describe('web app manifest', () => {
         expect(app.start_url?.startsWith(app.scope ?? '/')).toBe(true)
     })
 
-    it('uses the paper color of the design system for the background and the theme', () => {
-        expect(app.background_color).toBe('#f7f4ee')
-        expect(app.theme_color).toBe('#f7f4ee')
+    it('uses the Soft Studio ground for the background and the theme', () => {
+        expect(app.background_color).toBe('#f5f5f3')
+        expect(app.theme_color).toBe('#f5f5f3')
     })
 
     it('has a 192 and a 512 icon, and a maskable one', () => {

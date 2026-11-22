@@ -164,3 +164,7 @@ export const recordsAreKnown = (
     source: ActivityDTO['source'],
     comparisons: ExerciseComparisonDTO[]
 ) => source === 'lyfta' || comparisons.some((entry) => entry.previous !== null)
+
+// In-page anchor of an exercise, shared by the Records list and the exercise list it links to.
+export const exerciseAnchor = (key: string) =>
+    `exercise-${key.replaceAll(/[^a-z0-9]+/giu, '-').toLowerCase()}`

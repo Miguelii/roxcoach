@@ -183,7 +183,7 @@ export function ActivityView({
                         {longDateLabel(activity.localDate)}
                     </span>
                 </p>
-                <h1 data-testid="activity-name" className="display display-section">
+                <h1 data-testid="activity-name" className="type-title">
                     {activity.name}
                 </h1>
             </header>
@@ -210,7 +210,7 @@ export function ActivityView({
                     {present.map((metric) => (
                         <div
                             key={metric.id}
-                            className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-4 max-sm:last:odd:col-span-2"
+                            className="rounded-[var(--radius-surface-inner)] shadow-soft bg-card p-4 max-sm:last:odd:col-span-2"
                         >
                             <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
                             <dd
@@ -229,7 +229,7 @@ export function ActivityView({
             {!isRun && laps.length > 0 && (
                 <section aria-label="Laps" className="space-y-3">
                     <h2 className="display text-3xl">Laps</h2>
-                    <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card">
+                    <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] shadow-soft bg-card">
                         <table data-testid="laps-table" className="w-full text-sm">
                             <thead className="eyebrow text-left text-muted-foreground">
                                 <tr>
@@ -252,7 +252,7 @@ export function ActivityView({
                                                 className="px-4 py-2 font-sans"
                                             >
                                                 {lap.station ? (
-                                                    <span className="rounded-full bg-tangerine-soft px-2 py-0.5 text-xs text-tangerine-deep">
+                                                    <span className="rounded-full bg-signal-soft px-2 py-0.5 text-xs text-signal-deep">
                                                         {HYROX_STATION_LABELS[lap.station]}
                                                     </span>
                                                 ) : (
@@ -302,7 +302,7 @@ export function ActivityView({
                 strengthSets.length > 0 && (
                     <section aria-label="Strength sets" className="space-y-3">
                         <h2 className="display text-3xl">Strength sets</h2>
-                        <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card">
+                        <div className="overflow-x-auto rounded-[var(--radius-surface-inner)] shadow-soft bg-card">
                             <table data-testid="strength-sets-table" className="w-full text-sm">
                                 <thead className="eyebrow text-left text-muted-foreground">
                                     <tr>

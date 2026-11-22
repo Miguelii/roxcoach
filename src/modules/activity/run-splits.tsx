@@ -31,7 +31,7 @@ function ChartCard({ title, note, children }: ChartCardProps) {
                 <h2 className="display text-3xl">{title}</h2>
                 <p className="text-xs text-muted-foreground">{note}</p>
             </div>
-            <div className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card p-3 sm:p-5">
+            <div className="rounded-[var(--radius-surface-inner)] shadow-soft bg-card p-3 sm:p-5">
                 {children}
             </div>
         </section>
@@ -56,7 +56,7 @@ export function RunSplits({ laps }: Props) {
         <>
             <section data-testid="run-splits" aria-label="Splits" className="space-y-3">
                 <h2 className="display text-3xl">Splits</h2>
-                <div className="rounded-[var(--radius-surface-inner)] border border-ink/10 bg-card px-4 py-4 sm:px-6">
+                <div className="rounded-[var(--radius-surface-inner)] shadow-soft bg-card px-4 py-4 sm:px-6">
                     <div className="grid grid-cols-[2.5rem_3.25rem_1fr_3.25rem] items-center gap-x-3 border-b border-hairline pb-3 text-sm text-muted-foreground">
                         <span>Km</span>
                         <span>Pace</span>

@@ -23,9 +23,9 @@ export function GoalPaceCard({ goal, deltaSecPerKm }: Props) {
         <section
             data-testid="goal-pace"
             aria-label="Goal pace"
-            className="flex items-center gap-4 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4"
+            className="flex items-center gap-4 rounded-[var(--radius-surface)] shadow-soft bg-card p-4"
         >
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tangerine text-on-brand">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-signal text-on-brand">
                 <IconTargetArrow className="size-6" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1 space-y-0.5">

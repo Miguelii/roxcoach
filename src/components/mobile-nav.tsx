@@ -127,11 +127,11 @@ export function MobileNav({ items, isActive, onCoach }: Props) {
             className={cn(
                 'fixed inset-x-4 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-40 md:hidden',
                 'rounded-full p-1.5',
-                // Liquid glass: blurred, saturated backdrop with a bright rim and a soft shadow.
-                'border border-white/60 bg-paper/55 shadow-[0_8px_32px_rgba(23,24,28,0.14),inset_0_1px_0_rgba(255,255,255,0.7)]',
-                'backdrop-blur-2xl backdrop-saturate-150',
+                // Liquid glass: blurred, saturated backdrop with a bright inset rim and a lifted shadow.
+                'bg-white/55 shadow-[0_24px_48px_-24px_rgba(18,18,20,0.28),0_2px_4px_rgba(18,18,20,0.04),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_0_0_1px_rgba(255,255,255,0.6)]',
+                'backdrop-blur-2xl backdrop-saturate-[1.8]',
                 // Solid fallback for users who asked for less transparency.
-                '[@media(prefers-reduced-transparency:reduce)]:bg-paper [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none'
+                '[@media(prefers-reduced-transparency:reduce)]:bg-card [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none'
             )}
         >
             <div
@@ -152,10 +152,10 @@ export function MobileNav({ items, isActive, onCoach }: Props) {
                         className={cn(
                             'pointer-events-none absolute inset-y-0 left-0 w-1/5 rounded-full',
                             // Glass bead: translucent body, bright top rim, soft inner shade.
-                            'bg-white/45 shadow-[0_4px_14px_rgba(23,24,28,0.16),inset_0_1.5px_0_rgba(255,255,255,0.95),inset_0_-6px_12px_rgba(23,24,28,0.08)]',
+                            'bg-white/90 shadow-[0_2px_10px_-4px_rgba(18,18,20,0.2),inset_0_1.5px_0_rgba(255,255,255,0.95)]',
                             'ring-1 ring-white/70 backdrop-blur-sm',
                             dragging
-                                ? 'bg-white/60 transition-none'
+                                ? 'bg-white transition-none'
                                 : 'transition-transform duration-500 ease-[cubic-bezier(0.34,1.45,0.5,1)] motion-reduce:transition-none'
                         )}
                     />
@@ -174,7 +174,7 @@ export function MobileNav({ items, isActive, onCoach }: Props) {
                     data-testid="nav-coach"
                     aria-label="Open coach chat"
                     onClick={onCoach}
-                    className="relative mx-auto flex size-12 items-center justify-center rounded-full bg-ink text-primary-foreground shadow-md transition-transform active:scale-95 motion-reduce:transition-none"
+                    className="relative mx-auto flex size-12 items-center justify-center rounded-full bg-ink text-paper shadow-soft transition-transform active:scale-95 motion-reduce:transition-none"
                 >
                     <IconSparkles className="size-6" />
                 </button>

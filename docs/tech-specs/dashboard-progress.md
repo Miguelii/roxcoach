@@ -182,9 +182,11 @@ without exercises: the lifts progressing, trading, holding steady or slipping, t
 in the range (a top set heavier than every earlier top set of that lift, the first workout of a lift
 never counts), the heaviest top set with its lift, the average change in top set reps, the lift
 with the biggest gain in weight and up to three slipping lifts. It covers the most used lifts the
-response carries, not every lift. The card has four tinted stat tiles with an icon chip
-(progressing, records, heaviest top set, reps). The heaviest top set, the biggest gain and each slipping lift show the
-exercise picture (a barbell placeholder when the source has none).
+response carries, not every lift. The card is neutral, like an activity summary: four stats
+(progressing, records with a PR medal, heaviest top set, reps) as a muted label over a large ink
+value, split by hairlines (two by two on a phone, one row from `lg`). Below a hairline, the biggest
+gain and each slipping lift are feed rows: the exercise picture (a barbell placeholder when the
+source has none), the label in bold, the lift and, for the gain, the extra weight in green.
 
 ### Buckets
 

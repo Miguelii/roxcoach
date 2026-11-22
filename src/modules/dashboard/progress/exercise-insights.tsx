@@ -15,7 +15,7 @@ type Props = {
 const VERDICTS = {
     progressing: { label: 'Progressing', tone: 'green', Icon: IconTrendingUp },
     steady: { label: 'Holding steady', tone: 'slate', Icon: IconMinus },
-    declining: { label: 'Slipping', tone: 'tangerine', Icon: IconTrendingDown },
+    declining: { label: 'Slipping', tone: 'red', Icon: IconTrendingDown },
 } as const
 
 const signOf = (value: number) => (value > 0 ? '+' : value < 0 ? '-' : '')
@@ -61,7 +61,7 @@ export function ExerciseProgressInsights({ insights }: Props) {
     return (
         <div
             data-testid="exercise-insights"
-            className="space-y-3 rounded-[var(--radius-surface-inner)] bg-muted p-3"
+            className="space-y-3 rounded-[var(--radius-surface-inner)] bg-paper p-3"
         >
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span

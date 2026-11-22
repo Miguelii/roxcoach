@@ -1,45 +1,83 @@
 # UX design
 
-Roxcoach follows BrewStock's design system exactly: same tokens, same fonts, same component
-library, same tone. Only the product copy and the screens change.
-
-## Source of truth in BrewStock
-
-| Asset              | BrewStock path                                                   | Roxcoach                      |
-| ------------------ | ---------------------------------------------------------------- | ----------------------------- |
-| Global styles      | `src/styles/globals.css`                                         | copy as is                    |
-| Fonts              | `src/styles/font.css` (Geist Sans, Geist Mono, Anton as display) | copy as is                    |
-| Color tokens       | `src/styles/theme.css`                                           | copy as is                    |
-| Tones              | `src/styles/tone.css`                                            | copy as is                    |
-| Dark theme         | `src/styles/theme-dark.css`                                      | copy as is                    |
-| UI components      | `src/components/ui/*` (shadcn on base-ui)                        | copy only the components used |
-| Product principles | `PRODUCT.md`                                                     | adapted below                 |
-
-Only the product copy and logo change. When BrewStock's design system changes, port it here
-deliberately instead of drifting.
+Roxcoach owns its design system, Soft Studio: light only, mobile first, one rounded geometric
+typeface, pill buttons, nested soft cards and a liquid glass navbar. The decision, the full token
+tables and the reasoning are in
+[2026-11-21-design-system-design.md](2026-11-21-design-system-design.md). This file is the working
+summary; when they differ, update both in the same change.
 
 ## Tokens in use
 
-Page ground is warm cream (`--paper`), ink is near-black (`--ink`), cards are white (`--card`).
-Brand hues each have a base, a `-soft` tint and a `-deep` shade: blue, navy, green, amber,
-tangerine, slate, plum (strength, apart from the run blue). Hairlines and muted text are alpha over ink. Light text on a saturated surface
-uses `--on-brand`. Never hardcode colors: use semantic tokens (`bg-primary`,
-`text-muted-foreground`, `text-primary-foreground`) and `cn()` for class merging.
+All tokens live in `src/styles/theme.css` (values) and `src/styles/tone.css` (contextual tones).
+Never hardcode colors: use semantic tokens (`bg-primary`, `text-muted-foreground`, `bg-sunken`) and
+`cn()` for class merging.
+
+- **Neutrals:** page ground `--paper` `#F5F5F3`, cards `--card` `#FFFFFF`, pills, inputs and tracks
+  `--sunken` `#EBEBE8`, text and primary button `--ink` `#121214`. Muted text, captions (`--ink-45`,
+  large or non-essential text only) and hairlines are alpha over ink, never standalone greys.
+- **Hues**, each with a base, a `-soft` tint (surfaces, chips) and a `-deep` shade (text on the
+  tint): `signal`, `blue`, `plum`, `slate`, `amber`, `green`, `red`. Light text on a saturated
+  surface uses `--on-brand`.
+- **Orange rule:** `signal` (`#FF5B2E`) means only Hyrox, the primary call to action, the logo dot
+  and the heart rate and goal lines in charts. White text never sits on it (3.1:1); a fill that
+  carries white text uses `signal-strong` (`#CC3D15`, 5.0:1). Bad news is `red`, caution is `amber`.
+- **Tones:** `data-tone="<hue>"` remaps `--tone`, `--tone-soft`, `--tone-deep` and `--tone-ink`.
+  `--tone` is always a fill that carries `--tone-ink` at AA, so the `plum` and `green` tones fill
+  with their deep shade.
+- **Elevation:** `shadow-soft` and `shadow-lift` (very diffused, never dark). Cards use a hairline
+  ring plus `shadow-soft` instead of a border.
+- **Cards are single layer:** white `bg-card` with `shadow-soft` and the 28px radius, no outline, no
+  outer frame or ring. (The nested shell-and-core look was tried and dropped: its frame read as an
+  outline.)
+- **Radii:** `--radius` 16px; 22px inner cards (`--radius-surface-inner`), 28px outer cards and
+  sheets (`--radius-surface`), full for buttons, pills and the nav. Nested cards use concentric
+  radii (inner = outer minus the padding).
+- **Motion:** `ease-spring` = `cubic-bezier(0.32, 0.72, 0, 1)`; 200ms presses, 500ms state changes,
+  700ms entries. Respect `prefers-reduced-motion`.
+
+## Typography
+
+Outfit (`--font-outfit`, weights 400, 500, 600) for display, body and numbers; Geist Mono only for
+code. Sentence case everywhere. The bare `.display` class sets face, weight 600 and tracking and
+leaves the size to the call site. The scale is component classes in `globals.css`, not `--text-*`
+keys (tailwind-merge would drop a text-size key when a text colour is applied):
+
+| Class                | Mobile / md+ | Weight | Use                           |
+| -------------------- | ------------ | ------ | ----------------------------- |
+| `.type-display`      | 40 / 56px    | 600    | page hero line                |
+| `.type-title`        | 28 / 36px    | 600    | page title                    |
+| `.type-heading`      | 20 / 22px    | 600    | section and card titles       |
+| `.type-subheading`   | 16px         | 500    | list item titles              |
+| body (default)       | 15px         | 400    | reading text                  |
+| `text-md`, `text-xs` | 13px, 12px   | 400    | secondary lines, captions     |
+| `.eyebrow`           | 10px caps    | 500    | kicker pill above titles      |
+| `.type-metric`       | 28px         | 500    | stat values (tabular figures) |
+| `.type-metric-xl`    | 56px         | 500    | hero numbers                  |
+
+## Buttons
+
+`Button` (`src/components/ui/button.tsx`): every size is a full pill, 48px tall on mobile and 40px
+from `md:` up for the default size. `default` is ink, `signal` is `signal-strong` with white text
+(one primary action per screen), `white` and `outline` are card colour with a soft shadow and a
+hairline ring, `secondary` is sunken, `destructive` is `red-soft` with `red-deep` text. Pressing
+scales to 97%. A trailing arrow icon sits in its own circle flush with the right padding; it is a
+composition pattern, not a variant.
 
 ## Activity color mapping
 
 | Meaning        | Token                          |
 | -------------- | ------------------------------ |
 | Run            | blue                           |
-| Hyrox          | tangerine                      |
+| Hyrox          | signal                         |
 | Strength       | plum                           |
 | Cross-training | slate                          |
 | Race           | amber, always with a flag icon |
-| Rest           | slate-soft, no fill            |
-| Done           | green                          |
+| Rest           | sunken, no fill                |
+| Done, positive | green                          |
+| Danger, errors | red                            |
 
-Color is never the only carrier of meaning. Every chip has an icon (Tabler icons, as in BrewStock)
-and a text label.
+Color is never the only carrier of meaning. Every chip has an icon (Tabler icons) and a text
+label; chart zones also differ by dash and marker.
 
 ## Product register and principles
 
@@ -63,17 +101,17 @@ respected, screen-reader labels on every icon-only control and on every calendar
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
-  navigation pill ("liquid glass": blurred backdrop, bright rim, solid fallback under
-  `prefers-reduced-transparency`; a glass bubble marks the active route, springs between items and can be dragged across them, snapping to the nearest route on release; `MobileNav` in `src/components/mobile-nav.tsx`) with five items: Dashboard, Calendar, the coach button (centered,
+  navigation pill ("liquid glass": white at about 55% over a blurred, saturated backdrop, bright inset rim, lifted
+  shadow, solid card fallback under `prefers-reduced-transparency`; a glass bubble marks the active route, springs between items and can be dragged across them, snapping to the nearest route on release; `MobileNav` in `src/components/mobile-nav.tsx`) with five items: Dashboard, Calendar, the coach button (centered,
   filled, opens the coach panel), Races and Settings. It sits low, like Instagram's: its bottom edge is
   at the safe area (the home indicator) with at least 8 px to the screen edge. Page content reserves
   `pb-24` above it.
 - Page container: `main-container` (max-w-5xl) for reading pages, `main-container-lg` for the
   dashboard and calendar.
-- Light and dark themes through `next-themes`, as in BrewStock.
+- Light only: there is no dark theme.
 - Mobile first: the athlete will mostly check this on a phone.
 - Installable app (PWA), following the Next.js PWA guide: `src/app/manifest.ts` (name Roxcoach,
-  `start_url` `/dashboard`, `standalone`, paper color for background and theme, 192 and 512 icons
+  `start_url` `/dashboard`, `standalone`, paper color `#F5F5F3` for background and theme, 192 and 512 icons
   plus a maskable one), the icons in `public/` (`android-chrome-192x192.png`,
   `android-chrome-512x512.png`, `apple-touch-icon.png`; the proxy matcher already lets these names
   through without a session), and in the root layout `viewportFit: 'cover'`, `themeColor` and
@@ -119,7 +157,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 A centered card on the paper ground: logo, email, password, one primary button. Inline field
 errors, a single generic failure message, a loading state on submit. No link to reset a password;
-a link to `/signup` shows only while sign-up is open. Follows the BrewStock form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
+a link to `/signup` shows only while sign-up is open. Uses the shadcn form pattern (`Form`, `FormField`, `FormControl`, `FormMessage`).
 
 ### Sign-up
 
@@ -199,12 +237,18 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
   values remain honest. An activity without sets gets an empty state.
 - Strength detail, all derived from stored sets (helpers in
   `src/_bff/core/helpers/strength-detail.helper.ts`, used by the server and the UI):
-    - One summary card (outer shell, inner core) holds the whole workout, so nothing about it sits
-      apart: the headline numbers (duration, total volume, body weight, calories when stored,
+    - The workout summary is a set of separate tiles, like the run metrics (white card,
+      soft shadow, label and a large value): the headline numbers (duration, total volume, body weight, calories when stored,
       heart rate and effort when present), then what was done (exercises, sets, total reps, heaviest
-      set with its exercise, density as volume per minute with a volume and a duration), then a
-      Records overview. On a phone the heaviest set goes last in full width so a long exercise name
-      wraps instead of being cut. Lyfta does not give calories today, so imported workouts omit them.
+      set with its exercise, density as volume per minute with a volume and a duration), all in one
+      grid. A phone shows two columns: the heaviest set goes last in full width so a long exercise
+      name wraps instead of being cut, and a lone tile before it fills its row. From `md` the column
+      count follows the tile count so the last row is never a lone tile. Below the grid, one Records
+      card lists the records like an activity feed: one row per exercise split by hairlines, a gold
+      PR medal, the exercise name as a blue link to its block in the exercise list, then each record
+      type in bold with its value, the set behind it and the gain on the same line (wrapping on a
+      phone, where the name takes its own line). Lyfta does not
+      give calories today, so imported workouts omit them.
     - The Records overview lists each exercise that set a record with a count, one line per
       record type (Weight, 1RM, Set volume, Volume), its value and, when known, the set behind it
       and the gain. A Lyfta activity shows the records Lyfta flagged on its sets (1RM and set
@@ -321,8 +365,8 @@ specified in [lyfta.md](lyfta.md).
 ## Components
 
 Reuse shadcn components on base-ui only: Button, Card, Dialog, Sheet, Form, Input, Select, Tabs,
-Tooltip, Skeleton, Badge, Sonner for toasts. Selects use the BrewStock pattern (label from
-`SelectValue` children). New project-specific components live in `src/modules/<feature>/`:
+Tooltip, Skeleton, Badge, Sonner for toasts. Selects take their label from the
+`SelectValue` children. New project-specific components live in `src/modules/<feature>/`:
 
 Dialogs are centered on desktop and open as bottom sheets on mobile, using the shared `Dialog`
 component. Dialogs inherit this behavior without page-specific positioning.

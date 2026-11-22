@@ -81,9 +81,9 @@ export function RaceReadinessCard({ readiness }: Props) {
         <section
             data-testid="readiness-card"
             aria-label="Ready for the race"
-            className="rounded-[var(--radius-surface)] bg-ink/5 p-1.5 ring-1 ring-ink/10 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700 motion-safe:delay-100"
+            className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700 motion-safe:delay-100"
         >
-            <div className="rounded-[calc(var(--radius-surface)-0.375rem)] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] md:p-6">
+            <div className="rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6">
                 <header className="mb-4 space-y-1">
                     <p className="eyebrow text-muted-foreground">Last 4 weeks</p>
                     <h2 className="display text-2xl">Ready for the race</h2>

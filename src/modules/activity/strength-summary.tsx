@@ -4,8 +4,10 @@ import type { StrengthSetDTO } from '@/_bff/modules/training/types'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
 import { KINDS } from '@/modules/calendar/kinds'
+import { PrMedal } from '@/components/pr-medal'
 import {
     DENSITY_HINT,
+    exerciseAnchor,
     formatStrengthNumber,
     RECORD_LABELS,
     type RecordEntry,
@@ -15,7 +17,7 @@ type SummaryMetric = {
     id: string
     label: string
     value: string
-    // Second line under the value on a phone, inline from `sm` up.
+    // Small suffix after the value (for example "x reps").
     detail?: string
 }
 
@@ -31,19 +33,30 @@ type Props = {
     recordsKnown: boolean
 }
 
-type Stat = {
+type Tile = {
     id: string
+    testId: string
     label: string
     value: string
+    // Small suffix after the value (for example "x reps").
+    detail?: string
     // Secondary line under the value.
     hint?: string
     // Explanation shown by the info button next to the label.
     tip?: string
 }
 
-const ROW_DIVIDER = 'border-t border-hairline pt-4'
+const TILE = 'min-w-0 rounded-[var(--radius-surface-inner)] bg-card p-4 shadow-soft'
 
-// The whole workout in one card: the headline numbers, what was done (exercises, sets, reps, the
+// Desktop columns per tile count, so the last row is never a lone tile or a big gap.
+const desktopColumns = (count: number) => {
+    if (count === 1) return 'md:grid-cols-1'
+    if (count === 2) return 'md:grid-cols-2'
+    if (count === 3 || count === 5 || count === 6 || count === 9) return 'md:grid-cols-3'
+    return 'md:grid-cols-4'
+}
+
+// The whole workout as separate tiles: the headline numbers, what was done (exercises, sets, reps, the
 // heaviest lift, density) and the records set today. Every value comes from the stored sets, so it
 // never contradicts the list below.
 export function StrengthSummary({
@@ -57,7 +70,7 @@ export function StrengthSummary({
     const minutes = durationS === null ? 0 : durationS / 60
     const recordCount = records.reduce((total, record) => total + record.kinds.length, 0)
 
-    const stats: Stat[] =
+    const stats: Omit<Tile, 'testId'>[] =
         strengthSets.length === 0
             ? []
             : [
@@ -85,184 +98,162 @@ export function StrengthSummary({
                         ]
                       : []),
               ]
-    const shortStats = stats.filter((stat) => stat.id !== 'heaviest')
 
     if (metrics.length === 0 && stats.length === 0) return null
+
+    // The heaviest set carries a long exercise name, so it goes last and takes a full row on a
+    // phone; a lone tile before it fills its row too.
+    const heaviest = stats.find((stat) => stat.id === 'heaviest')
+    const shortTiles: Tile[] = [
+        ...metrics.map((metric) => ({ ...metric, testId: `metric-${metric.id}-value` })),
+        ...stats.flatMap((stat) =>
+            stat.id === 'heaviest' ? [] : [{ ...stat, testId: `strength-summary-${stat.id}` }]
+        ),
+    ]
+    const tiles: Tile[] =
+        heaviest === undefined
+            ? shortTiles
+            : [...shortTiles, { ...heaviest, testId: 'strength-summary-heaviest' }]
+    const lastShortId = shortTiles.length % 2 === 1 ? shortTiles.at(-1)?.id : undefined
 
     return (
         <section
             data-testid="strength-summary"
             data-tone={KINDS.strength.tone}
             aria-label="Workout summary"
-            className="rounded-[var(--radius-surface)] border border-ink/10 bg-muted p-1.5"
+            className="space-y-3"
         >
-            <div className="space-y-4 rounded-[var(--radius-surface-inner)] bg-card p-4">
-                {metrics.length > 0 && (
-                    <dl
-                        data-testid="activity-metrics"
-                        className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4"
-                    >
-                        {metrics.map((metric) => (
-                            <div key={metric.id} className="min-w-0">
-                                <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
-                                <dd
-                                    data-testid={`metric-${metric.id}-value`}
-                                    className="mt-1 font-mono text-lg tabular-nums"
-                                >
-                                    {metric.value}
-                                    {metric.detail !== undefined && (
-                                        <span className="block text-xs text-muted-foreground sm:inline sm:text-lg sm:text-foreground">
-                                            {metric.detail}
-                                        </span>
-                                    )}
-                                </dd>
-                            </div>
-                        ))}
-                    </dl>
-                )}
-
-                {stats.length > 0 && (
-                    <dl
+            <dl
+                data-testid="activity-metrics"
+                className={cn('grid grid-cols-2 gap-3', desktopColumns(tiles.length))}
+            >
+                {tiles.map((tile) => (
+                    <div
+                        key={tile.id}
                         className={cn(
-                            'grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 md:grid-cols-5',
-                            metrics.length > 0 && ROW_DIVIDER
+                            TILE,
+                            'flex flex-col gap-2',
+                            (tile.id === 'heaviest' || tile.id === lastShortId) &&
+                                'max-md:col-span-2'
                         )}
                     >
-                        {stats.map((stat) => (
-                            <div
-                                key={stat.id}
-                                className={cn(
-                                    'min-w-0',
-                                    // On a phone the heaviest set (it carries a long exercise name)
-                                    // goes last in full width, and a lone short stat before it fills
-                                    // its row.
-                                    stat.id === 'heaviest' && 'max-sm:order-1 max-sm:col-span-2',
-                                    stat.id === shortStats.at(-1)?.id &&
-                                        shortStats.length % 2 === 1 &&
-                                        'max-sm:col-span-2'
-                                )}
-                            >
-                                <dt className="eyebrow flex items-center gap-1.5 text-muted-foreground">
-                                    {stat.label}
-                                    {stat.tip !== undefined && (
-                                        <InfoTip
-                                            label={stat.label}
-                                            testId={`strength-summary-${stat.id}-info`}
-                                        >
-                                            {stat.tip}
-                                        </InfoTip>
-                                    )}
-                                </dt>
-                                <dd
-                                    data-testid={`strength-summary-${stat.id}`}
-                                    className="mt-1 font-mono text-lg tabular-nums"
+                        <dt className="flex items-center gap-1.5">
+                            <span className="eyebrow">{tile.label}</span>
+                            {tile.tip !== undefined && (
+                                <InfoTip
+                                    label={tile.label}
+                                    testId={`strength-summary-${tile.id}-info`}
                                 >
-                                    {stat.value}
-                                </dd>
-                                {stat.hint !== undefined && (
-                                    <p
-                                        data-testid={`strength-summary-${stat.id}-hint`}
-                                        className="mt-0.5 text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]"
-                                    >
-                                        {stat.hint}
-                                    </p>
-                                )}
-                            </div>
-                        ))}
-                    </dl>
-                )}
-
-                {(records.length > 0 || recordsKnown) && (
-                    <section
-                        data-testid="strength-records"
-                        aria-label="Records"
-                        className={cn('space-y-3', ROW_DIVIDER)}
-                    >
-                        <p className="flex items-center gap-2">
-                            <span className="eyebrow text-muted-foreground">Records</span>
-                            {recordCount > 0 && (
-                                <span
-                                    data-testid="strength-records-count"
-                                    className="rounded-full bg-tone-soft px-2 py-0.5 font-mono text-xs font-medium text-tone-deep"
-                                >
-                                    {recordCount}
+                                    {tile.tip}
+                                </InfoTip>
+                            )}
+                        </dt>
+                        <dd data-testid={tile.testId} className="display text-2xl tabular-nums">
+                            {tile.value}
+                            {tile.detail !== undefined && (
+                                <span className="ml-1 font-sans text-sm font-normal tracking-normal text-muted-foreground">
+                                    {tile.detail}
                                 </span>
                             )}
-                        </p>
-                        {records.length === 0 ? (
+                        </dd>
+                        {tile.hint !== undefined && (
                             <p
-                                data-testid="strength-records-empty"
-                                className="text-sm text-muted-foreground"
+                                data-testid={`strength-summary-${tile.id}-hint`}
+                                className="-mt-1 text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]"
                             >
-                                No new records this session.
+                                {tile.hint}
                             </p>
-                        ) : (
-                            <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                                {records.map((record, index) => (
-                                    <li
-                                        key={record.key}
-                                        data-testid={`strength-record-${index + 1}`}
-                                        className="flex items-start gap-3 rounded-[var(--radius-surface-inner)] bg-tone-soft px-3 py-2.5 text-tone-deep"
-                                    >
-                                        <IconTrophy
-                                            className="mt-0.5 size-4 shrink-0"
-                                            aria-hidden="true"
-                                        />
-                                        <div className="min-w-0 flex-1 space-y-1.5">
-                                            <p
-                                                data-testid={`strength-record-${index + 1}-name`}
-                                                className="text-sm font-medium leading-snug [overflow-wrap:anywhere]"
-                                            >
-                                                {record.exercise}
-                                            </p>
-                                            <ul className="grid gap-1">
-                                                {record.kinds.map((kind) => (
-                                                    <li
-                                                        key={kind.type}
-                                                        data-testid={`strength-record-${index + 1}-${kind.type}`}
-                                                        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm tabular-nums"
-                                                    >
-                                                        <span className="eyebrow min-w-24">
-                                                            {RECORD_LABELS[kind.type]}
-                                                        </span>
-                                                        <span
-                                                            data-testid={`strength-record-${index + 1}-${kind.type}-value`}
-                                                        >
-                                                            {formatStrengthNumber(kind.valueKg)} kg
-                                                        </span>
-                                                        {kind.setText !== null && (
-                                                            <span
-                                                                data-testid={`strength-record-${index + 1}-${kind.type}-set`}
-                                                                className="text-xs opacity-80"
-                                                            >
-                                                                {kind.setText}
-                                                            </span>
-                                                        )}
-                                                        {kind.deltaKg !== null && (
-                                                            <span
-                                                                data-testid={`strength-record-${index + 1}-${kind.type}-delta`}
-                                                                className="inline-flex items-center gap-0.5 text-xs"
-                                                            >
-                                                                <IconArrowUpRight
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />
-                                                                +
-                                                                {formatStrengthNumber(kind.deltaKg)}{' '}
-                                                                kg
-                                                            </span>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
                         )}
-                    </section>
-                )}
-            </div>
+                    </div>
+                ))}
+            </dl>
+
+            {(records.length > 0 || recordsKnown) && (
+                <section
+                    data-testid="strength-records"
+                    aria-label="Records"
+                    className="rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6"
+                >
+                    <header className="flex items-center gap-2">
+                        <IconTrophy className="size-5 text-plum-deep" aria-hidden="true" />
+                        <h2 className="display text-xl">Records</h2>
+                        {recordCount > 0 && (
+                            <span
+                                data-testid="strength-records-count"
+                                className="rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper tabular-nums"
+                            >
+                                {recordCount}
+                            </span>
+                        )}
+                    </header>
+                    {records.length === 0 ? (
+                        <p
+                            data-testid="strength-records-empty"
+                            className="mt-3 text-sm text-muted-foreground"
+                        >
+                            No new records this session.
+                        </p>
+                    ) : (
+                        <ul className="mt-2 divide-y divide-hairline">
+                            {records.map((record, index) => (
+                                <li
+                                    key={record.key}
+                                    data-testid={`strength-record-${index + 1}`}
+                                    className="flex items-start gap-3.5 py-3.5 last:pb-0"
+                                >
+                                    <PrMedal testId={`strength-record-${index + 1}-medal`} />
+                                    <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 pt-1.5">
+                                        <a
+                                            href={`#${exerciseAnchor(record.key)}`}
+                                            data-testid={`strength-record-${index + 1}-name`}
+                                            className="text-[15px] font-medium text-blue [overflow-wrap:anywhere] hover:underline max-sm:basis-full"
+                                        >
+                                            {record.exercise}
+                                        </a>
+                                        {record.kinds.map((kind) => (
+                                            <span
+                                                key={kind.type}
+                                                data-testid={`strength-record-${index + 1}-${kind.type}`}
+                                                className="inline-flex flex-wrap items-baseline gap-x-1.5 text-[15px] tabular-nums"
+                                            >
+                                                <span className="font-semibold text-ink">
+                                                    {RECORD_LABELS[kind.type]}
+                                                </span>
+                                                <span
+                                                    data-testid={`strength-record-${index + 1}-${kind.type}-value`}
+                                                    className="text-ink"
+                                                >
+                                                    {formatStrengthNumber(kind.valueKg)} kg
+                                                </span>
+                                                {kind.setText !== null && (
+                                                    <span
+                                                        data-testid={`strength-record-${index + 1}-${kind.type}-set`}
+                                                        className="text-xs text-muted-foreground"
+                                                    >
+                                                        {kind.setText}
+                                                    </span>
+                                                )}
+                                                {kind.deltaKg !== null && (
+                                                    <span
+                                                        data-testid={`strength-record-${index + 1}-${kind.type}-delta`}
+                                                        className="inline-flex items-center gap-0.5 self-center text-xs font-medium text-green-deep"
+                                                    >
+                                                        <IconArrowUpRight
+                                                            className="size-3.5"
+                                                            aria-hidden="true"
+                                                        />
+                                                        +{formatStrengthNumber(kind.deltaKg)} kg
+                                                    </span>
+                                                )}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
         </section>
     )
 }

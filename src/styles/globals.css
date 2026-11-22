@@ -4,9 +4,6 @@
 @import './font.css';
 @import './theme.css';
 @import './tone.css';
-@import './theme-dark.css';
-
-@custom-variant dark (&:is(.dark *));
 
 html {
     scroll-behavior: smooth;
@@ -46,7 +43,9 @@ html {
     }
 
     body {
-        letter-spacing: -0.15px;
+        font-size: 15px;
+        line-height: 1.5;
+        letter-spacing: -0.005em;
     }
 
     /* The installed app does not zoom (pinch or double tap); a browser tab still does. iOS also
@@ -68,45 +67,87 @@ html {
 
 @layer components {
     /*
-     * Display face: always uppercase, tight leading, no negative tracking.
-     * The sizes are component classes rather than --text-* theme keys because
-     * tailwind-merge would treat a text-display-* key as a conflicting text utility
-     * and drop it whenever a text colour is applied to the same element.
+     * Type scale. Sizes are component classes rather than --text-* theme keys because
+     * tailwind-merge would treat a text-* key as a conflicting text utility and drop it
+     * whenever a text colour is applied to the same element. .display only sets the
+     * face, weight and tracking: call sites keep their own size.
      */
     .display {
         font-family: var(--font-display);
-        font-weight: 400;
-        text-transform: uppercase;
-        letter-spacing: 0;
-        line-height: 0.95;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
     }
 
-    .display-hero {
-        font-size: clamp(46px, 7vw, 104px);
+    .type-display {
+        font-family: var(--font-display);
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1;
     }
 
-    .display-section {
-        font-size: clamp(38px, 4.3vw, 62px);
+    .type-title {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.08;
     }
 
-    .display-card {
-        font-size: clamp(28px, 3.3vw, 48px);
+    .type-heading {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
     }
 
-    /*
-     * Base size for GiantWord. The component measures the rendered word and sets
-     * --giant-scale below 1 when it would overflow, so no font size is ever parsed
-     * back out of the computed style.
-     */
-    .display-giant {
-        --giant-size: clamp(64px, 13vw, 210px);
-        font-size: calc(var(--giant-size) * var(--giant-scale, 1));
+    .type-subheading {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
     }
 
-    /* Mono kicker above a heading. */
+    .type-metric {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .type-metric-xl {
+        font-family: var(--font-display);
+        font-size: 56px;
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (width >= 48rem) {
+        .type-display {
+            font-size: 56px;
+        }
+
+        .type-title {
+            font-size: 36px;
+        }
+
+        .type-heading {
+            font-size: 22px;
+        }
+    }
+
+    /* Small kicker pill above a heading. */
     .eyebrow {
-        @apply font-mono text-[13px] font-medium uppercase;
-        letter-spacing: 0.06em;
+        @apply inline-flex items-center rounded-full bg-sunken px-2.5 py-1 font-sans text-[10px] font-medium text-muted-foreground uppercase;
+        letter-spacing: 0.16em;
+        line-height: 1;
     }
 
     /* Full-bleed section content well. Wider than the old max-w-7xl on purpose. */

@@ -7,7 +7,7 @@ import { IntegrationsTab } from '@/modules/settings/integrations-tab'
 export function SettingsView() {
     return (
         <div className="space-y-6">
-            <h1 className="display display-section">Settings</h1>
+            <h1 className="type-title">Settings</h1>
             <SettingsTabs
                 profile={<ProfileTab />}
                 dashboard={<DashboardTab />}

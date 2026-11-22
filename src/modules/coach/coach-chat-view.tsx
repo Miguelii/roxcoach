@@ -40,7 +40,13 @@ type Props = {
     onRetry: () => void
 }
 
-type FrameProps = PropsWithChildren<Pick<Props, 'onOpenChange'>>
+type FrameProps = PropsWithChildren<
+    Pick<Props, 'open' | 'onOpenChange'> & {
+        onExited: () => void
+    }
+>
+
+type LauncherProps = Pick<Props, 'onOpenChange' | 'onDismissLauncher'>
 
 const ERROR_COPY: Record<ChatErrorKind, string> = {
     busy: 'The coach is busy, try again in a minute',
@@ -56,9 +62,13 @@ const RETRYABLE = new Set<ChatErrorKind>(['busy', 'not-found'])
 const NEAR_LIMIT = COACH_MESSAGE_MAX_CHARS - 200
 // Within this distance from the bottom the list keeps following new text.
 const STICK_PX = 48
+// Unmounts a closing panel even when no transition fires (it would otherwise stay invisible on top).
+const EXIT_FALLBACK_MS = 600
 
 export function CoachChatView(props: Props) {
     const { open, onOpenChange, status, errorKind, launcherEnabled, onDismissLauncher } = props
+    const [rendered, setRendered] = useState(open)
+    if (open && !rendered) setRendered(true)
 
     // Escape closes the panel wherever the focus is, not only inside it. An Escape that something
     // inside already handled (an open menu) is left to that thing.
@@ -71,56 +81,80 @@ export function CoachChatView(props: Props) {
         return () => document.removeEventListener('keydown', onKeyDown)
     }, [open, onOpenChange])
 
-    if (!open) {
-        if (!launcherEnabled) return null
-        // On mobile the coach opens from the bottom nav, so the bar only shows from md up.
-        return (
-            // A white bar in a faint bezel with a soft shadow: it lifts off the page without shouting.
-            <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/5 p-1.5 ring-1 ring-ink/10 shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--color-ink)_35%,transparent)] md:block">
-                <div className="group flex h-12 items-center rounded-full bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5">
-                    <button
-                        type="button"
-                        data-testid="coach-launcher"
-                        onClick={() => onOpenChange(true)}
-                        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2 text-left text-sm text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
-                    >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tangerine/10 text-tangerine transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
-                            <MessageCircleIcon className="size-4" strokeWidth={1.75} />
-                        </span>
-                        <span className="truncate">Ask Migueli Coach...</span>
-                    </button>
-                    <button
-                        type="button"
-                        data-testid="coach-launcher-dismiss"
-                        aria-label="Hide coach bar"
-                        onClick={onDismissLauncher}
-                        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-muted hover:text-foreground"
-                    >
-                        <XIcon className="size-4" />
-                    </button>
-                </div>
-            </div>
-        )
-    }
+    useEffect(() => {
+        if (open || !rendered) return
+        const timer = setTimeout(() => setRendered(false), EXIT_FALLBACK_MS)
+        return () => clearTimeout(timer)
+    }, [open, rendered])
+
+    const showLauncher = !open && launcherEnabled
+    if (!showLauncher && !rendered) return null
 
     return (
-        <CoachPanelFrame onOpenChange={onOpenChange}>
-            <PanelBody {...props} errorKind={errorKind} status={status} />
-        </CoachPanelFrame>
+        <>
+            {showLauncher && (
+                <CoachLauncher onOpenChange={onOpenChange} onDismissLauncher={onDismissLauncher} />
+            )}
+            {rendered && (
+                <CoachPanelFrame
+                    open={open}
+                    onOpenChange={onOpenChange}
+                    onExited={() => setRendered(false)}
+                >
+                    <PanelBody {...props} errorKind={errorKind} status={status} />
+                </CoachPanelFrame>
+            )}
+        </>
+    )
+}
+
+// On mobile the coach opens from the bottom nav, so the bar only shows from md up.
+function CoachLauncher({ onOpenChange, onDismissLauncher }: LauncherProps) {
+    return (
+        // A white bar in a faint bezel with a soft shadow: it lifts off the page without shouting.
+        <div className="fixed bottom-4 left-1/2 z-30 hidden w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-full bg-ink/5 p-1.5 shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--color-ink)_35%,transparent)] md:block">
+            <div className="group flex h-12 items-center rounded-full bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5">
+                <button
+                    type="button"
+                    data-testid="coach-launcher"
+                    onClick={() => onOpenChange(true)}
+                    className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2 text-left text-sm text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
+                >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-signal/10 text-signal-strong transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
+                        <MessageCircleIcon className="size-4" strokeWidth={1.75} />
+                    </span>
+                    <span className="truncate">Ask Migueli Coach...</span>
+                </button>
+                <button
+                    type="button"
+                    data-testid="coach-launcher-dismiss"
+                    aria-label="Hide coach bar"
+                    onClick={onDismissLauncher}
+                    className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-muted hover:text-foreground"
+                >
+                    <XIcon className="size-4" />
+                </button>
+            </div>
+        </div>
     )
 }
 
 // Full screen on a phone; from md up a centered dialog over a soft scrim. Clicking the scrim (not
 // the panel) closes it. The frame follows the visible viewport, so with the iOS keyboard open the
 // panel still fills exactly the screen above it, and the page behind does not scroll.
-function CoachPanelFrame({ onOpenChange, children }: FrameProps) {
+function CoachPanelFrame({ open, onOpenChange, onExited, children }: FrameProps) {
     const viewport = useVisualViewport()
     useLockPageScroll()
+    const state = open ? 'open' : 'closed'
 
     return (
         <div
             data-testid="coach-scrim"
-            className="fixed inset-0 z-50 md:flex md:items-center md:justify-center md:bg-ink/30 md:p-6"
+            data-state={state}
+            className={cn(
+                'fixed inset-0 z-50 md:flex md:items-center md:justify-center md:p-6',
+                'data-[state=closed]:pointer-events-none'
+            )}
             style={
                 viewport === null
                     ? undefined
@@ -131,12 +165,30 @@ function CoachPanelFrame({ onOpenChange, children }: FrameProps) {
             }}
         >
             <div
+                aria-hidden="true"
+                data-state={state}
+                className={cn(
+                    'pointer-events-none absolute inset-0 hidden bg-ink/30 md:block',
+                    'transition-opacity duration-400 ease-out-strong starting:opacity-0',
+                    'data-[state=closed]:opacity-0 data-[state=closed]:duration-250'
+                )}
+            />
+            <div
                 role="dialog"
                 aria-modal="true"
                 aria-label="Coach chat"
                 data-testid="coach-panel"
+                data-state={state}
+                inert={!open}
+                onTransitionEnd={(event) => {
+                    if (event.target === event.currentTarget && !open) onExited()
+                }}
                 className={cn(
-                    'flex h-full w-full flex-col bg-paper text-ink',
+                    'relative flex h-full w-full flex-col bg-paper text-ink',
+                    'transition-[translate,opacity] duration-500 ease-spring md:duration-400',
+                    'starting:translate-y-full md:starting:translate-y-10 md:starting:opacity-0',
+                    'data-[state=closed]:translate-y-full data-[state=closed]:duration-300',
+                    'md:data-[state=closed]:translate-y-10 md:data-[state=closed]:opacity-0 md:data-[state=closed]:duration-250',
                     'md:h-[42rem] md:max-h-full md:max-w-[46rem]',
                     'md:rounded-[var(--radius-surface)] md:border md:border-hairline md:shadow-[0_30px_80px_-30px_color-mix(in_srgb,var(--color-ink)_50%,transparent)]'
                 )}

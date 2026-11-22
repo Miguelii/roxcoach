@@ -82,7 +82,7 @@ export function ProgressHero({ data }: Props) {
         <section
             data-testid="progress-hero"
             aria-label="Training progress"
-            className="space-y-5 rounded-[var(--radius-surface)] border border-ink/10 bg-card p-4 md:p-6"
+            className="space-y-5 rounded-[var(--radius-surface)] shadow-soft bg-card p-4 md:p-6"
         >
             <Tabs
                 value={metric}
