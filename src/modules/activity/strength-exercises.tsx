@@ -239,8 +239,10 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                         key={fact.id}
                                                         className="min-w-0 rounded-lg bg-card p-2.5 sm:rounded-none sm:bg-transparent sm:p-0"
                                                     >
-                                                        <dt className="eyebrow flex items-center gap-1.5 text-muted-foreground">
-                                                            {fact.label}
+                                                        <dt className="flex h-5 items-center gap-1.5">
+                                                            <span className="eyebrow">
+                                                                {fact.label}
+                                                            </span>
                                                             {fact.hint !== undefined && (
                                                                 <InfoTip
                                                                     label={fact.label}
@@ -252,7 +254,7 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                         </dt>
                                                         <dd
                                                             data-testid={`strength-exercise-${position}-${fact.id}`}
-                                                            className="font-mono text-sm tabular-nums"
+                                                            className="mt-1 font-mono text-sm tabular-nums"
                                                         >
                                                             {fact.value}
                                                             {fact.detail !== undefined && (
@@ -364,29 +366,37 @@ export function StrengthExercises({ strengthSets, comparisons = NONE, records = 
                                                                 RIR {set.rir ?? DASH}
                                                             </span>
                                                         )}
-                                                        {topSetIndex === set.setIndex && (
-                                                            <span
-                                                                data-testid={`strength-exercise-${position}-set-${set.setIndex}-top`}
-                                                                className="rounded-full bg-tone-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-tone-deep"
-                                                            >
-                                                                Top set
-                                                            </span>
-                                                        )}
-                                                        {lyftaRecordTypesOf(set).length > 0 && (
-                                                            <span
-                                                                data-testid={`strength-exercise-${position}-set-${set.setIndex}-record`}
-                                                                className="inline-flex items-center gap-1 rounded-full bg-tone-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-tone-deep"
-                                                            >
-                                                                <IconTrophy
-                                                                    className="size-3"
-                                                                    aria-hidden="true"
-                                                                />
-                                                                {lyftaRecordTypesOf(set)
-                                                                    .map(
-                                                                        (type) =>
-                                                                            RECORD_LABELS[type]
-                                                                    )
-                                                                    .join(', ')}
+                                                        {(topSetIndex === set.setIndex ||
+                                                            lyftaRecordTypesOf(set).length > 0) && (
+                                                            <span className="inline-flex items-center gap-2 self-center">
+                                                                {topSetIndex === set.setIndex && (
+                                                                    <span
+                                                                        data-testid={`strength-exercise-${position}-set-${set.setIndex}-top`}
+                                                                        className="inline-flex items-center rounded-full bg-tone-soft px-2 py-0.5 text-[10px] leading-4 font-medium uppercase tracking-wider text-tone-deep"
+                                                                    >
+                                                                        Top set
+                                                                    </span>
+                                                                )}
+                                                                {lyftaRecordTypesOf(set).length >
+                                                                    0 && (
+                                                                    <span
+                                                                        data-testid={`strength-exercise-${position}-set-${set.setIndex}-record`}
+                                                                        className="inline-flex items-center gap-1 rounded-full bg-tone-soft px-2 py-0.5 text-[10px] leading-4 font-medium uppercase tracking-wider text-tone-deep"
+                                                                    >
+                                                                        <IconTrophy
+                                                                            className="size-3"
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        {lyftaRecordTypesOf(set)
+                                                                            .map(
+                                                                                (type) =>
+                                                                                    RECORD_LABELS[
+                                                                                        type
+                                                                                    ]
+                                                                            )
+                                                                            .join(', ')}
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         )}
                                                     </div>

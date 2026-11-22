@@ -82,7 +82,7 @@ export function ExerciseCard({ exercise }: Props) {
 
             <div className="flex items-end justify-between gap-3">
                 <div className="space-y-1">
-                    <p className=" text-muted-foreground">Latest top set</p>
+                    <p className="eyebrow text-muted-foreground">Latest top set</p>
                     <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span
                             data-testid="exercise-latest"
