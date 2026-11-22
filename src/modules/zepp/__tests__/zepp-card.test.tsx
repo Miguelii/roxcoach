@@ -93,6 +93,13 @@ describe('ZeppCard', () => {
         expect(mocks.statusQuery.refetch).toHaveBeenCalledTimes(1)
     })
 
+    it('shows the password while the eye is pressed', () => {
+        render(<ZeppCard />)
+
+        fireEvent.click(screen.getByTestId('zepp-password-toggle'))
+        expect(screen.getByTestId('zepp-password')).toHaveAttribute('type', 'text')
+    })
+
     it('asks for the email and an empty password field and validates before connecting', async () => {
         render(<ZeppCard />)
 

@@ -1,8 +1,8 @@
 # Zepp integration
 
 Zepp (the app of the Amazfit watches) is a read-only source for the athlete's outdoor runs. The
-athlete signs in once with the Zepp email and password in Settings, Integrations, and starts each
-sync manually. Imported runs become normal Roxcoach run activities, so they appear in the calendar,
+athlete signs in once with the Zepp email and password in Settings, Integrations (the password field
+has an eye button to show what was typed, `PasswordInput`), and starts each sync manually. Imported runs become normal Roxcoach run activities, so they appear in the calendar,
 the activity detail, the run dashboard and the coach context. There is no scheduled or background
 sync. Binding mocks: `mocks/zepp_history_mock.json` and `mocks/zepp_detail_mock.json` (real,
 anonymized responses). Read them before touching the integration or reading a new field.

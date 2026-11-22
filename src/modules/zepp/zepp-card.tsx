@@ -12,6 +12,7 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/formatters'
 import { useZeppConnection } from '@/modules/zepp/use-zepp-connection'
@@ -139,9 +140,8 @@ export function ZeppCard() {
                                 <FormItem>
                                     <FormLabel>Zepp password</FormLabel>
                                     <FormControl>
-                                        <Input
+                                        <PasswordInput
                                             {...field}
-                                            type="password"
                                             autoComplete="current-password"
                                             data-testid="zepp-password"
                                             disabled={busy}
