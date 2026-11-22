@@ -61,7 +61,7 @@ export function ExerciseProgressInsights({ insights }: Props) {
     return (
         <div
             data-testid="exercise-insights"
-            className="space-y-3 rounded-[var(--radius-surface-inner)] bg-muted p-3"
+            className="space-y-3 rounded-[var(--radius-surface-inner)] bg-paper p-3"
         >
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span
