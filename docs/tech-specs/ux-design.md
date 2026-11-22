@@ -240,9 +240,12 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
     - The workout summary is a set of separate tiles, like the run metrics (white card,
       soft shadow, label and a large value): the headline numbers (duration, total volume, body weight, calories when stored,
       heart rate and effort when present), then what was done (exercises, sets, total reps, heaviest
-      set with its exercise, density as volume per minute with a volume and a duration), then a
-      Records overview with one tile per exercise. On a phone the heaviest set goes last in full width so a long exercise name
-      wraps instead of being cut. Lyfta does not give calories today, so imported workouts omit them.
+      set with its exercise, density as volume per minute with a volume and a duration), all in one
+      grid. A phone shows two columns: the heaviest set goes last in full width so a long exercise
+      name wraps instead of being cut, and a lone tile before it fills its row. From `md` the column
+      count follows the tile count so the last row is never a lone tile. Below the grid, one Records
+      card holds every record as a row split by hairlines (two columns from `md`). Lyfta does not
+      give calories today, so imported workouts omit them.
     - The Records overview lists each exercise that set a record with a count, one line per
       record type (Weight, 1RM, Set volume, Volume), its value and, when known, the set behind it
       and the gain. A Lyfta activity shows the records Lyfta flagged on its sets (1RM and set
