@@ -3,7 +3,9 @@
 Lyfta is a read-only source for the athlete's completed gym workouts. The athlete connects a
 personal Lyfta API key in Settings and starts each sync manually. Imported workouts become normal
 Roxcoach strength activities, so they appear in the calendar, activity detail and coach context.
-There is no scheduled or background sync.
+Each sync the athlete starts runs as a Trigger.dev background task (see
+[2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)); there is no scheduled
+or automatic sync.
 
 ## Goals and scope
 
@@ -68,16 +70,28 @@ request runs both buttons are disabled; a failure keeps the dialog open and show
 - **Replace key:** allow submitting a new key through the same validation flow. Do not remove the
   existing connection until the replacement key has been validated and stored successfully.
 - **Sync feedback:** the sync runs in the background (see
-  [2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)). Pressing Sync shows
-  the start toast "Syncing your activities. They will be available shortly." and the button stays
-  disabled while the stored sync state is `running` (not stale). When the tab that saw `running`
-  sees the run end, it shows the final toast: counts of workouts created and updated on success
-  (when `hasMore` is true, "More workouts to sync. Press Sync workouts again to continue."
-  instead), or the actionable error mapped from the stored error code. On failure the connection is
-  kept and a retry is safe.
+  [2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)). `useLyftaSync`
+  starts it, then invalidates `lyfta.getConnectionStatus`. Every `getConnectionStatus` query polls
+  every 5 seconds (`SYNC_POLL_INTERVAL_MS`, `pollWhileSyncing` in `src/lib/sync-state.ts`) only while
+  `sync.status` is `running`. The button shows a spinner and stays disabled while the stored state is
+  `running` (not stale), so a reload keeps the spinner. `useSyncCompletion` remembers the
+  `startedAt` the tab saw `running`; when the same run turns `succeeded` or `failed`, the hook
+  reports the outcome once and invalidates `training.getCalendar` and `training.getStrengthProgress`.
+  A page that loads after the run ended reports nothing. The Settings card shows no toasts: it shows
+  the last run's counts ("Sync complete: 2 workouts added and 1 updated.", or "More workouts to
+  sync. Press Sync workouts again to continue." when `hasMore` is true) or the error mapped from the
+  stored code, straight from the status, until the athlete starts another sync. A refused overlap
+  ("A Lyfta sync is already running") is not an error: the hook refreshes the status and follows the
+  running sync. "Could not start the Lyfta sync. Try again." (`lyfta020`) means the task could not
+  be enqueued, and "The Lyfta sync stopped before finishing. Try again." (`lyfta021`) is a run that
+  failed without a specific code or went stale. On failure the connection is kept and a retry is
+  safe.
 - **Dashboard and Calendar:** show a shared action group with `Upload activity` and the shared `Sync`
   button (see [ux-design.md](ux-design.md)), which lists Lyfta as one integration. The sync is
-  manual and shows the same success counts and actionable errors as Settings in toasts. When
+  manual. Its row shows the start toast "Syncing your activities. They will be available shortly.",
+  an info toast with the in-progress message on a refused overlap, and, when the run it saw end
+  finishes, "Lyfta synced: 120 workouts added and 4 updated." (an info toast with the "More workouts
+  to sync" copy when `hasMore` is true) or the mapped error. When
   Lyfta is not connected its row links to Settings to connect.
 - **Disconnect:** confirm before removing the encrypted key. Keep already imported activities and
   their strength sets; disconnecting must not delete training history.
@@ -288,8 +302,10 @@ the `training` service, not directly into training repositories from the Lyfta m
 cross-module runtime imports on service boundaries.
 
 Add `lyfta` to the root tRPC router. The client exposes connection status and mutations for
-connecting/replacing a key, syncing workouts and disconnecting. Connection status contains only
-`connected` and `last_synced_at`.
+connecting/replacing a key, starting a sync and disconnecting. Connection status contains only
+`connected`, `lastSyncedAt` and `sync` (`SyncState`: status, `startedAt`, `finishedAt`, the stored
+result and error code, with a stale `running` row reported as `failed` with `lyfta021`).
+`syncWorkouts` returns `{ startedAt }`.
 
 Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env/server.ts`,
 `.env.example`, and the environment table in [architecture.md](architecture.md). Never read
@@ -316,6 +332,10 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
 - Verify disconnect removes credentials but leaves imported activities and sets.
 - Verify the Settings tab connects, syncs, reports errors and disables repeated submissions using
   `data-testid` selectors.
+- Verify the client: the start toast from the Sync button, polling only while `running`, the final
+  toast only after the tab saw the same run `running`, no toast on a page loaded after the run
+  ended, the spinner from the status after a remount, and the card showing the stored result or
+  error.
 
 ## Implementation order
 

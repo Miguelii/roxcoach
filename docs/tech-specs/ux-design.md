@@ -239,7 +239,13 @@ integration the athlete has not connected is not listed; with none connected the
 links to Settings. The list is a popover under the button on a wide screen and a drawer from the bottom on
 a phone (the shared `PopoverDrawer`). Each integration reports through toasts and exposes a
 `use-sync-<name>` hook that returns a `SyncSource` (`src/lib/sync-source.ts`); a new integration is
-one more hook in the list. See [manual-upload.md](manual-upload.md) for upload details.
+one more hook in the list. A sync runs in the background (see
+[2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)): pressing a row shows
+the info toast "Syncing your activities. They will be available shortly."; while the stored sync
+state is `running` the row and the button show a spinner and the row is disabled (also after a
+reload, since it comes from the polled status); when the run this tab saw `running` ends, the row
+shows the final success or error toast once. A page that loads after the run ended shows no toast,
+and the Settings cards show the last result or error inline instead. See [manual-upload.md](manual-upload.md) for upload details.
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query, returning activities
 and upcoming or completed races for the visible range, never cancelled races. Items are typed as a
@@ -388,8 +394,8 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
 Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
 `trpc.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
 `trpc.lyfta.*` for credential management and manual workout sync. All tabs have loading and
-error states; profile and availability show toasts on save. Lyfta connection and sync states are
-specified in [lyfta.md](lyfta.md).
+error states; profile and availability show toasts on save. Lyfta and Zepp connection and sync
+states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 
 - **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
   the saved zone is kept when it is not listed), max and resting heart rate, Hyrox division, weekly

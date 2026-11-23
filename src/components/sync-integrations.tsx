@@ -50,7 +50,11 @@ function SourceRow({ source, onSync }: RowProps) {
         >
             <RowText source={source} detail={detail} />
             {source.isSyncing ? (
-                <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                <Loader2Icon
+                    data-testid={`${testId}-spinner`}
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                />
             ) : (
                 <IconRefresh className="size-4 text-muted-foreground" aria-hidden="true" />
             )}

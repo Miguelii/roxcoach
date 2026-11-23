@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
+import { pollWhileSyncing } from '@/lib/sync-state'
 import { useZeppSync } from '@/modules/zepp/use-zepp-sync'
 import { messageForZeppError } from '@/modules/zepp/zepp-ui.utils'
 
@@ -19,8 +20,12 @@ const zeppFormSchema = z.object({
 export function useZeppConnection() {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
-    const query = useQuery(trpc.zepp.getConnectionStatus.queryOptions())
-    const zeppSync = useZeppSync()
+    const query = useQuery(
+        trpc.zepp.getConnectionStatus.queryOptions(undefined, {
+            refetchInterval: (current) => pollWhileSyncing(current.state.data),
+        })
+    )
+    const zeppSync = useZeppSync({ sync: query.data?.sync })
     const connectMutation = useMutation(trpc.zepp.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.zepp.disconnect.mutationOptions())
     const form = useForm<ZeppFormValues>({

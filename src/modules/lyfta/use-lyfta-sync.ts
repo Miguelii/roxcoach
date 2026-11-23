@@ -1,83 +1,101 @@
 'use client'
 
 import { useState } from 'react'
-import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+    LYFTA_SYNC_IN_PROGRESS_MESSAGE,
+    type LyftaSyncResult,
+} from '@/_bff/core/constants/lyfta.constants'
+import type { SyncState } from '@/_bff/core/helpers/sync-state.helper'
+import { useSyncCompletion } from '@/hooks/use-sync-completion'
 import { useTRPC } from '@/lib/trpc'
 import { formatDateTime } from '@/lib/formatters'
 import { messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 
-type SyncResult = {
-    created: number
-    updated: number
-    lastSyncedAt: string | null
-    hasMore: boolean
-}
-
 type Options = {
-    // Extra reactions to a finished sync (the dashboard button shows toasts).
-    onSynced?: (result: SyncResult) => void
+    sync?: SyncState<LyftaSyncResult>
+    onStarted?: () => void
+    onInProgress?: (message: string) => void
+    onSynced?: (result: LyftaSyncResult) => void
     onFailed?: (message: string) => void
 }
 
-const syncResultSchema = z.object({
-    created: z.number(),
-    updated: z.number(),
-    lastSyncedAt: z.string().nullable(),
-    hasMore: z.boolean(),
-})
+const REFRESH_FAILED_MESSAGE =
+    'Sync completed, but some data could not refresh. Reload to see the latest history.'
 
-export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
+export function useLyftaSync({ sync, onStarted, onInProgress, onSynced, onFailed }: Options = {}) {
     const trpc = useTRPC()
     const syncMutation = useMutation(trpc.lyfta.syncWorkouts.mutationOptions())
     const queryClient = useQueryClient()
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
-    const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+    const [starting, setStarting] = useState(false)
+    // The run whose stored result or error the athlete dismissed (undefined: none dismissed yet).
+    const [dismissedRunAt, setDismissedRunAt] = useState<string | null>()
 
-    const syncWorkouts = async () => {
-        setErrorMessage(null)
-        setSyncResult(null)
-        let started: unknown
-        try {
-            started = await syncMutation.mutateAsync()
-        } catch (error) {
-            const message = messageForLyftaError({
-                message: error instanceof Error ? error.message : '',
-            })
-            setErrorMessage(message)
-            syncMutation.reset()
-            onFailed?.(message)
-            return
-        }
-
-        syncMutation.reset()
-        // TODO(task 9): the mutation now returns { startedAt }; the client is reworked to poll the status.
-        const parsed = syncResultSchema.safeParse(started)
-        if (parsed.success) {
-            setSyncResult(parsed.data)
-            onSynced?.(parsed.data)
-        }
+    const refreshTraining = async () => {
         try {
             await Promise.all([
-                queryClient.invalidateQueries(trpc.lyfta.getConnectionStatus.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getStrengthProgress.queryFilter()),
             ])
         } catch {
-            const message =
-                'Sync completed, but some data could not refresh. Reload to see the latest history.'
-            setErrorMessage(message)
-            onFailed?.(message)
+            setErrorMessage(REFRESH_FAILED_MESSAGE)
+            onFailed?.(REFRESH_FAILED_MESSAGE)
         }
     }
 
+    useSyncCompletion(sync, (finished) => {
+        if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
+        if (finished.status === 'failed') {
+            onFailed?.(messageForLyftaError({ message: finished.errorCode ?? '' }))
+        }
+        void refreshTraining()
+    })
+
+    const syncWorkouts = async () => {
+        setErrorMessage(null)
+        setDismissedRunAt(sync?.startedAt ?? null)
+        setStarting(true)
+        try {
+            try {
+                await syncMutation.mutateAsync()
+                onStarted?.()
+            } catch (error) {
+                const message = messageForLyftaError({
+                    message: error instanceof Error ? error.message : '',
+                })
+                if (message === LYFTA_SYNC_IN_PROGRESS_MESSAGE) onInProgress?.(message)
+                else {
+                    setErrorMessage(message)
+                    onFailed?.(message)
+                }
+            }
+            syncMutation.reset()
+            await queryClient.invalidateQueries(trpc.lyfta.getConnectionStatus.queryFilter())
+        } finally {
+            setStarting(false)
+        }
+    }
+
+    const lastRun =
+        sync && sync.status !== 'running' && sync.startedAt !== dismissedRunAt ? sync : null
+    const lastRunError =
+        lastRun?.status === 'failed'
+            ? messageForLyftaError({ message: lastRun.errorCode ?? '' })
+            : null
+
     return {
-        errorMessage,
+        errorMessage: errorMessage ?? lastRunError,
         formatTimestamp: formatDateTime,
-        isSyncing: syncMutation.isPending,
-        syncResult,
+        isSyncing: starting || syncMutation.isPending || sync?.status === 'running',
+        syncResult: lastRun?.status === 'succeeded' ? lastRun.result : null,
         syncWorkouts,
-        clearError: () => setErrorMessage(null),
-        clearResult: () => setSyncResult(null),
+        clearError: () => {
+            setErrorMessage(null)
+            if (sync?.status === 'failed') setDismissedRunAt(sync.startedAt)
+        },
+        clearResult: () => {
+            if (sync?.status === 'succeeded') setDismissedRunAt(sync.startedAt)
+        },
     }
 }

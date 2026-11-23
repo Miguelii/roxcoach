@@ -1,4 +1,7 @@
-import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import {
+    ZEPP_SYNC_IN_PROGRESS_MESSAGE,
+    type ZeppSyncResult,
+} from '@/_bff/core/constants/zepp.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 
 type ZeppUiError = { message: string }
@@ -17,11 +20,14 @@ const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
         'Could not save imported runs. Try syncing again.',
     [ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR]:
         'Could not load your training history. Try syncing again.',
+    [ErrorCode.ZEPP_SYNC_ENQUEUE]: 'Could not start the Zepp sync. Try again.',
+    [ErrorCode.ZEPP_SYNC_FAILED]: 'The Zepp sync stopped before finishing. Try again.',
 }
 
 const GENERIC_ERROR_MESSAGE = 'Zepp could not complete the request. Try again.'
 
 export const messageForZeppError = ({ message }: ZeppUiError): string => {
+    if (message === ZEPP_SYNC_IN_PROGRESS_MESSAGE) return message
     const errorCode = Object.values(ErrorCode).find((code) => code === message)
     return (errorCode && ERROR_MESSAGES[errorCode]) || GENERIC_ERROR_MESSAGE
 }

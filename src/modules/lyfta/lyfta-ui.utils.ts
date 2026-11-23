@@ -24,6 +24,8 @@ const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
         'Could not replace imported sets. Try syncing again.',
     [ErrorCode.TRAINING_STRENGTH_SETS_INSERT_ERR]:
         'Could not save imported sets. Try syncing again.',
+    [ErrorCode.LYFTA_SYNC_ENQUEUE]: 'Could not start the Lyfta sync. Try again.',
+    [ErrorCode.LYFTA_SYNC_FAILED]: 'The Lyfta sync stopped before finishing. Try again.',
 }
 
 export const LYFTA_MORE_TO_SYNC_MESSAGE =

@@ -2,59 +2,87 @@
 
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+    ZEPP_SYNC_IN_PROGRESS_MESSAGE,
+    type ZeppSyncResult,
+} from '@/_bff/core/constants/zepp.constants'
+import type { SyncState } from '@/_bff/core/helpers/sync-state.helper'
+import { useSyncCompletion } from '@/hooks/use-sync-completion'
 import { useTRPC } from '@/lib/trpc'
-import { zeppSyncResultSchema, type ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
 import { messageForZeppError, zeppSyncMessage } from '@/modules/zepp/zepp-ui.utils'
 
 type Options = {
-    // Extra reactions to a finished sync (the shared Sync button shows toasts).
+    sync?: SyncState<ZeppSyncResult>
+    onStarted?: () => void
+    onInProgress?: (message: string) => void
     onSynced?: (result: ZeppSyncResult) => void
     onFailed?: (message: string) => void
 }
 
-export function useZeppSync({ onSynced, onFailed }: Options = {}) {
+export function useZeppSync({ sync, onStarted, onInProgress, onSynced, onFailed }: Options = {}) {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
     const syncMutation = useMutation(trpc.zepp.syncActivities.mutationOptions())
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
-    const [syncMessage, setSyncMessage] = useState<string | null>(null)
+    const [starting, setStarting] = useState(false)
+    // The run whose stored result or error the athlete dismissed (undefined: none dismissed yet).
+    const [dismissedRunAt, setDismissedRunAt] = useState<string | null>()
 
-    const sync = async () => {
-        setErrorMessage(null)
-        setSyncMessage(null)
-        let started: unknown
-        try {
-            started = await syncMutation.mutateAsync()
-        } catch (error) {
-            const message = messageForZeppError({
-                message: error instanceof Error ? error.message : '',
-            })
-            setErrorMessage(message)
-            syncMutation.reset()
-            onFailed?.(message)
-            return
+    useSyncCompletion(sync, (finished) => {
+        if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
+        if (finished.status === 'failed') {
+            onFailed?.(messageForZeppError({ message: finished.errorCode ?? '' }))
         }
-
-        syncMutation.reset()
-        // TODO(task 9): the mutation now returns { startedAt }; the client is reworked to poll the status.
-        const parsed = zeppSyncResultSchema.safeParse(started)
-        if (parsed.success) {
-            setSyncMessage(zeppSyncMessage(parsed.data))
-            onSynced?.(parsed.data)
-        }
-        await Promise.all([
-            queryClient.invalidateQueries(trpc.zepp.getConnectionStatus.queryFilter()),
+        void Promise.all([
             queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
             queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
         ])
+    })
+
+    const startSync = async () => {
+        setErrorMessage(null)
+        setDismissedRunAt(sync?.startedAt ?? null)
+        setStarting(true)
+        try {
+            try {
+                await syncMutation.mutateAsync()
+                onStarted?.()
+            } catch (error) {
+                const message = messageForZeppError({
+                    message: error instanceof Error ? error.message : '',
+                })
+                if (message === ZEPP_SYNC_IN_PROGRESS_MESSAGE) onInProgress?.(message)
+                else {
+                    setErrorMessage(message)
+                    onFailed?.(message)
+                }
+            }
+            syncMutation.reset()
+            await queryClient.invalidateQueries(trpc.zepp.getConnectionStatus.queryFilter())
+        } finally {
+            setStarting(false)
+        }
     }
 
+    const lastRun =
+        sync && sync.status !== 'running' && sync.startedAt !== dismissedRunAt ? sync : null
+    const lastRunError =
+        lastRun?.status === 'failed'
+            ? messageForZeppError({ message: lastRun.errorCode ?? '' })
+            : null
+    const lastRunResult = lastRun?.status === 'succeeded' ? lastRun.result : null
+
     return {
-        errorMessage,
-        syncMessage,
-        isSyncing: syncMutation.isPending,
-        sync,
-        clearError: () => setErrorMessage(null),
-        clearMessage: () => setSyncMessage(null),
+        errorMessage: errorMessage ?? lastRunError,
+        syncMessage: lastRunResult ? zeppSyncMessage(lastRunResult) : null,
+        isSyncing: starting || syncMutation.isPending || sync?.status === 'running',
+        sync: startSync,
+        clearError: () => {
+            setErrorMessage(null)
+            if (sync?.status === 'failed') setDismissedRunAt(sync.startedAt)
+        },
+        clearMessage: () => {
+            if (sync?.status === 'succeeded') setDismissedRunAt(sync.startedAt)
+        },
     }
 }

@@ -74,7 +74,12 @@ export function LyftaCard() {
                             disabled={busy}
                             onClick={() => void lyfta.syncWorkouts()}
                         >
-                            {lyfta.isSyncing ? <Loader2Icon className="animate-spin" /> : null}
+                            {lyfta.isSyncing ? (
+                                <Loader2Icon
+                                    data-testid="lyfta-sync-spinner"
+                                    className="animate-spin"
+                                />
+                            ) : null}
                             Sync workouts
                         </Button>
                         {lyfta.showKeyForm ? null : (
@@ -194,9 +199,6 @@ export function LyftaCard() {
                 <p data-testid="lyfta-sync-success" className="text-sm text-muted-foreground">
                     Sync complete: {lyfta.syncResult.created} workouts added and{' '}
                     {lyfta.syncResult.updated} updated.
-                    {lyfta.syncResult.lastSyncedAt
-                        ? ` Last synced ${lyfta.formatTimestamp(lyfta.syncResult.lastSyncedAt)}.`
-                        : ''}
                 </p>
             ) : null}
 
