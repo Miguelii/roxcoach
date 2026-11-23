@@ -1,6 +1,9 @@
 'use client'
 
 import { Loader2Icon } from 'lucide-react'
+import { ClearActivitiesDialog } from '@/components/clear-activities-dialog'
+import { IntegrationDangerZone } from '@/components/integration-danger-zone'
+import { IntegrationStatusPill } from '@/components/integration-status-pill'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -41,7 +44,8 @@ export function ZeppCard() {
 
     const connected = zepp.query.data.connected
     const lastSyncedAt = zepp.query.data.lastSyncedAt
-    const busy = zepp.isConnecting || zepp.isSyncing || zepp.isDisconnecting
+    const busy =
+        zepp.isConnecting || zepp.isSyncing || zepp.isDisconnecting || zepp.clearActivities.clearing
 
     return (
         <section
@@ -50,9 +54,12 @@ export function ZeppCard() {
             className="grid max-w-xl gap-5"
         >
             <div className="grid gap-2">
-                <h2 id="zepp-heading" className="text-lg font-semibold">
-                    Zepp
-                </h2>
+                <div className="flex flex-wrap items-center gap-3">
+                    <h2 id="zepp-heading" className="text-lg font-semibold">
+                        Zepp
+                    </h2>
+                    <IntegrationStatusPill connected={connected} testId="zepp-status-pill" />
+                </div>
                 <p className="max-w-prose text-sm text-muted-foreground">
                     Import your outdoor runs from your Zepp account (Amazfit). Your password is used
                     once to sign in and is never stored. Sync starts only when you choose it.
@@ -68,6 +75,15 @@ export function ZeppCard() {
                                 ? `Last synced ${formatDateTime(lastSyncedAt)}`
                                 : 'Runs have not been synced yet.'}
                         </p>
+                        {zepp.activityCount === undefined ? null : (
+                            <p
+                                data-testid="zepp-imported-count"
+                                className="text-sm text-muted-foreground"
+                            >
+                                {zepp.activityCount} {zepp.activityCount === 1 ? 'run' : 'runs'}{' '}
+                                imported
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -86,28 +102,32 @@ export function ZeppCard() {
                             Sync runs
                         </Button>
                         {zepp.showForm ? null : (
-                            <>
-                                <Button
-                                    className="w-full md:max-w-37.5"
-                                    variant="outline"
-                                    data-testid="zepp-reconnect"
-                                    disabled={busy}
-                                    onClick={zepp.openForm}
-                                >
-                                    Sign in again
-                                </Button>
-                                <Button
-                                    className="w-full md:max-w-37.5"
-                                    variant="destructive"
-                                    data-testid="zepp-disconnect"
-                                    disabled={busy}
-                                    onClick={() => zepp.setConfirmDisconnect(true)}
-                                >
-                                    Disconnect
-                                </Button>
-                            </>
+                            <Button
+                                className="w-full md:max-w-37.5"
+                                variant="outline"
+                                data-testid="zepp-reconnect"
+                                disabled={busy}
+                                onClick={zepp.openForm}
+                            >
+                                Sign in again
+                            </Button>
                         )}
                     </div>
+
+                    {zepp.showForm ? null : (
+                        <IntegrationDangerZone
+                            provider="Zepp"
+                            items="runs"
+                            count={zepp.activityCount}
+                            disabled={busy}
+                            onClear={() => {
+                                zepp.clearError()
+                                zepp.clearActivities.setOpen(true)
+                            }}
+                            onDisconnect={() => zepp.setConfirmDisconnect(true)}
+                            testIdPrefix="zepp"
+                        />
+                    )}
                 </div>
             ) : null}
 
@@ -196,6 +216,19 @@ export function ZeppCard() {
                     {zepp.errorMessage}
                 </p>
             ) : null}
+
+            <ClearActivitiesDialog
+                open={zepp.clearActivities.open}
+                onOpenChange={zepp.clearActivities.setOpen}
+                onConfirm={() => void zepp.clearActivities.clear()}
+                clearing={zepp.clearActivities.clearing}
+                error={zepp.clearActivities.error}
+                provider="Zepp"
+                items="runs"
+                extra="laps"
+                count={zepp.activityCount ?? 0}
+                testIdPrefix="zepp"
+            />
 
             <ConfirmDialog
                 open={zepp.confirmDisconnect}
