@@ -98,7 +98,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Layout
 
-- App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings),
+- App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings) and a Logs item after them (desktop only: the phone bar keeps its items and reaches Logs from a link at the bottom of Settings),
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": white at about 55% over a blurred, saturated backdrop, bright inset rim, lifted
@@ -410,6 +410,19 @@ states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
   7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
   kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to
   H h". A rest day is exclusive; the same kind cannot be added twice on a day.
+
+### Logs
+
+The `/logs` page (`LogsExplorer` in `src/modules/logs`) reads the Roxcoach rows of the shared log
+table (see [logs.md](logs.md)). A toolbar has the range pills (`30m`, `1h`, `24h`, `7d`, `30d`) and a
+debounced search; both live in the URL. Under it a stacked histogram (30 buckets, one series per
+level) in a white card, then pill filters for level (always the four levels, with counts) and for
+source, then one card with the list: time, level badge, source and message per row (a two line row
+on a phone). Tapping a row opens the details in `DetailDrawer`: message, level, source, time, user
+and the metadata as formatted JSON. Level tones: error red, warning amber, info blue, debug slate
+(`-soft` fill, `-deep` text). States: a banner when 1000 rows came back (the range is truncated),
+"No logs in this time range" when empty and "No logs match these filters" with a clear button when
+the filters match nothing.
 
 ## Components
 

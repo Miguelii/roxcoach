@@ -26,3 +26,11 @@ containing the search (wildcards escaped, value quoted). `isTruncated` is true w
 reached. Not cached. Every signed-in athlete sees every Roxcoach row, including rows without a
 `user_id`. Errors: `LogsClientError` (`logs001`) and `LogsQueryError` (`logs002`), both
 `INTERNAL_SERVER_ERROR`.
+
+## Page
+
+`/logs` is a server page: it reads `range` and `search` from the URL (nuqs), calls `logs.getAll`
+with the server caller and renders `LogsExplorer` with the rows, `isTruncated` and the fetch time
+(the end of the histogram window). Level and source filters and the selected row are client state
+over the fetched rows. Details and design: [ux-design.md](ux-design.md#logs). The link to `/logs` is
+a sidebar item on desktop and a link at the bottom of Settings on a phone.

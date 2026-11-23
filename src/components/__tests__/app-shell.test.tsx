@@ -105,7 +105,11 @@ describe('AppShell navigation', () => {
         expect(desktopNav).toHaveTextContent('Races')
         expect(desktopNav).toHaveTextContent('Settings')
 
+        expect(screen.getByTestId('nav-logs')).toHaveAttribute('href', '/logs')
+        expect(desktopNav).toContainElement(screen.getByTestId('nav-logs'))
+
         const mobileNav = screen.getByTestId('nav-mobile')
+        expect(mobileNav).not.toHaveTextContent('Logs')
         expect(mobileNav).toHaveTextContent('Dashboard')
         expect(mobileNav).toHaveTextContent('Calendar')
         expect(mobileNav).toHaveTextContent('Races')
