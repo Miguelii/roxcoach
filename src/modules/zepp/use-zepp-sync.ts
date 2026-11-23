@@ -3,11 +3,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
-import {
-    messageForZeppError,
-    zeppSyncMessage,
-    type ZeppSyncResult,
-} from '@/modules/zepp/zepp-ui.utils'
+import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import { messageForZeppError, zeppSyncMessage } from '@/modules/zepp/zepp-ui.utils'
 
 type Options = {
     // Extra reactions to a finished sync (the shared Sync button shows toasts).

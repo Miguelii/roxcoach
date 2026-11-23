@@ -1,7 +1,7 @@
 import 'server-only'
 
-import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
+import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ZeppConnectionNotFoundError } from '@/_bff/lib/errors'
 import {
@@ -16,8 +16,10 @@ import {
     replaceZeppLaps,
 } from '@/_bff/modules/training/services/import-zepp-activity.service'
 import {
+    CONNECTION_RECHECK_EVERY,
     DETAIL_REQUEST_DELAY_MS,
     MAX_DETAILS_PER_SYNC,
+    ZEPP_SYNC_HISTORY_DAYS,
     ZEPP_IMPORTED_SPORT_TYPES,
 } from '@/_bff/modules/zepp/constants'
 import {
@@ -46,7 +48,7 @@ type SyncDependencies = ZeppConnectionDependencies & {
     now: () => Date
 }
 
-type ZeppSyncResult = { imported: number; skipped: number; updated: number; remaining: number }
+const DAY_MS = 86_400_000
 
 const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
     ...DEFAULT_ZEPP_CONNECTION_DEPENDENCIES,
@@ -66,17 +68,21 @@ const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
 const isImportableRun = (summary: ZeppRunSummary) =>
     ZEPP_IMPORTED_SPORT_TYPES.some((type) => type === summary.sportType) && summary.distanceM > 0
 
+const isWithinHistory = (summary: ZeppRunSummary, oldestStartMs: number) =>
+    Number(summary.trackId) * 1000 >= oldestStartMs
+
 const newestFirst = (a: ZeppRunSummary, b: ZeppRunSummary) => Number(b.trackId) - Number(a.trackId)
 
-// Imports the runs of the Zepp history that are not in Roxcoach yet, newest first, then adds the
-// kilometre laps to runs imported before laps existed, at most MAX_DETAILS_PER_SYNC details per call
-// in all. Safe to repeat: a run is fetched again only while it has no laps.
+// Imports the runs of the last ZEPP_SYNC_HISTORY_DAYS days of the Zepp history that are not in
+// Roxcoach yet, newest first, then adds the kilometre laps to runs imported before laps existed, at
+// most MAX_DETAILS_PER_SYNC details per call in all. Safe to repeat: a run is fetched again only
+// while it has no laps. A disconnected account stops the run without a checkpoint.
 export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
-    user: User,
+    userId: string,
     dependencies: SyncDependencies = DEFAULT_SYNC_DEPENDENCIES
 ) {
     const admin = yield* createZeppAdminClient(dependencies)
-    const connection = yield* selectZeppConnection(admin, user.id)
+    const connection = yield* selectZeppConnection(admin, userId)
     if (connection === null)
         return yield* new ZeppConnectionNotFoundError({
             cause: 'No Zepp connection for this user',
@@ -88,25 +94,28 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         dependencies.encryptionKey
     )
     const { summaries } = yield* fetchZeppHistory(appToken, dependencies.api)
-    const runs = summaries.filter((summary) => isImportableRun(summary)).toSorted(newestFirst)
+    const oldestStartMs = dependencies.now().getTime() - ZEPP_SYNC_HISTORY_DAYS * DAY_MS
+    const runs = summaries
+        .filter((summary) => isImportableRun(summary) && isWithinHistory(summary, oldestStartMs))
+        .toSorted(newestFirst)
 
-    const context: ImportContext = yield* dependencies.createImportContext(user.id)
+    const context: ImportContext = yield* dependencies.createImportContext(userId)
     const known = yield* dependencies.findKnownTrackIds(
-        user.id,
+        userId,
         runs.map((run) => run.trackId),
         context
     )
     const unknown = runs.filter((run) => !known.has(run.trackId))
     // Decided before the batch is cut, so runs the athlete already has never use up its budget.
     const duplicates = yield* dependencies.findDuplicateTrackIds(
-        user.id,
+        userId,
         unknown.map((run) => run.trackId),
         context
     )
     const fresh = unknown.filter((run) => !duplicates.has(run.trackId))
     const batch = fresh.slice(0, MAX_DETAILS_PER_SYNC)
     const withoutLaps = yield* dependencies.findRunsWithoutLaps(
-        user.id,
+        userId,
         runs.filter((run) => known.has(run.trackId)).map((run) => run.trackId),
         context
     )
@@ -114,9 +123,19 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     const backfill = unsplit.slice(0, MAX_DETAILS_PER_SYNC - batch.length)
 
     let requests = 0
-    // The history just answered, so a refused detail is about this run, not the session.
+    let connectionGone = false
+    // `undefined` means the connection is gone and the run must stop; `null` means Zepp refused the
+    // detail of this run. The history just answered, so a refusal is about the run, not the session.
     const fetchDetail = (summary: ZeppRunSummary) =>
         Effect.gen(function* () {
+            if (connectionGone) return undefined
+            if (requests > 0 && requests % CONNECTION_RECHECK_EVERY === 0) {
+                const current = yield* selectZeppConnection(admin, userId)
+                if (current === null) {
+                    connectionGone = true
+                    return undefined
+                }
+            }
             if (requests > 0)
                 yield* Effect.promise(() => dependencies.sleep(DETAIL_REQUEST_DELAY_MS))
             requests += 1
@@ -132,12 +151,13 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     let skipped = 0
     for (const summary of batch) {
         const detail = yield* fetchDetail(summary)
+        if (detail === undefined) break
         if (detail === null) {
             skipped += 1
             continue
         }
         const result = yield* dependencies.importActivity(
-            user.id,
+            userId,
             summary,
             adaptZeppRun(summary, detail),
             context
@@ -150,9 +170,10 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     for (const summary of backfill) {
         const activityId = withoutLaps.get(summary.trackId)
         const detail = yield* fetchDetail(summary)
+        if (detail === undefined) break
         if (detail === null || activityId === undefined) continue
         yield* dependencies.replaceRunLaps(
-            user.id,
+            userId,
             activityId,
             buildZeppLaps(summary, detail),
             context
@@ -160,7 +181,8 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         updated += 1
     }
 
-    yield* updateZeppLastSyncedAt(admin, user.id, dependencies.now().toISOString())
+    if (!connectionGone)
+        yield* updateZeppLastSyncedAt(admin, userId, dependencies.now().toISOString())
     const result: ZeppSyncResult = {
         imported,
         skipped,

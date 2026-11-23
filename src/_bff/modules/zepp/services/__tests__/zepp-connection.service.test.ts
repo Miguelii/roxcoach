@@ -88,7 +88,15 @@ describe('getZeppConnectionStatus', () => {
     it('is not connected without a row and reports the last sync with one', async () => {
         const none = makeFakeDb([ok(null)])
         const some = makeFakeDb([
-            ok({ encrypted_app_token: 'x', last_synced_at: '2026-11-21T10:00:00.000Z' }),
+            ok({
+                encrypted_app_token: 'x',
+                last_synced_at: '2026-11-21T10:00:00.000Z',
+                sync_status: 'idle',
+                sync_started_at: null,
+                sync_finished_at: null,
+                sync_result: null,
+                sync_error: null,
+            }),
         ])
         const fetcher = loginFetch()
 

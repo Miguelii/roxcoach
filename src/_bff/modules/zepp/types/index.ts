@@ -1,3 +1,4 @@
+import type { SyncStateRow } from '@/_bff/core/helpers/sync-state.helper'
 import type { ParsedActivity } from '@/_bff/modules/training/types'
 import type { HrSample } from '@/_bff/modules/training/types/progress'
 
@@ -35,6 +36,10 @@ export type AdaptedActivity = Omit<ParsedActivity, 'format' | 'hrHistogram' | 'p
     samples: HrSample[]
 }
 
-export type ZeppConnectionRecord = { encryptedAppToken: string; lastSyncedAt: string | null }
+export type ZeppConnectionRecord = {
+    encryptedAppToken: string
+    lastSyncedAt: string | null
+    sync: SyncStateRow
+}
 
 export type ZeppConnectionStatus = { connected: boolean; lastSyncedAt: string | null }

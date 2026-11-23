@@ -143,7 +143,7 @@ describe('Zepp controllers', () => {
             remaining: 0,
         })
         await expect(caller.zepp.disconnect()).resolves.toBeUndefined()
-        expect(mocks.syncActivities).toHaveBeenCalledWith(USER)
+        expect(mocks.syncActivities).toHaveBeenCalledWith(USER.id)
         expect(mocks.disconnect).toHaveBeenCalledWith(USER)
     })
 

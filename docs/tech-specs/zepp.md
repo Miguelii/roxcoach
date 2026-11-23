@@ -85,24 +85,46 @@ full laps), with the mean heart rate of the series in that span. A run without `
 gets one lap for the whole run. The laps are written right after the activity; if writing them fails
 the activity is deleted, so the next sync tries the run again.
 
-Sync (`syncZeppActivities`): read the connection, fetch the history, keep type 1 with distance above
-zero, newest first, drop the ids already imported, then fetch and import at most 50 details, spaced
-500 ms apart. A run whose start is within 300 seconds of an activity the athlete already has from
-another source (a hand uploaded Zepp file) is dropped before the batch is cut, with one range query,
-so it never uses up the 50 details; an earlier Zepp activity does not count, so a stopped start-up run
-cannot block the real one. A manual upload applies the same window, so a file uploaded after a sync
-is also a duplicate. Runs imported before laps existed (a Zepp activity with no `activity_laps` row)
-are fetched again with the budget the new runs leave, newest first, and get their laps; the activity
+Sync (`syncZeppActivities(userId)`, no request session: it uses the service-role client): read the
+connection, fetch the history, keep type 1 with distance above zero whose start is within the last
+360 days (`Number(trackid) * 1000 >= now - 360 days`, `ZEPP_SYNC_HISTORY_DAYS`), newest first. The
+filter runs before anything else is computed, so an older run is neither imported nor backfilled.
+Then drop the ids already imported and fetch and import the rest, spaced 500 ms apart.
+`MAX_DETAILS_PER_SYNC = 1000` (about 8 minutes) is a safety ceiling, not a working limit: a normal
+account finishes in one run. A run whose start is within 300 seconds of an activity the athlete
+already has from another source (a hand uploaded Zepp file) is dropped before the batch is cut, with
+one range query; an earlier Zepp activity does not count, so a stopped start-up run cannot block the
+real one. A manual upload applies the same window, so a file uploaded after a sync is also a
+duplicate. Runs imported before laps existed (a Zepp activity with no `activity_laps` row) are
+fetched again with the budget the new runs leave, newest first, and get their laps; the activity
 itself is not touched. A detail that Zepp refuses (HTTP error or `code` other than 1) is skipped for
-that run only. There is no history window: the whole history is read every time. The unique `(user_id, source, source_id)` index turns a concurrent
-second insert into "already imported". The result is `{ imported, skipped, updated, remaining }`, where
-`updated` counts the runs that got their laps and `remaining` counts both the new runs and the runs
-still without laps; the UI asks to press Sync again while `remaining` is above zero. An expired token aborts the sync.
+that run only. The unique `(user_id, source, source_id)` index turns a concurrent second insert into
+"already imported". The result is `{ imported, skipped, updated, remaining }`
+(`zeppSyncResultSchema`), where `updated` counts the runs that got their laps and `remaining` counts
+both the new runs and the runs still without laps (above zero only when the ceiling is hit). An
+expired token aborts the sync.
+
+Every 25 detail requests the sync re-reads the connection. When it is gone (the athlete
+disconnected) the run stops quietly with the counts so far and does not write `last_synced_at`.
+
+Sync state (migration 0021 adds `sync_started_at` to `zepp_connections`; the other columns come from
+the shared sync state): `takeZeppSyncLease` is a compare-and-set that takes the lease when no sync is
+running or the running one started before the stale limit; `setZeppSyncRunId` and `finishZeppSync`
+only touch the row whose `sync_started_at` is the run's and whose `sync_status` is `running`, so a
+run that outlived its lease never overwrites a newer one. Connecting again resets the sync state
+with `last_synced_at`. Write errors use `ZEPP_SYNC_LEASE`. `isPermanentZeppSyncError` marks the
+errors that fail a background run without a retry: connection not found, configuration, credential,
+connection parse and session expired. Everything else (including `ZeppApiResponseError`, which also
+covers 5xx) is retried.
+
+Finding: `trackid` is the start second of the run and `end_time - run_time >= trackid` (equal for
+the 133 s run of the history mock, 607 s later for the 722 s run, which has pauses), so
+`trackid * 1000` is the start time used by the 360 day filter.
 
 ## Sync button
 
 The Dashboard and Calendar `Sync` button lists Zepp next to Lyfta. Its row syncs only Zepp. The result goes through a toast: "Zepp synced: Imported 2
-runs.", "Added splits to 3 runs." or, while more remains, "Imported 50 runs. More runs to sync. Press Sync again to continue."
+runs." or "Added splits to 3 runs." The "More runs to sync" copy only appears when the 1000 detail ceiling is hit.
 
 ## Security
 
