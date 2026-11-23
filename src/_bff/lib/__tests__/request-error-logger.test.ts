@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
+import { TRPCError } from '@trpc/server'
 import type { LogProps } from '@/_bff/lib/log-writer'
 import { logRequestError } from '@/_bff/lib/request-error-logger'
 
@@ -34,6 +35,19 @@ describe('logRequestError', () => {
                 metadata: { routePath: '/api/coach', routeType: 'route' },
             },
         ])
+    })
+
+    it('skips an error runEffect already logged and rethrew as a tRPC error', async () => {
+        const { logs, log } = collect()
+
+        await logRequestError(
+            new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'zepp009' }),
+            REQUEST,
+            CONTEXT,
+            log
+        )
+
+        expect(logs).toEqual([])
     })
 
     it('never throws when the log fails', async () => {

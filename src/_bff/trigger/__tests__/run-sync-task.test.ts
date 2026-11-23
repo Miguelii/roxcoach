@@ -194,6 +194,31 @@ const logging = (logs: LogProps[] = [], rejects = false) => ({
 })
 
 describe('recordFailedSyncTask', () => {
+    it('does not log again when the run ended with an abort, runSyncTask already logged it', async () => {
+        const { calls, finish } = recorder(Effect.void)
+        const logs: LogProps[] = []
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, {
+            ...logging(logs),
+            error: new AbortTaskRunError('LyftaResponseError'),
+        })
+
+        expect(logs).toEqual([])
+        expect(calls).toHaveLength(1)
+    })
+
+    it('logs when the run failed with any other error', async () => {
+        const { finish } = recorder(Effect.void)
+        const logs: LogProps[] = []
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, {
+            ...logging(logs),
+            error: new Error('LyftaApiError lyfta006'),
+        })
+
+        expect(logs).toHaveLength(1)
+    })
+
     it('logs one error row when the run failed for good', async () => {
         const { finish } = recorder(Effect.void)
         const logs: LogProps[] = []

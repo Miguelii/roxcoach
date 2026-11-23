@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
     serializeLogMetadata,
     serializeLogValue,
@@ -29,6 +30,15 @@ type LogWriterDependencies = {
     reportFailure: (message: string) => void
 }
 
+const taggedErrorSchema = z.object({ _tag: z.string() })
+
+// A tagged failure with no message is named by its tag, so the row reads and searches well.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- parsed by taggedErrorSchema right below
+const taggedName = (error: unknown): string | null => {
+    const parsed = taggedErrorSchema.safeParse(error)
+    return parsed.success ? parsed.data._tag : null
+}
+
 export const buildLogRow = ({
     level,
     prefix,
@@ -44,7 +54,7 @@ export const buildLogRow = ({
         project: 'roxcoach',
         level: level === 'log' ? 'debug' : level,
         prefix,
-        message: message ?? null,
+        message: message ?? taggedName(error),
         metadata: Object.keys(combined).length > 0 ? combined : null,
         user_id: userId ?? null,
     }

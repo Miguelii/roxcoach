@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { ErrorCode } from '@/_bff/lib/error-codes'
+import { LogsQueryError } from '@/_bff/lib/errors'
 import type { LogMetadata } from '@/_bff/lib/log-serializer'
 import { buildLogRow, createLogWriter, type LogRow } from '@/_bff/lib/log-writer'
 
@@ -48,6 +50,27 @@ describe('buildLogRow', () => {
 
         expect(row.message).toBeNull()
         expect(row.user_id).toBeNull()
+    })
+
+    it('falls back to the error tag as the message, so a tagged failure is readable and searchable', () => {
+        const row = buildLogRow({
+            level: 'error',
+            prefix: 'getLogs',
+            error: new LogsQueryError({ cause: 'x', error_hash: ErrorCode.LOGS_QUERY }),
+        })
+
+        expect(row.message).toBe('LogsQueryError')
+    })
+
+    it('keeps an explicit message over the error tag', () => {
+        const row = buildLogRow({
+            level: 'error',
+            prefix: 'p',
+            message: 'defect',
+            error: new LogsQueryError({ cause: 'x', error_hash: ErrorCode.LOGS_QUERY }),
+        })
+
+        expect(row.message).toBe('defect')
     })
 
     it('redacts secrets in the metadata and in the error', () => {

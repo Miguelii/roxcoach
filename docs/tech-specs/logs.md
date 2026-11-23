@@ -9,8 +9,9 @@ the `/logs` page. The decision and the reasoning are in
 
 - **Errors:** every `Logger({ level: 'error' })` call, including the `runEffect` boundary, the
   failures of the Trigger.dev sync tasks (one `warn` row per retried attempt, one `error` row for a
-  permanent failure and one when every attempt failed) and the errors Next reports through
-  `onRequestError` (`src/instrumentation.ts`, prefix `request`).
+  permanent failure, or one `error` row when every attempt failed without an abort) and the errors Next reports through
+  `onRequestError` (`src/instrumentation.ts`, prefix `request`), except tRPC errors, which `runEffect` already logged. A row
+  without a message takes the tag of its error as the message.
 - **Info events** (prefix `lyftaSync` or `zeppSync`): `Sync started` when the start service
   enqueues the task (metadata `runId`) and `Sync succeeded` when the task finishes (the stored
   result counts and `durationMs`).

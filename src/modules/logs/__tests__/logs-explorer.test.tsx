@@ -135,6 +135,28 @@ describe('LogsExplorer', () => {
         })
     })
 
+    it('sends a search with a trailing space once, without refetching in a loop', async () => {
+        const updates: UrlUpdateEvent[] = []
+        renderExplorer({ updates })
+
+        fireEvent.change(screen.getByTestId('logs-search'), { target: { value: 'zepp ' } })
+        await waitFor(() => {
+            expect(updates.at(-1)?.searchParams.get('search')).toBe('zepp')
+        })
+        const settled = updates.length
+        await new Promise((resolve) => {
+            setTimeout(resolve, 900)
+        })
+
+        expect(updates).toHaveLength(settled)
+    })
+
+    it('limits the search to the 200 characters the server accepts', () => {
+        renderExplorer()
+
+        expect(screen.getByTestId('logs-search')).toHaveAttribute('maxlength', '200')
+    })
+
     it('draws the histogram', () => {
         renderExplorer()
 

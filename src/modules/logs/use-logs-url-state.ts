@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useQueryStates } from 'nuqs'
 import { LOGS_SEARCH_PARAMS } from '@/modules/logs/logs-search-params'
 
@@ -10,10 +11,14 @@ export function useLogsUrlState() {
         shallow: false,
     })
 
-    return {
-        range,
-        search,
-        setRange: (nextRange: typeof range) => setSearchParams({ range: nextRange }),
-        setSearch: (nextSearch: string) => setSearchParams({ search: nextSearch || null }),
-    }
+    const setRange = useCallback(
+        (nextRange: typeof range) => setSearchParams({ range: nextRange }),
+        [setSearchParams]
+    )
+    const setSearch = useCallback(
+        (nextSearch: string) => setSearchParams({ search: nextSearch || null }),
+        [setSearchParams]
+    )
+
+    return { range, search, setRange, setSearch }
 }

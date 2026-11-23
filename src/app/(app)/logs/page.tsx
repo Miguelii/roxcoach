@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { createCaller } from '@/_bff/trpc/caller'
 import { LogsExplorer } from '@/modules/logs/logs-explorer'
+import { MAX_SEARCH_LENGTH } from '@/modules/logs/logs-ui.constants'
 import { logsSearchParamsCache } from '@/modules/logs/logs-search-params'
 
 type Props = PageProps<'/logs'>
@@ -16,7 +17,10 @@ export default async function LogsPage({ searchParams }: Props) {
         logsSearchParamsCache.parse(searchParams),
     ])
     const fetchedAt = new Date().toISOString()
-    const { logs, isTruncated } = await caller.logs.getAll({ range, search: search || undefined })
+    const { logs, isTruncated } = await caller.logs.getAll({
+        range,
+        search: search.slice(0, MAX_SEARCH_LENGTH) || undefined,
+    })
 
     return (
         <main className="main-container-lg">

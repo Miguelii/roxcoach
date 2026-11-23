@@ -28,3 +28,6 @@ export const LOG_LEVEL_CHART_COLOR: Record<LogLevel, string> = {
 }
 
 export const SEARCH_DEBOUNCE_MS = 400
+
+// The server rejects a longer search.
+export const MAX_SEARCH_LENGTH = 200

@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react'
 import { IconSearch } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { LOG_RANGE_OPTIONS, SEARCH_DEBOUNCE_MS } from '@/modules/logs/logs-ui.constants'
+import {
+    LOG_RANGE_OPTIONS,
+    MAX_SEARCH_LENGTH,
+    SEARCH_DEBOUNCE_MS,
+} from '@/modules/logs/logs-ui.constants'
 import { useLogsUrlState } from '@/modules/logs/use-logs-url-state'
 
 export function LogsToolbar() {
@@ -12,8 +16,9 @@ export function LogsToolbar() {
     const [draft, setDraft] = useState(search)
 
     useEffect(() => {
-        if (draft === search) return
-        const timer = setTimeout(() => void setSearch(draft.trim()), SEARCH_DEBOUNCE_MS)
+        const trimmed = draft.trim()
+        if (trimmed === search) return
+        const timer = setTimeout(() => void setSearch(trimmed), SEARCH_DEBOUNCE_MS)
         return () => clearTimeout(timer)
     }, [draft, search, setSearch])
 
@@ -52,6 +57,7 @@ export function LogsToolbar() {
                     data-testid="logs-search"
                     aria-label="Search logs"
                     placeholder="Search message or source"
+                    maxLength={MAX_SEARCH_LENGTH}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     className="h-11 rounded-full bg-card pl-9 md:h-10"

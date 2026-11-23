@@ -15,6 +15,12 @@ type SyncLogging = {
     log?: (props: LogProps) => Promise<void>
 }
 
+type FailureLogging = SyncLogging & {
+    // What the run ended with: an abort was already logged by runSyncTask with the real error.
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- only compared with AbortTaskRunError
+    error?: unknown
+}
+
 type SyncTaskDependencies<A, E extends SyncTaskError> = SyncLogging & {
     sync: (payload: SyncTaskPayload) => Effect.Effect<A, E>
     finish: (payload: SyncTaskPayload, outcome: SyncOutcome<A>) => Effect.Effect<void, unknown>
@@ -97,18 +103,20 @@ export async function recordFailedSyncTask<A>(
         outcome: SyncOutcome<A>
     ) => Effect.Effect<void, SyncTaskError>,
     errorCode: string,
-    { prefix, log = persistLog }: SyncLogging
+    { prefix, log = persistLog, error }: FailureLogging
 ): Promise<void> {
     const parsed = syncTaskPayloadSchema.safeParse(rawPayload)
     if (!parsed.success) return
 
-    await logQuietly(log, {
-        level: 'error',
-        prefix,
-        message: 'Sync failed after all attempts',
-        metadata: { errorCode },
-        userId: parsed.data.userId,
-    })
+    if (!(error instanceof AbortTaskRunError)) {
+        await logQuietly(log, {
+            level: 'error',
+            prefix,
+            message: 'Sync failed after all attempts',
+            metadata: { errorCode },
+            userId: parsed.data.userId,
+        })
+    }
 
     const exit = await Effect.runPromiseExit(finish(parsed.data, { status: 'failed', errorCode }))
     if (Exit.isSuccess(exit)) return

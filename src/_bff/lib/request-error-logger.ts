@@ -1,3 +1,4 @@
+import { TRPCError } from '@trpc/server'
 import type { LogProps } from '@/_bff/lib/log-writer'
 import { persistLog } from '@/_bff/lib/server-logger'
 
@@ -12,6 +13,8 @@ export async function logRequestError(
     context: RequestContext,
     log: (props: LogProps) => Promise<void> = persistLog
 ): Promise<void> {
+    // runEffect already logged the failure before rethrowing it as a TRPCError.
+    if (error instanceof TRPCError) return
     try {
         await log({
             level: 'error',
