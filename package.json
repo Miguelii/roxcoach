@@ -13,7 +13,9 @@
         "knip": "knip",
         "prepare": "husky",
         "test": "vp test run",
-        "test:watch": "vp test"
+        "test:watch": "vp test",
+        "trigger:dev": "pnpm dlx trigger.dev@4.8.8 dev",
+        "trigger:deploy": "pnpm dlx trigger.dev@4.8.8 deploy"
     },
     "dependencies": {
         "@ai-sdk/google": "^4.0.123",

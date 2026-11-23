@@ -19,4 +19,6 @@ export default defineConfig({
         },
     },
     dirs: ['./src/trigger'],
+    // Resolve packages the way Next.js server code does (`server-only` to its no-op export).
+    build: { conditions: ['react-server'] },
 })

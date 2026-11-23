@@ -78,3 +78,5 @@ export const ZEPP_DATA_HEADERS = {
     appPlatform: 'web',
     appname: 'com.huami.midong',
 } as const
+
+export const ZEPP_SYNC_TASK_ID = 'sync-zepp-activities'

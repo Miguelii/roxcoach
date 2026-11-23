@@ -25,6 +25,8 @@ export const ServerEnv = createEnv({
             .optional(),
         // Identifies the deployed build (the install prompt is offered again after a new one).
         NEXT_BUILD_ID: z.string().min(1).optional(),
+        // Trigger.dev secret key of the environment the start services enqueue runs in.
+        TRIGGER_SECRET_KEY: z.string().min(1).optional(),
     },
     runtimeEnv: {
         NEXT_SUPABASE_URL: process.env.NEXT_SUPABASE_URL,
@@ -37,6 +39,7 @@ export const ServerEnv = createEnv({
         NEXT_ZEPP_ENCRYPTION_KEY: process.env.NEXT_LYFTA_ENCRYPTION_KEY,
         // Vercel sets the commit of every deployment; NEXT_BUILD_ID overrides it elsewhere.
         NEXT_BUILD_ID: process.env.NEXT_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA,
+        TRIGGER_SECRET_KEY: process.env.TRIGGER_SECRET_KEY,
     },
     // An empty value copied from .env.example reads as unset.
     emptyStringAsUndefined: true,

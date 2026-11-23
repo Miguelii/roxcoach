@@ -12,7 +12,7 @@ repositories on top of Supabase.
 | Language          | TypeScript, all code and identifiers in English                              |
 | Backend style     | tRPC controllers, Effect v4 services, Supabase repositories                  |
 | Database and auth | Supabase, an existing project shared with another app, own schema `roxcoach` |
-| Background work   | None (no job runner)                                                         |
+| Background work   | Trigger.dev v4 tasks in `src/trigger/` (Lyfta and Zepp sync)                 |
 | AI                | AI SDK with `@ai-sdk/google` (Gemini), added with the coach chat             |
 | UI                | Tailwind v4, shadcn on `base-ui` (never Radix), nuqs for URL-backed UI state |
 | Env               | `@t3-oss/env-nextjs` in `src/env/server.ts` and `src/env/client.ts`          |
@@ -41,6 +41,7 @@ src/
   lib/           frontend-only utilities and constants
   env/
   styles/
+  trigger/       Trigger.dev tasks (*.task.ts) and run-sync-task.ts
 ```
 
 `_bff` never imports from `src/lib`, `src/modules`, `src/components`, `src/hooks` or `src/app`.
@@ -145,10 +146,44 @@ with `routeTrpc` from `src/lib/__mocks__/trpc-path.ts`.
 
 These are plain route handlers because tRPC carries neither multipart bodies nor a streaming response. The proxy matcher excludes `api/`, so each route authenticates itself. There is no cron route. See [manual-upload.md](manual-upload.md) and [coach-chat.md](coach-chat.md).
 
-## Background jobs
+## Background tasks
 
-There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach runs inside the app
-(see [coach-chat.md](coach-chat.md)).
+The Lyfta and Zepp syncs run as Trigger.dev v4 tasks (see
+[2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)). There is still no
+cron or scheduled job: a task only runs when a sync mutation enqueues it.
+
+- `src/trigger/sync-lyfta-workouts.task.ts` (`sync-lyfta-workouts`) and
+  `src/trigger/sync-zepp-activities.task.ts` (`sync-zepp-activities`) are thin bindings, like
+  controllers: they wire the module's sync service, its `finish*SyncRun` service and its permanent
+  error classifier into `runSyncTask`, with `maxDuration: SYNC_TASK_MAX_DURATION_S`. No business
+  logic and no Supabase calls in a task file.
+- `src/trigger/run-sync-task.ts` holds the generic run: it validates the payload
+  (`syncTaskPayloadSchema`, an invalid one aborts with `AbortTaskRunError`), runs the sync, records
+  `succeeded` with the result, records `failed` with the `error_hash` and aborts (no retry) on a
+  permanent error, and throws a plain `Error` with only the tag and code on a transient error so
+  Trigger.dev retries (3 attempts, `trigger.config.ts` defaults). Messages never carry the error
+  `cause`. A defect is rethrown.
+- Each task's `onFailure` hook writes `failed` with `LYFTA_SYNC_FAILED` / `ZEPP_SYNC_FAILED` when
+  the attempts run out or the run dies. The finish write only matches a `running` lease, so it
+  never overwrites a code already written.
+- Runs are enqueued from Next.js with `triggerTask` (`src/_bff/lib/trigger-client.ts`), which
+  configures the SDK with `ServerEnv.TRIGGER_SECRET_KEY` and passes the idempotency key
+  `<provider>:<userId>:<startedAt>`.
+- The task code runs outside Next.js. `trigger.config.ts` builds with
+  `build.conditions: ['react-server']` so packages resolve the way Next.js server code does. The
+  Trigger.dev CLI also replaces `server-only` with a no-op module, so the existing
+  `import 'server-only'` lines are harmless. `next/headers` is bundled (through
+  `src/_bff/core/db/index.ts`) but never called on the task path, which only uses
+  `createDBAdminClient`.
+- The Trigger.dev project needs every variable `ServerEnv` requires, set in the Trigger.dev
+  dashboard for both the dev and prod environments: `NEXT_SUPABASE_URL`,
+  `NEXT_SUPABASE_PUBLISHABLE_KEY`, `NEXT_SUPABASE_SERVICE_ROLE_KEY` and `NEXT_LYFTA_ENCRYPTION_KEY`
+  (which also decrypts the Zepp tokens). `TRIGGER_SECRET_KEY` is only needed by Next.js.
+
+Local development runs `pnpm trigger:dev` next to `pnpm dev`; without it a sync stays `running`
+until its lease goes stale. Production deploys the tasks with `pnpm trigger:deploy` whenever the
+sync code changes, alongside the Vercel deploy. Both scripts run the Trigger.dev CLI pinned to the
+SDK version (`pnpm dlx trigger.dev@4.8.8`).
 
 ## Environment variables
 
@@ -162,6 +197,7 @@ There are none. Trigger.dev and the `pg_cron` fan-out were removed: the coach ru
 | `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                                     |
 | `NEXT_ZEPP_ENCRYPTION_KEY`       | server | Zepp app token encryption                                                    |
 | `NEXT_BUILD_ID`                  | server | install prompt build check, optional (falls back to `VERCEL_GIT_COMMIT_SHA`) |
+| `TRIGGER_SECRET_KEY`             | server | enqueueing the sync tasks, optional (unset makes a sync start fail)          |
 | `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                                |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
@@ -171,10 +207,11 @@ be a valid base64-encoded 32-byte key when set. Lyfta and Zepp connection and sy
 explicitly when their key is absent.
 `NEXT_BUILD_ID` identifies the deployed build and defaults to Vercel's `VERCEL_GIT_COMMIT_SHA`; when
 both are unset the install prompt only uses its 72 hour expiry.
+`TRIGGER_SECRET_KEY` is the secret key of the Trigger.dev environment (dev or prod) the sync
+mutations enqueue runs in; without it the start services fail with the enqueue error.
 `NEXT_PUBLIC_WEBSITE_URL` is validated as an absolute URL in `src/env/client.ts` and defaults to
-`http://localhost:3000` when unset or empty. `.env.example` is maintained by the owner and must list the
-Gemini variable names. The repo rule is that `.env.example` lists every
-variable, and the current file does not: the maintainer must reconcile it with the table above.
+`http://localhost:3000` when unset or empty. `.env.example` lists every variable of the table above
+with an empty value (`NEXT_ZEPP_ENCRYPTION_KEY` is read from `NEXT_LYFTA_ENCRYPTION_KEY`).
 
 ## Code placement
 
