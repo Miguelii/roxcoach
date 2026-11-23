@@ -127,7 +127,7 @@ const importWindow = Effect.fn('importLyftaWindow')(function* (
             }
             seenSourceIds.add(workout.sourceId)
 
-            const result = yield* dependencies.importWorkout(user, workout, run.context)
+            const result = yield* dependencies.importWorkout(user.id, workout, run.context)
             if (result.created) created += 1
             else updated += 1
         }
@@ -194,7 +194,7 @@ export const syncLyftaWorkouts = Effect.fn('syncLyftaWorkouts')(function* (
             const today = startedAtIso.slice(0, 10)
             let from = yield* syncStart(connection.lastSyncedAt, startedAt)
             // The timezone and the user-bound client are resolved once for the whole run.
-            const context = yield* dependencies.createImportContext(user)
+            const context = yield* dependencies.createImportContext(user.id)
             let pagesLeft = MAX_PAGES_PER_SYNC
             let created = 0
             let updated = 0

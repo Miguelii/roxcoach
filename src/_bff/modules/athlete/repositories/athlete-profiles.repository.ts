@@ -10,7 +10,7 @@ import { ProfileQueryError } from '@/_bff/lib/errors'
 import type { ProfileDTO, ProfileInput } from '@/_bff/modules/athlete/types'
 
 // The service-role client (jobs, webhook) or the signed-in user's client.
-type ProfilesClient =
+export type ProfilesClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>
 

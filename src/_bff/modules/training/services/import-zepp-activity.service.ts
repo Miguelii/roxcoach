@@ -1,6 +1,5 @@
 import 'server-only'
 
-import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
 import { DUPLICATE_WINDOW_SECONDS } from '@/_bff/core/constants/import.constants'
 import { localDateIn } from '@/_bff/core/utils/date.utils'
@@ -37,17 +36,17 @@ const toLapRows = (laps: ParsedLap[]): LapRow[] =>
     }))
 
 export const findKnownZeppTrackIds = Effect.fn('findKnownZeppTrackIds')(function* (
-    user: User,
+    userId: string,
     trackIds: string[],
     context: ImportContext
 ) {
-    return yield* selectSourceIds(context.supabase, user.id, 'zepp', trackIds)
+    return yield* selectSourceIds(context.supabase, userId, 'zepp', trackIds)
 })
 
 // The runs that start within the duplicate window of an activity the athlete already has from
 // another source (for example a Zepp file uploaded by hand), found with one query for all of them.
 export const findZeppDuplicateTrackIds = Effect.fn('findZeppDuplicateTrackIds')(function* (
-    user: User,
+    userId: string,
     trackIds: string[],
     context: ImportContext
 ) {
@@ -57,7 +56,7 @@ export const findZeppDuplicateTrackIds = Effect.fn('findZeppDuplicateTrackIds')(
     const startsMs = trackIds.map((id) => Number(id) * 1000)
     const existing = yield* selectStartedAtsBetween(
         context.supabase,
-        user.id,
+        userId,
         new Date(Math.min(...startsMs) - windowMs).toISOString(),
         new Date(Math.max(...startsMs) + windowMs).toISOString(),
         'zepp'
@@ -73,7 +72,7 @@ export const findZeppDuplicateTrackIds = Effect.fn('findZeppDuplicateTrackIds')(
 // Skips a run that starts within the duplicate window of an activity the athlete already has, for
 // example the same workout uploaded by hand from a Zepp file.
 export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
-    user: User,
+    userId: string,
     summary: ZeppRunSummary,
     activity: AdaptedActivity,
     context: ImportContext
@@ -90,14 +89,14 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
 
     const nearby = yield* selectIdNearStartedAt(
         supabase,
-        user.id,
+        userId,
         activity.startedAt,
         DUPLICATE_WINDOW_SECONDS,
         'zepp'
     )
     if (nearby !== null) return { created: false }
 
-    const inserted = yield* insertZeppActivity(supabase, user.id, {
+    const inserted = yield* insertZeppActivity(supabase, userId, {
         source_id: summary.trackId,
         sport_type: activity.sportType,
         category: activity.category,
@@ -119,25 +118,25 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
 
     // Without its laps the run would look imported and never be split, so it is removed and the
     // next sync imports it again.
-    yield* replaceLaps(supabase, user.id, inserted.id, toLapRows(activity.laps)).pipe(
-        Effect.onError(() => deleteActivity(supabase, user.id, inserted.id).pipe(Effect.ignore))
+    yield* replaceLaps(supabase, userId, inserted.id, toLapRows(activity.laps)).pipe(
+        Effect.onError(() => deleteActivity(supabase, userId, inserted.id).pipe(Effect.ignore))
     )
     return { created: true }
 })
 
 // The Zepp runs already imported without laps (imported before laps existed), by track id.
 export const findZeppRunsWithoutLaps = Effect.fn('findZeppRunsWithoutLaps')(function* (
-    user: User,
+    userId: string,
     trackIds: string[],
     context: ImportContext
 ) {
     if (trackIds.length === 0) return new Map<string, string>()
 
-    const activities = yield* selectZeppActivityIds(context.supabase, user.id, trackIds)
+    const activities = yield* selectZeppActivityIds(context.supabase, userId, trackIds)
     if (activities.length === 0) return new Map<string, string>()
     const withLaps = yield* selectActivityIdsWithLaps(
         context.supabase,
-        user.id,
+        userId,
         activities.map((activity) => activity.id)
     )
     return new Map(
@@ -148,10 +147,10 @@ export const findZeppRunsWithoutLaps = Effect.fn('findZeppRunsWithoutLaps')(func
 })
 
 export const replaceZeppLaps = Effect.fn('replaceZeppLaps')(function* (
-    user: User,
+    userId: string,
     activityId: string,
     laps: ParsedLap[],
     context: ImportContext
 ) {
-    yield* replaceLaps(context.supabase, user.id, activityId, toLapRows(laps))
+    yield* replaceLaps(context.supabase, userId, activityId, toLapRows(laps))
 })

@@ -60,7 +60,7 @@ const setup = (
             : json(options.detailBody ?? readMock('zepp_detail_mock.json'))
     )
     const importedTrackIds: string[] = []
-    const importActivity = vi.fn((_user: User, summary: ZeppRunSummary) => {
+    const importActivity = vi.fn((_user: string, summary: ZeppRunSummary) => {
         importedTrackIds.push(summary.trackId)
         return Effect.succeed({ created: options.created ?? true })
     })
@@ -70,7 +70,7 @@ const setup = (
         Effect.succeed(new Map(Object.entries(options.withoutLaps ?? {})))
     )
     const replaceRunLaps = vi.fn(
-        (_user: User, _activityId: string, _laps: ParsedLap[]) => Effect.void
+        (_user: string, _activityId: string, _laps: ParsedLap[]) => Effect.void
     )
     const sleep = vi.fn(async () => {})
     const dependencies = {

@@ -90,23 +90,23 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     const { summaries } = yield* fetchZeppHistory(appToken, dependencies.api)
     const runs = summaries.filter((summary) => isImportableRun(summary)).toSorted(newestFirst)
 
-    const context: ImportContext = yield* dependencies.createImportContext(user)
+    const context: ImportContext = yield* dependencies.createImportContext(user.id)
     const known = yield* dependencies.findKnownTrackIds(
-        user,
+        user.id,
         runs.map((run) => run.trackId),
         context
     )
     const unknown = runs.filter((run) => !known.has(run.trackId))
     // Decided before the batch is cut, so runs the athlete already has never use up its budget.
     const duplicates = yield* dependencies.findDuplicateTrackIds(
-        user,
+        user.id,
         unknown.map((run) => run.trackId),
         context
     )
     const fresh = unknown.filter((run) => !duplicates.has(run.trackId))
     const batch = fresh.slice(0, MAX_DETAILS_PER_SYNC)
     const withoutLaps = yield* dependencies.findRunsWithoutLaps(
-        user,
+        user.id,
         runs.filter((run) => known.has(run.trackId)).map((run) => run.trackId),
         context
     )
@@ -137,7 +137,7 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
             continue
         }
         const result = yield* dependencies.importActivity(
-            user,
+            user.id,
             summary,
             adaptZeppRun(summary, detail),
             context
@@ -152,7 +152,7 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         const detail = yield* fetchDetail(summary)
         if (detail === null || activityId === undefined) continue
         yield* dependencies.replaceRunLaps(
-            user,
+            user.id,
             activityId,
             buildZeppLaps(summary, detail),
             context

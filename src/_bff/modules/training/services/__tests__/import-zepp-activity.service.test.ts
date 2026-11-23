@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
-import type { User } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 import {
@@ -14,8 +13,7 @@ import {
 import type { ParsedLap } from '@/_bff/modules/training/types'
 import type { AdaptedActivity, ZeppRunSummary } from '@/_bff/modules/zepp/types'
 
-// SAFETY: the import service only reads the authenticated user's ID.
-const USER = { id: 'user-zepp-1' } as User
+const USER = 'user-zepp-1'
 
 const SUMMARY: ZeppRunSummary = {
     trackId: '1794943080',
@@ -75,7 +73,7 @@ const LAP_ROW = {
     avg_hr: 150,
     avg_speed_mps: 3,
     station: null,
-    user_id: USER.id,
+    user_id: USER,
     activity_id: 'activity-1',
 }
 
@@ -115,7 +113,7 @@ describe('importZeppActivity', () => {
         expect(row).toMatchObject({
             source: 'zepp',
             source_id: '1794943080',
-            user_id: USER.id,
+            user_id: USER,
             category: 'run',
             local_date: '2026-11-17',
         })

@@ -13,6 +13,7 @@ const { getTimezoneMock, getSessionMock } = vi.hoisted(() => ({
 
 vi.mock('@/_bff/modules/athlete/services/get-athlete-timezone.service', () => ({
     getAthleteTimezone: getTimezoneMock,
+    getAthleteTimezoneWithClient: vi.fn(),
 }))
 vi.mock('@/_bff/modules/auth/services/get-session.service', () => ({
     getSession: getSessionMock,
