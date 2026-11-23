@@ -29,6 +29,7 @@ export function useLyftaSync({ sync, onStarted, onInProgress, onSynced, onFailed
     const queryClient = useQueryClient()
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [starting, setStarting] = useState(false)
+    const [startedRunAt, setStartedRunAt] = useState<string | null>(null)
     // The run whose stored result or error the athlete dismissed (undefined: none dismissed yet).
     const [dismissedRunAt, setDismissedRunAt] = useState<string | null>()
 
@@ -44,13 +45,17 @@ export function useLyftaSync({ sync, onStarted, onInProgress, onSynced, onFailed
         }
     }
 
-    useSyncCompletion(sync, (finished) => {
-        if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
-        if (finished.status === 'failed') {
-            onFailed?.(messageForLyftaError({ message: finished.errorCode ?? '' }))
-        }
-        void refreshTraining()
-    })
+    useSyncCompletion(
+        sync,
+        (finished) => {
+            if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
+            if (finished.status === 'failed') {
+                onFailed?.(messageForLyftaError({ message: finished.errorCode ?? '' }))
+            }
+            void refreshTraining()
+        },
+        startedRunAt
+    )
 
     const syncWorkouts = async () => {
         setErrorMessage(null)
@@ -58,7 +63,8 @@ export function useLyftaSync({ sync, onStarted, onInProgress, onSynced, onFailed
         setStarting(true)
         try {
             try {
-                await syncMutation.mutateAsync()
+                const { startedAt } = await syncMutation.mutateAsync()
+                setStartedRunAt(startedAt)
                 onStarted?.()
             } catch (error) {
                 const message = messageForLyftaError({

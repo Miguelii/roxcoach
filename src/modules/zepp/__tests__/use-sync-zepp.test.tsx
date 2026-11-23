@@ -217,6 +217,28 @@ describe('useSyncZepp', () => {
         expect(mocks.error).toHaveBeenCalledWith('Your Zepp session expired. Sign in again.')
     })
 
+    it('shows why a sync failed even when it ended before the status ever read running', async () => {
+        mocks.sync.mutateAsync.mockResolvedValue({ startedAt: '2026-11-23T10:00:00.000Z' })
+        const { rerender } = render(<SyncButton />)
+        fireEvent.click(screen.getByTestId('sync-integrations-button'))
+        fireEvent.click(await screen.findByTestId('sync-source-zepp'))
+        await waitFor(() => {
+            expect(mocks.info).toHaveBeenCalledWith(SYNC_START_MESSAGE)
+        })
+
+        setStatus({
+            status: 'failed',
+            startedAt: '2026-11-23T10:00:00.000+00:00',
+            errorCode: ErrorCode.ZEPP_SESSION_EXPIRED,
+        })
+        rerender(<SyncButton />)
+
+        await waitFor(() => {
+            expect(mocks.error).toHaveBeenCalledWith('Your Zepp session expired. Sign in again.')
+        })
+        expect(mocks.error).toHaveBeenCalledTimes(1)
+    })
+
     it('keeps the spinner after a remount while the sync runs', async () => {
         setStatus({ status: 'running', startedAt: 't1' })
         const { unmount } = render(<SyncButton />)

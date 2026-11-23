@@ -25,19 +25,24 @@ export function useZeppSync({ sync, onStarted, onInProgress, onSynced, onFailed 
     const syncMutation = useMutation(trpc.zepp.syncActivities.mutationOptions())
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [starting, setStarting] = useState(false)
+    const [startedRunAt, setStartedRunAt] = useState<string | null>(null)
     // The run whose stored result or error the athlete dismissed (undefined: none dismissed yet).
     const [dismissedRunAt, setDismissedRunAt] = useState<string | null>()
 
-    useSyncCompletion(sync, (finished) => {
-        if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
-        if (finished.status === 'failed') {
-            onFailed?.(messageForZeppError({ message: finished.errorCode ?? '' }))
-        }
-        void Promise.all([
-            queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
-            queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
-        ])
-    })
+    useSyncCompletion(
+        sync,
+        (finished) => {
+            if (finished.status === 'succeeded' && finished.result) onSynced?.(finished.result)
+            if (finished.status === 'failed') {
+                onFailed?.(messageForZeppError({ message: finished.errorCode ?? '' }))
+            }
+            void Promise.all([
+                queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
+                queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
+            ])
+        },
+        startedRunAt
+    )
 
     const startSync = async () => {
         setErrorMessage(null)
@@ -45,7 +50,8 @@ export function useZeppSync({ sync, onStarted, onInProgress, onSynced, onFailed 
         setStarting(true)
         try {
             try {
-                await syncMutation.mutateAsync()
+                const { startedAt } = await syncMutation.mutateAsync()
+                setStartedRunAt(startedAt)
                 onStarted?.()
             } catch (error) {
                 const message = messageForZeppError({

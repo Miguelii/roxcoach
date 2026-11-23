@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -30,7 +31,10 @@ export function useLyftaConnection() {
     const queryClient = useQueryClient()
     const connectMutation = useMutation(trpc.lyfta.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.lyfta.disconnect.mutationOptions())
-    const lyftaSync = useLyftaSync({ sync: query.data?.sync })
+    const lyftaSync = useLyftaSync({
+        sync: query.data?.sync,
+        onFailed: (message) => toast.error(message),
+    })
     const form = useForm<LyftaFormValues>({
         resolver: zodResolver(lyftaFormSchema),
         defaultValues: { apiKey: '' },

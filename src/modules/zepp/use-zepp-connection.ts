@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -25,7 +26,10 @@ export function useZeppConnection() {
             refetchInterval: (current) => pollWhileSyncing(current.state.data),
         })
     )
-    const zeppSync = useZeppSync({ sync: query.data?.sync })
+    const zeppSync = useZeppSync({
+        sync: query.data?.sync,
+        onFailed: (message) => toast.error(message),
+    })
     const connectMutation = useMutation(trpc.zepp.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.zepp.disconnect.mutationOptions())
     const form = useForm<ZeppFormValues>({

@@ -19,5 +19,11 @@ describe('finishedSync', () => {
         expect(finishedSync('t1', { status: 'succeeded', startedAt: 't2' })).toBe(false)
         expect(finishedSync('t1', { status: 'running', startedAt: 't1' })).toBe(false)
         expect(finishedSync('t1', { status: 'idle', startedAt: 't1' })).toBe(false)
+        expect(
+            finishedSync('2026-11-23T10:00:00.000Z', {
+                status: 'failed',
+                startedAt: '2026-11-23T10:00:00.000+00:00',
+            })
+        ).toBe(true)
     })
 })
