@@ -191,6 +191,8 @@ export enum ErrorCode {
     LYFTA_RATE_LIMIT = 'lyfta017',
     LYFTA_SYNC_IN_PROGRESS = 'lyfta018',
     LYFTA_SYNC_LEASE = 'lyfta019',
+    LYFTA_SYNC_ENQUEUE = 'lyfta020',
+    LYFTA_SYNC_FAILED = 'lyfta021',
 
     ZEPP_CONFIGURATION = 'zepp001',
     ZEPP_CREDENTIAL = 'zepp002',
@@ -208,4 +210,8 @@ export enum ErrorCode {
     TRAINING_ZEPP_ACTIVITY_SELECT = 'zepp014',
     TRAINING_ZEPP_ACTIVITY_SELECT_ERR = 'zepp015',
     ZEPP_CLIENT = 'zepp016',
+    ZEPP_SYNC_IN_PROGRESS = 'zepp017',
+    ZEPP_SYNC_ENQUEUE = 'zepp018',
+    ZEPP_SYNC_LEASE = 'zepp019',
+    ZEPP_SYNC_FAILED = 'zepp020',
 }

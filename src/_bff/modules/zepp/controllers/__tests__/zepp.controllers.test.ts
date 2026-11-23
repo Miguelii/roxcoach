@@ -8,6 +8,7 @@ import {
     ZeppConnectionNotFoundError,
     ZeppLoginRejectedError,
     ZeppSessionExpiredError,
+    ZeppSyncInProgressError,
 } from '@/_bff/lib/errors'
 
 const mocks = vi.hoisted(() => ({
@@ -23,8 +24,8 @@ vi.mock('@/_bff/modules/zepp/services/zepp-connection.service', () => ({
     disconnectZepp: mocks.disconnect,
     getZeppConnectionStatus: mocks.getConnectionStatus,
 }))
-vi.mock('@/_bff/modules/zepp/services/sync-zepp-activities.service', () => ({
-    syncZeppActivities: mocks.syncActivities,
+vi.mock('@/_bff/modules/zepp/services/start-zepp-sync.service', () => ({
+    startZeppSync: mocks.syncActivities,
 }))
 vi.mock('@/_bff/modules/auth/services/get-session.service', () => ({
     getSession: mocks.getSession,
@@ -130,20 +131,32 @@ describe('Zepp controllers', () => {
         expect(missing.message).toBe(ErrorCode.ZEPP_NO_CONNECTION)
     })
 
+    it('maps an overlapping sync to CONFLICT with a fixed message', async () => {
+        mocks.syncActivities.mockReturnValueOnce(
+            Effect.fail(
+                new ZeppSyncInProgressError({
+                    cause: 'running',
+                    error_hash: ErrorCode.ZEPP_SYNC_IN_PROGRESS,
+                })
+            )
+        )
+        const conflict = await caught(caller.zepp.syncActivities())
+
+        expect(conflict.code).toBe('CONFLICT')
+        expect(conflict.message).toBe('A Zepp sync is already running')
+    })
+
     it('syncs and disconnects through protected procedures', async () => {
         mocks.syncActivities.mockReturnValue(
-            Effect.succeed({ imported: 2, skipped: 1, updated: 0, remaining: 0 })
+            Effect.succeed({ startedAt: '2026-11-20T08:30:00.000Z' })
         )
         mocks.disconnect.mockReturnValue(Effect.void)
 
         await expect(caller.zepp.syncActivities()).resolves.toEqual({
-            imported: 2,
-            skipped: 1,
-            updated: 0,
-            remaining: 0,
+            startedAt: '2026-11-20T08:30:00.000Z',
         })
         await expect(caller.zepp.disconnect()).resolves.toBeUndefined()
-        expect(mocks.syncActivities).toHaveBeenCalledWith(USER)
+        expect(mocks.syncActivities).toHaveBeenCalledWith(USER.id)
         expect(mocks.disconnect).toHaveBeenCalledWith(USER)
     })
 

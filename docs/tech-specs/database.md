@@ -266,27 +266,38 @@ for `authenticated` and `service_role`) takes one slot atomically. See [coach-ch
 One row per user, storing the encrypted personal API key and manual-sync checkpoint. See
 [lyfta.md](lyfta.md) for encryption, credential lifecycle and sync behavior.
 
-| Column              | Type             | Notes                                                             |
-| ------------------- | ---------------- | ----------------------------------------------------------------- |
-| `user_id`           | uuid             | primary key; cascades from `auth.users`                           |
-| `encrypted_api_key` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext         |
-| `last_synced_at`    | timestamptz null | end of the last fully completed sync window (see lyfta.md)        |
-| `sync_started_at`   | timestamptz null | sync lease (`0014`): set while a sync runs, stale after 5 minutes |
-| `created_at`        | timestamptz      |                                                                   |
-| `updated_at`        | timestamptz      | maintained by `set_updated_at()`                                  |
+| Column              | Type             | Notes                                                                                     |
+| ------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
+| `user_id`           | uuid             | primary key; cascades from `auth.users`                                                   |
+| `encrypted_api_key` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext                                 |
+| `last_synced_at`    | timestamptz null | end of the last fully completed sync window (see lyfta.md)                                |
+| `sync_started_at`   | timestamptz null | when the current or last sync started (`0014`; lease replaced by `sync_status` in `0021`) |
+| `sync_status`       | `sync_status`    | not null default `idle`; `idle`, `running`, `succeeded`, `failed` (`0021`)                |
+| `sync_finished_at`  | timestamptz null | when the last sync ended (`0021`)                                                         |
+| `sync_run_id`       | text null        | background run id of the current or last sync (`0021`)                                    |
+| `sync_result`       | jsonb null       | summary of the last successful sync (`0021`)                                              |
+| `sync_error`        | text null        | safe error message of the last failed sync (`0021`)                                       |
+| `created_at`        | timestamptz      |                                                                                           |
+| `updated_at`        | timestamptz      | maintained by `set_updated_at()`                                                          |
 
 ### `zepp_connections`
 
 One row per user, storing the encrypted Zepp `app_token` and the time of the last sync. The Zepp
 password is never stored. See [zepp.md](zepp.md).
 
-| Column                | Type             | Notes                                                     |
-| --------------------- | ---------------- | --------------------------------------------------------- |
-| `user_id`             | uuid             | primary key; cascades from `auth.users`                   |
-| `encrypted_app_token` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext |
-| `last_synced_at`      | timestamptz null | end of the last completed sync; cleared when reconnecting |
-| `created_at`          | timestamptz      |                                                           |
-| `updated_at`          | timestamptz      | maintained by `set_updated_at()`                          |
+| Column                | Type             | Notes                                                                      |
+| --------------------- | ---------------- | -------------------------------------------------------------------------- |
+| `user_id`             | uuid             | primary key; cascades from `auth.users`                                    |
+| `encrypted_app_token` | text not null    | versioned AES-256-GCM ciphertext payload, never plaintext                  |
+| `last_synced_at`      | timestamptz null | end of the last completed sync; cleared when reconnecting                  |
+| `sync_status`         | `sync_status`    | not null default `idle`; `idle`, `running`, `succeeded`, `failed` (`0021`) |
+| `sync_started_at`     | timestamptz null | when the current or last sync started (`0021`)                             |
+| `sync_finished_at`    | timestamptz null | when the last sync ended (`0021`)                                          |
+| `sync_run_id`         | text null        | background run id of the current or last sync (`0021`)                     |
+| `sync_result`         | jsonb null       | summary of the last successful sync (`0021`)                               |
+| `sync_error`          | text null        | safe error message of the last failed sync (`0021`)                        |
+| `created_at`          | timestamptz      |                                                                            |
+| `updated_at`          | timestamptz      | maintained by `set_updated_at()`                                           |
 
 RLS on, no policies, no privileges for `authenticated` or `anon` (service role only). Zepp
 activities are `activities` rows with `source = 'zepp'` and the Zepp track id in `source_id`
@@ -395,6 +406,7 @@ schema:
 | `0018_lyfta_resync_incomplete_sets.sql` | Requests one full manual Lyfta resync so sets Lyfta never marked completed are imported                     |
 | `0019_strength_set_lyfta_records.sql`   | `strength_sets.lyfta_records` (records Lyfta flagged per set); requests one full manual Lyfta resync        |
 | `0020_zepp.sql`                         | Adds the `zepp` activity source and `zepp_connections` (service role only)                                  |
+| `0021_background_sync.sql`              | Adds the `sync_status` enum and sync state columns to `lyfta_connections` and `zepp_connections`            |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

@@ -1,7 +1,14 @@
 export const ZEPP_IMPORTED_SPORT_TYPES = [1] as const
 
-// Details fetched by one sync, newest first. A longer backlog needs another press of Sync.
-export const MAX_DETAILS_PER_SYNC = 50
+// Safety ceiling of details one sync run fetches (about 8 minutes at the request spacing), not a
+// working limit.
+export const MAX_DETAILS_PER_SYNC = 1000
+
+// The sync reaches back this many days from now, no further.
+export const ZEPP_SYNC_HISTORY_DAYS = 360
+
+// The sync re-reads the connection after this many detail requests and stops when it is gone.
+export const CONNECTION_RECHECK_EVERY = 25
 
 export const DETAIL_REQUEST_DELAY_MS = 500
 
@@ -71,3 +78,5 @@ export const ZEPP_DATA_HEADERS = {
     appPlatform: 'web',
     appname: 'com.huami.midong',
 } as const
+
+export const ZEPP_SYNC_TASK_ID = 'sync-zepp-activities'

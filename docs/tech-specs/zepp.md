@@ -3,8 +3,10 @@
 Zepp (the app of the Amazfit watches) is a read-only source for the athlete's outdoor runs. The
 athlete signs in once with the Zepp email and password in Settings, Integrations (the password field
 has an eye button to show what was typed, `PasswordInput`), and starts each sync manually. Imported runs become normal Roxcoach run activities, so they appear in the calendar,
-the activity detail, the run dashboard and the coach context. There is no scheduled or background
-sync. Binding mocks: `mocks/zepp_history_mock.json` and `mocks/zepp_detail_mock.json` (real,
+the activity detail, the run dashboard and the coach context. Each sync the athlete starts runs as a
+Trigger.dev background task (see
+[2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)); there is no scheduled
+or automatic sync. Binding mocks: `mocks/zepp_history_mock.json` and `mocks/zepp_detail_mock.json` (real,
 anonymized responses). Read them before touching the integration or reading a new field.
 
 ## Goals and scope
@@ -85,24 +87,73 @@ full laps), with the mean heart rate of the series in that span. A run without `
 gets one lap for the whole run. The laps are written right after the activity; if writing them fails
 the activity is deleted, so the next sync tries the run again.
 
-Sync (`syncZeppActivities`): read the connection, fetch the history, keep type 1 with distance above
-zero, newest first, drop the ids already imported, then fetch and import at most 50 details, spaced
-500 ms apart. A run whose start is within 300 seconds of an activity the athlete already has from
-another source (a hand uploaded Zepp file) is dropped before the batch is cut, with one range query,
-so it never uses up the 50 details; an earlier Zepp activity does not count, so a stopped start-up run
-cannot block the real one. A manual upload applies the same window, so a file uploaded after a sync
-is also a duplicate. Runs imported before laps existed (a Zepp activity with no `activity_laps` row)
-are fetched again with the budget the new runs leave, newest first, and get their laps; the activity
+`zepp.syncActivities` (protected mutation) only starts the sync: `startZeppSync` takes the lease
+(below), enqueues the Trigger.dev task and returns `{ startedAt }`. A refused lease is
+`ZeppSyncInProgressError` (`CONFLICT`, fixed message "A Zepp sync is already running",
+`ZEPP_SYNC_IN_PROGRESS_MESSAGE`), and a failed enqueue marks the run `failed` with `zepp018`.
+`zepp.getConnectionStatus` returns `connected`, `lastSyncedAt` and `sync` (`SyncState`), where a
+stale `running` row reads as `failed` with `zepp020`.
+
+Sync (`syncZeppActivities(userId, startedAt)`, run by the task, no request session: it uses the service-role client): read the
+connection, fetch the history, keep type 1 with distance above zero whose start is within the last
+360 days (`Number(trackid) * 1000 >= now - 360 days`, `ZEPP_SYNC_HISTORY_DAYS`), newest first. The
+filter runs before anything else is computed, so an older run is neither imported nor backfilled.
+Then drop the ids already imported and fetch and import the rest, spaced 500 ms apart.
+`MAX_DETAILS_PER_SYNC = 1000` (about 8 minutes) is a safety ceiling, not a working limit: a normal
+account finishes in one run. A run whose start is within 300 seconds of an activity the athlete
+already has from another source (a hand uploaded Zepp file) is dropped before the batch is cut, with
+one range query; an earlier Zepp activity does not count, so a stopped start-up run cannot block the
+real one. A manual upload applies the same window, so a file uploaded after a sync is also a
+duplicate. Runs imported before laps existed (a Zepp activity with no `activity_laps` row) are
+fetched again with the budget the new runs leave, newest first, and get their laps; the activity
 itself is not touched. A detail that Zepp refuses (HTTP error or `code` other than 1) is skipped for
-that run only. There is no history window: the whole history is read every time. The unique `(user_id, source, source_id)` index turns a concurrent
-second insert into "already imported". The result is `{ imported, skipped, updated, remaining }`, where
-`updated` counts the runs that got their laps and `remaining` counts both the new runs and the runs
-still without laps; the UI asks to press Sync again while `remaining` is above zero. An expired token aborts the sync.
+that run only. The unique `(user_id, source, source_id)` index turns a concurrent second insert into
+"already imported". The result is `{ imported, skipped, updated, remaining }`
+(`zeppSyncResultSchema`), where `updated` counts the runs that got their laps and `remaining` counts
+both the new runs and the runs still without laps (above zero only when the ceiling is hit). An
+expired token aborts the sync.
 
-## Sync button
+Every 25 detail requests the sync re-reads the connection. When it is gone (the athlete
+disconnected) or no longer holds this run's lease (`ownsSyncLease`: `running` with `sync_started_at`
+equal to the payload's `startedAt`, for example after the token was replaced) the run stops quietly
+with the counts so far and does not write `last_synced_at`; the checkpoint update itself only
+matches that lease, and zero rows updated is not an error.
 
-The Dashboard and Calendar `Sync` button lists Zepp next to Lyfta. Its row syncs only Zepp. The result goes through a toast: "Zepp synced: Imported 2
-runs.", "Added splits to 3 runs." or, while more remains, "Imported 50 runs. More runs to sync. Press Sync again to continue."
+Sync state (migration 0021 adds `sync_started_at` to `zepp_connections`; the other columns come from
+the shared sync state): `takeZeppSyncLease` is a compare-and-set that takes the lease when no sync is
+running or the running one started before the stale limit; `setZeppSyncRunId` and `finishZeppSync`
+only touch the row whose `sync_started_at` is the run's and whose `sync_status` is `running`, so a
+run that outlived its lease never overwrites a newer one. Connecting again resets the sync state
+with `last_synced_at`. Write errors use `ZEPP_SYNC_LEASE`. `isPermanentZeppSyncError` marks the
+errors that fail a background run without a retry: connection not found, configuration, credential,
+connection parse and session expired. Everything else (including `ZeppApiResponseError`, which also
+covers 5xx) is retried.
+
+Finding: `trackid` is the start second of the run and `end_time - run_time >= trackid` (equal for
+the 133 s run of the history mock, 607 s later for the 722 s run, which has pauses), so
+`trackid * 1000` is the start time used by the 360 day filter.
+
+## Sync button and Settings card
+
+The Dashboard and Calendar `Sync` button lists Zepp next to Lyfta. Its row syncs only Zepp and
+shows the start toast "Syncing your activities. They will be available shortly." A refused overlap
+shows an info toast with "A Zepp sync is already running" and the hook follows the running sync
+instead of reporting an error.
+
+Every `zepp.getConnectionStatus` query polls every 5 seconds (`pollWhileSyncing`,
+`SYNC_POLL_INTERVAL_MS`) only while `sync.status` is `running`; the row and the card show a spinner
+and stay disabled while it is, so a reload keeps the spinner. `useSyncCompletion` remembers the
+`startedAt` the tab saw `running`; when that run turns `succeeded` or `failed`, the row shows the
+final toast once ("Zepp synced: Imported 2 runs." or "Added splits to 3 runs.", an info toast
+when `remaining` is above zero, or the mapped error) and the hook invalidates
+`training.getCalendar` and `training.getRunProgress`. A page that loads after the run ended shows
+no toast. The "More runs to sync" copy only appears when the 1000 detail ceiling is hit.
+
+The Settings card shows no toasts: it shows the last run's result or mapped error straight from the
+status (an expired session reads "Your Zepp session expired. Sign in again." next to "Sign in
+again") until the athlete starts another sync. "Could not start the Zepp sync. Try again."
+(`zepp018`) and "The Zepp sync stopped before finishing. Try again." (`zepp020`) cover a failed
+enqueue and a run that failed without a specific code or went stale.
 
 ## Security
 
@@ -112,7 +163,7 @@ logs, error payloads or the client. Errors never carry the upstream message.
 
 ## Errors
 
-Codes `zepp001` to `zepp016` in `error-codes.ts`. The tRPC message is the error code and the client
+Codes `zepp001` to `zepp020` in `error-codes.ts`. The tRPC message is the error code and the client
 maps it to copy (`src/modules/zepp/zepp-ui.utils.ts`).
 
 ## Open questions

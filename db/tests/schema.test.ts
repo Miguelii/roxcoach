@@ -14,6 +14,12 @@ import {
 import { createTestDb, type TestDb } from '@db/tests/helpers/pglite'
 
 type TableRow = { table_schema: string; table_name: string }
+type ColumnRow = {
+    column_name: string
+    data_type: string
+    udt_name: string
+    column_default: string | null
+}
 type GrantRow = { table_name: string; anon: boolean; authenticated: boolean; service: boolean }
 
 const ROXCOACH_TABLES = [
@@ -100,6 +106,7 @@ describe('schema layout', () => {
             '0018_lyfta_resync_incomplete_sets.sql',
             '0019_strength_set_lyfta_records.sql',
             '0020_zepp.sql',
+            '0021_background_sync.sql',
         ])
     })
 
@@ -225,6 +232,48 @@ describe('unique constraints', () => {
         await expect(insert(otherUserId, '501')).resolves.toBeDefined()
         await expect(insert(userId, null)).resolves.toBeDefined()
         await expect(insert(userId, null)).resolves.toBeDefined()
+    })
+})
+
+describe('background sync state', () => {
+    it('adds the sync state columns to both connection tables', async () => {
+        await testDb.asSuperuser()
+        const expected = [
+            ['sync_error', 'text'],
+            ['sync_finished_at', 'timestamptz'],
+            ['sync_result', 'jsonb'],
+            ['sync_run_id', 'text'],
+            ['sync_started_at', 'timestamptz'],
+            ['sync_status', 'sync_status'],
+        ]
+
+        const results = await Promise.all(
+            ['lyfta_connections', 'zepp_connections'].map((table) =>
+                testDb.db.query<ColumnRow>(
+                    `select column_name, data_type, udt_name, column_default
+                 from information_schema.columns
+                 where table_schema = 'roxcoach' and table_name = $1 and column_name like 'sync\\_%'
+                 order by column_name`,
+                    [table]
+                )
+            )
+        )
+
+        for (const result of results) {
+            expect(result.rows.map((row) => [row.column_name, row.udt_name])).toEqual(expected)
+            const status = result.rows.find((row) => row.column_name === 'sync_status')
+            expect(status?.column_default).toContain("'idle'")
+        }
+    })
+
+    it('keeps the connection tables without policies', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query(
+            `select tablename from pg_policies
+             where schemaname = 'roxcoach' and tablename in ('lyfta_connections', 'zepp_connections')`
+        )
+
+        expect(result.rows).toEqual([])
     })
 })
 

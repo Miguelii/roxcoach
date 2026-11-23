@@ -1,11 +1,16 @@
+import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
+import type { SyncState, SyncStateRow } from '@/_bff/core/helpers/sync-state.helper'
+
 export type LyftaConnectionRecord = {
     encryptedApiKey: string
     lastSyncedAt: string | null
+    sync: SyncStateRow
 }
 
 export type LyftaConnectionStatus = {
     connected: boolean
     lastSyncedAt: string | null
+    sync: SyncState<LyftaSyncResult>
 }
 
 // A record Lyfta flagged on a set. `type` 1 is the estimated 1RM and 3 the volume of the set (see

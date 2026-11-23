@@ -1,15 +1,14 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
-import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { createImportContext } from '@/_bff/modules/training/services/import-context.service'
 import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
+import type { TrainingClient } from '@/_bff/modules/training/types'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 
-// SAFETY: The import service only reads the authenticated user's ID.
-const USER = { id: 'user-training-1' } as User
+const USER = 'user-training-1'
 const ACTIVITY_ID = 'activity-lyfta-1'
 const WORKOUT: LyftaWorkout = {
     sourceId: '1001',
@@ -60,12 +59,12 @@ describe('importLyftaWorkout', () => {
             'strength_sets',
             'strength_sets',
         ])
-        expect(chains[0]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER.id)
+        expect(chains[0]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER)
         expect(chains[0]?.eq).toHaveBeenNthCalledWith(2, 'source', 'lyfta')
         expect(chains[0]?.eq).toHaveBeenNthCalledWith(3, 'source_id', '1001')
         expect(chains[1]?.upsert).toHaveBeenCalledWith(
             expect.objectContaining({
-                user_id: USER.id,
+                user_id: USER,
                 source: 'lyfta',
                 source_id: '1001',
                 category: 'strength',
@@ -83,11 +82,11 @@ describe('importLyftaWorkout', () => {
         const upsertPayload = chains[1]?.upsert.mock.calls[0]?.[0]
         expect(upsertPayload).not.toHaveProperty('notes')
         expect(upsertPayload).not.toHaveProperty('perceived_effort')
-        expect(chains[2]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER.id)
+        expect(chains[2]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER)
         expect(chains[2]?.eq).toHaveBeenNthCalledWith(2, 'activity_id', ACTIVITY_ID)
         expect(chains[3]?.insert).toHaveBeenCalledWith([
             {
-                user_id: USER.id,
+                user_id: USER,
                 activity_id: ACTIVITY_ID,
                 exercise: 'Bench Press',
                 exercise_index: 1,
@@ -101,7 +100,7 @@ describe('importLyftaWorkout', () => {
                 lyfta_records: null,
             },
             {
-                user_id: USER.id,
+                user_id: USER,
                 activity_id: ACTIVITY_ID,
                 exercise: 'Bench Press',
                 exercise_index: 1,
@@ -115,7 +114,7 @@ describe('importLyftaWorkout', () => {
                 lyfta_records: null,
             },
             {
-                user_id: USER.id,
+                user_id: USER,
                 activity_id: ACTIVITY_ID,
                 exercise: 'Row',
                 exercise_index: 2,
@@ -190,17 +189,22 @@ describe('importLyftaWorkout', () => {
 
     it('creates the import context once: valid timezone kept, invalid one falls back to UTC', async () => {
         const { supabase } = makeFakeDb([])
-        const createUserClient = vi.fn(async () => supabase)
+        const createClient = vi.fn(() => supabase)
+        const getTimezone = vi.fn<(client: TrainingClient, userId: string) => void>()
         const make = (timezone: string) =>
             Effect.runPromise(
                 createImportContext(USER, {
-                    createUserClient,
-                    getTimezone: () => Effect.succeed(timezone),
+                    createClient,
+                    getTimezone: (client, userId) => {
+                        getTimezone(client, userId)
+                        return Effect.succeed(timezone)
+                    },
                 })
             )
 
         expect(await make('Europe/Lisbon')).toEqual({ supabase, timeZone: 'Europe/Lisbon' })
         expect((await make('Mars/Olympus')).timeZone).toBe('UTC')
-        expect(createUserClient).toHaveBeenCalledTimes(2)
+        expect(createClient).toHaveBeenCalledTimes(2)
+        expect(getTimezone).toHaveBeenCalledWith(supabase, USER)
     })
 })

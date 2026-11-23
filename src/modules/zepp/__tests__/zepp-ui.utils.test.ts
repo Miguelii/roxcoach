@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ZEPP_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/zepp.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { messageForZeppError, zeppSyncMessage } from '@/modules/zepp/zepp-ui.utils'
 
@@ -12,6 +13,18 @@ describe('messageForZeppError', () => {
         )
         expect(messageForZeppError({ message: ErrorCode.ZEPP_NO_CONNECTION })).toBe(
             'Connect Zepp before syncing.'
+        )
+        expect(messageForZeppError({ message: ErrorCode.ZEPP_SYNC_ENQUEUE })).toBe(
+            'Could not start the Zepp sync. Try again.'
+        )
+        expect(messageForZeppError({ message: ErrorCode.ZEPP_SYNC_FAILED })).toBe(
+            'The Zepp sync stopped before finishing. Try again.'
+        )
+    })
+
+    it('passes the in-progress message through', () => {
+        expect(messageForZeppError({ message: ZEPP_SYNC_IN_PROGRESS_MESSAGE })).toBe(
+            ZEPP_SYNC_IN_PROGRESS_MESSAGE
         )
     })
 

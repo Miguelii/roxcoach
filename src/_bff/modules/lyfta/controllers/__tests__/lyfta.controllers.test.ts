@@ -23,8 +23,8 @@ vi.mock('@/_bff/modules/lyfta/services/lyfta-connection.service', () => ({
     disconnectLyfta: mocks.disconnect,
     getLyftaConnectionStatus: mocks.getConnectionStatus,
 }))
-vi.mock('@/_bff/modules/lyfta/services/sync-lyfta-workouts.service', () => ({
-    syncLyftaWorkouts: mocks.syncWorkouts,
+vi.mock('@/_bff/modules/lyfta/services/start-lyfta-sync.service', () => ({
+    startLyftaSync: mocks.syncWorkouts,
 }))
 vi.mock('@/_bff/modules/auth/services/get-session.service', () => ({
     getSession: mocks.getSession,
@@ -135,16 +135,15 @@ describe('Lyfta controllers', () => {
 
     it('syncs and disconnects through protected procedures', async () => {
         mocks.syncWorkouts.mockReturnValue(
-            Effect.succeed({ created: 2, updated: 1, lastSyncedAt: '2026-11-20T08:30:00.000Z' })
+            Effect.succeed({ startedAt: '2026-11-20T08:30:00.000Z' })
         )
         mocks.disconnect.mockReturnValue(Effect.void)
 
-        await expect(caller.lyfta.syncWorkouts()).resolves.toMatchObject({
-            created: 2,
-            updated: 1,
+        await expect(caller.lyfta.syncWorkouts()).resolves.toEqual({
+            startedAt: '2026-11-20T08:30:00.000Z',
         })
         await expect(caller.lyfta.disconnect()).resolves.toBeUndefined()
-        expect(mocks.syncWorkouts).toHaveBeenCalledWith(USER)
+        expect(mocks.syncWorkouts).toHaveBeenCalledWith(USER.id)
         expect(mocks.disconnect).toHaveBeenCalledWith(USER)
     })
 

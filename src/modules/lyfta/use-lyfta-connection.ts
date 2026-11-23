@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
 import { formatDateTime } from '@/lib/formatters'
+import { pollWhileSyncing } from '@/lib/sync-state'
 import { messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
@@ -21,11 +23,18 @@ const lyftaFormSchema = z.object({
 
 export function useLyftaConnection() {
     const trpc = useTRPC()
-    const query = useQuery(trpc.lyfta.getConnectionStatus.queryOptions())
+    const query = useQuery(
+        trpc.lyfta.getConnectionStatus.queryOptions(undefined, {
+            refetchInterval: (current) => pollWhileSyncing(current.state.data),
+        })
+    )
     const queryClient = useQueryClient()
     const connectMutation = useMutation(trpc.lyfta.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.lyfta.disconnect.mutationOptions())
-    const lyftaSync = useLyftaSync()
+    const lyftaSync = useLyftaSync({
+        sync: query.data?.sync,
+        onFailed: (message) => toast.error(message),
+    })
     const form = useForm<LyftaFormValues>({
         resolver: zodResolver(lyftaFormSchema),
         defaultValues: { apiKey: '' },

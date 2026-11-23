@@ -3,7 +3,9 @@
 Lyfta is a read-only source for the athlete's completed gym workouts. The athlete connects a
 personal Lyfta API key in Settings and starts each sync manually. Imported workouts become normal
 Roxcoach strength activities, so they appear in the calendar, activity detail and coach context.
-There is no scheduled or background sync.
+Each sync the athlete starts runs as a Trigger.dev background task (see
+[2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)); there is no scheduled
+or automatic sync.
 
 ## Goals and scope
 
@@ -67,13 +69,29 @@ request runs both buttons are disabled; a failure keeps the dialog open and show
   workouts` button and a `Disconnect` action. Never display or prefill the saved key.
 - **Replace key:** allow submitting a new key through the same validation flow. Do not remove the
   existing connection until the replacement key has been validated and stored successfully.
-- **Sync feedback:** disable duplicate submissions while connecting or syncing. On success, show
-  counts of workouts created and updated, and the sync time; when `hasMore` is true, show "More
-  workouts to sync. Press Sync workouts again to continue." instead. On failure, keep the connection and
-  show an actionable error. A retry is safe.
+- **Sync feedback:** the sync runs in the background (see
+  [2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)). `useLyftaSync`
+  starts it, then invalidates `lyfta.getConnectionStatus`. Every `getConnectionStatus` query polls
+  every 5 seconds (`SYNC_POLL_INTERVAL_MS`, `pollWhileSyncing` in `src/lib/sync-state.ts`) only while
+  `sync.status` is `running`. The button shows a spinner and stays disabled while the stored state is
+  `running` (not stale), so a reload keeps the spinner. `useSyncCompletion` remembers the
+  `startedAt` the tab saw `running`; when the same run turns `succeeded` or `failed`, the hook
+  reports the outcome once and invalidates `training.getCalendar` and `training.getStrengthProgress`.
+  A page that loads after the run ended reports nothing. The Settings card shows no toasts: it shows
+  the last run's counts ("Sync complete: 2 workouts added and 1 updated.", or "More workouts to
+  sync. Press Sync workouts again to continue." when `hasMore` is true) or the error mapped from the
+  stored code, straight from the status, until the athlete starts another sync. A refused overlap
+  ("A Lyfta sync is already running") is not an error: the hook refreshes the status and follows the
+  running sync. "Could not start the Lyfta sync. Try again." (`lyfta020`) means the task could not
+  be enqueued, and "The Lyfta sync stopped before finishing. Try again." (`lyfta021`) is a run that
+  failed without a specific code or went stale. On failure the connection is kept and a retry is
+  safe.
 - **Dashboard and Calendar:** show a shared action group with `Upload activity` and the shared `Sync`
   button (see [ux-design.md](ux-design.md)), which lists Lyfta as one integration. The sync is
-  manual and shows the same success counts and actionable errors as Settings in toasts. When
+  manual. Its row shows the start toast "Syncing your activities. They will be available shortly.",
+  an info toast with the in-progress message on a refused overlap, and, when the run it saw end
+  finishes, "Lyfta synced: 120 workouts added and 4 updated." (an info toast with the "More workouts
+  to sync" copy when `hasMore` is true) or the mapped error. When
   Lyfta is not connected its row links to Settings to connect.
 - **Disconnect:** confirm before removing the encrypted key. Keep already imported activities and
   their strength sets; disconnecting must not delete training history.
@@ -113,8 +131,10 @@ Every repository query filters by `user_id`; inserts set `user_id` explicitly. T
 `lyfta_connections` repository uses the service-role client because authenticated clients must
 not be able to read encrypted credential material. This table has RLS enabled, no authenticated
 policies and no `authenticated` or `anon` table privileges. Only protected Lyfta service
-operations may access it, always with the `userId` supplied by the authenticated procedure. The
-training data path uses the session-bound client and standard owner RLS. The API key is decrypted
+operations may access it, always with the `userId` supplied by the authenticated procedure (or by
+the background task payload, which the authenticated start mutation built). The training data
+path of a sync uses the service-role client, so its explicit `user_id` filters are the only tenant
+guard there. The API key is decrypted
 only in the server-side service immediately before an outbound request.
 
 ## Import mapping
@@ -194,12 +214,14 @@ services; do not create a parallel workout model.
 
 ## Manual sync behavior
 
-Expose a `lyfta.syncWorkouts` protected tRPC mutation and keep all Lyfta network calls in the
-server-side `lyfta` module.
+The `lyfta.syncWorkouts` protected tRPC mutation takes the sync lease and enqueues a Trigger.dev
+background task, which runs `syncLyftaWorkouts(userId, startedAt)` without a request session. All Lyfta
+network calls stay in the server-side `lyfta` module.
 
 1. Require an existing connection. Decrypt its key on the server.
-2. Take the sync lease (below). Resolve the athlete timezone (`validTimezoneOrUtc`) and create the
-   session-bound client once for the whole run, not per workout.
+2. The caller holds the sync lease (below); the sync service does not take or release it. Resolve
+   the athlete timezone (`validTimezoneOrUtc`) and create the service-role client once for the
+   whole run, not per workout.
 3. **Windows.** The sync reads the history in ascending windows of `SYNC_WINDOW_DAYS` (90) UTC
    calendar days with the API's `from` and `to` filters (both ends inclusive), oldest first, each
    window paginated with `limit=100` from page 1 up to the reported `total_pages` (the current page
@@ -209,10 +231,17 @@ server-side `lyfta` module.
    delayed entries) but never earlier than that 360 day floor. The last window ends today (UTC).
    Lyfta does not document a modification-time filter, so edits to workouts older than the window
    are not discovered.
-4. **Budget and ceiling.** A run stops starting new workouts after `SYNC_TIME_BUDGET_MS` (40 s,
-   under the route's `maxDuration` of 60 s; the workout in flight is finished) and never fetches
-   more than `MAX_PAGES_PER_SYNC` (20) pages in total. Either limit ends the run with
+4. **Ceiling, no time budget.** There is no time budget: the background task's `maxDuration`
+   bounds the run. A run never fetches more than `MAX_PAGES_PER_SYNC` (200 pages, 20,000
+   workouts) in total, a safety ceiling rather than a working limit; reaching it ends the run with
    `hasMore: true`.
+   **Stop on disconnect.** Before every window after the first, the connection row is read again.
+   When it is gone (disconnect or account deletion during the run) the run ends quietly with the
+   totals so far and `hasMore: false`, and writes nothing more.
+   **Stop on a lost lease.** The run also ends that way when the row no longer holds its lease
+   (`ownsSyncLease`: `running` with `sync_started_at` equal to the payload's `startedAt`, for
+   example after the key was replaced), and `updateLyftaLastSyncedAt` only matches that lease, so
+   zero rows updated is the same quiet stop rather than an error.
 5. **Checkpoint.** `last_synced_at` moves to the end of each fully completed window (the start of
    its last UTC day, so the next run's one-day overlap re-reads that day) and, after the window that
    ends today, to the sync time. It never moves past a window that was not fully processed, so a
@@ -221,8 +250,8 @@ server-side `lyfta` module.
    again to continue."; false is a plain success. Each workout upsert is idempotent by source id,
    so overlaps and re-processing are harmless.
 6. Upsert activities by `(user_id, source, source_id)` through the `training` service, then replace
-   that activity's imported sets with the already validated set list. Use the session-bound client
-   and filter each read, update and delete by `user_id`. Keep all orchestration and mapping in the
+   that activity's imported sets with the already validated set list. Use the service-role client
+   and filter each read, update and delete by `user_id` (RLS does not back it up on this path). Keep all orchestration and mapping in the
    application; the database migration contains only schema, indexes, RLS and grants. These
    PostgREST writes are not one transaction. If set replacement fails after the activity upsert or
    old-set deletion, fail the sync and leave the checkpoint unchanged so a retry can repair it.
@@ -231,18 +260,28 @@ server-side `lyfta` module.
    safe because each workout upsert is idempotent. Do not report the run as successful or advance
    the checkpoint past the failed window.
 8. Return only aggregate created/updated counts, `hasMore` and the checkpoint. Never return the
-   API key or raw Lyfta response.
+   API key or raw Lyfta response. The task stores `{ created, updated, hasMore }`
+   (`lyftaSyncResultSchema`) in `sync_result`.
+9. **Error classification.** `isPermanentLyftaSyncError` marks connection not found,
+   configuration, credential (401/403), connection parse, response validation and checkpoint
+   errors as permanent: the task writes `failed` with the code and does not retry. Every other
+   error (network, timeout, 5xx, 429, database write) is transient and the task retries it.
 
 **Sync lease.** Two overlapping syncs could both delete and insert the sets of a workout and
-duplicate them (no unique key, two calls). `lyfta_connections.sync_started_at` (migration `0014`)
-is a lease: a run takes it with a compare-and-set update filtered by `user_id` that succeeds only
-when it is null or older than `SYNC_LEASE_STALE_MS` (5 minutes, a crashed run frees itself). When
-no row is updated the sync fails with `LyftaSyncInProgressError` (`CONFLICT`, fixed message "A Lyfta
-sync is already running"). The lease is always released when the run ends, also on failure, and
-only if it is still the lease this run took; a release failure never replaces the primary result.
+duplicate them (no unique key, two calls). The lease is `sync_status` with `sync_started_at`
+(migration `0021`): `takeLyftaSyncLease` is one compare-and-set update filtered by `user_id` that
+succeeds only when `sync_status` is not `running` or `sync_started_at` is older than
+`SYNC_LEASE_STALE_MS` (20 minutes, longer than the task's 15 minute `maxDuration`, so a crashed run
+frees itself). It sets `running` and the start time and clears `sync_finished_at`, `sync_run_id`,
+`sync_result` and `sync_error`. When no row is updated the start fails with
+`LyftaSyncInProgressError` (`CONFLICT`, fixed message "A Lyfta sync is already running"). There is
+no separate release: `finishLyftaSync` writes `succeeded` (with the result) or `failed` (with the
+error code), and it and `setLyftaSyncRunId` only match the row whose `sync_started_at` is this
+run's and whose status is still `running`, so a run that outlived its lease never overwrites a
+newer one (zero rows matched is not an error).
 
 **Replacing the key.** Saving a different key (the stored one is decrypted and compared) resets
-`last_synced_at` to null, so the next sync imports the last 360 days for the new account. Saving
+`last_synced_at` to null and the sync state to `idle` (the other sync columns null), so the next sync imports the last 360 days for the new account. Saving
 the same key keeps the checkpoint. The key input is at most 512 characters.
 
 **Known limits.** A workout imported from Lyfta and also uploaded as a file is counted twice: there
@@ -255,7 +294,8 @@ database errors explicitly. Do not silently skip malformed workouts. A failed ma
 restarted by the athlete without cleaning up previously imported data.
 
 Disconnect deletes only the user's `lyfta_connections` row. It does not delete imported activities.
-There is no scheduled task, cron route, queue, webhook, or automatic sync on page load.
+The only background job is the sync task the athlete starts. There is no scheduled task, cron
+route, webhook, or automatic sync on page load.
 
 ## Backend layout
 
@@ -266,8 +306,10 @@ the `training` service, not directly into training repositories from the Lyfta m
 cross-module runtime imports on service boundaries.
 
 Add `lyfta` to the root tRPC router. The client exposes connection status and mutations for
-connecting/replacing a key, syncing workouts and disconnecting. Connection status contains only
-`connected` and `last_synced_at`.
+connecting/replacing a key, starting a sync and disconnecting. Connection status contains only
+`connected`, `lastSyncedAt` and `sync` (`SyncState`: status, `startedAt`, `finishedAt`, the stored
+result and error code, with a stale `running` row reported as `failed` with `lyfta021`).
+`syncWorkouts` returns `{ startedAt }`.
 
 Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env/server.ts`,
 `.env.example`, and the environment table in [architecture.md](architecture.md). Never read
@@ -282,8 +324,10 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
   from connection status or repository-facing DTOs.
 - Verify connection validation keeps the previous key if a replacement is invalid.
 - Verify the 360 day start and clamp, 90 day window arithmetic (month and leap-year boundaries),
-  the time budget and page ceiling, checkpoint-per-window, resume, the sync lease (overlap, stale,
-  release on success and failure), once-per-run timezone and client, duplicate upsert behavior,
+  the 200 page ceiling (a 25 page history completes in one run), checkpoint-per-window, resume,
+  the stop when the connection disappears, the sync lease repository (compare-and-set filter,
+  writes matched to the run's lease), permanent versus transient error classification,
+  once-per-run timezone and client, duplicate upsert behavior,
   locally owned notes/RPE preservation and source-set replacement.
 - Verify a page/API/database failure does not advance `last_synced_at`, and retrying after partial
   progress does not duplicate activities.
@@ -292,6 +336,10 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
 - Verify disconnect removes credentials but leaves imported activities and sets.
 - Verify the Settings tab connects, syncs, reports errors and disables repeated submissions using
   `data-testid` selectors.
+- Verify the client: the start toast from the Sync button, polling only while `running`, the final
+  toast only after the tab saw the same run `running`, no toast on a page loaded after the run
+  ended, the spinner from the status after a remount, and the card showing the stored result or
+  error.
 
 ## Implementation order
 

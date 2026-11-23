@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
+import {
+    getAthleteTimezone,
+    getAthleteTimezoneWithClient,
+} from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
 import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 
 const { createDBServerClientMock } = vi.hoisted(() => ({ createDBServerClientMock: vi.fn() }))
@@ -43,5 +46,16 @@ describe('getAthleteTimezone', () => {
         const exit = await Effect.runPromiseExit(getAthleteTimezone(USER))
 
         expect(failureTag(exit)).toBe('ProfileQueryError')
+    })
+})
+
+describe('getAthleteTimezoneWithClient', () => {
+    it('reads the timezone of the user ID with the given client', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok({ timezone: 'Europe/Madrid' }))
+
+        const timezone = await Effect.runPromise(getAthleteTimezoneWithClient(supabase, 'user-9'))
+
+        expect(timezone).toBe('Europe/Madrid')
+        expect(calls[0]?.filters).toEqual([['user_id', 'user-9']])
     })
 })

@@ -2,7 +2,9 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
+import { zeppSyncResultSchema } from '@/_bff/core/constants/zepp.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
+import { toSyncState } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError, ZeppConfigurationError, ZeppCredentialError } from '@/_bff/lib/errors'
 import {
@@ -25,6 +27,7 @@ export type ZeppConnectionDependencies = {
     createAdminClient: () => AdminClient
     encryptionKey: string | undefined
     api: ZeppDeps
+    now?: () => Date
 }
 
 type ConnectInput = { email: string; password: string }
@@ -64,6 +67,12 @@ export const getZeppConnectionStatus = Effect.fn('getZeppConnectionStatus')(func
     const status: ZeppConnectionStatus = {
         connected: connection !== null,
         lastSyncedAt: connection?.lastSyncedAt ?? null,
+        sync: toSyncState(
+            connection?.sync ?? null,
+            zeppSyncResultSchema,
+            ErrorCode.ZEPP_SYNC_FAILED,
+            (dependencies.now ?? (() => new Date()))()
+        ),
     }
     return status
 })
@@ -87,7 +96,11 @@ export const connectZepp = Effect.fn('connectZepp')(function* (
 
     const supabase = yield* createZeppAdminClient(dependencies)
     yield* upsertZeppConnection(supabase, user.id, encryptedAppToken)
-    const status: ZeppConnectionStatus = { connected: true, lastSyncedAt: null }
+    const status: ZeppConnectionStatus = {
+        connected: true,
+        lastSyncedAt: null,
+        sync: toSyncState(null, zeppSyncResultSchema, ErrorCode.ZEPP_SYNC_FAILED, new Date()),
+    }
     return status
 })
 

@@ -77,7 +77,12 @@ export function ZeppCard() {
                             disabled={busy}
                             onClick={() => void zepp.sync()}
                         >
-                            {zepp.isSyncing ? <Loader2Icon className="animate-spin" /> : null}
+                            {zepp.isSyncing ? (
+                                <Loader2Icon
+                                    data-testid="zepp-sync-spinner"
+                                    className="animate-spin"
+                                />
+                            ) : null}
                             Sync runs
                         </Button>
                         {zepp.showForm ? null : (

@@ -9,9 +9,9 @@ function readStyle(name: string) {
 }
 
 function rootVariables() {
-    const root = /:root\s*{([\s\S]*?)\n}/.exec(readStyle('theme.css'))?.[1] ?? ''
+    const root = /:root\s*\{([\s\S]*?)\n\}/u.exec(readStyle('theme.css'))?.[1] ?? ''
     const variables = new Map<string, string>()
-    for (const match of root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    for (const match of root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/gu)) {
         variables.set(match[1], match[2].trim())
     }
     return variables
@@ -19,7 +19,7 @@ function rootVariables() {
 
 function toneBlock(tone: string) {
     const css = readStyle('tone.css')
-    return new RegExp(`\\[data-tone='${tone}'\\]\\s*{([^}]*)}`).exec(css)?.[1] ?? ''
+    return new RegExp(`\\[data-tone='${tone}'\\]\\s*\\{([^}]*)\\}`, 'u').exec(css)?.[1] ?? ''
 }
 
 function hex(name: string) {
@@ -29,7 +29,7 @@ function hex(name: string) {
 }
 
 function channels(color: string, over = '#ffffff'): number[] {
-    const rgba = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/.exec(color)
+    const rgba = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/u.exec(color)
     if (rgba) {
         const alpha = Number(rgba[4])
         const base = channels(over)
@@ -38,17 +38,18 @@ function channels(color: string, over = '#ffffff'): number[] {
     return [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
 }
 
+function lin(channel: number) {
+    const s = channel / 255
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+}
+
 function luminance(color: string, over?: string) {
-    const lin = (c: number) => {
-        const s = c / 255
-        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
-    }
-    const [r, g, b] = channels(color, over).map(lin)
+    const [r, g, b] = channels(color, over).map((channel) => lin(channel))
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 function contrast(a: string, b: string, over?: string) {
-    const [hi, lo] = [luminance(a, over), luminance(b, over)].sort((x, y) => y - x)
+    const [hi, lo] = [luminance(a, over), luminance(b, over)].toSorted((x, y) => y - x)
     return (hi + 0.05) / (lo + 0.05)
 }
 
@@ -111,22 +112,22 @@ describe('Soft Studio tokens', () => {
         expect(variables.has('--shadow-soft')).toBe(true)
         expect(variables.has('--shadow-lift')).toBe(true)
         expect(variables.get('--ease-spring')).toBe('cubic-bezier(0.32, 0.72, 0, 1)')
-        expect(variables.get('--radius')).toMatch(/^(16px|1rem)$/)
+        expect(variables.get('--radius')).toMatch(/^(16px|1rem)$/u)
         expect(variables.get('--radius-surface-inner')).toBe('22px')
     })
 })
 
 function classBlock(css: string, selector: string) {
-    const escaped = selector.replace(/[.]/g, '\\.')
-    return new RegExp(`${escaped}\\s*{([^}]*)}`).exec(css)?.[1] ?? ''
+    const escaped = selector.replaceAll(/[.]/gu, '\\.')
+    return new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'u').exec(css)?.[1] ?? ''
 }
 
 describe('Soft Studio typography', () => {
     it('uses Outfit for sans and display', () => {
         const font = readStyle('font.css')
-        expect(font).toMatch(/--font-sans:\s*var\(--font-outfit\)/)
-        expect(font).toMatch(/--font-display:\s*var\(--font-outfit\)/)
-        expect(font).not.toMatch(/anton|geist-sans/i)
+        expect(font).toMatch(/--font-sans:\s*var\(--font-outfit\)/u)
+        expect(font).toMatch(/--font-display:\s*var\(--font-outfit\)/u)
+        expect(font).not.toMatch(/anton|geist-sans/iu)
     })
 
     it('keeps display titles in sentence case', () => {
@@ -168,6 +169,6 @@ describe('Soft Studio review fixes', () => {
 
     it('loads the 700 weight that bold titles use', () => {
         const layout = readFileSync(path.resolve(STYLES_DIR, '../app/layout.tsx'), 'utf8')
-        expect(layout).toMatch(/weight:\s*\[[^\]]*'700'/)
+        expect(layout).toMatch(/weight:\s*\[[^\]]*'700'/u)
     })
 })

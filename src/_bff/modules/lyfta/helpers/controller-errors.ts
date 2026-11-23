@@ -16,6 +16,7 @@ import {
     LyftaImportError,
     LyftaRateLimitError,
     LyftaResponseError,
+    LyftaSyncEnqueueError,
     LyftaSyncInProgressError,
     ProfileQueryError,
 } from '@/_bff/lib/errors'
@@ -36,6 +37,7 @@ type LyftaControllerError =
     | LyftaImportError
     | LyftaRateLimitError
     | LyftaResponseError
+    | LyftaSyncEnqueueError
     | LyftaSyncInProgressError
     | ProfileQueryError
 
@@ -64,6 +66,7 @@ export const lyftaControllerErrorCode = (error: LyftaControllerError) =>
         Match.tag('LyftaConnectionParseError', () => 'INTERNAL_SERVER_ERROR' as const),
         Match.tag('LyftaConnectionQueryError', () => 'INTERNAL_SERVER_ERROR' as const),
         Match.tag('LyftaConnectionWriteError', () => 'INTERNAL_SERVER_ERROR' as const),
+        Match.tag('LyftaSyncEnqueueError', () => 'INTERNAL_SERVER_ERROR' as const),
         Match.tag('LyftaImportError', () => 'INTERNAL_SERVER_ERROR' as const),
         Match.tag('ProfileQueryError', () => 'INTERNAL_SERVER_ERROR' as const),
         Match.exhaustive

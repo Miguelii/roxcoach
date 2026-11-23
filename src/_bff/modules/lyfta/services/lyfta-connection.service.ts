@@ -2,7 +2,9 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
+import { lyftaSyncResultSchema } from '@/_bff/core/constants/lyfta.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
+import { toSyncState } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     CreateSbClientError,
@@ -14,7 +16,7 @@ import {
     upsertLyftaConnection,
     deleteLyftaConnection,
 } from '@/_bff/modules/lyfta/repositories/lyfta-connections.repository'
-import type { LyftaConnectionStatus } from '@/_bff/modules/lyfta/types'
+import type { LyftaConnectionRecord, LyftaConnectionStatus } from '@/_bff/modules/lyfta/types'
 import {
     decryptLyftaApiKey,
     encryptLyftaApiKey,
@@ -27,6 +29,7 @@ export type LyftaConnectionDependencies = {
     createAdminClient: () => AdminClient
     encryptionKey: string | undefined
     fetcher: typeof fetch
+    now?: () => Date
 }
 
 export const DEFAULT_LYFTA_CONNECTION_DEPENDENCIES: LyftaConnectionDependencies = {
@@ -58,12 +61,17 @@ const requireEncryptionKey = (key: string | undefined) => {
 }
 
 const statusFrom = (
-    connection: {
-        lastSyncedAt: string | null
-    } | null
+    connection: LyftaConnectionRecord | null,
+    now: Date
 ): LyftaConnectionStatus => ({
     connected: connection !== null,
     lastSyncedAt: connection?.lastSyncedAt ?? null,
+    sync: toSyncState(
+        connection?.sync ?? null,
+        lyftaSyncResultSchema,
+        ErrorCode.LYFTA_SYNC_FAILED,
+        now
+    ),
 })
 
 // True when the stored (encrypted) key decrypts to `apiKey`.
@@ -81,7 +89,7 @@ export const getLyftaConnectionStatus = Effect.fn('getLyftaConnectionStatus')(fu
 ) {
     const supabase = yield* createAdminClientEffect(dependencies)
     const connection = yield* selectLyftaConnection(supabase, user.id)
-    return statusFrom(connection)
+    return statusFrom(connection, (dependencies.now ?? (() => new Date()))())
 })
 
 export const connectLyfta = Effect.fn('connectLyfta')(function* (
@@ -108,7 +116,11 @@ export const connectLyfta = Effect.fn('connectLyfta')(function* (
     const keyChanged =
         existing !== null && !sameStoredKey(existing.encryptedApiKey, apiKey, encryptionKey)
     yield* upsertLyftaConnection(supabase, user.id, encryptedApiKey, keyChanged)
-    return statusFrom({ lastSyncedAt: keyChanged ? null : (existing?.lastSyncedAt ?? null) })
+    return {
+        connected: true,
+        lastSyncedAt: keyChanged ? null : (existing?.lastSyncedAt ?? null),
+        sync: toSyncState(null, lyftaSyncResultSchema, ErrorCode.LYFTA_SYNC_FAILED, new Date()),
+    }
 })
 
 export const disconnectLyfta = Effect.fn('disconnectLyfta')(function* (

@@ -1,6 +1,5 @@
 import 'server-only'
 
-import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
 import { localDateIn } from '@/_bff/core/utils/date.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
@@ -14,7 +13,7 @@ import type { ImportContext } from '@/_bff/modules/training/services/import-cont
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
 
 export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
-    user: User,
+    userId: string,
     workout: LyftaWorkout,
     context: ImportContext
 ) {
@@ -28,7 +27,7 @@ export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
             }),
     })
 
-    const activity = yield* upsertLyftaActivity(supabase, user.id, {
+    const activity = yield* upsertLyftaActivity(supabase, userId, {
         source_id: workout.sourceId,
         category: 'strength',
         sport_type: 'strength',
@@ -55,8 +54,8 @@ export const importLyftaWorkout = Effect.fn('importLyftaWorkout')(function* (
         }))
     )
 
-    yield* deleteStrengthSets(supabase, user.id, activity.activityId)
-    yield* insertStrengthSets(supabase, user.id, activity.activityId, sets)
+    yield* deleteStrengthSets(supabase, userId, activity.activityId)
+    yield* insertStrengthSets(supabase, userId, activity.activityId, sets)
 
     return activity
 })

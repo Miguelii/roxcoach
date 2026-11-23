@@ -1,15 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { SyncStatus } from '@/_bff/core/constants/sync.constants'
+import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ZeppCard } from '@/modules/zepp/zepp-card'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
-type Status = { connected: boolean; lastSyncedAt: string | null }
+type Sync = {
+    status: SyncStatus
+    startedAt: string | null
+    finishedAt: string | null
+    result: ZeppSyncResult | null
+    errorCode: string | null
+}
+type Status = { connected: boolean; lastSyncedAt: string | null; sync: Sync }
+type QueryOptions = TrpcKeyed & {
+    refetchInterval?: (query: { state: { data: Status | undefined } }) => number | false
+}
+
+const IDLE: Sync = {
+    status: 'idle',
+    startedAt: null,
+    finishedAt: null,
+    result: null,
+    errorCode: null,
+}
 
 const mocks = vi.hoisted(() => {
-    const data: Status = { connected: false, lastSyncedAt: null }
+    const data: Status = {
+        connected: false,
+        lastSyncedAt: null,
+        sync: { status: 'idle', startedAt: null, finishedAt: null, result: null, errorCode: null },
+    }
+    const statusOptions: QueryOptions[] = []
     return {
         statusQuery: { data, isPending: false, isError: false, refetch: vi.fn() },
+        statusOptions,
         invalidateStatus: vi.fn(),
         invalidateCalendar: vi.fn(),
         invalidateRunProgress: vi.fn(),
@@ -24,8 +50,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
     return {
         ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-        useQuery: (options: TrpcKeyed) =>
-            routeTrpc({ 'zepp.getConnectionStatus': () => mocks.statusQuery }, options),
+        useQuery: (options: QueryOptions) =>
+            routeTrpc(
+                {
+                    'zepp.getConnectionStatus': () => {
+                        mocks.statusOptions.push(options)
+                        return mocks.statusQuery
+                    },
+                },
+                options
+            ),
         useMutation: (options: TrpcKeyed) =>
             routeTrpc(
                 {
@@ -52,8 +86,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 const fill = (testId: string, value: string) =>
     fireEvent.change(screen.getByTestId(testId), { target: { value } })
 
-const connected = () => {
-    mocks.statusQuery.data = { connected: true, lastSyncedAt: '2026-11-21T10:00:00.000Z' }
+const connected = (sync: Partial<Sync> = {}) => {
+    mocks.statusQuery.data = {
+        connected: true,
+        lastSyncedAt: '2026-11-21T10:00:00.000Z',
+        sync: { ...IDLE, ...sync },
+    }
 }
 
 describe('ZeppCard', () => {
@@ -64,16 +102,12 @@ describe('ZeppCard', () => {
             removeEventListener: () => {},
         }))
         vi.clearAllMocks()
-        mocks.statusQuery.data = { connected: false, lastSyncedAt: null }
+        mocks.statusOptions.length = 0
+        mocks.statusQuery.data = { connected: false, lastSyncedAt: null, sync: IDLE }
         mocks.statusQuery.isPending = false
         mocks.statusQuery.isError = false
         mocks.connect.mutateAsync.mockResolvedValue({ connected: true, lastSyncedAt: null })
-        mocks.sync.mutateAsync.mockResolvedValue({
-            imported: 2,
-            skipped: 1,
-            updated: 0,
-            remaining: 3,
-        })
+        mocks.sync.mutateAsync.mockResolvedValue({ startedAt: 't1' })
         mocks.disconnect.mutateAsync.mockResolvedValue(null)
         mocks.invalidateStatus.mockResolvedValue(null)
         mocks.invalidateCalendar.mockResolvedValue(null)
@@ -158,7 +192,7 @@ describe('ZeppCard', () => {
         expect(screen.getByTestId('zepp-email')).toHaveValue('athlete@example.com')
     })
 
-    it('syncs, shows what was imported and refreshes the calendar and the run dashboard', async () => {
+    it('starts a sync and refreshes the status without a result yet', async () => {
         connected()
         render(<ZeppCard />)
 
@@ -167,28 +201,77 @@ describe('ZeppCard', () => {
         fireEvent.click(screen.getByTestId('zepp-sync'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('zepp-sync-result')).toHaveTextContent(
-                'Imported 2 runs. 1 already in Roxcoach. More runs to sync. Press Sync again to continue.'
-            )
+            expect(mocks.sync.mutateAsync).toHaveBeenCalledTimes(1)
+            expect(mocks.invalidateStatus).toHaveBeenCalled()
         })
-        expect(mocks.invalidateStatus).toHaveBeenCalled()
-        expect(mocks.invalidateCalendar).toHaveBeenCalled()
-        expect(mocks.invalidateRunProgress).toHaveBeenCalled()
+        expect(screen.queryByTestId('zepp-sync-result')).toBeNull()
+        expect(screen.queryByTestId('zepp-error')).toBeNull()
     })
 
-    it('shows an expired session as an actionable error and offers to sign in again', async () => {
+    it('polls the status only while a sync is running', () => {
         connected()
-        mocks.sync.mutateAsync.mockRejectedValue(new Error(ErrorCode.ZEPP_SESSION_EXPIRED))
+        render(<ZeppCard />)
+        const options = mocks.statusOptions.at(-1)
+        const running: Status = {
+            connected: true,
+            lastSyncedAt: null,
+            sync: { ...IDLE, status: 'running', startedAt: 't1' },
+        }
+
+        expect(options?.refetchInterval?.({ state: { data: running } })).toBe(5000)
+        expect(options?.refetchInterval?.({ state: { data: mocks.statusQuery.data } })).toBe(false)
+    })
+
+    it('shows what was imported when the sync it saw running ends and refreshes the training views', async () => {
+        connected({ status: 'running', startedAt: 't1' })
+        const { rerender } = render(<ZeppCard />)
+
+        connected({
+            status: 'succeeded',
+            startedAt: 't1',
+            result: { imported: 2, skipped: 1, updated: 0, remaining: 3 },
+        })
+        rerender(<ZeppCard />)
+
+        expect(screen.getByTestId('zepp-sync-result')).toHaveTextContent(
+            'Imported 2 runs. 1 already in Roxcoach. More runs to sync. Press Sync again to continue.'
+        )
+        await waitFor(() => {
+            expect(mocks.invalidateCalendar).toHaveBeenCalledTimes(1)
+            expect(mocks.invalidateRunProgress).toHaveBeenCalledTimes(1)
+        })
+    })
+
+    it('shows the spinner and blocks another sync while one runs', () => {
+        connected({ status: 'running', startedAt: 't1' })
+        render(<ZeppCard />)
+
+        expect(screen.getByTestId('zepp-sync')).toBeDisabled()
+        expect(screen.getByTestId('zepp-sync-spinner')).toBeInTheDocument()
+    })
+
+    it('shows the last failed sync as an actionable error and offers to sign in again', () => {
+        connected({ status: 'failed', startedAt: 't1', errorCode: ErrorCode.ZEPP_SESSION_EXPIRED })
+        render(<ZeppCard />)
+
+        expect(screen.getByTestId('zepp-error')).toHaveTextContent(
+            'Your Zepp session expired. Sign in again.'
+        )
+        fireEvent.click(screen.getByTestId('zepp-reconnect'))
+        expect(screen.getByTestId('zepp-form')).toBeInTheDocument()
+    })
+
+    it('shows why a sync could not start', async () => {
+        connected()
+        mocks.sync.mutateAsync.mockRejectedValue(new Error(ErrorCode.ZEPP_SYNC_ENQUEUE))
         render(<ZeppCard />)
         fireEvent.click(screen.getByTestId('zepp-sync'))
 
         await waitFor(() => {
             expect(screen.getByTestId('zepp-error')).toHaveTextContent(
-                'Your Zepp session expired. Sign in again.'
+                'Could not start the Zepp sync. Try again.'
             )
         })
-        fireEvent.click(screen.getByTestId('zepp-reconnect'))
-        expect(screen.getByTestId('zepp-form')).toBeInTheDocument()
     })
 
     it('asks before disconnecting and only disconnects after confirming', async () => {
