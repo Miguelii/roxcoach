@@ -55,6 +55,16 @@ const request = Effect.fn('zeppRequest')(function* (
 const responseError = (cause: string) =>
     new ZeppApiResponseError({ cause, error_hash: ErrorCode.ZEPP_API_RESPONSE })
 
+// Only the parameter names and Zepp's own `error` code are reported: the other values may carry
+// tokens. This is what tells a refused login (error code) from a blocked request (no params).
+const describeRedirectWithoutAccess = (params: URLSearchParams | null): string => {
+    if (params === null) return 'Zepp redirect has no access code (no Location header)'
+    const names = Array.from(new Set(params.keys())).join(', ')
+    const errorCode = params.get('error')
+    const error = errorCode === null ? '' : `; error: ${errorCode.slice(0, 80)}`
+    return `Zepp redirect has no access code (params: ${names || 'none'}${error})`
+}
+
 const encryptLoginForm = (form: URLSearchParams) => {
     const cipher = createCipheriv(
         ZEPP_LOGIN_CIPHER.algorithm,
@@ -92,15 +102,13 @@ const requestAccessCode = Effect.fn('zeppRequestAccessCode')(function* (
 
     const location = response.headers.get('location')
     // The redirect carries the tokens in its query, so a malformed one must not escape as a defect.
-    const access = yield* Effect.try({
-        try: () =>
-            location === null
-                ? null
-                : new URL(location, ZEPP_URLS.tokens).searchParams.get('access'),
+    const redirectParams = yield* Effect.try({
+        try: () => (location === null ? null : new URL(location, ZEPP_URLS.tokens).searchParams),
         catch: () => responseError('Zepp redirect is not a valid URL'),
     })
+    const access = redirectParams?.get('access') ?? null
     if (access === null || access.length === 0) {
-        return yield* responseError('Zepp redirect has no access code')
+        return yield* responseError(describeRedirectWithoutAccess(redirectParams))
     }
     return access
 })

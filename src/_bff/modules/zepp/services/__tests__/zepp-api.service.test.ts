@@ -73,6 +73,22 @@ describe('loginToZepp', () => {
         expect(form.get('device_id')).toBeTruthy()
     })
 
+    it('names the redirect params and the error code, never their other values, when there is no access code', async () => {
+        const fetcher = vi
+            .fn<typeof fetch>()
+            .mockResolvedValue(
+                redirect('https://example.com/done.html?error=access_denied&state=SECRETSTATE')
+            )
+
+        const exit = await run(loginToZepp(EMAIL, PASSWORD, { fetch: fetcher }))
+
+        const cause = JSON.stringify(exit)
+        expect(cause).toContain('Zepp redirect has no access code')
+        expect(cause).toContain('error, state')
+        expect(cause).toContain('access_denied')
+        expect(cause).not.toContain('SECRETSTATE')
+    })
+
     it('fails with a rejected login when Zepp does not redirect', async () => {
         const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json({ error: 'bad' }, 200))
 
