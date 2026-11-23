@@ -1,15 +1,32 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
+import { Suspense } from 'react'
 import { createCaller } from '@/_bff/trpc/caller'
 import { LogsExplorer } from '@/modules/logs/logs-explorer'
-import { MAX_SEARCH_LENGTH } from '@/modules/logs/logs-ui.constants'
 import { logsSearchParamsCache } from '@/modules/logs/logs-search-params'
+import { LogsSkeleton } from '@/modules/logs/logs-skeleton'
+import { MAX_SEARCH_LENGTH } from '@/modules/logs/logs-ui.constants'
 
 type Props = PageProps<'/logs'>
 
+type LogsContentProps = Pick<Props, 'searchParams'>
+
 export const metadata: Metadata = { title: 'Logs' }
 
-export default async function LogsPage({ searchParams }: Props) {
+export default function LogsPage({ searchParams }: Props) {
+    return (
+        <main className="main-container-lg">
+            <div className="space-y-6">
+                <h1 className="type-title">Logs</h1>
+                <Suspense fallback={<LogsSkeleton />}>
+                    <LogsContent searchParams={searchParams} />
+                </Suspense>
+            </div>
+        </main>
+    )
+}
+
+async function LogsContent({ searchParams }: LogsContentProps) {
     // The logs are fresh by definition and the fetch time anchors the histogram window.
     await connection()
     const [caller, { range, search }] = await Promise.all([
@@ -23,16 +40,6 @@ export default async function LogsPage({ searchParams }: Props) {
     })
 
     return (
-        <main className="main-container-lg">
-            <div className="space-y-6">
-                <h1 className="type-title">Logs</h1>
-                <LogsExplorer
-                    logs={logs}
-                    isTruncated={isTruncated}
-                    range={range}
-                    fetchedAt={fetchedAt}
-                />
-            </div>
-        </main>
+        <LogsExplorer logs={logs} isTruncated={isTruncated} range={range} fetchedAt={fetchedAt} />
     )
 }
