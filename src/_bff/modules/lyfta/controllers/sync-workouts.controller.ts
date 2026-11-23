@@ -8,7 +8,7 @@ import { syncLyftaWorkouts } from '@/_bff/modules/lyfta/services/sync-lyfta-work
 
 export const SYNC_LYFTA_WORKOUTS_PROTECTED_CONTROLLER = protectedProcedure.mutation(({ ctx }) =>
     runEffect(
-        syncLyftaWorkouts(ctx.user),
+        syncLyftaWorkouts(ctx.user.id),
         'syncLyftaWorkouts',
         lyftaControllerErrorCode,
         lyftaControllerMessage

@@ -11,6 +11,13 @@ import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/f
 const USER = { id: 'user-lyfta-1' } as User
 const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64')
 const API_KEY = 'test-lyfta-private-key'
+const IDLE_SYNC = {
+    sync_status: 'idle',
+    sync_started_at: null,
+    sync_finished_at: null,
+    sync_result: null,
+    sync_error: null,
+}
 const EMPTY_WORKOUT_PAGE = {
     status: true,
     total_pages: 0,
@@ -101,6 +108,7 @@ describe('connectLyfta', () => {
             ok({
                 encrypted_api_key: encryptLyftaApiKey(API_KEY, ENCRYPTION_KEY),
                 last_synced_at: syncedAt,
+                ...IDLE_SYNC,
             }),
             ok(),
         ])
@@ -118,6 +126,7 @@ describe('connectLyfta', () => {
             ok({
                 encrypted_api_key: encryptLyftaApiKey('another-account-key', ENCRYPTION_KEY),
                 last_synced_at: '2026-11-20T08:30:00.000Z',
+                ...IDLE_SYNC,
             }),
             ok(),
         ])
@@ -135,7 +144,11 @@ describe('connectLyfta', () => {
 
     it('treats a stored key that cannot be decrypted as a different key', async () => {
         const { chains, supabase } = makeFakeDb([
-            ok({ encrypted_api_key: 'v1.old', last_synced_at: '2026-11-20T08:30:00.000Z' }),
+            ok({
+                encrypted_api_key: 'v1.old',
+                last_synced_at: '2026-11-20T08:30:00.000Z',
+                ...IDLE_SYNC,
+            }),
             ok(),
         ])
 

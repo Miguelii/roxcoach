@@ -1,6 +1,9 @@
+import type { SyncStateRow } from '@/_bff/core/helpers/sync-state.helper'
+
 export type LyftaConnectionRecord = {
     encryptedApiKey: string
     lastSyncedAt: string | null
+    sync: SyncStateRow
 }
 
 export type LyftaConnectionStatus = {

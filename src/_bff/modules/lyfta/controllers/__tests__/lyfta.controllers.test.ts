@@ -144,7 +144,7 @@ describe('Lyfta controllers', () => {
             updated: 1,
         })
         await expect(caller.lyfta.disconnect()).resolves.toBeUndefined()
-        expect(mocks.syncWorkouts).toHaveBeenCalledWith(USER)
+        expect(mocks.syncWorkouts).toHaveBeenCalledWith(USER.id)
         expect(mocks.disconnect).toHaveBeenCalledWith(USER)
     })
 
