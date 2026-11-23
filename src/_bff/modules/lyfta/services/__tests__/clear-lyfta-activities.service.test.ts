@@ -28,18 +28,30 @@ const connectionRow = (syncStatus: string, startedAt: string | null) => ({
 
 type Setup = {
     connection: ReturnType<typeof connectionRow> | null
+    leaseTaken?: boolean
     resetFails?: boolean
     deleteFails?: boolean
 }
 
-const setup = ({ connection, resetFails = false, deleteFails = false }: Setup) => {
+const setup = ({
+    connection,
+    leaseTaken = true,
+    resetFails = false,
+    deleteFails = false,
+}: Setup) => {
     const order: string[] = []
     const db = makeFakeAdminDb((call: Call) => {
         if (call.op === 'select') return ok(connection)
+        if (call.filters.some(([column]) => column === 'or')) {
+            order.push('lease')
+            return ok(leaseTaken ? { user_id: 'user-1' } : null)
+        }
+        if (JSON.stringify(call.payload).includes('sync_status')) {
+            order.push('release')
+            return ok()
+        }
         order.push('reset')
-        return resetFails
-            ? { data: null, error: { code: 'XX001', message: 'boom' } }
-            : ok({ user_id: 'user-1' })
+        return resetFails ? { data: null, error: { code: 'XX001', message: 'boom' } } : ok()
     })
     const clearActivities = () => {
         order.push('delete')
@@ -65,7 +77,7 @@ const setup = ({ connection, resetFails = false, deleteFails = false }: Setup) =
 }
 
 describe('clearLyftaActivities', () => {
-    it('fails without a connection and neither resets nor deletes', async () => {
+    it('fails without a connection and takes no lease, resets nothing and deletes nothing', async () => {
         const { dependencies, order } = setup({ connection: null })
 
         const exit = await Effect.runPromiseExit(clearLyftaActivities(USER, dependencies))
@@ -74,39 +86,52 @@ describe('clearLyftaActivities', () => {
         expect(order).toEqual([])
     })
 
-    it('refuses while a sync runs and neither resets nor deletes', async () => {
-        const startedAt = new Date(NOW.getTime() - 60_000).toISOString()
-        const { dependencies, order } = setup({ connection: connectionRow('running', startedAt) })
+    it('refuses when the sync lease is taken and neither resets nor deletes', async () => {
+        const { dependencies, order } = setup({
+            connection: connectionRow('running', NOW.toISOString()),
+            leaseTaken: false,
+        })
 
         const exit = await Effect.runPromiseExit(clearLyftaActivities(USER, dependencies))
 
         expect(failureTag(exit)).toBe('LyftaSyncInProgressError')
-        expect(order).toEqual([])
+        expect(order).toEqual(['lease'])
     })
 
-    it('does not treat a stale running lease as a running sync', async () => {
-        const startedAt = new Date(NOW.getTime() - SYNC_LEASE_STALE_MS - 1000).toISOString()
-        const { dependencies } = setup({ connection: connectionRow('running', startedAt) })
+    it('takes the lease with the same stale rule as a sync', async () => {
+        const { db, dependencies } = setup({ connection: connectionRow('idle', null) })
 
-        const result = await Effect.runPromise(clearLyftaActivities(USER, dependencies))
+        await Effect.runPromise(clearLyftaActivities(USER, dependencies))
 
-        expect(result).toEqual({ deleted: 3 })
+        const lease = db.calls.find((call) => call.filters.some(([column]) => column === 'or'))
+        expect(lease?.filters).toContainEqual([
+            'or',
+            `sync_status.neq.running,sync_started_at.lt.${new Date(NOW.getTime() - SYNC_LEASE_STALE_MS).toISOString()}`,
+        ])
     })
 
-    it('resets the checkpoint first, then deletes, and returns how many were deleted', async () => {
+    it('holds the lease while it resets the checkpoint and deletes, then releases it', async () => {
         const { db, dependencies, order } = setup({ connection: connectionRow('idle', null) })
 
         const result = await Effect.runPromise(clearLyftaActivities(USER, dependencies))
 
         expect(result).toEqual({ deleted: 3 })
-        expect(order).toEqual(['reset', 'delete'])
-        const reset = db.calls.find((call) => call.op === 'update')
+        expect(order).toEqual(['lease', 'reset', 'delete', 'release'])
+        const reset = db.calls.find(
+            (call) => JSON.stringify(call.payload) === '{"last_synced_at":null}'
+        )
         expect(reset?.table).toBe('lyfta_connections')
-        expect(reset?.payload).toEqual({ last_synced_at: null })
         expect(reset?.filters).toEqual([['user_id', 'user-1']])
+        const release = db.calls.at(-1)
+        expect(release?.payload).toEqual({ sync_status: 'idle', sync_started_at: null })
+        expect(release?.filters).toEqual([
+            ['user_id', 'user-1'],
+            ['sync_started_at', NOW.toISOString()],
+            ['sync_status', 'running'],
+        ])
     })
 
-    it('leaves the checkpoint already reset when the delete fails', async () => {
+    it('releases the lease and leaves the checkpoint already reset when the delete fails', async () => {
         const { dependencies, order } = setup({
             connection: connectionRow('idle', null),
             deleteFails: true,
@@ -115,10 +140,10 @@ describe('clearLyftaActivities', () => {
         const exit = await Effect.runPromiseExit(clearLyftaActivities(USER, dependencies))
 
         expect(failureTag(exit)).toBe('ActivityWriteError')
-        expect(order).toEqual(['reset', 'delete'])
+        expect(order).toEqual(['lease', 'reset', 'delete', 'release'])
     })
 
-    it('deletes nothing when the reset fails', async () => {
+    it('releases the lease and deletes nothing when the reset fails', async () => {
         const { dependencies, order } = setup({
             connection: connectionRow('idle', null),
             resetFails: true,
@@ -127,7 +152,7 @@ describe('clearLyftaActivities', () => {
         const exit = await Effect.runPromiseExit(clearLyftaActivities(USER, dependencies))
 
         expect(failureTag(exit)).toBe('LyftaConnectionWriteError')
-        expect(order).toEqual(['reset'])
+        expect(order).toEqual(['lease', 'reset', 'release'])
     })
 })
 

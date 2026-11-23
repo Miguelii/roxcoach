@@ -2,9 +2,8 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
-import { lyftaSyncResultSchema } from '@/_bff/core/constants/lyfta.constants'
+import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
-import { toSyncState } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     CreateSbClientError,
@@ -12,8 +11,10 @@ import {
     LyftaSyncInProgressError,
 } from '@/_bff/lib/errors'
 import {
+    releaseLyftaClearLease,
     resetLyftaCheckpoint,
     selectLyftaConnection,
+    takeLyftaSyncLease,
 } from '@/_bff/modules/lyfta/repositories/lyfta-connections.repository'
 import {
     clearSourceActivities,
@@ -57,21 +58,25 @@ export const clearLyftaActivities = Effect.fn('clearLyftaActivities')(function* 
         })
     }
 
-    const sync = toSyncState(
-        connection.sync,
-        lyftaSyncResultSchema,
-        ErrorCode.LYFTA_SYNC_FAILED,
-        dependencies.now()
-    )
-    if (sync.status === 'running') {
+    const startedAt = dependencies.now()
+    const startedAtIso = startedAt.toISOString()
+    const staleBeforeIso = new Date(startedAt.getTime() - SYNC_LEASE_STALE_MS).toISOString()
+    const leaseTaken = yield* takeLyftaSyncLease(supabase, user.id, startedAtIso, staleBeforeIso)
+    if (!leaseTaken) {
         return yield* new LyftaSyncInProgressError({
             cause: 'A Lyfta sync is running, so its activities cannot be cleared',
             error_hash: ErrorCode.LYFTA_SYNC_IN_PROGRESS,
         })
     }
 
-    yield* resetLyftaCheckpoint(supabase, user.id)
-    const deleted = yield* dependencies.clearActivities(user, 'lyfta')
+    // The lease stops a sync from starting while the activities go: without it a sync could read the
+    // old checkpoint, lose its history to the delete and still advance the new checkpoint.
+    const deleted = yield* Effect.gen(function* () {
+        yield* resetLyftaCheckpoint(supabase, user.id)
+        return yield* dependencies.clearActivities(user, 'lyfta')
+    }).pipe(
+        Effect.ensuring(releaseLyftaClearLease(supabase, user.id, startedAtIso).pipe(Effect.ignore))
+    )
     return { deleted }
 })
 

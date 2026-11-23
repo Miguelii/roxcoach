@@ -2,9 +2,8 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
-import { zeppSyncResultSchema } from '@/_bff/core/constants/zepp.constants'
+import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
-import { toSyncState } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import {
     CreateSbClientError,
@@ -12,8 +11,10 @@ import {
     ZeppSyncInProgressError,
 } from '@/_bff/lib/errors'
 import {
+    releaseZeppClearLease,
     resetZeppCheckpoint,
     selectZeppConnection,
+    takeZeppSyncLease,
 } from '@/_bff/modules/zepp/repositories/zepp-connections.repository'
 import {
     clearSourceActivities,
@@ -57,21 +58,25 @@ export const clearZeppActivities = Effect.fn('clearZeppActivities')(function* (
         })
     }
 
-    const sync = toSyncState(
-        connection.sync,
-        zeppSyncResultSchema,
-        ErrorCode.ZEPP_SYNC_FAILED,
-        dependencies.now()
-    )
-    if (sync.status === 'running') {
+    const startedAt = dependencies.now()
+    const startedAtIso = startedAt.toISOString()
+    const staleBeforeIso = new Date(startedAt.getTime() - SYNC_LEASE_STALE_MS).toISOString()
+    const leaseTaken = yield* takeZeppSyncLease(supabase, user.id, startedAtIso, staleBeforeIso)
+    if (!leaseTaken) {
         return yield* new ZeppSyncInProgressError({
             cause: 'A Zepp sync is running, so its activities cannot be cleared',
             error_hash: ErrorCode.ZEPP_SYNC_IN_PROGRESS,
         })
     }
 
-    yield* resetZeppCheckpoint(supabase, user.id)
-    const deleted = yield* dependencies.clearActivities(user, 'zepp')
+    // The lease stops a sync from starting while the activities go: without it a sync could read the
+    // old checkpoint, lose its history to the delete and still advance the new checkpoint.
+    const deleted = yield* Effect.gen(function* () {
+        yield* resetZeppCheckpoint(supabase, user.id)
+        return yield* dependencies.clearActivities(user, 'zepp')
+    }).pipe(
+        Effect.ensuring(releaseZeppClearLease(supabase, user.id, startedAtIso).pipe(Effect.ignore))
+    )
     return { deleted }
 })
 

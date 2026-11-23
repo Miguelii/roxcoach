@@ -183,8 +183,8 @@ next Sync imports them again; the connection and the saved token stay. The kilom
 heart rate histograms go with the runs (on delete cascade), and anything the athlete added by hand
 to them is lost. Only the last 360 days come back with a Sync: older runs are gone for good.
 
-Same fixed order as Lyfta: refuse when a sync is running (`ZeppSyncInProgressError`, "A Zepp sync is
-already running"), reset the checkpoint, then delete through the `training` module
-(`clearSourceActivities`) with the athlete's own client, filtered by `user_id` and `source`. It
+Same fixed order as Lyfta: take the sync lease (a running sync makes it fail with
+`ZeppSyncInProgressError`, "A Zepp sync is already running"), reset the checkpoint, delete through the
+`training` module (`clearSourceActivities`) with the athlete's own client, filtered by `user_id` and `source`. It
 returns `{ deleted }`. `zepp.getActivityCount` returns `{ count }`, the number of imported Zepp runs,
 for the confirmation dialog and the card. The UI is in [ux-design.md](ux-design.md).

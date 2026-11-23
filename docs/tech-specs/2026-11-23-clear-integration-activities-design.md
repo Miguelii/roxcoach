@@ -41,8 +41,8 @@ same thing for the signed-in athlete, with a confirmation, and the cards get a c
 
 - **Backend.** `lyfta.clearActivities` and `zepp.clearActivities` (protected mutations, no input),
   returning `{ deleted: number }`. Each calls its module service, which: reads the connection (none:
-  `*ConnectionNotFoundError`), refuses with `*SyncInProgressError` when the connection is `running`
-  and its lease is not stale, resets `last_synced_at` through the module repository (service-role),
+  `*ConnectionNotFoundError`), takes the sync lease (the same compare-and-set and stale rule as a sync) and refuses with
+  `*SyncInProgressError` when it is not free, releases it when it ends, resets `last_synced_at` through the module repository (service-role),
   then calls `deleteActivitiesBySource(user, source)` of the `training` module (cross-module through
   its service), which deletes with the signed-in athlete's client filtered by `user_id` and `source`
   and returns the count. The training views are refreshed by the client.
