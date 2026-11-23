@@ -5,6 +5,8 @@ import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
 import { syncIdempotencyKey, type SyncTaskPayload } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
+import type { LogProps } from '@/_bff/lib/log-writer'
+import { Logger } from '@/_bff/lib/server-logger'
 import {
     CreateSbClientError,
     ZeppConnectionNotFoundError,
@@ -24,6 +26,7 @@ type StartZeppSyncDependencies = {
     createAdminClient: () => ReturnType<typeof createDBAdminClient>
     triggerTask: typeof triggerTask
     now: () => Date
+    log?: (props: LogProps) => void
 }
 
 const DEFAULT_DEPENDENCIES: StartZeppSyncDependencies = {
@@ -91,5 +94,14 @@ export const startZeppSync = Effect.fn('startZeppSync')(function* (
     // The run ID only helps support find the run: the task is already enqueued, so a failed write
     // must not fail the start.
     yield* setZeppSyncRunId(supabase, userId, startedAt, handle.id).pipe(Effect.ignore)
+    yield* Effect.try(() =>
+        (dependencies.log ?? Logger)({
+            level: 'info',
+            prefix: 'zeppSync',
+            message: 'Sync started',
+            userId,
+            metadata: { runId: handle.id },
+        })
+    ).pipe(Effect.ignore)
     return { startedAt }
 })

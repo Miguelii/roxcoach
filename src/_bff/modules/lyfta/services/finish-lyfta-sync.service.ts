@@ -5,12 +5,15 @@ import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
 import { createDBAdminClient } from '@/_bff/core/db'
 import type { SyncOutcome, SyncTaskPayload } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
+import type { LogProps } from '@/_bff/lib/log-writer'
+import { persistLog } from '@/_bff/lib/server-logger'
 import { CreateSbClientError } from '@/_bff/lib/errors'
 import { finishLyftaSync } from '@/_bff/modules/lyfta/repositories/lyfta-connections.repository'
 
 type FinishLyftaSyncDependencies = {
     createAdminClient: () => ReturnType<typeof createDBAdminClient>
     now: () => Date
+    log?: (props: LogProps) => Promise<void>
 }
 
 const DEFAULT_DEPENDENCIES: FinishLyftaSyncDependencies = {
@@ -44,11 +47,24 @@ export const finishLyftaSyncRun = Effect.fn('finishLyftaSyncRun')(function* (
                   },
               }
             : outcome
+    const finishedAt = dependencies.now()
     yield* finishLyftaSync(
         adminClient,
         payload.userId,
         payload.startedAt,
         stored,
-        dependencies.now().toISOString()
+        finishedAt.toISOString()
     )
+    if (stored.status !== 'succeeded') return
+
+    const durationMs = finishedAt.getTime() - Date.parse(payload.startedAt)
+    yield* Effect.tryPromise(() =>
+        (dependencies.log ?? persistLog)({
+            level: 'info',
+            prefix: 'lyftaSync',
+            message: 'Sync succeeded',
+            userId: payload.userId,
+            metadata: { ...stored.result, durationMs },
+        })
+    ).pipe(Effect.ignore)
 })
