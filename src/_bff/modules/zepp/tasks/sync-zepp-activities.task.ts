@@ -16,7 +16,10 @@ export const syncZeppActivitiesTask = task({
             sync: ({ userId, startedAt }) => syncZeppActivities(userId, startedAt),
             finish: (validPayload, outcome) => finishZeppSyncRun(validPayload, outcome),
             isPermanent: isPermanentZeppSyncError,
+            prefix: 'zeppSync',
         }),
     onFailure: ({ payload }) =>
-        recordFailedSyncTask(payload, finishZeppSyncRun, ErrorCode.ZEPP_SYNC_FAILED),
+        recordFailedSyncTask(payload, finishZeppSyncRun, ErrorCode.ZEPP_SYNC_FAILED, {
+            prefix: 'zeppSync',
+        }),
 })
