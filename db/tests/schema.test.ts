@@ -247,15 +247,19 @@ describe('background sync state', () => {
             ['sync_status', 'sync_status'],
         ]
 
-        for (const table of ['lyfta_connections', 'zepp_connections']) {
-            const result = await testDb.db.query<ColumnRow>(
-                `select column_name, data_type, udt_name, column_default
+        const results = await Promise.all(
+            ['lyfta_connections', 'zepp_connections'].map((table) =>
+                testDb.db.query<ColumnRow>(
+                    `select column_name, data_type, udt_name, column_default
                  from information_schema.columns
                  where table_schema = 'roxcoach' and table_name = $1 and column_name like 'sync\\_%'
                  order by column_name`,
-                [table]
+                    [table]
+                )
             )
+        )
 
+        for (const result of results) {
             expect(result.rows.map((row) => [row.column_name, row.udt_name])).toEqual(expected)
             const status = result.rows.find((row) => row.column_name === 'sync_status')
             expect(status?.column_default).toContain("'idle'")

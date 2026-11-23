@@ -276,7 +276,9 @@ describe('strength workout detail', () => {
         expect(screen.queryByTestId('strength-summary-sets')).toBeNull()
         expect(screen.queryByTestId('strength-records')).toBeNull()
     })
+})
 
+describe('strength workout records from our comparison', () => {
     it('adds 1RM and volume records to the weight record from our own comparison', () => {
         renderStrength([
             {

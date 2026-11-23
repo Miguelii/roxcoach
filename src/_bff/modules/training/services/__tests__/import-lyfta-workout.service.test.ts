@@ -190,7 +190,7 @@ describe('importLyftaWorkout', () => {
     it('creates the import context once: valid timezone kept, invalid one falls back to UTC', async () => {
         const { supabase } = makeFakeDb([])
         const createClient = vi.fn(() => supabase)
-        const getTimezone = vi.fn((_client: TrainingClient, _userId: string) => undefined)
+        const getTimezone = vi.fn<(client: TrainingClient, userId: string) => void>()
         const make = (timezone: string) =>
             Effect.runPromise(
                 createImportContext(USER, {

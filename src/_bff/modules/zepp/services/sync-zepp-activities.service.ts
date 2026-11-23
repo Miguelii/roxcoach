@@ -51,6 +51,8 @@ type SyncDependencies = ZeppConnectionDependencies & {
 
 const DAY_MS = 86_400_000
 
+const STOP_SYNC = 'stop' as const
+
 const DEFAULT_SYNC_DEPENDENCIES: SyncDependencies = {
     ...DEFAULT_ZEPP_CONNECTION_DEPENDENCIES,
     createImportContext,
@@ -132,16 +134,16 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
 
     let requests = 0
     let leaseLost = false
-    // `undefined` means the run lost its lease and must stop; `null` means Zepp refused the
+    // 'stop' means the run lost its lease and must stop; `null` means Zepp refused the
     // detail of this run. The history just answered, so a refusal is about the run, not the session.
     const fetchDetail = (summary: ZeppRunSummary) =>
         Effect.gen(function* () {
-            if (leaseLost) return undefined
+            if (leaseLost) return STOP_SYNC
             if (requests > 0 && requests % CONNECTION_RECHECK_EVERY === 0) {
                 const current = yield* selectZeppConnection(admin, userId)
                 if (current === null || !ownsSyncLease(current.sync, startedAt)) {
                     leaseLost = true
-                    return undefined
+                    return STOP_SYNC
                 }
             }
             if (requests > 0)
@@ -159,7 +161,7 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     let skipped = 0
     for (const summary of batch) {
         const detail = yield* fetchDetail(summary)
-        if (detail === undefined) break
+        if (detail === STOP_SYNC) break
         if (detail === null) {
             skipped += 1
             continue
@@ -178,7 +180,7 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     for (const summary of backfill) {
         const activityId = withoutLaps.get(summary.trackId)
         const detail = yield* fetchDetail(summary)
-        if (detail === undefined) break
+        if (detail === STOP_SYNC) break
         if (detail === null || activityId === undefined) continue
         yield* dependencies.replaceRunLaps(
             userId,

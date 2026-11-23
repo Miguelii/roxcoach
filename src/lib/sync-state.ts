@@ -3,7 +3,7 @@ import { SYNC_POLL_INTERVAL_MS } from '@/lib/constants'
 
 export type SyncSnapshot = { status: SyncStatus; startedAt: string | null }
 
-export function pollWhileSyncing(data: { sync: SyncSnapshot } | undefined): number | false {
+export function pollWhileSyncing(data?: { sync: SyncSnapshot }): number | false {
     return data?.sync.status === 'running' ? SYNC_POLL_INTERVAL_MS : false
 }
 

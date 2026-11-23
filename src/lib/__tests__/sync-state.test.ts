@@ -7,7 +7,7 @@ describe('pollWhileSyncing', () => {
         expect(pollWhileSyncing({ sync: { status: 'idle', startedAt: null } })).toBe(false)
         expect(pollWhileSyncing({ sync: { status: 'succeeded', startedAt: 't1' } })).toBe(false)
         expect(pollWhileSyncing({ sync: { status: 'failed', startedAt: 't1' } })).toBe(false)
-        expect(pollWhileSyncing(undefined)).toBe(false)
+        expect(pollWhileSyncing()).toBe(false)
     })
 })
 

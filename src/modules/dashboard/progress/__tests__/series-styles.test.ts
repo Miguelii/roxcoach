@@ -17,7 +17,7 @@ describe('series styles', () => {
 
     it('never uses orange for zones', () => {
         for (const zone of Object.values(ZONE_STYLES)) {
-            expect(zone.color).not.toMatch(/signal|tangerine/)
+            expect(zone.color).not.toMatch(/signal|tangerine/u)
         }
     })
 
