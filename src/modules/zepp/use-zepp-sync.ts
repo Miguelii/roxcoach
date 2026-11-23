@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
-import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import { zeppSyncResultSchema, type ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
 import { messageForZeppError, zeppSyncMessage } from '@/modules/zepp/zepp-ui.utils'
 
 type Options = {
@@ -22,9 +22,9 @@ export function useZeppSync({ onSynced, onFailed }: Options = {}) {
     const sync = async () => {
         setErrorMessage(null)
         setSyncMessage(null)
-        let result: ZeppSyncResult
+        let started: unknown
         try {
-            result = await syncMutation.mutateAsync()
+            started = await syncMutation.mutateAsync()
         } catch (error) {
             const message = messageForZeppError({
                 message: error instanceof Error ? error.message : '',
@@ -36,8 +36,12 @@ export function useZeppSync({ onSynced, onFailed }: Options = {}) {
         }
 
         syncMutation.reset()
-        setSyncMessage(zeppSyncMessage(result))
-        onSynced?.(result)
+        // TODO(task 9): the mutation now returns { startedAt }; the client is reworked to poll the status.
+        const parsed = zeppSyncResultSchema.safeParse(started)
+        if (parsed.success) {
+            setSyncMessage(zeppSyncMessage(parsed.data))
+            onSynced?.(parsed.data)
+        }
         await Promise.all([
             queryClient.invalidateQueries(trpc.zepp.getConnectionStatus.queryFilter()),
             queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),

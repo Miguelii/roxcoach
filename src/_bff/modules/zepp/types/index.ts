@@ -1,4 +1,5 @@
-import type { SyncStateRow } from '@/_bff/core/helpers/sync-state.helper'
+import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import type { SyncState, SyncStateRow } from '@/_bff/core/helpers/sync-state.helper'
 import type { ParsedActivity } from '@/_bff/modules/training/types'
 import type { HrSample } from '@/_bff/modules/training/types/progress'
 
@@ -42,4 +43,8 @@ export type ZeppConnectionRecord = {
     sync: SyncStateRow
 }
 
-export type ZeppConnectionStatus = { connected: boolean; lastSyncedAt: string | null }
+export type ZeppConnectionStatus = {
+    connected: boolean
+    lastSyncedAt: string | null
+    sync: SyncState<ZeppSyncResult>
+}

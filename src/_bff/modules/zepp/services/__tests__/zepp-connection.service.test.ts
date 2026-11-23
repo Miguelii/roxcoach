@@ -17,6 +17,13 @@ import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/f
 const USER = { id: 'user-zepp-1' } as User
 const KEY = Buffer.alloc(32, 9).toString('base64')
 const INPUT = { email: 'athlete@example.com', password: 'secret-password' }
+const IDLE_SYNC = {
+    status: 'idle',
+    startedAt: null,
+    finishedAt: null,
+    result: null,
+    errorCode: null,
+}
 
 const loginFetch = () =>
     vi
@@ -47,7 +54,11 @@ describe('connectZepp', () => {
             connectZepp(USER, INPUT, dependencies(supabase, loginFetch()))
         )
 
-        expect(result).toEqual({ connected: true, lastSyncedAt: null })
+        expect(result).toEqual({
+            connected: true,
+            lastSyncedAt: null,
+            sync: IDLE_SYNC,
+        })
         const [row] = chains[0]?.upsert.mock.calls[0] ?? []
         expect(row).toMatchObject({ user_id: USER.id, last_synced_at: null })
         const stored = z.object({ encrypted_app_token: z.string() }).parse(row)
@@ -104,12 +115,39 @@ describe('getZeppConnectionStatus', () => {
             await Effect.runPromise(
                 getZeppConnectionStatus(USER, dependencies(none.supabase, fetcher))
             )
-        ).toEqual({ connected: false, lastSyncedAt: null })
+        ).toEqual({ connected: false, lastSyncedAt: null, sync: IDLE_SYNC })
         expect(
             await Effect.runPromise(
                 getZeppConnectionStatus(USER, dependencies(some.supabase, fetcher))
             )
-        ).toEqual({ connected: true, lastSyncedAt: '2026-11-21T10:00:00.000Z' })
+        ).toEqual({
+            connected: true,
+            lastSyncedAt: '2026-11-21T10:00:00.000Z',
+            sync: IDLE_SYNC,
+        })
+    })
+
+    it('reports a stale running sync as failed with the stale error code', async () => {
+        const { supabase } = makeFakeDb([
+            ok({
+                encrypted_app_token: 'x',
+                last_synced_at: null,
+                sync_status: 'running',
+                sync_started_at: '2026-11-23T08:00:00.000Z',
+                sync_finished_at: null,
+                sync_result: null,
+                sync_error: null,
+            }),
+        ])
+
+        const status = await Effect.runPromise(
+            getZeppConnectionStatus(USER, {
+                ...dependencies(supabase, loginFetch()),
+                now: () => new Date('2026-11-23T10:00:00.000Z'),
+            })
+        )
+
+        expect(status.sync).toMatchObject({ status: 'failed', errorCode: 'zepp020' })
     })
 })
 
