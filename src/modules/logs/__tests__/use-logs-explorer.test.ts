@@ -13,6 +13,7 @@ const entry = (id: string, level: LogEntry['level'], prefix: string): LogEntry =
     message: id,
     metadata: null,
     user_id: null,
+    display_name: null,
 })
 
 const LOGS = [

@@ -13,6 +13,7 @@ const entry = (overrides: Partial<LogEntry> & { id: string }): LogEntry => ({
     message: 'Sync succeeded',
     metadata: null,
     user_id: null,
+    display_name: null,
     ...overrides,
 })
 
@@ -79,6 +80,27 @@ describe('LogsExplorer', () => {
 
         expect(screen.getByTestId('logs-row-b')).toBeInTheDocument()
         expect(screen.queryByTestId('logs-row-c')).toBeNull()
+    })
+
+    it('shows the display name and the user id in the row and in the details', async () => {
+        renderExplorer({
+            logs: [entry({ id: 'u', user_id: 'user-1234-abcd', display_name: 'Ana Silva' })],
+        })
+
+        expect(screen.getByTestId('logs-row-u-user')).toHaveTextContent('Ana Silva')
+        expect(screen.getByTestId('logs-row-u-user')).toHaveTextContent('user-1234-abcd')
+
+        fireEvent.click(screen.getByTestId('logs-row-u'))
+        await waitFor(() => {
+            expect(screen.getByTestId('log-details-user')).toHaveTextContent('Ana Silva')
+        })
+        expect(screen.getByTestId('log-details-user')).toHaveTextContent('user-1234-abcd')
+    })
+
+    it('shows a dash for a log without a user', () => {
+        renderExplorer({ logs: [entry({ id: 'n' })] })
+
+        expect(screen.getByTestId('logs-row-n-user')).toHaveTextContent('-')
     })
 
     it('opens the details of a log with its message and metadata', async () => {

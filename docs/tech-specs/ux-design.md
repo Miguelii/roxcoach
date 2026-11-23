@@ -417,7 +417,7 @@ The `/logs` page (`LogsExplorer` in `src/modules/logs`) reads the Roxcoach rows 
 table (see [logs.md](logs.md)). A toolbar has the range pills (`30m`, `1h`, `24h`, `7d`, `30d`, default `30d`) and a
 debounced search; both live in the URL. Under it a stacked histogram (30 buckets, one series per
 level) in a white card, then pill filters for level (always the four levels, with counts) and for
-source, then one card with the list: time, level badge, source and message per row (a two line row
+source, then one card with the list: time, level badge, source, the athlete (display name over the user id, a dash when the log has no user) and message per row (a two line row
 on a phone). Tapping a row opens the details in `DetailDrawer`: message, level, source, time, user
 and the metadata as formatted JSON with a copy icon that puts the JSON on the clipboard. Level tones: error red, warning amber, info blue, debug slate
 (`-soft` fill, `-deep` text). States: a banner when 1000 rows came back (the range is truncated),

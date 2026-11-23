@@ -26,7 +26,7 @@ the `/logs` page. The decision and the reasoning are in
 string (trimmed, max 200) }`. Output `{ logs: LogEntry[], isTruncated: boolean }`: the 1000 most
 recent Roxcoach rows since the start of the range, newest first, filtered by `message` or `prefix`
 containing the search (wildcards escaped, value quoted). `isTruncated` is true when the limit was
-reached. Not cached. Every signed-in athlete sees every Roxcoach row, including rows without a
+reached. Each row also carries `display_name`, read in one extra query from `athlete_profiles` for the distinct `user_id`s of the page (null without a profile; a failed read leaves the names empty, never the logs). Not cached. Every signed-in athlete sees every Roxcoach row, including rows without a
 `user_id`. Errors: `LogsClientError` (`logs001`) and `LogsQueryError` (`logs002`), both
 `INTERNAL_SERVER_ERROR`.
 

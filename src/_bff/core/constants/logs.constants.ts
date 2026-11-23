@@ -28,7 +28,7 @@ type LogJson = string | number | boolean | null | LogJson[] | { [key: string]: L
 
 type LogMetadata = { [key: string]: LogJson }
 
-export type LogEntry = {
+type LogRow = {
     id: string
     created_at: string
     level: LogLevel
@@ -37,3 +37,6 @@ export type LogEntry = {
     metadata: LogMetadata | null
     user_id: string | null
 }
+
+// A log row with the display name of the athlete it belongs to, when it has a profile.
+export type LogEntry = LogRow & { display_name: string | null }

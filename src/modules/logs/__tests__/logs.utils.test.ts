@@ -12,6 +12,7 @@ const entry = (overrides: Partial<LogEntry> = {}): LogEntry => ({
     message: null,
     metadata: null,
     user_id: null,
+    display_name: null,
     ...overrides,
 })
 

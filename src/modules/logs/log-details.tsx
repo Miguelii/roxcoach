@@ -67,6 +67,8 @@ function Field({ label, testId, children }: FieldProps) {
 }
 
 export function LogDetails({ log }: Props) {
+    const userLabel =
+        log.user_id === null ? 'None' : `${log.display_name ?? 'No profile'} (${log.user_id})`
     const metadata = log.metadata ? JSON.stringify(log.metadata, null, 2) : null
 
     return (
@@ -87,7 +89,7 @@ export function LogDetails({ log }: Props) {
                 })}
             </Field>
             <Field label="User" testId="log-details-user">
-                {log.user_id ?? 'None'}
+                {userLabel}
             </Field>
             {metadata ? (
                 <div className="space-y-1">
