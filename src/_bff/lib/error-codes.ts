@@ -214,4 +214,7 @@ export enum ErrorCode {
     ZEPP_SYNC_ENQUEUE = 'zepp018',
     ZEPP_SYNC_LEASE = 'zepp019',
     ZEPP_SYNC_FAILED = 'zepp020',
+
+    LOGS_CLIENT = 'logs001',
+    LOGS_QUERY = 'logs002',
 }

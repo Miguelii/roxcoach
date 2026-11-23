@@ -155,3 +155,6 @@ export class ZeppSyncEnqueueError extends Data.TaggedError(
     'ZeppSyncEnqueueError'
 )<ServiceErrorFields> {}
 export class ZeppImportError extends Data.TaggedError('ZeppImportError')<ServiceErrorFields> {}
+
+export class LogsClientError extends Data.TaggedError('LogsClientError')<ServiceErrorFields> {}
+export class LogsQueryError extends Data.TaggedError('LogsQueryError')<ServiceErrorFields> {}

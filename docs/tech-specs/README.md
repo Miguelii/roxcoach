@@ -21,6 +21,7 @@ before touching its code, and update it in the same change.
 | [manual-upload.md](manual-upload.md)               | FIT, TCX and GPX upload from the dashboard, parsing, file storage                                                      |
 | [lyfta.md](lyfta.md)                               | Manual Lyfta workout sync, credentials, import and storage                                                             |
 | [zepp.md](zepp.md)                                 | Manual Zepp (Amazfit) run sync, token handling, adapter and import                                                     |
+| [logs.md](logs.md)                                 | Persistent logs in the shared `public.logs` table, capture points, `logs.getAll` and the `/logs` page                  |
 | [coach-chat.md](coach-chat.md)                     | Dashboard chat with the AI coach: context, tools, route, storage                                                       |
 | [coach-model-fallback.md](coach-model-fallback.md) | Ordered list of Gemini models, automatic retry on the next one when a model is rate limited, model caption in the chat |
 | [dashboard-progress.md](dashboard-progress.md)     | Running and Strength dashboard modes, progress charts, HR zones from per-run histograms (implemented)                  |
