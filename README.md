@@ -1,6 +1,6 @@
 # RoxCoach
 
-A training coach for endurance and strength athletes: upload or sync your workouts, follow your progress and chat with an AI coach.
+A training app for endurance and strength athletes: upload or sync your workouts, follow your progress and chat with an AI coach.
 
 Built with Next.js, tRPC, Effect and Supabase.
 
