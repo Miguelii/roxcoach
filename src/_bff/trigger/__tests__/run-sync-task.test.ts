@@ -5,7 +5,7 @@ import { AbortTaskRunError } from '@trigger.dev/sdk'
 import { LyftaApiError, LyftaResponseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import type { SyncOutcome, SyncTaskPayload } from '@/_bff/core/helpers/sync-state.helper'
-import { recordFailedSyncTask, runSyncTask } from '@/trigger/run-sync-task'
+import { recordFailedSyncTask, runSyncTask } from '@/_bff/trigger/run-sync-task'
 
 type SyncError = LyftaApiError | LyftaResponseError
 type Result = { created: number }

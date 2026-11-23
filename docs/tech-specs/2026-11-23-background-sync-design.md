@@ -36,7 +36,7 @@ when the sync ends: a final toast with the counts or the error, and the calendar
 
 ## Constraints
 
-- Trigger.dev v4 (`@trigger.dev/sdk` 4.8.8) is installed. `trigger.config.ts` scans `src/trigger`,
+- Trigger.dev v4 (`@trigger.dev/sdk` 4.8.8) is installed. `trigger.config.ts` scans each module's `tasks/` folder,
   runtime `node-24`, `maxDuration` 3600 s, 3 attempts by default.
 - The task runs outside Next.js: no request, no cookies, no `next/headers`. `createDBServerClient`
   cannot be called from it.
@@ -120,11 +120,10 @@ $staleBefore)`, setting `running`, `sync_started_at = now`, and clearing `sync_f
 
 ### Tasks
 
-One file per task in `src/trigger/`: `sync-lyfta-workouts.task.ts` and
-`sync-zepp-activities.task.ts` (task IDs `sync-lyfta-workouts`, `sync-zepp-activities`). Each is a
+One file per task in its module's `tasks/` folder: `src/_bff/modules/lyfta/tasks/sync-lyfta-workouts.task.ts` and
+`src/_bff/modules/zepp/tasks/sync-zepp-activities.task.ts` (task IDs `sync-lyfta-workouts`, `sync-zepp-activities`). Each is a
 thin binding, like a controller: a zod-validated payload `{ userId: uuid, startedAt: ISO string }`,
 then the service, then the outcome. No business logic and no Supabase calls in the task file.
-`src/trigger/example.ts` is deleted.
 
 - The task runs the existing sync service and maps its result:
     - success: `succeeded` with `sync_result`;
@@ -260,7 +259,7 @@ exhaustive.
 
 `lyfta.md` (manual sync behavior, budget and ceiling, UI feedback), `zepp.md` (sync, limits, Sync
 button), `database.md` (columns, enum, migration table), `architecture.md` (background tasks
-layer, `src/trigger`, env table), `ux-design.md` if it describes the sync states, and the README
+layer, module `tasks/` folders, env table), `ux-design.md` if it describes the sync states, and the README
 decisions log and "Out of scope" list ("Automatic or background Lyfta sync", "any scheduled job"),
 which this change partly reverses.
 

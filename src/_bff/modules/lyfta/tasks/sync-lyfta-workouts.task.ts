@@ -6,7 +6,7 @@ import { LYFTA_SYNC_TASK_ID } from '@/_bff/modules/lyfta/constants'
 import { finishLyftaSyncRun } from '@/_bff/modules/lyfta/services/finish-lyfta-sync.service'
 import { syncLyftaWorkouts } from '@/_bff/modules/lyfta/services/sync-lyfta-workouts.service'
 import { isPermanentLyftaSyncError } from '@/_bff/modules/lyfta/utils/sync-errors.utils'
-import { recordFailedSyncTask, runSyncTask } from '@/trigger/run-sync-task'
+import { recordFailedSyncTask, runSyncTask } from '@/_bff/trigger/run-sync-task'
 
 export const syncLyftaWorkoutsTask = task({
     id: LYFTA_SYNC_TASK_ID,

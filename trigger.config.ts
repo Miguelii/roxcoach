@@ -18,7 +18,7 @@ export default defineConfig({
             randomize: true,
         },
     },
-    dirs: ['./src/trigger'],
+    dirs: ['./src/_bff/modules/lyfta/tasks', './src/_bff/modules/zepp/tasks'],
     // Resolve packages the way Next.js server code does (`server-only` to its no-op export).
     build: { conditions: ['react-server'] },
 })

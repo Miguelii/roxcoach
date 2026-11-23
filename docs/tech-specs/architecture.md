@@ -6,17 +6,17 @@ repositories on top of Supabase.
 
 ## Stack
 
-| Concern           | Choice                                                                       |
-| ----------------- | ---------------------------------------------------------------------------- |
-| Framework         | Next.js (App Router), React 19 with the React Compiler                       |
-| Language          | TypeScript, all code and identifiers in English                              |
-| Backend style     | tRPC controllers, Effect v4 services, Supabase repositories                  |
-| Database and auth | Supabase, an existing project shared with another app, own schema `roxcoach` |
-| Background work   | Trigger.dev v4 tasks in `src/trigger/` (Lyfta and Zepp sync)                 |
-| AI                | AI SDK with `@ai-sdk/google` (Gemini), added with the coach chat             |
-| UI                | Tailwind v4, shadcn on `base-ui` (never Radix), nuqs for URL-backed UI state |
-| Env               | `@t3-oss/env-nextjs` in `src/env/server.ts` and `src/env/client.ts`          |
-| Tooling           | pnpm, vite-plus (`vp lint`, `vp fmt`, `vp test`), knip, husky, anti-slop     |
+| Concern           | Choice                                                                           |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Framework         | Next.js (App Router), React 19 with the React Compiler                           |
+| Language          | TypeScript, all code and identifiers in English                                  |
+| Backend style     | tRPC controllers, Effect v4 services, Supabase repositories                      |
+| Database and auth | Supabase, an existing project shared with another app, own schema `roxcoach`     |
+| Background work   | Trigger.dev v4 tasks in `src/_bff/modules/<module>/tasks/` (Lyfta and Zepp sync) |
+| AI                | AI SDK with `@ai-sdk/google` (Gemini), added with the coach chat                 |
+| UI                | Tailwind v4, shadcn on `base-ui` (never Radix), nuqs for URL-backed UI state     |
+| Env               | `@t3-oss/env-nextjs` in `src/env/server.ts` and `src/env/client.ts`              |
+| Tooling           | pnpm, vite-plus (`vp lint`, `vp fmt`, `vp test`), knip, husky, anti-slop         |
 
 ## Directory layout
 
@@ -26,12 +26,14 @@ src/
     core/        constants, helpers, utils importable by frontend and _bff; db/ (server only)
     lib/         errors.ts, error-codes.ts, server-logger.ts, tests-utils.ts
     trpc/        server.ts, utils.ts, context.ts, router.ts, caller.ts
+    trigger/     run-sync-task.ts, the generic Trigger.dev task run shared by module tasks
     modules/<module>/
       <module>.router.ts
       controllers/<name>.controller.ts
       services/<name>.service.ts
       repositories/<table>.repository.ts
       processors/<name>.processor.ts
+      tasks/<name>.task.ts (Trigger.dev tasks, scanned by trigger.config.ts)
       helpers/<name>.helper.ts
       constants/index.ts
       types/index.ts
@@ -41,7 +43,6 @@ src/
   lib/           frontend-only utilities and constants
   env/
   styles/
-  trigger/       Trigger.dev tasks (*.task.ts) and run-sync-task.ts
 ```
 
 `_bff` never imports from `src/lib`, `src/modules`, `src/components`, `src/hooks` or `src/app`.
@@ -152,12 +153,12 @@ The Lyfta and Zepp syncs run as Trigger.dev v4 tasks (see
 [2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md)). There is still no
 cron or scheduled job: a task only runs when a sync mutation enqueues it.
 
-- `src/trigger/sync-lyfta-workouts.task.ts` (`sync-lyfta-workouts`) and
-  `src/trigger/sync-zepp-activities.task.ts` (`sync-zepp-activities`) are thin bindings, like
+- `src/_bff/modules/lyfta/tasks/sync-lyfta-workouts.task.ts` (`sync-lyfta-workouts`) and
+  `src/_bff/modules/zepp/tasks/sync-zepp-activities.task.ts` (`sync-zepp-activities`) are thin bindings, like
   controllers: they wire the module's sync service, its `finish*SyncRun` service and its permanent
   error classifier into `runSyncTask`, with `maxDuration: SYNC_TASK_MAX_DURATION_S`. No business
   logic and no Supabase calls in a task file.
-- `src/trigger/run-sync-task.ts` holds the generic run: it validates the payload
+- `src/_bff/trigger/run-sync-task.ts` holds the generic run: it validates the payload
   (`syncTaskPayloadSchema`, an invalid one aborts with `AbortTaskRunError`), runs the sync, records
   `succeeded` with the result, records `failed` with the `error_hash` and aborts (no retry) on a
   permanent error, and throws a plain `Error` with only the tag and code on a transient error so

@@ -6,7 +6,7 @@ import { ZEPP_SYNC_TASK_ID } from '@/_bff/modules/zepp/constants'
 import { finishZeppSyncRun } from '@/_bff/modules/zepp/services/finish-zepp-sync.service'
 import { syncZeppActivities } from '@/_bff/modules/zepp/services/sync-zepp-activities.service'
 import { isPermanentZeppSyncError } from '@/_bff/modules/zepp/utils/sync-errors.utils'
-import { recordFailedSyncTask, runSyncTask } from '@/trigger/run-sync-task'
+import { recordFailedSyncTask, runSyncTask } from '@/_bff/trigger/run-sync-task'
 
 export const syncZeppActivitiesTask = task({
     id: ZEPP_SYNC_TASK_ID,
