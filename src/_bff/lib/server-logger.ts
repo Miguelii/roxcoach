@@ -8,7 +8,12 @@ import {
     type LogMetadata,
     type LogValue,
 } from '@/_bff/lib/log-serializer'
-import { createLogWriter, type LogProps, type LogRow } from '@/_bff/lib/log-writer'
+import {
+    createLogWriter,
+    shouldPersistLogs,
+    type LogProps,
+    type LogRow,
+} from '@/_bff/lib/log-writer'
 import { ServerEnv } from '@/env/server'
 
 export type { LogProps } from '@/_bff/lib/log-writer'
@@ -66,7 +71,7 @@ const scheduleInsert = (run: () => Promise<void>) => {
 }
 
 const writer = createLogWriter({
-    enabled: ServerEnv.NODE_ENV === 'production',
+    enabled: shouldPersistLogs(ServerEnv.NODE_ENV, ServerEnv.NEXT_LOGS_PERSIST),
     insert: insertLogRow,
     schedule: scheduleInsert,
     reportFailure: (message) => {

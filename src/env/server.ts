@@ -3,6 +3,9 @@ import { z } from 'zod'
 
 export const ServerEnv = createEnv({
     server: {
+        // true writes logs to the shared table outside production (for example in `trigger dev`),
+        // false stops them in production. Unset: persisted in production only.
+        NEXT_LOGS_PERSIST: z.stringbool().optional(),
         NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
         NEXT_SUPABASE_URL: z.string().min(1),
         NEXT_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
@@ -30,6 +33,7 @@ export const ServerEnv = createEnv({
         TRIGGER_SECRET_KEY: z.string().min(1).optional(),
     },
     runtimeEnv: {
+        NEXT_LOGS_PERSIST: process.env.NEXT_LOGS_PERSIST,
         NODE_ENV: process.env.NODE_ENV,
         NEXT_SUPABASE_URL: process.env.NEXT_SUPABASE_URL,
         NEXT_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_SUPABASE_PUBLISHABLE_KEY,

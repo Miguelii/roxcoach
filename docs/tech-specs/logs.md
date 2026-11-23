@@ -15,7 +15,9 @@ the `/logs` page. The decision and the reasoning are in
 - **Info events** (prefix `lyftaSync` or `zeppSync`): `Sync started` when the start service
   enqueues the task (metadata `runId`) and `Sync succeeded` when the task finishes (the stored
   result counts and `durationMs`).
-- Rows are written only when `NODE_ENV === 'production'`. Every row carries `project: 'roxcoach'`
+- Rows are written when `NODE_ENV === 'production'`, or when `NEXT_LOGS_PERSIST=true` (set it in the
+  Trigger.dev Dev environment to log `trigger dev` runs); `NEXT_LOGS_PERSIST=false` stops them in
+  production. Every row carries `project: 'roxcoach'`
   and, when known, the athlete's `user_id`. Secrets are redacted by the logger's serializer.
 
 ## API

@@ -60,6 +60,11 @@ export const buildLogRow = ({
     }
 }
 
+// Production persists by default. The flag turns it on elsewhere (a `trigger dev` or local run
+// that should write to the shared table) or off in production.
+export const shouldPersistLogs = (nodeEnv: string, flag?: boolean): boolean =>
+    flag ?? nodeEnv === 'production'
+
 const messageOf = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
 // Persisting must never break the caller: every failure ends in `reportFailure`, with the message

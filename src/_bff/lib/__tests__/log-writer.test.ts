@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { LogsQueryError } from '@/_bff/lib/errors'
 import type { LogMetadata } from '@/_bff/lib/log-serializer'
-import { buildLogRow, createLogWriter, type LogRow } from '@/_bff/lib/log-writer'
+import { buildLogRow, createLogWriter, shouldPersistLogs, type LogRow } from '@/_bff/lib/log-writer'
 
 type Setup = { enabled?: boolean; insert?: (row: LogRow) => Promise<void> }
 
@@ -30,6 +30,22 @@ const setup = ({ enabled = true, insert }: Setup = {}) => {
 const throwingInsert = (): Promise<void> => {
     throw new Error('sync boom')
 }
+
+describe('shouldPersistLogs', () => {
+    it('persists in production', () => {
+        expect(shouldPersistLogs('production')).toBe(true)
+    })
+
+    it('does not persist in development or test unless the flag asks for it', () => {
+        expect(shouldPersistLogs('development')).toBe(false)
+        expect(shouldPersistLogs('test', false)).toBe(false)
+        expect(shouldPersistLogs('development', true)).toBe(true)
+    })
+
+    it('lets the flag switch persistence off in production', () => {
+        expect(shouldPersistLogs('production', false)).toBe(false)
+    })
+})
 
 describe('buildLogRow', () => {
     it('stamps the project and maps the log level to debug', () => {
