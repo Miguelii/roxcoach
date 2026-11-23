@@ -4,12 +4,12 @@ import { withNuqsTestingAdapter, type UrlUpdateEvent } from 'nuqs/adapters/testi
 import { useLogsUrlState } from '@/modules/logs/use-logs-url-state'
 
 describe('useLogsUrlState', () => {
-    it('defaults to the last hour and an empty search', () => {
+    it('defaults to the last 30 days and an empty search', () => {
         const { result } = renderHook(() => useLogsUrlState(), {
             wrapper: withNuqsTestingAdapter(),
         })
 
-        expect(result.current.range).toBe('1h')
+        expect(result.current.range).toBe('30d')
         expect(result.current.search).toBe('')
     })
 
@@ -22,7 +22,7 @@ describe('useLogsUrlState', () => {
         })
 
         expect(valid.result.current).toMatchObject({ range: '7d', search: 'zepp' })
-        expect(invalid.result.current.range).toBe('1h')
+        expect(invalid.result.current.range).toBe('30d')
     })
 
     it('writes the range and search to the URL and drops the defaults', async () => {
@@ -42,7 +42,7 @@ describe('useLogsUrlState', () => {
         })
 
         act(() => {
-            void result.current.setRange('1h')
+            void result.current.setRange('30d')
             void result.current.setSearch('sync')
         })
         await waitFor(() => {

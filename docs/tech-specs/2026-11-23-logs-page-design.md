@@ -113,7 +113,7 @@ level and source (prefix) facet filters applied client-side, table, and a detail
 come back a banner says the range was truncated.
 
 ```
-Logs                                   [ Last hour v ] [ search...    ]
+Logs                                   [ Last 30 days v ] [ search...    ]
 +---------------------------------------------------------------+
 | histogram: ||||| |  ||||||||||  |||                           |   card, level tones
 +---------------------------------------------------------------+

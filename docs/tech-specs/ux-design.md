@@ -414,7 +414,7 @@ states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 ### Logs
 
 The `/logs` page (`LogsExplorer` in `src/modules/logs`) reads the Roxcoach rows of the shared log
-table (see [logs.md](logs.md)). A toolbar has the range pills (`30m`, `1h`, `24h`, `7d`, `30d`) and a
+table (see [logs.md](logs.md)). A toolbar has the range pills (`30m`, `1h`, `24h`, `7d`, `30d`, default `30d`) and a
 debounced search; both live in the URL. Under it a stacked histogram (30 buckets, one series per
 level) in a white card, then pill filters for level (always the four levels, with counts) and for
 source, then one card with the list: time, level badge, source and message per row (a two line row
