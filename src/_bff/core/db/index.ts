@@ -18,6 +18,15 @@ export const createDBAdminClient = () =>
     })
 
 /**
+ * Service-role client on the `public` schema, for the one table Roxcoach shares with the other app
+ * (`public.logs`). Only the logger and the logs repository use it.
+ */
+export const createDBPublicAdminClient = () =>
+    createClient(ServerEnv.NEXT_SUPABASE_URL, ServerEnv.NEXT_SUPABASE_SERVICE_ROLE_KEY, {
+        db: { schema: 'public' },
+    })
+
+/**
  * Creates a DB server client with cookie-based session management.
  *
  * Always create a new client per request (required for Fluid compute).
