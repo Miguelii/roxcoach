@@ -5,7 +5,7 @@ import { Effect, Exit } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { makeFakeAdminDb, ok, type Call } from '@/_bff/lib/fake-admin-db'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { SYNC_LEASE_STALE_MS } from '@/_bff/modules/lyfta/constants'
+import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
 import { syncLyftaWorkouts } from '@/_bff/modules/lyfta/services/sync-lyfta-workouts.service'
 import { encryptLyftaApiKey } from '@/_bff/modules/lyfta/utils/credentials.utils'
 

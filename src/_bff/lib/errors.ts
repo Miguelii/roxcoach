@@ -110,6 +110,9 @@ export class LyftaResponseError extends Data.TaggedError(
 export class LyftaSyncInProgressError extends Data.TaggedError(
     'LyftaSyncInProgressError'
 )<ServiceErrorFields> {}
+export class LyftaSyncEnqueueError extends Data.TaggedError(
+    'LyftaSyncEnqueueError'
+)<ServiceErrorFields> {}
 export class LyftaImportError extends Data.TaggedError('LyftaImportError')<ServiceErrorFields> {}
 export class LyftaCheckpointError extends Data.TaggedError(
     'LyftaCheckpointError'
@@ -144,5 +147,11 @@ export class ZeppLoginRejectedError extends Data.TaggedError(
 )<ServiceErrorFields> {}
 export class ZeppSessionExpiredError extends Data.TaggedError(
     'ZeppSessionExpiredError'
+)<ServiceErrorFields> {}
+export class ZeppSyncInProgressError extends Data.TaggedError(
+    'ZeppSyncInProgressError'
+)<ServiceErrorFields> {}
+export class ZeppSyncEnqueueError extends Data.TaggedError(
+    'ZeppSyncEnqueueError'
 )<ServiceErrorFields> {}
 export class ZeppImportError extends Data.TaggedError('ZeppImportError')<ServiceErrorFields> {}

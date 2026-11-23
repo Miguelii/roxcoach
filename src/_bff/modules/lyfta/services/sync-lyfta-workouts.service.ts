@@ -27,11 +27,8 @@ import {
     type ImportContext,
 } from '@/_bff/modules/training/services/import-context.service'
 import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
-import {
-    MAX_PAGES_PER_SYNC,
-    SYNC_LEASE_STALE_MS,
-    SYNC_TIME_BUDGET_MS,
-} from '@/_bff/modules/lyfta/constants'
+import { MAX_PAGES_PER_SYNC, SYNC_TIME_BUDGET_MS } from '@/_bff/modules/lyfta/constants'
+import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
 import {
     addUtcDays,
     getLyftaSyncStart,
