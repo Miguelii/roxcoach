@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SYNC_START_MESSAGE } from '@/_bff/core/constants/sync.constants'
 import { useTRPC } from '@/lib/trpc'
 import { pollWhileSyncing } from '@/lib/sync-state'
+import { useClearZeppActivities } from '@/modules/zepp/use-clear-zepp-activities'
 import { useZeppSync } from '@/modules/zepp/use-zepp-sync'
 import { messageForZeppError } from '@/modules/zepp/zepp-ui.utils'
 
@@ -33,6 +34,8 @@ export function useZeppConnection() {
         onInProgress: (message) => toast.info(message),
         onFailed: (message) => toast.error(message),
     })
+    const countQuery = useQuery(trpc.zepp.getActivityCount.queryOptions())
+    const clearActivities = useClearZeppActivities()
     const connectMutation = useMutation(trpc.zepp.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.zepp.disconnect.mutationOptions())
     const form = useForm<ZeppFormValues>({
@@ -101,10 +104,16 @@ export function useZeppConnection() {
         isConnecting: form.formState.isSubmitting || connectMutation.isPending,
         isSyncing: zeppSync.isSyncing,
         isDisconnecting: disconnectMutation.isPending,
+        activityCount: countQuery.data?.count,
+        clearActivities,
         submit,
         sync,
         disconnect,
         setConfirmDisconnect,
+        clearError: () => {
+            setErrorMessage(null)
+            zeppSync.clearError()
+        },
         openForm: () => {
             setErrorMessage(null)
             zeppSync.clearError()

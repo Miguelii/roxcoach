@@ -238,6 +238,56 @@ export const finishLyftaSync = Effect.fn('finishLyftaSync')(function* (
     if (error) return yield* syncStateWriteError(`${error.code}: ${error.message}`)
 })
 
+// Forgets the sync checkpoint, so the next sync imports the whole window again.
+export const resetLyftaCheckpoint = Effect.fn('resetLyftaCheckpoint')(function* (
+    supabase: AdminClient,
+    userId: string
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        catch: (cause) =>
+            new LyftaConnectionWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.LYFTA_CHECKPOINT,
+            }),
+    })
+
+    if (error)
+        return yield* new LyftaConnectionWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.LYFTA_CHECKPOINT,
+        })
+})
+
+// Hands the lease a clear took back to the sync: only a lease still carrying `startedAtIso` is
+// released, so a stale one another sync has since taken is never touched.
+export const releaseLyftaClearLease = Effect.fn('releaseLyftaClearLease')(function* (
+    supabase: AdminClient,
+    userId: string,
+    startedAtIso: string
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .update({ sync_status: 'idle', sync_started_at: null })
+                .eq('user_id', userId)
+                .eq('sync_started_at', startedAtIso)
+                .eq('sync_status', 'running'),
+        catch: (cause) =>
+            new LyftaConnectionWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.LYFTA_SYNC_LEASE,
+            }),
+    })
+
+    if (error)
+        return yield* new LyftaConnectionWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.LYFTA_SYNC_LEASE,
+        })
+})
+
 export const deleteLyftaConnection = Effect.fn('deleteLyftaConnection')(function* (
     supabase: AdminClient,
     userId: string

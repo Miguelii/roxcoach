@@ -417,12 +417,25 @@ The `/logs` page (`LogsExplorer` in `src/modules/logs`) reads the Roxcoach rows 
 table (see [logs.md](logs.md)). A toolbar has the range pills (`30m`, `1h`, `24h`, `7d`, `30d`, default `30d`) and a
 debounced search; both live in the URL. Under it a stacked histogram (30 buckets, one series per
 level) in a white card, then pill filters for level (always the four levels, with counts) and for
-source, then one card with the list: time, level badge, source and message per row (a two line row
+source, then one card with the list: time, level badge, source, the athlete (display name over the user id, a dash when the log has no user) and message per row (a two line row
 on a phone). Tapping a row opens the details in `DetailDrawer`: message, level, source, time, user
 and the metadata as formatted JSON with a copy icon that puts the JSON on the clipboard. Level tones: error red, warning amber, info blue, debug slate
 (`-soft` fill, `-deep` text). States: a banner when 1000 rows came back (the range is truncated),
 "No logs in this time range" when empty and "No logs match these filters" with a clear button when
 the filters match nothing.
+
+### Integration cards
+
+Settings > Integrations has one card per integration (Lyfta, Zepp). Each starts with the name and a
+state pill ("Connected" or "Not connected", the state is in the text), then the last sync and, once
+known, how many activities were imported ("142 workouts imported", "38 runs imported"). The primary
+action is `Sync`; `Replace API key` (Lyfta) or `Reconnect` (Zepp) is the secondary one. Below a
+divider a "Danger zone" holds `Clear activities` and `Disconnect`, each with a one-line explanation
+and a destructive button of at least 44 px, apart from Sync so they are not pressed by mistake.
+`Clear activities` is disabled with zero activities, while the count is unknown and while a sync or
+another action runs. It opens the shared `ConfirmDialog` ("Clear 142 Lyfta workouts?", the 360 day
+caveat, `Clear Lyfta activities` / `Keep activities`); a failure stays in the dialog and a success
+closes it with a toast. The backend behaviour is in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 
 ## Components
 

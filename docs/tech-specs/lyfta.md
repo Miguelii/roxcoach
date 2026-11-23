@@ -350,3 +350,21 @@ Add optional server environment variable `NEXT_LYFTA_ENCRYPTION_KEY` to `src/env
    replacement.
 3. Add protected tRPC procedures and connect them to the Lyfta Settings tab.
 4. Add focused parser, service, repository, tenant-isolation and Settings tests.
+
+## Clear activities
+
+`lyfta.clearActivities` (protected mutation, no input) deletes every activity of the signed-in
+athlete with `source = 'lyfta'` and forgets the sync checkpoint (`last_synced_at = null`), so the
+next Sync imports them again; the connection and the saved key stay. The strength sets, laps and
+station results go with the activities (on delete cascade), and anything the athlete added by hand
+to them is lost. Only the last 360 days come back with a Sync: older workouts are gone for good.
+
+The order is fixed: take the sync lease (the same compare-and-set and stale rule as a sync; a sync
+that is running makes it fail with `LyftaSyncInProgressError`, "A Lyfta sync is already running", and
+nothing is touched), reset the checkpoint, delete, then give the lease back (`idle`). Holding the lease
+stops a Sync started in another tab from reading the old checkpoint while the activities go. If the delete fails the checkpoint is already reset, so the next Sync reimports; the other order
+could leave the activities gone and a checkpoint that makes the next Sync skip them. The delete runs
+through the `training` module (`clearSourceActivities`) with the athlete's own client, filtered by
+`user_id` and `source`. It returns `{ deleted }`. `lyfta.getActivityCount` returns `{ count }`, the
+number of imported Lyfta activities, for the confirmation dialog and the card. The UI is in
+[ux-design.md](ux-design.md). It replaces running `db/seed/clear-lyfta-activities.sql` by hand.

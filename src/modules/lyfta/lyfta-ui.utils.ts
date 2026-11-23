@@ -26,6 +26,8 @@ const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
         'Could not save imported sets. Try syncing again.',
     [ErrorCode.LYFTA_SYNC_ENQUEUE]: 'Could not start the Lyfta sync. Try again.',
     [ErrorCode.LYFTA_SYNC_FAILED]: 'The Lyfta sync stopped before finishing. Try again.',
+    [ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE]: 'Could not clear your workouts. Try again.',
+    [ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE_ERR]: 'Could not clear your workouts. Try again.',
 }
 
 export const LYFTA_MORE_TO_SYNC_MESSAGE =

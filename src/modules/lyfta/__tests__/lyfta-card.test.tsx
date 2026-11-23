@@ -14,6 +14,7 @@ type Sync = {
     result: LyftaSyncResult | null
     errorCode: string | null
 }
+type CountQuery = { data: { count: number } | undefined; isError: boolean }
 type Status = { connected: boolean; lastSyncedAt: string; sync: Sync }
 type QueryOptions = TrpcKeyed & {
     refetchInterval?: (query: { state: { data: Status | undefined } }) => number | false
@@ -34,6 +35,7 @@ const mocks = vi.hoisted(() => {
         sync: { status: 'idle', startedAt: null, finishedAt: null, result: null, errorCode: null },
     }
     const statusOptions: QueryOptions[] = []
+    const countQuery: CountQuery = { data: { count: 142 }, isError: false }
     return {
         statusQuery: { data, isPending: false, isError: false, refetch: vi.fn() },
         statusOptions,
@@ -45,10 +47,15 @@ const mocks = vi.hoisted(() => {
         disconnect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
         info: vi.fn(),
         error: vi.fn(),
+        countQuery,
+        clear: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
+        invalidateCount: vi.fn(),
     }
 })
 
-vi.mock('sonner', () => ({ toast: { info: mocks.info, error: mocks.error } }))
+vi.mock('sonner', () => ({
+    toast: { info: mocks.info, error: mocks.error },
+}))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -62,6 +69,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                         mocks.statusOptions.push(options)
                         return mocks.statusQuery
                     },
+                    'lyfta.getActivityCount': () => mocks.countQuery,
                 },
                 options
             ),
@@ -71,6 +79,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                     'lyfta.connect': () => mocks.connect,
                     'lyfta.syncWorkouts': () => mocks.sync,
                     'lyfta.disconnect': () => mocks.disconnect,
+                    'lyfta.clearActivities': () => mocks.clear,
                 },
                 options
             ),
@@ -79,6 +88,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 routeTrpc(
                     {
                         'lyfta.getConnectionStatus': mocks.invalidate,
+                        'lyfta.getActivityCount': mocks.invalidateCount,
                         'training.getCalendar': mocks.invalidateCalendar,
                         'training.getStrengthProgress': mocks.invalidateStrength,
                     },

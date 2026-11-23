@@ -183,3 +183,34 @@ export const updateDashboardMode = Effect.fn('updateDashboardMode')(function* (
             error_hash: ErrorCode.ATHLETE_DASHBOARD_MODE_UPDATE_ERR,
         })
 })
+
+const displayNameRowSchema = z.object({ user_id: z.string(), display_name: z.string() })
+
+export const selectDisplayNames = Effect.fn('selectDisplayNames')(function* (
+    supabase: ProfilesClient,
+    userIds: string[]
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).select('user_id, display_name').in('user_id', userIds),
+        catch: (cause) =>
+            new ProfileQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.ATHLETE_PROFILE_SELECT,
+            }),
+    })
+
+    if (error)
+        return yield* new ProfileQueryError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.ATHLETE_PROFILE_SELECT_ERR,
+        })
+
+    const rows = z.array(displayNameRowSchema).safeParse(data ?? [])
+    if (!rows.success)
+        return yield* new ProfileQueryError({
+            cause: 'Display name rows failed schema validation',
+            error_hash: ErrorCode.ATHLETE_PROFILE_SELECT_ERR,
+        })
+
+    return new Map(rows.data.map((row) => [row.user_id, row.display_name]))
+})

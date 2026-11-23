@@ -16,6 +16,8 @@ const ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
     [ErrorCode.ZEPP_CONNECTION_WRITE]: 'Could not save your Zepp connection. Try again.',
     [ErrorCode.ZEPP_CONNECTION_QUERY]: 'Could not load your Zepp connection. Try again.',
     [ErrorCode.ZEPP_IMPORT]: 'Could not save imported runs. Try syncing again.',
+    [ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE]: 'Could not clear your runs. Try again.',
+    [ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE_ERR]: 'Could not clear your runs. Try again.',
     [ErrorCode.TRAINING_ZEPP_ACTIVITY_INSERT_ERR]:
         'Could not save imported runs. Try syncing again.',
     [ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR]:

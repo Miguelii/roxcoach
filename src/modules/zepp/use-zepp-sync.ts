@@ -37,6 +37,7 @@ export function useZeppSync({ sync, onStarted, onInProgress, onSynced, onFailed 
                 onFailed?.(messageForZeppError({ message: finished.errorCode ?? '' }))
             }
             void Promise.all([
+                queryClient.invalidateQueries(trpc.zepp.getActivityCount.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
             ])

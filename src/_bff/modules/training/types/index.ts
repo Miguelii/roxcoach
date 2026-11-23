@@ -6,6 +6,9 @@ import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/p
 export type ActivityCategory = 'run' | 'hyrox' | 'strength' | 'cross' | 'other'
 export type ActivitySource = 'strava' | 'manual' | 'lyfta' | 'zepp'
 
+// The sources an integration imports: the only ones an athlete can clear in one go.
+export type ClearableSource = Extract<ActivitySource, 'lyfta' | 'zepp'>
+
 export type LyftaActivityRow = {
     source_id: string
     category: 'strength'

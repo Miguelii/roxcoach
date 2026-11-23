@@ -36,6 +36,7 @@ export function useLyftaSync({ sync, onStarted, onInProgress, onSynced, onFailed
     const refreshTraining = async () => {
         try {
             await Promise.all([
+                queryClient.invalidateQueries(trpc.lyfta.getActivityCount.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getCalendar.queryFilter()),
                 queryClient.invalidateQueries(trpc.training.getStrengthProgress.queryFilter()),
             ])
