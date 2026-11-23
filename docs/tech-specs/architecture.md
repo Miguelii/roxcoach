@@ -186,20 +186,33 @@ until its lease goes stale. Production deploys the tasks with `pnpm trigger:depl
 sync code changes, alongside the Vercel deploy. Both scripts run the Trigger.dev CLI pinned to the
 SDK version (`pnpm dlx trigger.dev@4.8.8`).
 
+## Persistent logs
+
+`Logger` (`src/_bff/lib/server-logger.ts`) always prints to the console and, when
+`NODE_ENV === 'production'`, also inserts a row into `public.logs` with `project: 'roxcoach'`
+(`src/_bff/lib/log-writer.ts`). Request code uses `Logger` (fire and forget, `after()` inside a
+request scope); Trigger.dev tasks use `persistLog`, which awaits the insert because the process can
+end right after the task returns. Metadata and the error pass through the logger's serializer
+(`log-serializer.ts`), so keys such as `password`, `token`, `apiKey` or `cookie` are stored as
+`[redacted]`. Persisting never throws: a failed insert only prints its message. The `public` schema
+client is `createDBPublicAdminClient()` in `core/db`, used by the logger and the logs repository only.
+Database side: [database.md](database.md).
+
 ## Environment variables
 
-| Name                             | Scope  | Used by                                                                      |
-| -------------------------------- | ------ | ---------------------------------------------------------------------------- |
-| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                                         |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                                         |
-| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                                   |
-| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                               |
-| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length           |
-| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                                     |
-| `NEXT_ZEPP_ENCRYPTION_KEY`       | server | Zepp app token encryption                                                    |
-| `NEXT_BUILD_ID`                  | server | install prompt build check, optional (falls back to `VERCEL_GIT_COMMIT_SHA`) |
-| `TRIGGER_SECRET_KEY`             | server | enqueueing the sync tasks, optional (unset makes a sync start fail)          |
-| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                                |
+| Name                             | Scope  | Used by                                                                             |
+| -------------------------------- | ------ | ----------------------------------------------------------------------------------- |
+| `NEXT_SUPABASE_URL`              | server | all Supabase clients                                                                |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY`  | server | session-bound client                                                                |
+| `NEXT_SUPABASE_SERVICE_ROLE_KEY` | server | admin work                                                                          |
+| `NEXT_GEMINI_API_KEY`            | server | coach (Gemini)                                                                      |
+| `NEXT_SIGNUP_ACCESS_CODE`        | server | `/signup` access code, optional (unset closes sign-up), any length                  |
+| `NEXT_LYFTA_ENCRYPTION_KEY`      | server | Lyfta API key encryption                                                            |
+| `NEXT_ZEPP_ENCRYPTION_KEY`       | server | Zepp app token encryption                                                           |
+| `NEXT_BUILD_ID`                  | server | install prompt build check, optional (falls back to `VERCEL_GIT_COMMIT_SHA`)        |
+| `TRIGGER_SECRET_KEY`             | server | enqueueing the sync tasks, optional (unset makes a sync start fail)                 |
+| `NODE_ENV`                       | server | set by Next.js and the Trigger.dev runtime; logs are persisted only in `production` |
+| `NEXT_PUBLIC_WEBSITE_URL`        | client | absolute URLs, OAuth redirect                                                       |
 
 In `src/env/server.ts` only the three Supabase variables are required. The Gemini
 variables are optional at startup (the chat route answers 503 when the key is missing), and an empty value reads as unset (`emptyStringAsUndefined`).

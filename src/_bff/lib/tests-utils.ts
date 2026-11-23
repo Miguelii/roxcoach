@@ -1,5 +1,5 @@
 import { Cause, Exit, Option } from 'effect'
-import type { createDBAdminClient } from '@/_bff/core/db'
+import type { createDBAdminClient, createDBPublicAdminClient } from '@/_bff/core/db'
 
 // Extracts the tagged failure of an Exit, or null when the effect succeeded.
 export const failureTag = <E>(exit: Exit.Exit<unknown, E>): string | null => {
@@ -13,5 +13,12 @@ export const failureTag = <E>(exit: Exit.Exit<unknown, E>): string | null => {
 export const asClient = <Fake extends { from: (table: string) => object }>(
     fake: Fake
 ): ReturnType<typeof createDBAdminClient> =>
+    // SAFETY: tests only exercise the subset of the client API the fake implements.
+    fake as never
+
+// Same as asClient, for the one table that lives in the `public` schema.
+export const asPublicClient = <Fake extends { from: (table: string) => object }>(
+    fake: Fake
+): ReturnType<typeof createDBPublicAdminClient> =>
     // SAFETY: tests only exercise the subset of the client API the fake implements.
     fake as never

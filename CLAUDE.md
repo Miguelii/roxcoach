@@ -66,7 +66,7 @@ Controller to service to (repository | processor | helper). Full layout in `docs
 
 ## Database and auth
 
-- Every Supabase client is created with `db: { schema: 'roxcoach' }`. Nothing is created in the `public` schema (the Supabase project is shared with another app).
+- Every Supabase client is created with `db: { schema: 'roxcoach' }`. Nothing is created in the `public` schema (the Supabase project is shared with another app). The one exception is `public.logs`, the log table shared with the other app: it is told apart by its `project` column (`'roxcoach'` for our rows), only the service-role client touches it, and only the logger module and the logs page code use a client on the `public` schema.
 - Access flag is exactly `app_metadata.roxcoach === true` (strict boolean).
 - Login failure shows one generic message for a wrong password and for an account without the flag: "Invalid email or password".
 - Secrets, tokens and passwords never reach logs or error payloads.

@@ -5,10 +5,23 @@ import {
     type SyncTaskPayload,
     syncTaskPayloadSchema,
 } from '@/_bff/core/helpers/sync-state.helper'
+import type { LogProps } from '@/_bff/lib/log-writer'
+import { persistLog } from '@/_bff/lib/server-logger'
 
 type SyncTaskError = { _tag: string; error_hash: string }
 
-type SyncTaskDependencies<A, E extends SyncTaskError> = {
+type SyncLogging = {
+    prefix: 'lyftaSync' | 'zeppSync'
+    log?: (props: LogProps) => Promise<void>
+}
+
+type FailureLogging = SyncLogging & {
+    // What the run ended with: an abort was already logged by runSyncTask with the real error.
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- only compared with AbortTaskRunError
+    error?: unknown
+}
+
+type SyncTaskDependencies<A, E extends SyncTaskError> = SyncLogging & {
     sync: (payload: SyncTaskPayload) => Effect.Effect<A, E>
     finish: (payload: SyncTaskPayload, outcome: SyncOutcome<A>) => Effect.Effect<void, unknown>
     isPermanent: (error: E) => boolean
@@ -26,6 +39,15 @@ const recordOutcome = async <A>(
     payload: SyncTaskPayload,
     outcome: SyncOutcome<A>
 ): Promise<boolean> => Exit.isSuccess(await Effect.runPromiseExit(finish(payload, outcome)))
+
+// A log that cannot be written must never change what the task throws or returns.
+const logQuietly = async (log: NonNullable<SyncLogging['log']>, props: LogProps): Promise<void> => {
+    try {
+        await log(props)
+    } catch {
+        // persistLog already reports its own failures; nothing else to do
+    }
+}
 
 // Thrown messages carry only the error tag and code: the `cause` may hold upstream responses or
 // secrets and Trigger.dev stores the message of every failed attempt.
@@ -50,7 +72,16 @@ export async function runSyncTask<A, E extends SyncTaskError>(
     if (Option.isNone(failure)) throw Cause.squash(exit.cause)
 
     const error = failure.value
-    if (dependencies.isPermanent(error)) {
+    const log = dependencies.log ?? persistLog
+    const permanent = dependencies.isPermanent(error)
+    await logQuietly(log, {
+        level: permanent ? 'error' : 'warn',
+        prefix: dependencies.prefix,
+        message: permanent ? 'Sync failed' : 'Sync attempt failed, retrying',
+        error,
+        userId: payload.userId,
+    })
+    if (permanent) {
         // A failed write here is retried by the task's onFailure hook.
         await recordOutcome(dependencies.finish, payload, {
             status: 'failed',
@@ -71,10 +102,21 @@ export async function recordFailedSyncTask<A>(
         payload: SyncTaskPayload,
         outcome: SyncOutcome<A>
     ) => Effect.Effect<void, SyncTaskError>,
-    errorCode: string
+    errorCode: string,
+    { prefix, log = persistLog, error }: FailureLogging
 ): Promise<void> {
     const parsed = syncTaskPayloadSchema.safeParse(rawPayload)
     if (!parsed.success) return
+
+    if (!(error instanceof AbortTaskRunError)) {
+        await logQuietly(log, {
+            level: 'error',
+            prefix,
+            message: 'Sync failed after all attempts',
+            metadata: { errorCode },
+            userId: parsed.data.userId,
+        })
+    }
 
     const exit = await Effect.runPromiseExit(finish(parsed.data, { status: 'failed', errorCode }))
     if (Exit.isSuccess(exit)) return

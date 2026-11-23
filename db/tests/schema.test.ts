@@ -67,7 +67,7 @@ beforeEach(async () => {
 })
 
 describe('schema layout', () => {
-    it('creates every table in the roxcoach schema and nothing in public', async () => {
+    it('creates every table in the roxcoach schema and only the shared logs table in public', async () => {
         await testDb.asSuperuser()
         const result = await testDb.db.query<TableRow>(
             `select table_schema, table_name from information_schema.tables
@@ -77,7 +77,7 @@ describe('schema layout', () => {
         const publicTables = result.rows.filter((row) => row.table_schema === 'public')
 
         expect(roxcoach.map((row) => row.table_name)).toEqual(ROXCOACH_TABLES)
-        expect(publicTables).toEqual([])
+        expect(publicTables.map((row) => row.table_name)).toEqual(['logs'])
     })
 
     it('records every applied migration file', async () => {
@@ -107,6 +107,7 @@ describe('schema layout', () => {
             '0019_strength_set_lyfta_records.sql',
             '0020_zepp.sql',
             '0021_background_sync.sql',
+            '0022_shared_logs_project.sql',
         ])
     })
 
@@ -665,6 +666,41 @@ describe('coach usage counter', () => {
         )
 
         expect(result.rows[0].sync_started_at).toBeNull()
+    })
+})
+
+describe('shared logs table', () => {
+    it('adds the project column to the shared logs table', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query<ColumnRow & { is_nullable: string }>(
+            `select column_name, data_type, udt_name, column_default, is_nullable
+             from information_schema.columns
+             where table_schema = 'public' and table_name = 'logs' and column_name = 'project'`
+        )
+
+        expect(result.rows).toHaveLength(1)
+        expect(result.rows[0].data_type).toBe('text')
+        expect(result.rows[0].is_nullable).toBe('NO')
+        expect(result.rows[0].column_default).toContain("'wallet'")
+    })
+
+    it('keeps the logs table without policies', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query(
+            `select tablename from pg_policies where schemaname = 'public' and tablename = 'logs'`
+        )
+
+        expect(result.rows).toEqual([])
+    })
+
+    it('indexes logs by project and time', async () => {
+        await testDb.asSuperuser()
+        const result = await testDb.db.query<{ indexname: string }>(
+            `select indexname from pg_indexes
+             where schemaname = 'public' and tablename = 'logs' order by indexname`
+        )
+
+        expect(result.rows.map((row) => row.indexname)).toContain('logs_project_created_at_idx')
     })
 })
 

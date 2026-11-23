@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
+import type { LogProps } from '@/_bff/lib/log-writer'
 import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 import { finishLyftaSyncRun } from '@/_bff/modules/lyfta/services/finish-lyfta-sync.service'
 
@@ -46,5 +47,66 @@ describe('finishLyftaSyncRun', () => {
                 ],
             },
         ])
+    })
+
+    it('logs one Sync succeeded row with the counts and the duration', async () => {
+        const logs: LogProps[] = []
+        const db = makeFakeAdminDb(() => ok())
+
+        await Effect.runPromise(
+            finishLyftaSyncRun(
+                PAYLOAD,
+                { status: 'succeeded', result: SYNC_SUMMARY },
+                {
+                    createAdminClient: () => db.supabase,
+                    now: () => NOW,
+                    log: async (props) => {
+                        logs.push(props)
+                    },
+                }
+            )
+        )
+
+        expect(logs).toEqual([
+            {
+                level: 'info',
+                prefix: 'lyftaSync',
+                message: 'Sync succeeded',
+                userId: PAYLOAD.userId,
+                metadata: { created: 2, updated: 1, hasMore: false, durationMs: 240_000 },
+            },
+        ])
+    })
+
+    it('logs nothing for a failed outcome and survives a rejecting log', async () => {
+        const logs: LogProps[] = []
+        const db = makeFakeAdminDb(() => ok())
+        const dependencies = {
+            createAdminClient: () => db.supabase,
+            now: () => NOW,
+            log: async (props: LogProps) => {
+                logs.push(props)
+            },
+        }
+
+        await Effect.runPromise(
+            finishLyftaSyncRun(PAYLOAD, { status: 'failed', errorCode: 'lyfta021' }, dependencies)
+        )
+        await expect(
+            Effect.runPromise(
+                finishLyftaSyncRun(
+                    PAYLOAD,
+                    { status: 'succeeded', result: SYNC_SUMMARY },
+                    {
+                        ...dependencies,
+                        log: async () => {
+                            throw new Error('log failed')
+                        },
+                    }
+                )
+            )
+        ).resolves.toBeUndefined()
+
+        expect(logs).toEqual([])
     })
 })

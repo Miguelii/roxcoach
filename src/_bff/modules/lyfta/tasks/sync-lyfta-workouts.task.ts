@@ -16,7 +16,11 @@ export const syncLyftaWorkoutsTask = task({
             sync: ({ userId, startedAt }) => syncLyftaWorkouts(userId, startedAt),
             finish: (validPayload, outcome) => finishLyftaSyncRun(validPayload, outcome),
             isPermanent: isPermanentLyftaSyncError,
+            prefix: 'lyftaSync',
         }),
-    onFailure: ({ payload }) =>
-        recordFailedSyncTask(payload, finishLyftaSyncRun, ErrorCode.LYFTA_SYNC_FAILED),
+    onFailure: ({ payload, error }) =>
+        recordFailedSyncTask(payload, finishLyftaSyncRun, ErrorCode.LYFTA_SYNC_FAILED, {
+            prefix: 'lyftaSync',
+            error,
+        }),
 })

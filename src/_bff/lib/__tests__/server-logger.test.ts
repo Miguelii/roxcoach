@@ -1,6 +1,7 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Data } from 'effect'
-import { Logger } from '@/_bff/lib/server-logger'
+import { Logger, persistLog } from '@/_bff/lib/server-logger'
 
 class SomeError extends Data.TaggedError('SomeError')<{ cause: unknown }> {}
 
@@ -199,5 +200,13 @@ describe('Logger', () => {
         expect(() => Logger({ level: 'warn', prefix: 'ctx', error: proxy })).not.toThrow()
 
         expect(warn).toHaveBeenCalledWith('[ctx]', { serializationFailed: true })
+    })
+
+    it('prints through persistLog and resolves without a database outside production', async () => {
+        await expect(
+            persistLog({ level: 'error', prefix: 'task', message: 'failed', metadata: { n: 1 } })
+        ).resolves.toBeUndefined()
+
+        expect(console.error).toHaveBeenCalledWith('[task] failed', expect.anything())
     })
 })

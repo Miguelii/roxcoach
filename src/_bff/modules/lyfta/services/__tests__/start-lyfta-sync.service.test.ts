@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Effect, Exit } from 'effect'
 import { SYNC_LEASE_STALE_MS } from '@/_bff/core/constants/sync.constants'
+import type { LogProps } from '@/_bff/lib/log-writer'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { makeFakeAdminDb, ok, type Call } from '@/_bff/lib/fake-admin-db'
 import { failureTag } from '@/_bff/lib/tests-utils'
@@ -49,6 +50,10 @@ const setup = (options: {
             now: () => NOW,
         },
     }
+}
+
+const throwingLog = () => {
+    throw new Error('log failed')
 }
 
 describe('startLyftaSync', () => {
@@ -114,5 +119,43 @@ describe('startLyftaSync', () => {
 
         expect(result).toEqual({ startedAt: STARTED_AT })
         expect(triggerTask).toHaveBeenCalledTimes(1)
+    })
+
+    it('logs one Sync started row with the run id', async () => {
+        const logs: LogProps[] = []
+        const { dependencies } = setup({ connection: true, leaseTaken: true })
+
+        await Effect.runPromise(
+            startLyftaSync(USER_ID, { ...dependencies, log: (props) => logs.push(props) })
+        )
+
+        expect(logs).toEqual([
+            {
+                level: 'info',
+                prefix: 'lyftaSync',
+                message: 'Sync started',
+                userId: USER_ID,
+                metadata: { runId: 'run_1' },
+            },
+        ])
+    })
+
+    it('logs no start row when there is no connection or the lease is refused', async () => {
+        const logs: LogProps[] = []
+        const log = (props: LogProps) => logs.push(props)
+        const noConnection = setup({ connection: false, leaseTaken: true })
+        const refused = setup({ connection: true, leaseTaken: false })
+
+        await Effect.runPromiseExit(startLyftaSync(USER_ID, { ...noConnection.dependencies, log }))
+        await Effect.runPromiseExit(startLyftaSync(USER_ID, { ...refused.dependencies, log }))
+
+        expect(logs).toEqual([])
+    })
+
+    it('still starts the sync when logging throws', async () => {
+        const { dependencies } = setup({ connection: true, leaseTaken: true })
+        await expect(
+            Effect.runPromise(startLyftaSync(USER_ID, { ...dependencies, log: throwingLog }))
+        ).resolves.toEqual({ startedAt: STARTED_AT })
     })
 })

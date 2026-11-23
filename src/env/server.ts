@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 export const ServerEnv = createEnv({
     server: {
+        NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
         NEXT_SUPABASE_URL: z.string().min(1),
         NEXT_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
         NEXT_SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
@@ -29,6 +30,7 @@ export const ServerEnv = createEnv({
         TRIGGER_SECRET_KEY: z.string().min(1).optional(),
     },
     runtimeEnv: {
+        NODE_ENV: process.env.NODE_ENV,
         NEXT_SUPABASE_URL: process.env.NEXT_SUPABASE_URL,
         NEXT_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_SUPABASE_PUBLISHABLE_KEY,
         NEXT_SUPABASE_SERVICE_ROLE_KEY: process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY,

@@ -5,6 +5,7 @@ import { COACH_ROUTER } from '@/_bff/modules/coach/coach.router'
 import { RACES_ROUTER } from '@/_bff/modules/races/races.router'
 import { TRAINING_ROUTER } from '@/_bff/modules/training/training.router'
 import { LYFTA_ROUTER } from '@/_bff/modules/lyfta/lyfta.router'
+import { LOGS_ROUTER } from '@/_bff/modules/logs/logs.router'
 import { ZEPP_ROUTER } from '@/_bff/modules/zepp/zepp.router'
 
 export const appRouter = router({
@@ -15,6 +16,7 @@ export const appRouter = router({
     training: TRAINING_ROUTER,
     lyfta: LYFTA_ROUTER,
     zepp: ZEPP_ROUTER,
+    logs: LOGS_ROUTER,
 })
 
 export type AppRouter = typeof appRouter

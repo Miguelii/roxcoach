@@ -382,6 +382,17 @@ schema:
   themselves).
 - Deleting user A removes all of A's rows and none of B's.
 
+## Shared logs table
+
+`public.logs` is the one table outside the `roxcoach` schema. It is shared with the other app in
+the same Supabase project and told apart by `project` (`not null default 'wallet'`; Roxcoach rows
+carry `'roxcoach'`). Columns: `id`, `created_at`, `level` (`debug`, `info`, `warn`, `error`),
+`prefix`, `message`, `metadata` (jsonb), `user_id` (FK `auth.users`, `on delete set null`), `project`.
+RLS is on with no policies, so only the service-role client reads and writes it, through a client on
+the `public` schema used by the logger and the logs repository only. The other app's daily job
+deletes rows older than 30 days, ours included. The logs repository is a deliberate exception to
+"every query filters by `user_id`": every signed-in Roxcoach user sees every Roxcoach row.
+
 ## Migrations
 
 | File                                    | Content                                                                                                     |
@@ -407,6 +418,7 @@ schema:
 | `0019_strength_set_lyfta_records.sql`   | `strength_sets.lyfta_records` (records Lyfta flagged per set); requests one full manual Lyfta resync        |
 | `0020_zepp.sql`                         | Adds the `zepp` activity source and `zepp_connections` (service role only)                                  |
 | `0021_background_sync.sql`              | Adds the `sync_status` enum and sync state columns to `lyfta_connections` and `zepp_connections`            |
+| `0022_shared_logs_project.sql`          | Adds `project` to the shared `public.logs` table and its indexes (see Shared logs table)                    |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

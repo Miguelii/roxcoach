@@ -5,6 +5,7 @@ import { AbortTaskRunError } from '@trigger.dev/sdk'
 import { LyftaApiError, LyftaResponseError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import type { SyncOutcome, SyncTaskPayload } from '@/_bff/core/helpers/sync-state.helper'
+import type { LogProps } from '@/_bff/lib/log-writer'
 import { recordFailedSyncTask, runSyncTask } from '@/_bff/trigger/run-sync-task'
 
 type SyncError = LyftaApiError | LyftaResponseError
@@ -17,7 +18,18 @@ const PAYLOAD: SyncTaskPayload = {
 }
 const SECRET_CAUSE = 'upstream said: secret-token-123'
 
-const setup = (sync: (payload: SyncTaskPayload) => Effect.Effect<Result, SyncError>) => {
+const collectingLog = (logs: LogProps[], rejects = false) =>
+    vi.fn(async (props: LogProps) => {
+        if (rejects) throw new Error('log store down')
+        logs.push(props)
+    })
+
+const setup = (
+    sync: (payload: SyncTaskPayload) => Effect.Effect<Result, SyncError>,
+    logRejects = false
+) => {
+    const logs: LogProps[] = []
+    const log = collectingLog(logs, logRejects)
     const finishCalls: FinishCall[] = []
     const syncSpy = vi.fn(sync)
     const finish = vi.fn((payload: SyncTaskPayload, outcome: SyncOutcome<Result>) => {
@@ -30,8 +42,10 @@ const setup = (sync: (payload: SyncTaskPayload) => Effect.Effect<Result, SyncErr
             sync: syncSpy,
             finish,
             isPermanent: (error: SyncError) => Predicate.isTagged(error, 'LyftaResponseError'),
+            prefix: 'lyftaSync',
+            log,
         })
-    return { run, finishCalls, syncSpy, finish }
+    return { run, finishCalls, syncSpy, finish, logs }
 }
 
 describe('runSyncTask', () => {
@@ -84,6 +98,66 @@ describe('runSyncTask', () => {
         expect(finish).not.toHaveBeenCalled()
     })
 
+    it('logs one error row with the real error before aborting on a permanent error', async () => {
+        const failure = new LyftaResponseError({
+            cause: SECRET_CAUSE,
+            error_hash: ErrorCode.LYFTA_API_RESPONSE,
+        })
+        const { run, logs } = setup(() => Effect.fail(failure))
+
+        await run(PAYLOAD).catch((caught: Error) => caught)
+
+        expect(logs).toEqual([
+            {
+                level: 'error',
+                prefix: 'lyftaSync',
+                message: 'Sync failed',
+                error: failure,
+                userId: PAYLOAD.userId,
+            },
+        ])
+    })
+
+    it('logs one warn row for a failed attempt that will be retried', async () => {
+        const failure = new LyftaApiError({
+            cause: SECRET_CAUSE,
+            error_hash: ErrorCode.LYFTA_API_REQUEST,
+        })
+        const { run, logs } = setup(() => Effect.fail(failure))
+
+        await run(PAYLOAD).catch((caught: Error) => caught)
+
+        expect(logs).toEqual([
+            {
+                level: 'warn',
+                prefix: 'lyftaSync',
+                message: 'Sync attempt failed, retrying',
+                error: failure,
+                userId: PAYLOAD.userId,
+            },
+        ])
+    })
+
+    it('logs nothing on success, the finish service logs the success', async () => {
+        const { run, logs } = setup(() => Effect.succeed({ created: 1 }))
+
+        await run(PAYLOAD)
+
+        expect(logs).toEqual([])
+    })
+
+    it('keeps the thrown error when logging fails', async () => {
+        const { run } = setup(
+            () =>
+                Effect.fail(
+                    new LyftaResponseError({ cause: 'x', error_hash: ErrorCode.LYFTA_API_RESPONSE })
+                ),
+            true
+        )
+
+        await expect(run(PAYLOAD)).rejects.toBeInstanceOf(AbortTaskRunError)
+    })
+
     it('aborts without syncing or recording when the payload has no userId', async () => {
         const { run, syncSpy, finish } = setup(() => Effect.succeed({ created: 0 }))
 
@@ -114,11 +188,66 @@ const recorder = (result: Effect.Effect<void, SyncError>) => {
     return { calls, finish }
 }
 
+const logging = (logs: LogProps[] = [], rejects = false) => ({
+    prefix: 'lyftaSync' as const,
+    log: collectingLog(logs, rejects),
+})
+
 describe('recordFailedSyncTask', () => {
+    it('does not log again when the run ended with an abort, runSyncTask already logged it', async () => {
+        const { calls, finish } = recorder(Effect.void)
+        const logs: LogProps[] = []
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, {
+            ...logging(logs),
+            error: new AbortTaskRunError('LyftaResponseError'),
+        })
+
+        expect(logs).toEqual([])
+        expect(calls).toHaveLength(1)
+    })
+
+    it('logs when the run failed with any other error', async () => {
+        const { finish } = recorder(Effect.void)
+        const logs: LogProps[] = []
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, {
+            ...logging(logs),
+            error: new Error('LyftaApiError lyfta006'),
+        })
+
+        expect(logs).toHaveLength(1)
+    })
+
+    it('logs one error row when the run failed for good', async () => {
+        const { finish } = recorder(Effect.void)
+        const logs: LogProps[] = []
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, logging(logs))
+
+        expect(logs).toEqual([
+            {
+                level: 'error',
+                prefix: 'lyftaSync',
+                message: 'Sync failed after all attempts',
+                metadata: { errorCode: ErrorCode.LYFTA_SYNC_FAILED },
+                userId: PAYLOAD.userId,
+            },
+        ])
+    })
+
+    it('still records the outcome when logging fails', async () => {
+        const { calls, finish } = recorder(Effect.void)
+
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, logging([], true))
+
+        expect(calls).toHaveLength(1)
+    })
+
     it('records a failed outcome with the given error code', async () => {
         const { calls, finish } = recorder(Effect.void)
 
-        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED)
+        await recordFailedSyncTask(PAYLOAD, finish, ErrorCode.LYFTA_SYNC_FAILED, logging())
 
         expect(calls).toEqual([
             {
@@ -132,7 +261,7 @@ describe('recordFailedSyncTask', () => {
         const { finish } = recorder(Effect.void)
 
         await expect(
-            recordFailedSyncTask({ userId: 'nope' }, finish, ErrorCode.LYFTA_SYNC_FAILED)
+            recordFailedSyncTask({ userId: 'nope' }, finish, ErrorCode.LYFTA_SYNC_FAILED, logging())
         ).resolves.toBeUndefined()
 
         expect(finish).not.toHaveBeenCalled()
@@ -148,7 +277,8 @@ describe('recordFailedSyncTask', () => {
         const error = await recordFailedSyncTask(
             PAYLOAD,
             finish,
-            ErrorCode.LYFTA_SYNC_FAILED
+            ErrorCode.LYFTA_SYNC_FAILED,
+            logging()
         ).catch((caught: Error) => caught)
 
         expect(error).toBeInstanceOf(Error)
