@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { SYNC_START_MESSAGE } from '@/_bff/core/constants/sync.constants'
 import { useTRPC } from '@/lib/trpc'
 import { pollWhileSyncing } from '@/lib/sync-state'
 import { useZeppSync } from '@/modules/zepp/use-zepp-sync'
@@ -28,6 +29,8 @@ export function useZeppConnection() {
     )
     const zeppSync = useZeppSync({
         sync: query.data?.sync,
+        onStarted: () => toast.info(SYNC_START_MESSAGE),
+        onInProgress: (message) => toast.info(message),
         onFailed: (message) => toast.error(message),
     })
     const connectMutation = useMutation(trpc.zepp.connect.mutationOptions({ gcTime: 0 }))

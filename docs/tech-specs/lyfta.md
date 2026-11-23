@@ -77,7 +77,9 @@ request runs both buttons are disabled; a failure keeps the dialog open and show
   `running` (not stale), so a reload keeps the spinner. `useSyncCompletion` remembers the
   `startedAt` the tab saw `running`; when the same run turns `succeeded` or `failed`, the hook
   reports the outcome once and invalidates `training.getCalendar` and `training.getStrengthProgress`.
-  A page that loads after the run ended reports nothing. The Settings card shows no toasts: it shows
+  A page that loads after the run ended reports nothing. The Settings card toasts that the sync started
+  ("Syncing your activities. They will be available shortly."), that one is already running and any
+  failure; the result is not toasted, it shows as
   the last run's counts ("Sync complete: 2 workouts added and 1 updated.", or "More workouts to
   sync. Press Sync workouts again to continue." when `hasMore` is true) or the error mapped from the
   stored code, straight from the status, until the athlete starts another sync. A refused overlap

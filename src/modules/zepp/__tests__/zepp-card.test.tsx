@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SyncStatus } from '@/_bff/core/constants/sync.constants'
+import { SYNC_START_MESSAGE, type SyncStatus } from '@/_bff/core/constants/sync.constants'
 import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import { ZEPP_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/zepp.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ZeppCard } from '@/modules/zepp/zepp-card'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
@@ -42,8 +43,12 @@ const mocks = vi.hoisted(() => {
         connect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
         sync: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
         disconnect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
+        info: vi.fn(),
+        error: vi.fn(),
     }
 })
+
+vi.mock('sonner', () => ({ toast: { info: mocks.info, error: mocks.error } }))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -206,6 +211,23 @@ describe('ZeppCard', () => {
         })
         expect(screen.queryByTestId('zepp-sync-result')).toBeNull()
         expect(screen.queryByTestId('zepp-error')).toBeNull()
+    })
+
+    it('toasts that the sync started and that a running one is already in progress', async () => {
+        connected()
+        render(<ZeppCard />)
+
+        fireEvent.click(screen.getByTestId('zepp-sync'))
+        await waitFor(() => {
+            expect(mocks.info).toHaveBeenCalledWith(SYNC_START_MESSAGE)
+        })
+
+        mocks.sync.mutateAsync.mockRejectedValueOnce(new Error(ZEPP_SYNC_IN_PROGRESS_MESSAGE))
+        fireEvent.click(screen.getByTestId('zepp-sync'))
+        await waitFor(() => {
+            expect(mocks.info).toHaveBeenCalledWith(ZEPP_SYNC_IN_PROGRESS_MESSAGE)
+        })
+        expect(mocks.error).not.toHaveBeenCalled()
     })
 
     it('polls the status only while a sync is running', () => {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LYFTA_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/lyfta.constants'
 import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
-import type { SyncStatus } from '@/_bff/core/constants/sync.constants'
+import { SYNC_START_MESSAGE, type SyncStatus } from '@/_bff/core/constants/sync.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { LyftaCard } from '@/modules/lyfta/lyfta-card'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
@@ -43,8 +43,12 @@ const mocks = vi.hoisted(() => {
         connect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
         sync: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
         disconnect: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
+        info: vi.fn(),
+        error: vi.fn(),
     }
 })
+
+vi.mock('sonner', () => ({ toast: { info: mocks.info, error: mocks.error } }))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -192,6 +196,18 @@ describe('LyftaCard', () => {
                 'Could not start the Lyfta sync. Try again.'
             )
         })
+    })
+
+    it('toasts that the sync started and that a running one is already in progress', async () => {
+        connected()
+        render(<LyftaCard />)
+        fireEvent.click(screen.getByTestId('lyfta-sync'))
+        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(SYNC_START_MESSAGE))
+
+        mocks.sync.mutateAsync.mockRejectedValueOnce(new Error(LYFTA_SYNC_IN_PROGRESS_MESSAGE))
+        fireEvent.click(screen.getByTestId('lyfta-sync'))
+        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(LYFTA_SYNC_IN_PROGRESS_MESSAGE))
+        expect(mocks.error).not.toHaveBeenCalled()
     })
 
     it('polls the status only while a sync is running', () => {

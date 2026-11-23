@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { SYNC_START_MESSAGE } from '@/_bff/core/constants/sync.constants'
 import { useTRPC } from '@/lib/trpc'
 import { formatDateTime } from '@/lib/formatters'
 import { pollWhileSyncing } from '@/lib/sync-state'
@@ -33,6 +34,8 @@ export function useLyftaConnection() {
     const disconnectMutation = useMutation(trpc.lyfta.disconnect.mutationOptions())
     const lyftaSync = useLyftaSync({
         sync: query.data?.sync,
+        onStarted: () => toast.info(SYNC_START_MESSAGE),
+        onInProgress: (message) => toast.info(message),
         onFailed: (message) => toast.error(message),
     })
     const form = useForm<LyftaFormValues>({
