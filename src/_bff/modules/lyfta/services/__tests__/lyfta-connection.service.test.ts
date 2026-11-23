@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { connectLyfta } from '@/_bff/modules/lyfta/services/lyfta-connection.service'
+import {
+    connectLyfta,
+    getLyftaConnectionStatus,
+} from '@/_bff/modules/lyfta/services/lyfta-connection.service'
 import { encryptLyftaApiKey } from '@/_bff/modules/lyfta/utils/credentials.utils'
 import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
 
@@ -58,7 +61,7 @@ describe('connectLyfta', () => {
             connectLyfta(USER, API_KEY, dependencies(supabase, fetcher))
         )
 
-        expect(result).toEqual({ connected: true, lastSyncedAt: null })
+        expect(result).toMatchObject({ connected: true, lastSyncedAt: null })
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', USER.id)
         const [row] = chains[1]?.upsert.mock.calls[0] ?? []
         expect(row).toMatchObject({ user_id: USER.id })
@@ -117,7 +120,7 @@ describe('connectLyfta', () => {
             connectLyfta(USER, API_KEY, dependencies(supabase, validFetcher()))
         )
 
-        expect(result).toEqual({ connected: true, lastSyncedAt: syncedAt })
+        expect(result).toMatchObject({ connected: true, lastSyncedAt: syncedAt })
         expect(chains[1]?.upsert.mock.calls[0]?.[0]).not.toHaveProperty('last_synced_at')
     })
 
@@ -135,7 +138,7 @@ describe('connectLyfta', () => {
             connectLyfta(USER, API_KEY, dependencies(supabase, validFetcher()))
         )
 
-        expect(result).toEqual({ connected: true, lastSyncedAt: null })
+        expect(result).toMatchObject({ connected: true, lastSyncedAt: null })
         expect(chains[1]?.upsert.mock.calls[0]?.[0]).toMatchObject({
             user_id: USER.id,
             last_synced_at: null,
@@ -158,5 +161,30 @@ describe('connectLyfta', () => {
 
         expect(result.lastSyncedAt).toBeNull()
         expect(chains[1]?.upsert.mock.calls[0]?.[0]).toMatchObject({ last_synced_at: null })
+    })
+})
+
+describe('getLyftaConnectionStatus', () => {
+    it('reports a stale running sync as failed with the stale error code', async () => {
+        const { supabase } = makeFakeDb([
+            ok({
+                encrypted_api_key: 'encrypted',
+                last_synced_at: null,
+                sync_status: 'running',
+                sync_started_at: '2026-11-23T08:00:00.000Z',
+                sync_finished_at: null,
+                sync_result: null,
+                sync_error: null,
+            }),
+        ])
+
+        const status = await Effect.runPromise(
+            getLyftaConnectionStatus(USER, {
+                ...dependencies(supabase, vi.fn<typeof fetch>()),
+                now: () => new Date('2026-11-23T10:00:00.000Z'),
+            })
+        )
+
+        expect(status.sync).toMatchObject({ status: 'failed', errorCode: 'lyfta021' })
     })
 })

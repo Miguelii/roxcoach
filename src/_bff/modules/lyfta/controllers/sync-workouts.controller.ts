@@ -4,12 +4,12 @@ import {
     lyftaControllerErrorCode,
     lyftaControllerMessage,
 } from '@/_bff/modules/lyfta/helpers/controller-errors'
-import { syncLyftaWorkouts } from '@/_bff/modules/lyfta/services/sync-lyfta-workouts.service'
+import { startLyftaSync } from '@/_bff/modules/lyfta/services/start-lyfta-sync.service'
 
 export const SYNC_LYFTA_WORKOUTS_PROTECTED_CONTROLLER = protectedProcedure.mutation(({ ctx }) =>
     runEffect(
-        syncLyftaWorkouts(ctx.user.id),
-        'syncLyftaWorkouts',
+        startLyftaSync(ctx.user.id),
+        'startLyftaSync',
         lyftaControllerErrorCode,
         lyftaControllerMessage
     )

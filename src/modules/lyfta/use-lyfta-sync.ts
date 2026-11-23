@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTRPC } from '@/lib/trpc'
 import { formatDateTime } from '@/lib/formatters'
@@ -19,6 +20,13 @@ type Options = {
     onFailed?: (message: string) => void
 }
 
+const syncResultSchema = z.object({
+    created: z.number(),
+    updated: z.number(),
+    lastSyncedAt: z.string().nullable(),
+    hasMore: z.boolean(),
+})
+
 export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
     const trpc = useTRPC()
     const syncMutation = useMutation(trpc.lyfta.syncWorkouts.mutationOptions())
@@ -29,9 +37,9 @@ export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
     const syncWorkouts = async () => {
         setErrorMessage(null)
         setSyncResult(null)
-        let result: SyncResult
+        let started: unknown
         try {
-            result = await syncMutation.mutateAsync()
+            started = await syncMutation.mutateAsync()
         } catch (error) {
             const message = messageForLyftaError({
                 message: error instanceof Error ? error.message : '',
@@ -43,8 +51,12 @@ export function useLyftaSync({ onSynced, onFailed }: Options = {}) {
         }
 
         syncMutation.reset()
-        setSyncResult(result)
-        onSynced?.(result)
+        // TODO(task 9): the mutation now returns { startedAt }; the client is reworked to poll the status.
+        const parsed = syncResultSchema.safeParse(started)
+        if (parsed.success) {
+            setSyncResult(parsed.data)
+            onSynced?.(parsed.data)
+        }
         try {
             await Promise.all([
                 queryClient.invalidateQueries(trpc.lyfta.getConnectionStatus.queryFilter()),
