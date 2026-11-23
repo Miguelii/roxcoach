@@ -419,7 +419,7 @@ debounced search; both live in the URL. Under it a stacked histogram (30 buckets
 level) in a white card, then pill filters for level (always the four levels, with counts) and for
 source, then one card with the list: time, level badge, source and message per row (a two line row
 on a phone). Tapping a row opens the details in `DetailDrawer`: message, level, source, time, user
-and the metadata as formatted JSON. Level tones: error red, warning amber, info blue, debug slate
+and the metadata as formatted JSON with a copy icon that puts the JSON on the clipboard. Level tones: error red, warning amber, info blue, debug slate
 (`-soft` fill, `-deep` text). States: a banner when 1000 rows came back (the range is truncated),
 "No logs in this time range" when empty and "No logs match these filters" with a clear button when
 the filters match nothing.

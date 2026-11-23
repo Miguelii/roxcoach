@@ -108,7 +108,16 @@ const requestAccessCode = Effect.fn('zeppRequestAccessCode')(function* (
     })
     const access = redirectParams?.get('access') ?? null
     if (access === null || access.length === 0) {
-        return yield* responseError(describeRedirectWithoutAccess(redirectParams))
+        const cause = describeRedirectWithoutAccess(redirectParams)
+        // An `error` in the redirect is Zepp refusing the login (it answered 401 to an athlete whose
+        // credentials it did not accept), not a malformed reply.
+        if (redirectParams?.has('error')) {
+            return yield* new ZeppLoginRejectedError({
+                cause,
+                error_hash: ErrorCode.ZEPP_LOGIN_REJECTED,
+            })
+        }
+        return yield* responseError(cause)
     }
     return access
 })

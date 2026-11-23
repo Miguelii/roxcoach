@@ -97,6 +97,38 @@ describe('LogsExplorer', () => {
         )
     })
 
+    it('copies the metadata as formatted JSON from the copy button', async () => {
+        const writeText = vi.fn(async () => {})
+        vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+        renderExplorer()
+        fireEvent.click(screen.getByTestId('logs-row-a'))
+        await waitFor(() => {
+            expect(screen.getByTestId('log-details-copy')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByTestId('log-details-copy'))
+
+        await waitFor(() => {
+            expect(writeText).toHaveBeenCalledWith(
+                JSON.stringify({ errorCode: 'zepp009' }, null, 2)
+            )
+        })
+        await waitFor(() => {
+            expect(screen.getByTestId('log-details-copy')).toHaveAttribute('data-copied', 'true')
+        })
+    })
+
+    it('has no copy button for a log without metadata', async () => {
+        renderExplorer()
+
+        fireEvent.click(screen.getByTestId('logs-row-b'))
+
+        await waitFor(() => {
+            expect(screen.getByTestId('logs-details')).toBeInTheDocument()
+        })
+        expect(screen.queryByTestId('log-details-copy')).toBeNull()
+    })
+
     it('says the range was truncated when the fetch limit was reached', () => {
         renderExplorer({ isTruncated: true })
 

@@ -172,3 +172,5 @@ maps it to copy (`src/modules/zepp/zepp-ui.utils.ts`).
 - How long an `app_token` lasts.
 - Paging when `next` is not `-1` (the parameter is not known).
 - Types 6 and 214 (and Hyrox stations) need a real detail mock before they are imported.
+
+A login redirect that carries an `error` parameter instead of `access` (Zepp answered `error=401`) is Zepp refusing the login: it fails as `ZeppLoginRejectedError` ("Zepp did not accept this email or password."). The logged cause names the redirect's parameters and the `error` value, never the other values.
