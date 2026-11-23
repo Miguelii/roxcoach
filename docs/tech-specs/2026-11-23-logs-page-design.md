@@ -134,8 +134,7 @@ and the detail opens in a drawer. The detail view must use a shared component fr
 never compose `Drawer*` in the module).
 
 Navigation: a `Logs` item in the desktop sidebar after Settings. On a phone the bottom bar keeps
-its four items and Logs is reached from a link at the bottom of Settings (my call: a fifth tab
-crowds the bar). Logs are not part of the sync button or the dashboard.
+its four items and there is no link to Logs (the owner dropped the Settings link). Logs are not part of the sync button or the dashboard.
 
 ### Tests
 

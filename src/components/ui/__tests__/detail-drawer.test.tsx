@@ -40,6 +40,22 @@ describe('DetailDrawer', () => {
         expect(screen.getByTestId('detail-body')).toHaveTextContent('Body')
     })
 
+    it('is wider than the default side panel on a wide screen', () => {
+        stubMatchMedia()
+        render(
+            <DetailDrawer open onOpenChange={() => {}} title="T" description="D" testId="detail">
+                <p>Body</p>
+            </DetailDrawer>
+        )
+
+        expect(screen.getByTestId('detail').className).toContain(
+            'data-[vaul-drawer-direction=right]:sm:max-w-2xl'
+        )
+        expect(screen.getByTestId('detail').className).not.toContain(
+            'data-[vaul-drawer-direction=right]:sm:max-w-sm'
+        )
+    })
+
     it('asks to close from its close button', () => {
         stubMatchMedia()
         const onOpenChange = vi.fn()

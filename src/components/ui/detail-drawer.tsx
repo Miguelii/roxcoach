@@ -25,7 +25,10 @@ type Props = {
 export function DetailDrawer({ open, onOpenChange, title, description, testId, children }: Props) {
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent data-testid={testId} className="bg-paper">
+            <DrawerContent
+                data-testid={testId}
+                className="bg-paper data-[vaul-drawer-direction=right]:sm:max-w-2xl"
+            >
                 <DrawerHeader className="border-b border-hairline p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">

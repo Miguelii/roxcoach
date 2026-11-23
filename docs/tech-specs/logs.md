@@ -34,4 +34,4 @@ reached. Not cached. Every signed-in athlete sees every Roxcoach row, including 
 with the server caller and renders `LogsExplorer` with the rows, `isTruncated` and the fetch time
 (the end of the histogram window). Level and source filters and the selected row are client state
 over the fetched rows. Details and design: [ux-design.md](ux-design.md#logs). The link to `/logs` is
-a sidebar item on desktop and a link at the bottom of Settings on a phone.
+a sidebar item on desktop only (no phone entry point yet).

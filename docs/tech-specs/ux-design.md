@@ -98,7 +98,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 
 ## Layout
 
-- App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings) and a Logs item after them (desktop only: the phone bar keeps its items and reaches Logs from a link at the bottom of Settings),
+- App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings) and a Logs item after them (desktop only: the phone bar keeps its items and has no link to Logs),
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": white at about 55% over a blurred, saturated backdrop, bright inset rim, lifted
