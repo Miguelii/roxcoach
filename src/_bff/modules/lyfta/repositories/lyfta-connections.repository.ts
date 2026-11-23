@@ -238,6 +238,27 @@ export const finishLyftaSync = Effect.fn('finishLyftaSync')(function* (
     if (error) return yield* syncStateWriteError(`${error.code}: ${error.message}`)
 })
 
+// Forgets the sync checkpoint, so the next sync imports the whole window again.
+export const resetLyftaCheckpoint = Effect.fn('resetLyftaCheckpoint')(function* (
+    supabase: AdminClient,
+    userId: string
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        catch: (cause) =>
+            new LyftaConnectionWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.LYFTA_CHECKPOINT,
+            }),
+    })
+
+    if (error)
+        return yield* new LyftaConnectionWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.LYFTA_CHECKPOINT,
+        })
+})
+
 export const deleteLyftaConnection = Effect.fn('deleteLyftaConnection')(function* (
     supabase: AdminClient,
     userId: string
