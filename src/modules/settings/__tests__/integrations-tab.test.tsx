@@ -16,6 +16,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 {
                     'lyfta.getConnectionStatus': () => pendingQuery,
                     'zepp.getConnectionStatus': () => pendingQuery,
+                    'lyfta.getActivityCount': () => pendingQuery,
+                    'zepp.getActivityCount': () => pendingQuery,
                 },
                 options
             ),
@@ -28,6 +30,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                     'zepp.connect': () => idleMutation,
                     'zepp.syncActivities': () => idleMutation,
                     'zepp.disconnect': () => idleMutation,
+                    'lyfta.clearActivities': () => idleMutation,
+                    'zepp.clearActivities': () => idleMutation,
                 },
                 options
             ),

@@ -424,6 +424,19 @@ and the metadata as formatted JSON with a copy icon that puts the JSON on the cl
 "No logs in this time range" when empty and "No logs match these filters" with a clear button when
 the filters match nothing.
 
+### Integration cards
+
+Settings > Integrations has one card per integration (Lyfta, Zepp). Each starts with the name and a
+state pill ("Connected" or "Not connected", the state is in the text), then the last sync and, once
+known, how many activities were imported ("142 workouts imported", "38 runs imported"). The primary
+action is `Sync`; `Replace API key` (Lyfta) or `Reconnect` (Zepp) is the secondary one. Below a
+divider a "Danger zone" holds `Clear activities` and `Disconnect`, each with a one-line explanation
+and a destructive button of at least 44 px, apart from Sync so they are not pressed by mistake.
+`Clear activities` is disabled with zero activities, while the count is unknown and while a sync or
+another action runs. It opens the shared `ConfirmDialog` ("Clear 142 Lyfta workouts?", the 360 day
+caveat, `Clear Lyfta activities` / `Keep activities`); a failure stays in the dialog and a success
+closes it with a toast. The backend behaviour is in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
+
 ## Components
 
 Reuse shadcn components on base-ui only: Button, Card, Dialog, Sheet, Form, Input, Select, Tabs,
