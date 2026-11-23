@@ -1,5 +1,8 @@
 # Zepp integration and Settings Integrations tab
 
+> Superseded for sync behavior (background run, lease, limits) by
+> [2026-11-23-background-sync-design.md](2026-11-23-background-sync-design.md).
+
 ## Intent
 
 The athlete records runs and Hyrox sessions on an Amazfit Bip 6 through the Zepp app. Today they

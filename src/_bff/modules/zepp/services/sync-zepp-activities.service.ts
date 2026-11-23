@@ -2,6 +2,7 @@ import 'server-only'
 
 import { Effect } from 'effect'
 import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
+import { ownsSyncLease } from '@/_bff/core/helpers/sync-state.helper'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ZeppConnectionNotFoundError } from '@/_bff/lib/errors'
 import {
@@ -76,9 +77,12 @@ const newestFirst = (a: ZeppRunSummary, b: ZeppRunSummary) => Number(b.trackId) 
 // Imports the runs of the last ZEPP_SYNC_HISTORY_DAYS days of the Zepp history that are not in
 // Roxcoach yet, newest first, then adds the kilometre laps to runs imported before laps existed, at
 // most MAX_DETAILS_PER_SYNC details per call in all. Safe to repeat: a run is fetched again only
-// while it has no laps. A disconnected account stops the run without a checkpoint.
+// while it has no laps. The caller holds the sync lease started at `startedAt`: a disconnected
+// account, a replaced token or a lease taken over by a newer run stops the run quietly without a
+// checkpoint, and the checkpoint only moves while the lease is still this run's.
 export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     userId: string,
+    startedAt: string,
     dependencies: SyncDependencies = DEFAULT_SYNC_DEPENDENCIES
 ) {
     const admin = yield* createZeppAdminClient(dependencies)
@@ -88,6 +92,10 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
             cause: 'No Zepp connection for this user',
             error_hash: ErrorCode.ZEPP_NO_CONNECTION,
         })
+    if (!ownsSyncLease(connection.sync, startedAt)) {
+        const nothing: ZeppSyncResult = { imported: 0, skipped: 0, updated: 0, remaining: 0 }
+        return nothing
+    }
 
     const appToken = yield* decryptZeppConnectionToken(
         connection.encryptedAppToken,
@@ -123,16 +131,16 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
     const backfill = unsplit.slice(0, MAX_DETAILS_PER_SYNC - batch.length)
 
     let requests = 0
-    let connectionGone = false
-    // `undefined` means the connection is gone and the run must stop; `null` means Zepp refused the
+    let leaseLost = false
+    // `undefined` means the run lost its lease and must stop; `null` means Zepp refused the
     // detail of this run. The history just answered, so a refusal is about the run, not the session.
     const fetchDetail = (summary: ZeppRunSummary) =>
         Effect.gen(function* () {
-            if (connectionGone) return undefined
+            if (leaseLost) return undefined
             if (requests > 0 && requests % CONNECTION_RECHECK_EVERY === 0) {
                 const current = yield* selectZeppConnection(admin, userId)
-                if (current === null) {
-                    connectionGone = true
+                if (current === null || !ownsSyncLease(current.sync, startedAt)) {
+                    leaseLost = true
                     return undefined
                 }
             }
@@ -181,8 +189,10 @@ export const syncZeppActivities = Effect.fn('syncZeppActivities')(function* (
         updated += 1
     }
 
-    if (!connectionGone)
-        yield* updateZeppLastSyncedAt(admin, userId, dependencies.now().toISOString())
+    // A checkpoint update that matches no row means the lease was lost at the very end: nothing is
+    // left to write, so the run ends the same way.
+    if (!leaseLost)
+        yield* updateZeppLastSyncedAt(admin, userId, startedAt, dependencies.now().toISOString())
     const result: ZeppSyncResult = {
         imported,
         skipped,

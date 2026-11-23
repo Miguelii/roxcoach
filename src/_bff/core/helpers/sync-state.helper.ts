@@ -64,6 +64,14 @@ export function toSyncState<R>(
     }
 }
 
+// A background run owns the lease while the row is still running with the lease it took. The task
+// payload carries `...Z` while the database returns `...+00:00`, so the instants are compared.
+export function ownsSyncLease(row: SyncStateRow | null, startedAt: string): boolean {
+    if (row === null || row.sync_status !== 'running' || row.sync_started_at === null) return false
+    const rowMs = Date.parse(row.sync_started_at)
+    return !Number.isNaN(rowMs) && rowMs === Date.parse(startedAt)
+}
+
 export function syncIdempotencyKey(provider: 'lyfta' | 'zepp', payload: SyncTaskPayload): string {
     return `${provider}:${payload.userId}:${payload.startedAt}`
 }

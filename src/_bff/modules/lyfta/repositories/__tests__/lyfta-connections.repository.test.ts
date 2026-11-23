@@ -53,8 +53,8 @@ describe('Lyfta connection repository', () => {
         const { chains, supabase } = makeFakeDb([ok(), ok({ user_id: USER_ID }), ok()])
 
         await Effect.runPromise(upsertLyftaConnection(supabase, USER_ID, ENCRYPTED_KEY))
-        await Effect.runPromise(
-            updateLyftaLastSyncedAt(supabase, USER_ID, '2026-11-20T08:30:00.000Z')
+        const updated = await Effect.runPromise(
+            updateLyftaLastSyncedAt(supabase, USER_ID, STARTED_AT, '2026-11-20T08:34:00.000Z')
         )
         await Effect.runPromise(deleteLyftaConnection(supabase, USER_ID))
 
@@ -62,7 +62,13 @@ describe('Lyfta connection repository', () => {
             { user_id: USER_ID, encrypted_api_key: ENCRYPTED_KEY },
             { onConflict: 'user_id' }
         )
+        expect(updated).toBe(true)
+        expect(chains[1]?.update).toHaveBeenCalledWith({
+            last_synced_at: '2026-11-20T08:34:00.000Z',
+        })
         expect(chains[1]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(chains[1]?.eq).toHaveBeenCalledWith('sync_started_at', STARTED_AT)
+        expect(chains[1]?.eq).toHaveBeenCalledWith('sync_status', 'running')
         expect(chains[2]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
     })
 
@@ -88,13 +94,31 @@ describe('Lyfta connection repository', () => {
         expect(failureTag(rejectedExit)).toBe('LyftaConnectionQueryError')
     })
 
-    it('fails the checkpoint update when the user has no connection row', async () => {
+    it('reports a lost lease when the checkpoint update matches no running row of this run', async () => {
         const { supabase } = makeFakeDb([ok(null)])
-        const exit = await Effect.runPromiseExit(
-            updateLyftaLastSyncedAt(supabase, USER_ID, '2026-11-20T08:30:00.000Z')
+
+        const updated = await Effect.runPromise(
+            updateLyftaLastSyncedAt(supabase, USER_ID, STARTED_AT, '2026-11-20T08:34:00.000Z')
         )
 
-        expect(failureTag(exit)).toBe('LyftaConnectionWriteError')
+        expect(updated).toBe(false)
+    })
+
+    it('fails the checkpoint update on a returned error or a rejected query', async () => {
+        const returnedError = makeFakeDb([
+            { data: null, error: { code: 'XX001', message: 'update failed' } },
+        ])
+        const rejected = makeFakeDb([new Error('connection failed')])
+
+        const returnedErrorExit = await Effect.runPromiseExit(
+            updateLyftaLastSyncedAt(returnedError.supabase, USER_ID, STARTED_AT, FINISHED_AT)
+        )
+        const rejectedExit = await Effect.runPromiseExit(
+            updateLyftaLastSyncedAt(rejected.supabase, USER_ID, STARTED_AT, FINISHED_AT)
+        )
+
+        expect(failureTag(returnedErrorExit)).toBe('LyftaConnectionWriteError')
+        expect(failureTag(rejectedExit)).toBe('LyftaConnectionWriteError')
     })
 
     it('takes the sync lease when it is not running or stale, and reports whether it won', async () => {

@@ -94,7 +94,7 @@ the activity is deleted, so the next sync tries the run again.
 `zepp.getConnectionStatus` returns `connected`, `lastSyncedAt` and `sync` (`SyncState`), where a
 stale `running` row reads as `failed` with `zepp020`.
 
-Sync (`syncZeppActivities(userId)`, run by the task, no request session: it uses the service-role client): read the
+Sync (`syncZeppActivities(userId, startedAt)`, run by the task, no request session: it uses the service-role client): read the
 connection, fetch the history, keep type 1 with distance above zero whose start is within the last
 360 days (`Number(trackid) * 1000 >= now - 360 days`, `ZEPP_SYNC_HISTORY_DAYS`), newest first. The
 filter runs before anything else is computed, so an older run is neither imported nor backfilled.
@@ -114,7 +114,10 @@ both the new runs and the runs still without laps (above zero only when the ceil
 expired token aborts the sync.
 
 Every 25 detail requests the sync re-reads the connection. When it is gone (the athlete
-disconnected) the run stops quietly with the counts so far and does not write `last_synced_at`.
+disconnected) or no longer holds this run's lease (`ownsSyncLease`: `running` with `sync_started_at`
+equal to the payload's `startedAt`, for example after the token was replaced) the run stops quietly
+with the counts so far and does not write `last_synced_at`; the checkpoint update itself only
+matches that lease, and zero rows updated is not an error.
 
 Sync state (migration 0021 adds `sync_started_at` to `zepp_connections`; the other columns come from
 the shared sync state): `takeZeppSyncLease` is a compare-and-set that takes the lease when no sync is

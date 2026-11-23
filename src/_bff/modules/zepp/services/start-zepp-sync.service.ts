@@ -88,6 +88,8 @@ export const startZeppSync = Effect.fn('startZeppSync')(function* (
         )
     )
 
-    yield* setZeppSyncRunId(supabase, userId, startedAt, handle.id)
+    // The run ID only helps support find the run: the task is already enqueued, so a failed write
+    // must not fail the start.
+    yield* setZeppSyncRunId(supabase, userId, startedAt, handle.id).pipe(Effect.ignore)
     return { startedAt }
 })

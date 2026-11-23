@@ -109,9 +109,12 @@ export const upsertZeppConnection = Effect.fn('upsertZeppConnection')(function* 
     if (error) return yield* writeError(error)
 })
 
+// Moves the checkpoint only while the lease started at `startedAtIso` is still running. False when
+// no row matched: the run lost its lease (token replaced, disconnected or taken over).
 export const updateZeppLastSyncedAt = Effect.fn('updateZeppLastSyncedAt')(function* (
     supabase: AdminClient,
     userId: string,
+    startedAtIso: string,
     lastSyncedAt: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
@@ -120,16 +123,14 @@ export const updateZeppLastSyncedAt = Effect.fn('updateZeppLastSyncedAt')(functi
                 .from(TABLE)
                 .update({ last_synced_at: lastSyncedAt })
                 .eq('user_id', userId)
+                .eq('sync_started_at', startedAtIso)
+                .eq('sync_status', 'running')
                 .select('user_id')
                 .maybeSingle(),
         catch: writeFailure,
     })
     if (error) return yield* writeError(error)
-    if (data === null)
-        return yield* new ZeppConnectionWriteError({
-            cause: 'No Zepp connection found for the checkpoint update',
-            error_hash: ErrorCode.ZEPP_CONNECTION_WRITE,
-        })
+    return data !== null
 })
 
 const syncStateWriteError = (cause: string) =>

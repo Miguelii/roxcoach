@@ -71,7 +71,8 @@ runs. A few seconds of delay do not matter for a sync that lasts seconds to minu
    new start service, which:
     1. reads the connection (not found: `*ConnectionNotFoundError`, as today);
     2. takes the lease with one compare-and-set update (below). Not taken: `*SyncInProgressError`;
-    3. triggers the provider task with `{ userId, startedAt }` and stores the run ID;
+    3. triggers the provider task with `{ userId, startedAt }` and stores the run ID (a failed run
+       ID write is ignored: the task is already enqueued and the ID only helps support);
     4. if triggering fails, marks the row `failed` with the enqueue error code and fails the
        mutation.
 3. The mutation returns `{ startedAt }`. The client shows the start toast and the row is
@@ -108,6 +109,12 @@ $staleBefore)`, setting `running`, `sync_started_at = now`, and clearing `sync_f
   15 minutes, so a lease only goes stale after its run can no longer be alive.
 - Every write the task makes to the row (`succeeded`, `failed`, run ID) matches `sync_started_at =
   startedAt` from the payload, so an old run that outlived its lease never overwrites a newer one.
+- The run checks it still owns the lease: at every connection re-read (before each Lyfta window,
+  every 25 Zepp details) the row must be `running` with `sync_started_at` equal to the payload's
+  `startedAt` (compared as instants, since the payload is `...Z` and the database returns
+  `...+00:00`), and the `last_synced_at` checkpoint update matches the same lease. A run that lost
+  its lease (key or token replaced, disconnect, taken over after going stale) stops quietly with the
+  totals so far and writes nothing more; it is not a failure and is not retried.
 - The task does not release the lease separately: writing `succeeded` or `failed` is the release.
 - The client treats `running` older than the stale threshold as not running (button enabled).
 
@@ -128,7 +135,7 @@ then the service, then the outcome. No business logic and no Supabase calls in t
       retries (3 attempts, config defaults). The row stays `running` between attempts.
 - The task's `onFailure` hook writes `failed` with a generic code when the attempts run out or the
   run dies (`maxDuration` exceeded, crash). The stale lease is the last safety net if even that
-  write fails.
+  write fails. An invalid payload returns early, and a failed write throws only `<tag> <code>`.
 - `queue: { concurrencyLimit }` per task keyed by `userId` is not needed: the lease already
   serializes one athlete's syncs. The trigger call uses `idempotencyKey: <provider>:<userId>:<startedAt>`
   so a retried mutation never enqueues the same lease twice.

@@ -58,8 +58,8 @@ describe('Zepp connection repository', () => {
         const { chains, supabase } = makeFakeDb([ok(), ok({ user_id: USER_ID }), ok()])
 
         await Effect.runPromise(upsertZeppConnection(supabase, USER_ID, ENCRYPTED))
-        await Effect.runPromise(
-            updateZeppLastSyncedAt(supabase, USER_ID, '2026-11-21T10:00:00.000Z')
+        const updated = await Effect.runPromise(
+            updateZeppLastSyncedAt(supabase, USER_ID, STARTED_AT, '2026-11-21T10:00:00.000Z')
         )
         await Effect.runPromise(deleteZeppConnection(supabase, USER_ID))
 
@@ -80,7 +80,10 @@ describe('Zepp connection repository', () => {
         expect(chains[1]?.update).toHaveBeenCalledWith({
             last_synced_at: '2026-11-21T10:00:00.000Z',
         })
+        expect(updated).toBe(true)
         expect(chains[1]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(chains[1]?.eq).toHaveBeenCalledWith('sync_started_at', STARTED_AT)
+        expect(chains[1]?.eq).toHaveBeenCalledWith('sync_status', 'running')
         expect(chains[2]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
     })
 
@@ -106,14 +109,29 @@ describe('Zepp connection repository', () => {
         ).toBe('ZeppConnectionQueryError')
     })
 
-    it('fails the checkpoint update when there is no connection to update', async () => {
+    it('reports a lost lease when the checkpoint update matches no running row of this run', async () => {
         const { supabase } = makeFakeDb([ok(null)])
 
-        const exit = await Effect.runPromiseExit(
-            updateZeppLastSyncedAt(supabase, USER_ID, '2026-11-21T10:00:00.000Z')
+        const updated = await Effect.runPromise(
+            updateZeppLastSyncedAt(supabase, USER_ID, STARTED_AT, '2026-11-21T10:00:00.000Z')
         )
 
-        expect(failureTag(exit)).toBe('ZeppConnectionWriteError')
+        expect(updated).toBe(false)
+    })
+
+    it('fails the checkpoint update on a returned error or a rejected query', async () => {
+        const returned = makeFakeDb([{ data: null, error: { code: 'XX001', message: 'failed' } }])
+        const rejected = makeFakeDb([new Error('connection failed')])
+
+        const returnedExit = await Effect.runPromiseExit(
+            updateZeppLastSyncedAt(returned.supabase, USER_ID, STARTED_AT, FINISHED_AT)
+        )
+        const rejectedExit = await Effect.runPromiseExit(
+            updateZeppLastSyncedAt(rejected.supabase, USER_ID, STARTED_AT, FINISHED_AT)
+        )
+
+        expect(failureTag(returnedExit)).toBe('ZeppConnectionWriteError')
+        expect(failureTag(rejectedExit)).toBe('ZeppConnectionWriteError')
     })
 
     it('takes the sync lease when it is not running or stale, and reports whether it won', async () => {

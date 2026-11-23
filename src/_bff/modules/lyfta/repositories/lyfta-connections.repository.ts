@@ -122,9 +122,12 @@ export const upsertLyftaConnection = Effect.fn('upsertLyftaConnection')(function
         })
 })
 
+// Moves the checkpoint only while the lease started at `startedAtIso` is still running. False when
+// no row matched: the run lost its lease (key replaced, disconnected or taken over) and must stop.
 export const updateLyftaLastSyncedAt = Effect.fn('updateLyftaLastSyncedAt')(function* (
     supabase: AdminClient,
     userId: string,
+    startedAtIso: string,
     lastSyncedAt: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
@@ -133,6 +136,8 @@ export const updateLyftaLastSyncedAt = Effect.fn('updateLyftaLastSyncedAt')(func
                 .from(TABLE)
                 .update({ last_synced_at: lastSyncedAt })
                 .eq('user_id', userId)
+                .eq('sync_started_at', startedAtIso)
+                .eq('sync_status', 'running')
                 .select('user_id')
                 .maybeSingle(),
         catch: (cause) =>
@@ -147,11 +152,7 @@ export const updateLyftaLastSyncedAt = Effect.fn('updateLyftaLastSyncedAt')(func
             cause: `${error.code}: ${error.message}`,
             error_hash: ErrorCode.LYFTA_CHECKPOINT,
         })
-    if (data === null)
-        return yield* new LyftaConnectionWriteError({
-            cause: 'No Lyfta connection found for checkpoint update',
-            error_hash: ErrorCode.LYFTA_CHECKPOINT,
-        })
+    return data !== null
 })
 
 const syncStateWriteError = (cause: string) =>

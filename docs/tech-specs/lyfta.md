@@ -215,7 +215,7 @@ services; do not create a parallel workout model.
 ## Manual sync behavior
 
 The `lyfta.syncWorkouts` protected tRPC mutation takes the sync lease and enqueues a Trigger.dev
-background task, which runs `syncLyftaWorkouts(userId)` without a request session. All Lyfta
+background task, which runs `syncLyftaWorkouts(userId, startedAt)` without a request session. All Lyfta
 network calls stay in the server-side `lyfta` module.
 
 1. Require an existing connection. Decrypt its key on the server.
@@ -238,6 +238,10 @@ network calls stay in the server-side `lyfta` module.
    **Stop on disconnect.** Before every window after the first, the connection row is read again.
    When it is gone (disconnect or account deletion during the run) the run ends quietly with the
    totals so far and `hasMore: false`, and writes nothing more.
+   **Stop on a lost lease.** The run also ends that way when the row no longer holds its lease
+   (`ownsSyncLease`: `running` with `sync_started_at` equal to the payload's `startedAt`, for
+   example after the key was replaced), and `updateLyftaLastSyncedAt` only matches that lease, so
+   zero rows updated is the same quiet stop rather than an error.
 5. **Checkpoint.** `last_synced_at` moves to the end of each fully completed window (the start of
    its last UTC day, so the next run's one-day overlap re-reads that day) and, after the window that
    ends today, to the sync time. It never moves past a window that was not fully processed, so a

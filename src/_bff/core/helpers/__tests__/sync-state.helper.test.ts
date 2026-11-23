@@ -9,6 +9,7 @@ import {
 import { SYNC_START_MESSAGE, SYNC_TASK_MAX_DURATION_S } from '@/_bff/core/constants/sync.constants'
 import { ZEPP_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/zepp.constants'
 import {
+    ownsSyncLease,
     syncIdempotencyKey,
     syncTaskPayloadSchema,
     toSyncState,
@@ -140,5 +141,38 @@ describe('sync outcome and shared definitions', () => {
         expect(new LyftaSyncEnqueueError(fields)._tag).toBe('LyftaSyncEnqueueError')
         expect(new ZeppSyncInProgressError(fields)._tag).toBe('ZeppSyncInProgressError')
         expect(new ZeppSyncEnqueueError(fields)._tag).toBe('ZeppSyncEnqueueError')
+    })
+})
+
+describe('ownsSyncLease', () => {
+    const STARTED_AT = '2026-11-23T10:00:00.000Z'
+
+    it('owns a running lease that started at the same instant, whatever the ISO format', () => {
+        expect(
+            ownsSyncLease(
+                row({ sync_status: 'running', sync_started_at: '2026-11-23T10:00:00+00:00' }),
+                STARTED_AT
+            )
+        ).toBe(true)
+    })
+
+    it('does not own a missing row, an idle row or a lease of another run', () => {
+        expect(ownsSyncLease(null, STARTED_AT)).toBe(false)
+        expect(ownsSyncLease(row({ sync_status: 'idle' }), STARTED_AT)).toBe(false)
+        expect(
+            ownsSyncLease(
+                row({ sync_status: 'succeeded', sync_started_at: STARTED_AT }),
+                STARTED_AT
+            )
+        ).toBe(false)
+        expect(
+            ownsSyncLease(
+                row({ sync_status: 'running', sync_started_at: '2026-11-23T10:05:00.000Z' }),
+                STARTED_AT
+            )
+        ).toBe(false)
+        expect(
+            ownsSyncLease(row({ sync_status: 'running', sync_started_at: 'garbage' }), 'garbage')
+        ).toBe(false)
     })
 })

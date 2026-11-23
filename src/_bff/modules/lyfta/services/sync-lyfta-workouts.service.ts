@@ -25,6 +25,7 @@ import {
 import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import { MAX_PAGES_PER_SYNC } from '@/_bff/modules/lyfta/constants'
 import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
+import { ownsSyncLease } from '@/_bff/core/helpers/sync-state.helper'
 import {
     addUtcDays,
     getLyftaSyncStart,
@@ -137,13 +138,15 @@ const importWindow = Effect.fn('importLyftaWindow')(function* (
 const checkpointAfter = (window: { to: string; isLast: boolean }, now: Date) =>
     window.isLast ? now.toISOString() : `${window.to}T00:00:00.000Z`
 
-// Runs one sync. The caller holds the sync lease (taken by the start service), which keeps two
-// syncs of the same athlete from duplicating strength sets. The history is read in ascending
-// SYNC_WINDOW_DAYS windows and the checkpoint moves to the end of each fully completed window, so a
-// stopped run resumes where it left off. The connection is re-read before every later window: a
-// disconnect (or account deletion) during the run ends it quietly with what was imported so far.
+// Runs one sync. The caller holds the sync lease started at `startedAt` (taken by the start
+// service), which keeps two syncs of the same athlete from duplicating strength sets. The history is
+// read in ascending SYNC_WINDOW_DAYS windows and the checkpoint moves to the end of each fully
+// completed window, so a stopped run resumes where it left off. The connection is re-read before
+// every window: a disconnect, a replaced key or a lease taken over by a newer run ends it quietly
+// with what was imported so far, and the checkpoint only moves while the lease is still this run's.
 export const syncLyftaWorkouts = Effect.fn('syncLyftaWorkouts')(function* (
     userId: string,
+    startedAt: string,
     dependencies: SyncDependencies = DEFAULT_DEPENDENCIES
 ) {
     const encryptionKey = dependencies.encryptionKey
@@ -163,22 +166,25 @@ export const syncLyftaWorkouts = Effect.fn('syncLyftaWorkouts')(function* (
         })
     }
 
-    const apiKey = yield* decryptConnectionKey(connection.encryptedApiKey, encryptionKey)
-    const startedAt = dependencies.now()
-    const today = startedAt.toISOString().slice(0, 10)
-    let from = yield* syncStart(connection.lastSyncedAt, startedAt)
-    // The timezone and the service-role client are resolved once for the whole run.
-    const context = yield* dependencies.createImportContext(userId)
-    let pagesLeft = MAX_PAGES_PER_SYNC
     let created = 0
     let updated = 0
     let lastSyncedAt = connection.lastSyncedAt
+    const stopQuietly = (): SyncSummary => ({ created, updated, hasMore: false, lastSyncedAt })
+    if (!ownsSyncLease(connection.sync, startedAt)) return stopQuietly()
+
+    const apiKey = yield* decryptConnectionKey(connection.encryptedApiKey, encryptionKey)
+    const runStart = dependencies.now()
+    const today = runStart.toISOString().slice(0, 10)
+    let from = yield* syncStart(connection.lastSyncedAt, runStart)
+    // The timezone and the service-role client are resolved once for the whole run.
+    const context = yield* dependencies.createImportContext(userId)
+    let pagesLeft = MAX_PAGES_PER_SYNC
     let firstWindow = true
 
     for (;;) {
-        if (!firstWindow && (yield* selectLyftaConnection(adminClient, userId)) === null) {
-            const stopped: SyncSummary = { created, updated, hasMore: false, lastSyncedAt }
-            return stopped
+        if (!firstWindow) {
+            const current = yield* selectLyftaConnection(adminClient, userId)
+            if (current === null || !ownsSyncLease(current.sync, startedAt)) return stopQuietly()
         }
         firstWindow = false
 
@@ -205,7 +211,13 @@ export const syncLyftaWorkouts = Effect.fn('syncLyftaWorkouts')(function* (
                     error_hash: ErrorCode.LYFTA_CHECKPOINT,
                 }),
         })
-        yield* updateLyftaLastSyncedAt(adminClient, userId, checkpoint)
+        const stillOwned = yield* updateLyftaLastSyncedAt(
+            adminClient,
+            userId,
+            startedAt,
+            checkpoint
+        )
+        if (!stillOwned) return stopQuietly()
         lastSyncedAt = checkpoint
         if (window.isLast) {
             const done: SyncSummary = { created, updated, hasMore: false, lastSyncedAt }

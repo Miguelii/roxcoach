@@ -9,13 +9,13 @@ import {
 type SyncTaskError = { _tag: string; error_hash: string }
 
 type SyncTaskDependencies<A, E extends SyncTaskError> = {
-    sync: (userId: string) => Effect.Effect<A, E>
+    sync: (payload: SyncTaskPayload) => Effect.Effect<A, E>
     finish: (payload: SyncTaskPayload, outcome: SyncOutcome<A>) => Effect.Effect<void, unknown>
     isPermanent: (error: E) => boolean
 }
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- parsed by syncTaskPayloadSchema right below
-export const parseSyncTaskPayload = (rawPayload: unknown): SyncTaskPayload => {
+const parseSyncTaskPayload = (rawPayload: unknown): SyncTaskPayload => {
     const parsed = syncTaskPayloadSchema.safeParse(rawPayload)
     if (!parsed.success) throw new AbortTaskRunError('Invalid sync task payload')
     return parsed.data
@@ -35,7 +35,7 @@ export async function runSyncTask<A, E extends SyncTaskError>(
     dependencies: SyncTaskDependencies<A, E>
 ): Promise<A> {
     const payload = parseSyncTaskPayload(rawPayload)
-    const exit = await Effect.runPromiseExit(dependencies.sync(payload.userId))
+    const exit = await Effect.runPromiseExit(dependencies.sync(payload))
 
     if (Exit.isSuccess(exit)) {
         const recorded = await recordOutcome(dependencies.finish, payload, {
@@ -60,4 +60,26 @@ export async function runSyncTask<A, E extends SyncTaskError>(
     }
 
     throw new Error(`${error._tag} ${error.error_hash}`)
+}
+
+// The onFailure hook of a sync task: records the failure when the payload is valid. A failed write
+// throws only its tag and code, for the same reason as runSyncTask.
+export async function recordFailedSyncTask<A>(
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- parsed by syncTaskPayloadSchema right below
+    rawPayload: unknown,
+    finish: (
+        payload: SyncTaskPayload,
+        outcome: SyncOutcome<A>
+    ) => Effect.Effect<void, SyncTaskError>,
+    errorCode: string
+): Promise<void> {
+    const parsed = syncTaskPayloadSchema.safeParse(rawPayload)
+    if (!parsed.success) return
+
+    const exit = await Effect.runPromiseExit(finish(parsed.data, { status: 'failed', errorCode }))
+    if (Exit.isSuccess(exit)) return
+
+    const failure = Cause.findErrorOption(exit.cause)
+    if (Option.isNone(failure)) throw new Error('Could not record the sync failure')
+    throw new Error(`${failure.value._tag} ${failure.value.error_hash}`)
 }

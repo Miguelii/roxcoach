@@ -21,11 +21,19 @@ const CONNECTION_ROW = {
     sync_error: null,
 }
 
-const setup = (options: { connection: boolean; leaseTaken: boolean; trigger?: 'ok' | 'fail' }) => {
+const setup = (options: {
+    connection: boolean
+    leaseTaken: boolean
+    trigger?: 'ok' | 'fail'
+    runIdWrite?: 'ok' | 'fail'
+}) => {
     const db = makeFakeAdminDb((call: Call) => {
         if (call.op === 'select') return ok(options.connection ? CONNECTION_ROW : null)
         const isLease = call.filters.some(([column]) => column === 'or')
         if (isLease) return ok(options.leaseTaken ? { user_id: USER_ID } : null)
+        const isRunId = JSON.stringify(call.payload).includes('sync_run_id')
+        if (isRunId && options.runIdWrite === 'fail')
+            return { data: null, error: { code: 'XX001', message: 'write failed' } }
         return ok()
     })
     const triggerTask = vi.fn(async () => {
@@ -93,5 +101,18 @@ describe('startLyftaSync', () => {
             sync_status: 'failed',
             sync_error: ErrorCode.LYFTA_SYNC_ENQUEUE,
         })
+    })
+
+    it('still returns the started sync when the run id cannot be stored', async () => {
+        const { dependencies, triggerTask } = setup({
+            connection: true,
+            leaseTaken: true,
+            runIdWrite: 'fail',
+        })
+
+        const result = await Effect.runPromise(startLyftaSync(USER_ID, dependencies))
+
+        expect(result).toEqual({ startedAt: STARTED_AT })
+        expect(triggerTask).toHaveBeenCalledTimes(1)
     })
 })

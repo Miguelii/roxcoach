@@ -88,6 +88,8 @@ export const startLyftaSync = Effect.fn('startLyftaSync')(function* (
         )
     )
 
-    yield* setLyftaSyncRunId(supabase, userId, startedAt, handle.id)
+    // The run ID only helps support find the run: the task is already enqueued, so a failed write
+    // must not fail the start.
+    yield* setLyftaSyncRunId(supabase, userId, startedAt, handle.id).pipe(Effect.ignore)
     return { startedAt }
 })
