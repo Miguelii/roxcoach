@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LoginCard } from '@/modules/auth/login-card'
-import { ServerEnv } from '@/env/server'
+import { SignupLink } from '@/modules/auth/signup-link'
 
 export const metadata: Metadata = {
     title: 'Sign in',
@@ -9,22 +9,14 @@ export const metadata: Metadata = {
     alternates: { canonical: '/login' },
 }
 
-type Props = PageProps<'/login'>
-
-async function LoginContent({ searchParams }: Pick<Props, 'searchParams'>) {
-    const { returnTo } = await searchParams
+export default function LoginPage() {
     return (
         <LoginCard
-            returnTo={Array.isArray(returnTo) ? undefined : returnTo}
-            signupOpen={ServerEnv.NEXT_SIGNUP_ACCESS_CODE !== undefined}
+            footer={
+                <Suspense fallback={null}>
+                    <SignupLink />
+                </Suspense>
+            }
         />
-    )
-}
-
-export default function LoginPage({ searchParams }: Props) {
-    return (
-        <Suspense fallback={null}>
-            <LoginContent searchParams={searchParams} />
-        </Suspense>
     )
 }

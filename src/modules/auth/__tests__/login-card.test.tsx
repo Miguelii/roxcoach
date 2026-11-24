@@ -41,6 +41,7 @@ const submit = () => fireEvent.click(screen.getByTestId('login-submit'))
 
 describe('LoginCard', () => {
     beforeEach(() => {
+        window.history.replaceState(null, '', '/login')
         vi.clearAllMocks()
         queryClient = new QueryClient()
     })
@@ -67,16 +68,10 @@ describe('LoginCard', () => {
         expect(screen.getByTestId('login-password')).toHaveAttribute('type', 'password')
     })
 
-    it('shows the sign-up link only when sign-up is open', () => {
-        const { rerender } = render(<LoginCard />)
-        expect(screen.queryByTestId('signup-link')).not.toBeInTheDocument()
+    it('renders the footer slot under the form', () => {
+        render(<LoginCard footer={<p data-testid="footer-slot">link</p>} />)
 
-        rerender(
-            <QueryClientProvider client={queryClient}>
-                <LoginCard signupOpen />
-            </QueryClientProvider>
-        )
-        expect(screen.getByTestId('signup-link')).toHaveAttribute('href', '/signup')
+        expect(screen.getByTestId('footer-slot')).toBeInTheDocument()
     })
 
     it('shows field errors and skips the mutation for empty fields', async () => {
@@ -110,7 +105,8 @@ describe('LoginCard', () => {
 
     it('sends the credentials, redirects to a safe returnTo and refreshes', async () => {
         mocks.mutateAsync.mockResolvedValue({ status: 200 })
-        render(<LoginCard returnTo="/plan" />)
+        window.history.replaceState(null, '', '/login?returnTo=%2Fplan')
+        render(<LoginCard />)
         fill('coach@example.com', 'secret')
         submit()
         await waitFor(() => {
@@ -143,7 +139,8 @@ describe('LoginCard', () => {
 
     it('falls back to the default path for an unsafe returnTo', async () => {
         mocks.mutateAsync.mockResolvedValue({ status: 200 })
-        render(<LoginCard returnTo="//evil.com" />)
+        window.history.replaceState(null, '', '/login?returnTo=%2F%2Fevil.com')
+        render(<LoginCard />)
         fill('coach@example.com', 'secret')
         submit()
         await waitFor(() => {

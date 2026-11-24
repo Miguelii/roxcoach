@@ -135,16 +135,16 @@ grant execute on function roxcoach.grant_access(uuid, text) to service_role;
 
 ## Frontend
 
-| Item              | Spec                                                                                                                                                |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route             | `/signup`, public, `src/app/(auth)/signup/page.tsx`                                                                                                 |
-| Component         | `src/modules/auth/signup-card.tsx`, hook `use-signup-form.ts` (zod schema and `FormValues`)                                                         |
-| Fields            | name, email, password, access code (all required), submit button                                                                                    |
-| Submit            | `useMutation(trpc.auth.signUp.mutationOptions())`, then `queryClient.clear()`, `router.replace('/dashboard')`, `router.refresh()`, like `LoginCard` |
-| Failure           | one inline generic message (above); the form keeps its values                                                                                       |
-| Closed            | the page calls `notFound()` when `NEXT_SIGNUP_ACCESS_CODE` is unset; `/login` hides the link                                                        |
-| Navigation        | `/login` shows "Have an access code? Create an account"; `/signup` shows "Already have an account? Sign in"                                         |
-| Already signed in | the proxy redirects `/signup` to `/dashboard`, as for `/login`                                                                                      |
+| Item              | Spec                                                                                                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route             | `/signup`, public, `src/app/(auth)/signup/page.tsx`                                                                                                                                                                                |
+| Component         | `src/modules/auth/signup-card.tsx`, hook `use-signup-form.ts` (zod schema and `FormValues`)                                                                                                                                        |
+| Fields            | name, email, password, access code (all required), submit button                                                                                                                                                                   |
+| Submit            | `useMutation(trpc.auth.signUp.mutationOptions())`, then `queryClient.clear()`, `router.replace('/dashboard')`, `router.refresh()`, like `LoginCard`                                                                                |
+| Failure           | one inline generic message (above); the form keeps its values                                                                                                                                                                      |
+| Closed            | the page calls `notFound()` when `NEXT_SIGNUP_ACCESS_CODE` is unset; `/login` hides the link (`SignupLink`, a small request-time hole, so the login card itself is in the static shell; `returnTo` is read from the URL at submit) |
+| Navigation        | `/login` shows "Have an access code? Create an account"; `/signup` shows "Already have an account? Sign in"                                                                                                                        |
+| Already signed in | the proxy redirects `/signup` to `/dashboard`, as for `/login`                                                                                                                                                                     |
 
 - It reuses the `LoginCard` layout and components (shadcn base-ui, tokens, `cn()`), no marketing
   content. The password input has `autocomplete="new-password"` and an eye button

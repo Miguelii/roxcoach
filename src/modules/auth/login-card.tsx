@@ -1,11 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
-import { SIGNUP_PAGE_PATH } from '@/_bff/core/constants/auth.constants'
 import { safeReturnTo } from '@/_bff/core/helpers/safe-redirect.helper'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,16 +20,15 @@ import { useTRPC } from '@/lib/trpc'
 import { useLoginForm, type LoginValues } from '@/modules/auth/use-login-form'
 
 type Props = {
-    returnTo?: string
-    // Shows the link to the sign-up page. False while sign-up is closed.
-    signupOpen?: boolean
+    // Rendered under the form: the sign-up link, which depends on the request.
+    footer?: ReactNode
 }
 
 // The only failure copy the UI ever shows. The server error message is an internal hash and is
 // never rendered, so a wrong password and an account without access look identical.
 const LOGIN_ERROR_COPY = 'Invalid email or password'
 
-export function LoginCard({ returnTo, signupOpen = false }: Props) {
+export function LoginCard({ footer }: Props) {
     const trpc = useTRPC()
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -50,7 +47,8 @@ export function LoginCard({ returnTo, signupOpen = false }: Props) {
         }
         // Drop any data cached for a previous session before the next user lands on the app.
         queryClient.clear()
-        router.replace(safeReturnTo(returnTo))
+        // Read here, not on the server, so the card does not wait for the request's search params.
+        router.replace(safeReturnTo(new URLSearchParams(window.location.search).get('returnTo')))
         router.refresh()
     }
 
@@ -123,18 +121,7 @@ export function LoginCard({ returnTo, signupOpen = false }: Props) {
                 </form>
             </Form>
 
-            {signupOpen && (
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-                    Have an access code?{' '}
-                    <Link
-                        data-testid="signup-link"
-                        href={SIGNUP_PAGE_PATH}
-                        className="text-ink underline"
-                    >
-                        Create an account
-                    </Link>
-                </p>
-            )}
+            {footer}
         </div>
     )
 }
