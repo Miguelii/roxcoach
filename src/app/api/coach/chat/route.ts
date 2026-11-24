@@ -3,7 +3,7 @@ import { ServerEnv } from '@/env/server'
 import { Logger } from '@/_bff/lib/server-logger'
 import { getSession } from '@/_bff/modules/auth/services/get-session.service'
 import { COACH_MODELS } from '@/_bff/core/constants/coach-models.constants'
-import { FALLBACK_DEADLINE_MS } from '@/_bff/modules/coach/constants'
+import { FALLBACK_DEADLINE_MS, FIRST_EVENT_TIMEOUT_MS } from '@/_bff/modules/coach/constants'
 import { buildCoachModels } from '@/_bff/modules/coach/helpers/build-coach-models.helper'
 import { createChatHandler } from '@/_bff/modules/coach/helpers/chat-handler.helper'
 import { sendCoachMessage } from '@/_bff/modules/coach/services/send-coach-message.service'
@@ -17,6 +17,7 @@ const model = apiKey
     ? buildCoachModels({
           apiKey,
           deadlineMs: FALLBACK_DEADLINE_MS,
+          firstEventTimeoutMs: FIRST_EVENT_TIMEOUT_MS,
           modelIds: COACH_MODELS.map(({ id }) => id),
           log: ({ modelId, kind }) =>
               Logger({ level: 'warn', prefix: 'coachModelFallback', metadata: { modelId, kind } }),

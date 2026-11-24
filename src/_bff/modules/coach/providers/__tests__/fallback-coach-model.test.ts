@@ -406,4 +406,40 @@ describe('createFallbackCoachModel', () => {
             expect(out).toEqual([])
         })
     })
+
+    it('aborts a model that emits nothing in time and falls back to the next one', async () => {
+        const hung = fake('hung', async function* (request) {
+            await new Promise<void>((resolve) => {
+                request.signal.addEventListener('abort', () => {
+                    resolve()
+                })
+            })
+            yield TEXT
+        })
+        const next = fake('next', events(TEXT, DONE))
+        const model = createFallbackCoachModel([hung.model, next.model], {
+            firstEventTimeoutMs: 20,
+        })
+
+        const out = await collect(model)
+
+        expect(hung.requests[0]?.signal.aborted).toBe(true)
+        expect(out.find((event) => event.type === 'model')).toMatchObject({
+            modelId: 'next',
+            switchedFrom: 'hung',
+        })
+    })
+
+    it('does not time out a model that already started streaming', async () => {
+        const slow = fake('slow', async function* () {
+            yield TEXT
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 60)
+            })
+            yield DONE
+        })
+        const model = createFallbackCoachModel([slow.model], { firstEventTimeoutMs: 20 })
+
+        expect(terminals(await collect(model))).toEqual([DONE])
+    })
 })

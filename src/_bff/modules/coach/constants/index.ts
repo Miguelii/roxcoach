@@ -22,6 +22,9 @@ export const MAX_STEPS = 5
 // Time after which the model fallback chain starts no further model (route limit is 60 s).
 export const FALLBACK_DEADLINE_MS = 45_000
 
+// Time a model gets to emit its first event before the fallback chain moves to the next one.
+export const FIRST_EVENT_TIMEOUT_MS = 15_000
+
 // A conversation is titled with the start of its first message.
 export const TITLE_MAX_CHARS = 60
 

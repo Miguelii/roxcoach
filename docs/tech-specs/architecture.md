@@ -123,6 +123,8 @@ const create = useMutation(trpc.races.create.mutationOptions())
 await queryClient.invalidateQueries(trpc.races.list.queryFilter())
 ```
 
+The `QueryClient` defaults every query to `staleTime` 30 s (`QUERY_STALE_TIME_MS`) and retries failures at most twice, never a 4xx answer (an expired session fails at once instead of showing skeletons while it retries).
+
 Cache reads and writes (optimistic updates) go through `queryClient` with
 `trpc.x.queryKey(input)`; `queryFilter()` without input matches every input of a procedure.
 

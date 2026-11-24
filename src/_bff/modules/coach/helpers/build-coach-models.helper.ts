@@ -7,6 +7,7 @@ type Options = {
     modelIds: ReadonlyArray<string>
     createModel?: typeof createGeminiCoachModel
     deadlineMs?: number
+    firstEventTimeoutMs?: number
     log: (entry: { modelId: string; kind: 'rate_limited' | 'unavailable' }) => void
 }
 
@@ -16,9 +17,10 @@ export const buildCoachModels = ({
     modelIds,
     createModel = createGeminiCoachModel,
     deadlineMs,
+    firstEventTimeoutMs,
     log,
 }: Options): CoachModel =>
     createFallbackCoachModel(
         modelIds.map((modelId) => createModel({ apiKey, modelId })),
-        { onFallback: log, deadlineMs }
+        { onFallback: log, deadlineMs, firstEventTimeoutMs }
     )

@@ -10,8 +10,15 @@ type Options = {
     onFallback?: (entry: { modelId: string; kind: FailureKind }) => void
     // Total time after which no further model is started. A streaming model is never interrupted.
     deadlineMs?: number
+    // A model that emits nothing for this long is aborted and counts as unavailable, so a hung
+    // model cannot use the whole request time before the next one gets a turn.
+    firstEventTimeoutMs?: number
     now?: () => number
 }
+
+const noop = () => {}
+
+const FIRST_EVENT_TIMED_OUT = Symbol('firstEventTimedOut')
 
 // Tries the models in order. A model that fails before its first text is discarded and the next
 // one gets the identical request. Once text has been emitted the reply is committed to that model
@@ -20,7 +27,7 @@ export const createFallbackCoachModel = (
     models: CoachModel[],
     options: Options = {}
 ): CoachModel => {
-    const { deadlineMs, now = Date.now } = options
+    const { deadlineMs, firstEventTimeoutMs, now = Date.now } = options
     const [first] = models
     if (first === undefined)
         throw new RangeError('createFallbackCoachModel needs at least one model')
@@ -36,11 +43,48 @@ export const createFallbackCoachModel = (
             if (index > 0 && deadlineMs !== undefined && now() - start >= deadlineMs) break
             let failure: FailureKind | null = null
             let committed = false
+            const modelAbort = new AbortController()
+            const modelRequest: CoachModelRequest =
+                firstEventTimeoutMs === undefined
+                    ? request
+                    : { ...request, signal: AbortSignal.any([signal, modelAbort.signal]) }
+            let timer: ReturnType<typeof setTimeout> | undefined
+            const timedOut =
+                firstEventTimeoutMs === undefined
+                    ? null
+                    : new Promise<typeof FIRST_EVENT_TIMED_OUT>((resolve) => {
+                          timer = setTimeout(
+                              () => resolve(FIRST_EVENT_TIMED_OUT),
+                              firstEventTimeoutMs
+                          )
+                      })
+            const iterator = model.stream(modelRequest)[Symbol.asyncIterator]()
+            let finished = false
+            let hung = false
 
             try {
-                // oxlint-disable-next-line no-await-in-loop -- events must be consumed in order
-                for await (const event of model.stream(request)) {
+                for (;;) {
+                    const pending = iterator.next()
+                    const step =
+                        timedOut === null || committed
+                            ? // oxlint-disable-next-line no-await-in-loop -- events must be consumed in order
+                              await pending
+                            : // oxlint-disable-next-line no-await-in-loop -- events must be consumed in order
+                              await Promise.race([pending, timedOut])
+                    if (step === FIRST_EVENT_TIMED_OUT) {
+                        modelAbort.abort()
+                        void pending.catch(noop)
+                        hung = true
+                        failure = 'unavailable'
+                        break
+                    }
+                    if (step.done) {
+                        finished = true
+                        break
+                    }
+                    const event = step.value
                     if (signal.aborted) return
+                    clearTimeout(timer)
                     // The wrapper alone announces the model: drop any provider-emitted event.
                     if (event.type === 'model') continue
                     if (committed) {
@@ -68,6 +112,13 @@ export const createFallbackCoachModel = (
                 // After text the reply is committed: let the caller see the failure unchanged.
                 if (committed) throw error
                 failure = 'unavailable'
+            } finally {
+                clearTimeout(timer)
+                if (!finished) {
+                    if (hung) void iterator.return?.().catch(noop)
+                    // oxlint-disable-next-line no-await-in-loop -- the model must release its resources first
+                    else await iterator.return?.()
+                }
             }
 
             // An aborted request records no failure and never calls onFallback.
