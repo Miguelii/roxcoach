@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InstallPrompt } from '@/modules/pwa/install-prompt'
 import {
     INSTALL_PROMPT_DISMISS_TTL_MS,
     INSTALL_PROMPT_DISMISSED_KEY,
 } from '@/modules/pwa/constants'
+
+// The sheet loads lazily, which can take longer than the default 1 s on a busy worker.
+configure({ asyncUtilTimeout: 5000 })
 
 const mocks = vi.hoisted(() => ({ isMobile: true }))
 

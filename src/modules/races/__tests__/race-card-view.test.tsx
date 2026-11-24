@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RaceCardView } from '@/modules/races/race-card-view'
 import {
     CANCELLED_RACE,
@@ -15,6 +15,7 @@ const setup = (race: RaceDTO) => {
         onEdit: vi.fn(),
         onComplete: vi.fn(),
         onCancel: vi.fn().mockResolvedValue(null),
+        onRestore: vi.fn().mockResolvedValue(null),
         onDelete: vi.fn().mockResolvedValue(null),
     }
     render(<RaceCardView race={race} today={TODAY} {...handlers} />)
@@ -171,5 +172,16 @@ describe('RaceCardView', () => {
         expect(screen.queryByTestId('race-days-r-cancelled')).not.toBeInTheDocument()
         expect(screen.queryByTestId('race-edit-r-cancelled')).not.toBeInTheDocument()
         expect(screen.getByTestId('race-delete-r-cancelled')).toBeInTheDocument()
+    })
+
+    it('offers Restore for a cancelled race that has not passed, not for a past one', () => {
+        setup(CANCELLED_RACE)
+        expect(screen.queryByTestId('race-restore-r-cancelled')).not.toBeInTheDocument()
+        cleanup()
+
+        const future = { ...CANCELLED_RACE, raceDate: TODAY }
+        const handlers = setup(future)
+        fireEvent.click(screen.getByTestId('race-restore-r-cancelled'))
+        expect(handlers.onRestore).toHaveBeenCalledWith(future)
     })
 })

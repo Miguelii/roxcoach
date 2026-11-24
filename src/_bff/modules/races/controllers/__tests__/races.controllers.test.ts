@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     createRace: vi.fn(),
     updateRace: vi.fn(),
     cancelRace: vi.fn(),
+    restoreRace: vi.fn(),
     completeRace: vi.fn(),
     deleteRace: vi.fn(),
     getSession: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('@/_bff/modules/races/services/create-race.service', () => ({
 vi.mock('@/_bff/modules/races/services/update-race.service', () => ({
     updateRace: mocks.updateRace,
     cancelRace: mocks.cancelRace,
+    restoreRace: mocks.restoreRace,
 }))
 vi.mock('@/_bff/modules/races/services/complete-race.service', () => ({
     completeRace: mocks.completeRace,
@@ -113,6 +115,14 @@ describe('races controllers', () => {
         expect(mocks.completeRace).toHaveBeenCalledWith(USER, ID, 4100)
         expect(mocks.cancelRace).toHaveBeenCalledWith(USER, ID)
         expect(mocks.deleteRace).toHaveBeenCalledWith(USER, ID)
+    })
+
+    it('restore calls its service with the id', async () => {
+        mocks.restoreRace.mockReturnValue(Effect.succeed(RACE))
+
+        await caller.races.restore({ id: ID })
+
+        expect(mocks.restoreRace).toHaveBeenCalledWith(USER, ID)
     })
 
     it('rejects invalid ids and shapes with BAD_REQUEST before any service runs', async () => {

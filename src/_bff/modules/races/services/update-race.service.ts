@@ -68,3 +68,27 @@ export const cancelRace = Effect.fn('cancelRace')(function* (user: User, id: str
         })
     return yield* notFound()
 })
+
+// "Restore race": a cancelled race whose date has not passed goes back to upcoming. Today still
+// counts as not passed, in the athlete's timezone.
+export const restoreRace = Effect.fn('restoreRace')(function* (user: User, id: string) {
+    const supabase = yield* createRacesClient()
+    const existing = yield* selectRaceById(supabase, user.id, id)
+    if (existing === null) return yield* notFound()
+    if (existing.status !== 'cancelled')
+        return yield* new RaceStateError({
+            cause: 'Only a cancelled race can be restored',
+            error_hash: ErrorCode.RACES_STATE_NOT_CANCELLED,
+        })
+
+    const timezone = yield* getAthleteTimezone(user)
+    if (existing.raceDate < todayIn(timezone))
+        return yield* new RaceStateError({
+            cause: 'A race whose date has passed cannot be restored',
+            error_hash: ErrorCode.RACES_STATE_PAST,
+        })
+
+    const updated = yield* setRaceStatus(supabase, user.id, id, 'upcoming')
+    if (updated === null) return yield* notFound()
+    return updated
+})

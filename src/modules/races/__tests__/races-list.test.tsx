@@ -18,6 +18,7 @@ const setup = (races: RaceDTO[]) => {
         onUpdate: vi.fn().mockResolvedValue(null),
         onComplete: vi.fn().mockResolvedValue(null),
         onCancel: vi.fn().mockResolvedValue(null),
+        onRestore: vi.fn().mockResolvedValue(null),
         onDelete: vi.fn().mockResolvedValue(null),
     }
     render(<RacesList races={races} today={TODAY} defaultDivision="open_men" {...handlers} />)

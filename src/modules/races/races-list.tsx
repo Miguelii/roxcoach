@@ -18,6 +18,7 @@ type Props = {
     onUpdate: (id: string, input: RaceInput) => Promise<void>
     onComplete: (id: string, resultTimeS: number) => Promise<void>
     onCancel: (id: string) => Promise<void>
+    onRestore: (id: string) => Promise<void>
     onDelete: (id: string) => Promise<void>
 }
 
@@ -35,6 +36,7 @@ export function RacesList({
     onUpdate,
     onComplete,
     onCancel,
+    onRestore,
     onDelete,
 }: Props) {
     const [pendingId, setPendingId] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export function RacesList({
         if (next.kind === 'create' || next.kind === 'edit')
             setFormInstance((current) => current + 1)
     }
-    // Disables the card's actions while its cancel or delete runs.
+    // Disables the card's actions while its cancel, restore or delete runs.
     const withPending = async (id: string, action: (id: string) => Promise<void>) => {
         setPendingId(id)
         try {
@@ -75,6 +77,7 @@ export function RacesList({
             onEdit={(item) => open({ kind: 'edit', race: item })}
             onComplete={(item) => open({ kind: 'complete', race: item })}
             onCancel={(item) => withPending(item.id, onCancel)}
+            onRestore={(item) => withPending(item.id, onRestore)}
             onDelete={(item) => withPending(item.id, onDelete)}
         />
     )

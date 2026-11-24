@@ -31,6 +31,7 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
     const update = useMutation(trpc.races.update.mutationOptions())
     const complete = useMutation(trpc.races.complete.mutationOptions())
     const cancel = useMutation(trpc.races.cancel.mutationOptions())
+    const restore = useMutation(trpc.races.restore.mutationOptions())
     const remove = useMutation(trpc.races.delete.mutationOptions())
 
     // Runs `action` with fixed copy, refreshing server data and invalidating client queries.
@@ -81,6 +82,15 @@ export function RacesManager({ races, today, defaultDivision }: Props) {
                         () => cancel.mutateAsync({ id }),
                         'Race cancelled',
                         'Could not cancel the race. Try again.'
+                    )
+                )
+            }
+            onRestore={(id) =>
+                quiet(
+                    run(
+                        () => restore.mutateAsync({ id }),
+                        'Race restored',
+                        'Could not restore the race. Try again.'
                     )
                 )
             }

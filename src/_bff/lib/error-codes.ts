@@ -148,6 +148,8 @@ export enum ErrorCode {
     RACES_NOT_FOUND = 'x4q7k1ev',
     RACES_STATE_CANCELLED = 'y9r3l5fw',
     RACES_STATE_COMPLETED = 'z2s6m8gx',
+    RACES_STATE_NOT_CANCELLED = 'b6u2p5jz',
+    RACES_STATE_PAST = 'c3v8q1kw',
     RACES_SB_CLIENT = 'a5t1n4hy',
 
     COACH_SB_CLIENT = 'cs4b9k2x',

@@ -4,7 +4,11 @@ import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeAdminDb, ok, type Call, type Json } from '@/_bff/lib/fake-admin-db'
-import { cancelRace, updateRace } from '@/_bff/modules/races/services/update-race.service'
+import {
+    cancelRace,
+    restoreRace,
+    updateRace,
+} from '@/_bff/modules/races/services/update-race.service'
 import { completeRace } from '@/_bff/modules/races/services/complete-race.service'
 import { createRace } from '@/_bff/modules/races/services/create-race.service'
 import { deleteRace } from '@/_bff/modules/races/services/delete-race.service'
@@ -168,6 +172,38 @@ describe('races services', () => {
 
         setup({ race: null })
         expect(failureTag(await Effect.runPromiseExit(cancelRace(USER, ID)))).toBe(
+            'RaceNotFoundError'
+        )
+    })
+
+    it('restoreRace brings a cancelled race back to upcoming while its date has not passed', async () => {
+        vi.setSystemTime(new Date('2026-12-20T12:00:00Z'))
+        const today = setup({ race: row({ status: 'cancelled', race_date: '2026-12-20' }) })
+        await Effect.runPromise(restoreRace(USER, ID))
+        expect(writes(today.calls)[0]?.payload).toEqual({ status: 'upcoming' })
+
+        const past = setup({ race: row({ status: 'cancelled', race_date: '2026-12-19' }) })
+        expect(failureTag(await Effect.runPromiseExit(restoreRace(USER, ID)))).toBe(
+            'RaceStateError'
+        )
+        expect(writes(past.calls)).toHaveLength(0)
+    })
+
+    it('restoreRace refuses a race that is not cancelled and reports a missing one', async () => {
+        vi.setSystemTime(new Date('2026-11-20T12:00:00Z'))
+        const upcoming = setup({ race: row({ status: 'upcoming' }) })
+        expect(failureTag(await Effect.runPromiseExit(restoreRace(USER, ID)))).toBe(
+            'RaceStateError'
+        )
+        expect(writes(upcoming.calls)).toHaveLength(0)
+
+        setup({ race: row({ status: 'completed', result_time_s: 4000 }) })
+        expect(failureTag(await Effect.runPromiseExit(restoreRace(USER, ID)))).toBe(
+            'RaceStateError'
+        )
+
+        setup({ race: null })
+        expect(failureTag(await Effect.runPromiseExit(restoreRace(USER, ID)))).toBe(
             'RaceNotFoundError'
         )
     })

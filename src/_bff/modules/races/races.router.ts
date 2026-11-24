@@ -6,6 +6,7 @@ import { CREATE_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controlle
 import { UPDATE_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controllers/update-race.controller'
 import { COMPLETE_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controllers/complete-race.controller'
 import { CANCEL_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controllers/cancel-race.controller'
+import { RESTORE_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controllers/restore-race.controller'
 import { DELETE_RACE_PROTECTED_CONTROLLER } from '@/_bff/modules/races/controllers/delete-race.controller'
 
 export const RACES_ROUTER = router({
@@ -14,5 +15,6 @@ export const RACES_ROUTER = router({
     update: UPDATE_RACE_PROTECTED_CONTROLLER,
     complete: COMPLETE_RACE_PROTECTED_CONTROLLER,
     cancel: CANCEL_RACE_PROTECTED_CONTROLLER,
+    restore: RESTORE_RACE_PROTECTED_CONTROLLER,
     delete: DELETE_RACE_PROTECTED_CONTROLLER,
 })

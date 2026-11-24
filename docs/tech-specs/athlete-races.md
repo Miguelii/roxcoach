@@ -118,6 +118,8 @@ State rules (enforced in the services, answered with a state error):
 - Complete: records `result_time_s` and sets the status to `completed`. A cancelled race cannot
   be completed.
 - Cancel: the row stays with status `cancelled`. A completed race cannot be cancelled.
+- Restore: a `cancelled` race goes back to `upcoming` while its date has not passed (today counts,
+  in the athlete's timezone). Any other status, or a past date, is a state error (`CONFLICT`).
 - Delete: a hard delete, only for a race without a result (status not `completed` and no
   `result_time_s`). Cancel it instead to keep it as history. Deleting a race detaches planned
   sessions that point at it (`race_id` set null) instead of deleting the sessions.
@@ -142,7 +144,7 @@ Behaviour in the UI:
   scrollable fields, then Cancel and submit actions in the footer. Footer actions stack at full
   width on mobile and sit side by side at equal widths on desktop. Dropdown and date controls remain
   interactive inside the modal drawer. Complete opens a result dialog;
-  Cancel and Delete (Delete only without a result) open contextual confirmation dialogs. Delete
+  Cancel and Delete (Delete only without a result) open contextual confirmation dialogs. A cancelled race in the history whose date is today or later shows Restore, which acts at once, with no dialog. Delete
   explains that it is irreversible and that linked planned sessions remain without the race
   association (copy kept from the dialog; planned sessions no longer exist). A card's actions are disabled while its mutation runs.
 - Completing a race shows goal versus result.
@@ -178,20 +180,20 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                                                       |
 
 Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `update`,
-`complete`, `cancel`, `delete`):
+`complete`, `cancel`, `restore`, `delete`):
 
-| File                                                                                      | Purpose                                                                            |
-| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `controllers/list-races.controller.ts`                                                    | protected query, optional filter by status                                         |
-| `controllers/create-race.controller.ts`, `update-race.controller.ts`                      | protected mutations, input from `race-input.schema.ts`                             |
-| `controllers/complete-race.controller.ts`, `cancel-race.controller.ts`                    | protected mutations, the result time and the cancellation                          |
-| `controllers/delete-race.controller.ts`                                                   | protected mutation                                                                 |
-| `services/list-races.service.ts`                                                          | filter by status and dates; also the read entry point for other modules            |
-| `services/list-races-in-range.service.ts`                                                 | upcoming and completed races between two dates, used by the training calendar feed |
-| `services/create-race`, `update-race` (also `cancelRace`), `complete-race`, `delete-race` | business rules above                                                               |
-| `services/races-client.service.ts`                                                        | creates the session-bound Supabase client                                          |
-| `helpers/race-validation.helper.ts`                                                       | pure validation                                                                    |
-| `repositories/races.repository.ts`                                                        | data access, trims text and stores blank location and notes as NULL                |
+| File                                                                                                     | Purpose                                                                            |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `controllers/list-races.controller.ts`                                                                   | protected query, optional filter by status                                         |
+| `controllers/create-race.controller.ts`, `update-race.controller.ts`                                     | protected mutations, input from `race-input.schema.ts`                             |
+| `controllers/complete-race.controller.ts`, `cancel-race.controller.ts`, `restore-race.controller.ts`     | protected mutations, the result time, the cancellation and its undo                |
+| `controllers/delete-race.controller.ts`                                                                  | protected mutation                                                                 |
+| `services/list-races.service.ts`                                                                         | filter by status and dates; also the read entry point for other modules            |
+| `services/list-races-in-range.service.ts`                                                                | upcoming and completed races between two dates, used by the training calendar feed |
+| `services/create-race`, `update-race` (also `cancelRace`, `restoreRace`), `complete-race`, `delete-race` | business rules above                                                               |
+| `services/races-client.service.ts`                                                                       | creates the session-bound Supabase client                                          |
+| `helpers/race-validation.helper.ts`                                                                      | pure validation                                                                    |
+| `repositories/races.repository.ts`                                                                       | data access, trims text and stores blank location and notes as NULL                |
 
 The mutations do not call the coach.
 

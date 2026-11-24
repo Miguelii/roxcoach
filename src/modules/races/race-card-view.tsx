@@ -6,6 +6,7 @@ import {
     IconCheck,
     IconFlag,
     IconMapPin,
+    IconArrowBackUp,
     IconPencil,
     IconTrash,
     IconX,
@@ -34,6 +35,7 @@ type Props = {
     onEdit: (race: RaceDTO) => void
     onComplete: (race: RaceDTO) => void
     onCancel: (race: RaceDTO) => Promise<void> | void
+    onRestore: (race: RaceDTO) => Promise<void> | void
     onDelete: (race: RaceDTO) => Promise<void> | void
 }
 
@@ -62,12 +64,14 @@ export function RaceCardView({
     onEdit,
     onComplete,
     onCancel,
+    onRestore,
     onDelete,
 }: Props) {
     const [confirming, setConfirming] = useState<Confirming>(null)
     const [lastConfirmation, setLastConfirmation] = useState<Exclude<Confirming, null>>('cancel')
     const { id } = race
     const upcoming = race.status === 'upcoming'
+    const restorable = race.status === 'cancelled' && race.raceDate >= today
     const pace = upcoming ? formatPaceSeconds(racePaceSPerKm(race)) : null
     const delta = formatDelta(race.targetTimeS, race.resultTimeS)
 
@@ -225,6 +229,17 @@ export function RaceCardView({
                                 <IconX aria-hidden="true" /> Cancel
                             </Button>
                         </>
+                    ) : null}
+                    {restorable ? (
+                        <Button
+                            disabled={pending}
+                            variant="tone"
+                            className="max-md:h-11!"
+                            data-testid={`race-restore-${id}`}
+                            onClick={() => void onRestore(race)}
+                        >
+                            <IconArrowBackUp aria-hidden="true" /> Restore
+                        </Button>
                     ) : null}
                     {race.resultTimeS === null ? (
                         <Button
