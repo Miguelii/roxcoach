@@ -1,3 +1,4 @@
+-- The Clear activities button of Settings > Integrations does this for the signed-in athlete.
 -- Deletes every Lyfta-imported activity of ONE user and forgets the sync checkpoint, so the next
 -- "Sync workouts" imports them again. The Lyfta connection (the saved key) is kept.
 --

@@ -9,6 +9,7 @@ import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
 import type {
     ActivityDTO,
     ActivitySource,
+    ClearableSource,
     LyftaActivityRow,
     NewActivityRow,
     NewZeppActivityRow,
@@ -350,6 +351,50 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
             cause: 'delete removed no row',
             error_hash: ErrorCode.TRAINING_ACTIVITY_DELETE_ERR,
         })
+})
+
+export const countActivitiesBySource = Effect.fn('countActivitiesBySource')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    source: ClearableSource
+) {
+    const { count, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('source', source),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_SOURCE_ACTIVITIES_COUNT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_SOURCE_ACTIVITIES_COUNT_ERR)
+    return count ?? 0
+})
+
+// Removes every activity the athlete imported from one source (strength sets, laps and the like go
+// with them, on delete cascade). Zero rows is a normal answer: there was nothing to clear.
+export const deleteActivitiesBySource = Effect.fn('deleteActivitiesBySource')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    source: ClearableSource
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase.from(TABLE).delete().eq('user_id', userId).eq('source', source).select('id'),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE,
+            }),
+    })
+
+    if (error) return yield* writeError(error, ErrorCode.TRAINING_SOURCE_ACTIVITIES_DELETE_ERR)
+    return data?.length ?? 0
 })
 
 const runRowSchema = z.object({

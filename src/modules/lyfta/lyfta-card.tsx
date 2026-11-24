@@ -1,6 +1,9 @@
 'use client'
 
 import { Loader2Icon } from 'lucide-react'
+import { ClearActivitiesDialog } from '@/components/clear-activities-dialog'
+import { IntegrationDangerZone } from '@/components/integration-danger-zone'
+import { IntegrationStatusPill } from '@/components/integration-status-pill'
 import { Button } from '@/components/ui/button'
 import {
     Form,
@@ -39,14 +42,21 @@ export function LyftaCard() {
     }
 
     const connected = lyfta.query.data.connected
-    const busy = lyfta.isConnecting || lyfta.isSyncing || lyfta.isDisconnecting
+    const busy =
+        lyfta.isConnecting ||
+        lyfta.isSyncing ||
+        lyfta.isDisconnecting ||
+        lyfta.clearActivities.clearing
 
     return (
         <section aria-labelledby="lyfta-heading" className="grid max-w-xl gap-5">
             <div className="grid gap-2">
-                <h2 id="lyfta-heading" className="text-lg font-semibold">
-                    Lyfta
-                </h2>
+                <div className="flex flex-wrap items-center gap-3">
+                    <h2 id="lyfta-heading" className="text-lg font-semibold">
+                        Lyfta
+                    </h2>
+                    <IntegrationStatusPill connected={connected} testId="lyfta-status-pill" />
+                </div>
                 <p className="max-w-prose text-sm text-muted-foreground">
                     Import completed gym workouts and sets from your Lyfta account. The first sync
                     imports the last 360 days. Sync starts only when you choose it.
@@ -65,6 +75,15 @@ export function LyftaCard() {
                                 ? `Last synced ${lyfta.formatTimestamp(lyfta.query.data.lastSyncedAt)}`
                                 : 'Workouts have not been synced yet.'}
                         </p>
+                        {lyfta.activityCount === undefined ? null : (
+                            <p
+                                data-testid="lyfta-imported-count"
+                                className="text-sm text-muted-foreground"
+                            >
+                                {lyfta.activityCount}{' '}
+                                {lyfta.activityCount === 1 ? 'workout' : 'workouts'} imported
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -83,34 +102,38 @@ export function LyftaCard() {
                             Sync workouts
                         </Button>
                         {lyfta.showKeyForm ? null : (
-                            <>
-                                <Button
-                                    className="w-full md:max-w-37.5"
-                                    variant="outline"
-                                    data-testid="lyfta-replace-key"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        lyfta.clearError()
-                                        lyfta.setShowKeyForm(true)
-                                    }}
-                                >
-                                    Replace API key
-                                </Button>
-                                <Button
-                                    className="w-full md:max-w-37.5"
-                                    variant="destructive"
-                                    data-testid="lyfta-disconnect"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        lyfta.clearError()
-                                        lyfta.setConfirmDisconnect(true)
-                                    }}
-                                >
-                                    Disconnect
-                                </Button>
-                            </>
+                            <Button
+                                className="w-full md:max-w-37.5"
+                                variant="outline"
+                                data-testid="lyfta-replace-key"
+                                disabled={busy}
+                                onClick={() => {
+                                    lyfta.clearError()
+                                    lyfta.setShowKeyForm(true)
+                                }}
+                            >
+                                Replace API key
+                            </Button>
                         )}
                     </div>
+
+                    {lyfta.showKeyForm ? null : (
+                        <IntegrationDangerZone
+                            provider="Lyfta"
+                            items="workouts"
+                            count={lyfta.activityCount}
+                            disabled={busy}
+                            onClear={() => {
+                                lyfta.clearError()
+                                lyfta.clearActivities.setOpen(true)
+                            }}
+                            onDisconnect={() => {
+                                lyfta.clearError()
+                                lyfta.setConfirmDisconnect(true)
+                            }}
+                            testIdPrefix="lyfta"
+                        />
+                    )}
                 </div>
             ) : null}
 
@@ -208,6 +231,19 @@ export function LyftaCard() {
                     {lyfta.errorMessage}
                 </p>
             ) : null}
+
+            <ClearActivitiesDialog
+                open={lyfta.clearActivities.open}
+                onOpenChange={lyfta.clearActivities.setOpen}
+                onConfirm={() => void lyfta.clearActivities.clear()}
+                clearing={lyfta.clearActivities.clearing}
+                error={lyfta.clearActivities.error}
+                provider="Lyfta"
+                items="workouts"
+                extra="sets"
+                count={lyfta.activityCount ?? 0}
+                testIdPrefix="lyfta"
+            />
 
             <LyftaDisconnectDialog
                 open={lyfta.confirmDisconnect}

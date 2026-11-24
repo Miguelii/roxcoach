@@ -229,6 +229,56 @@ export const finishZeppSync = Effect.fn('finishZeppSync')(function* (
     if (error) return yield* syncStateWriteError(`${error.code}: ${error.message}`)
 })
 
+// Forgets the sync checkpoint, so the next sync looks at the whole window again.
+export const resetZeppCheckpoint = Effect.fn('resetZeppCheckpoint')(function* (
+    supabase: AdminClient,
+    userId: string
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        catch: (cause) =>
+            new ZeppConnectionWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.ZEPP_CONNECTION_WRITE,
+            }),
+    })
+
+    if (error)
+        return yield* new ZeppConnectionWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.ZEPP_CONNECTION_WRITE,
+        })
+})
+
+// Hands the lease a clear took back to the sync: only a lease still carrying `startedAtIso` is
+// released, so a stale one another sync has since taken is never touched.
+export const releaseZeppClearLease = Effect.fn('releaseZeppClearLease')(function* (
+    supabase: AdminClient,
+    userId: string,
+    startedAtIso: string
+) {
+    const { error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(TABLE)
+                .update({ sync_status: 'idle', sync_started_at: null })
+                .eq('user_id', userId)
+                .eq('sync_started_at', startedAtIso)
+                .eq('sync_status', 'running'),
+        catch: (cause) =>
+            new ZeppConnectionWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.ZEPP_SYNC_LEASE,
+            }),
+    })
+
+    if (error)
+        return yield* new ZeppConnectionWriteError({
+            cause: `${error.code}: ${error.message}`,
+            error_hash: ErrorCode.ZEPP_SYNC_LEASE,
+        })
+})
+
 export const deleteZeppConnection = Effect.fn('deleteZeppConnection')(function* (
     supabase: AdminClient,
     userId: string

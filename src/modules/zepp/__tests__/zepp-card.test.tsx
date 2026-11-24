@@ -62,6 +62,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                         mocks.statusOptions.push(options)
                         return mocks.statusQuery
                     },
+                    'zepp.getActivityCount': () => ({ data: { count: 38 }, isError: false }),
                 },
                 options
             ),
@@ -71,6 +72,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                     'zepp.connect': () => mocks.connect,
                     'zepp.syncActivities': () => mocks.sync,
                     'zepp.disconnect': () => mocks.disconnect,
+                    'zepp.clearActivities': () => mocks.disconnect,
                 },
                 options
             ),
@@ -79,6 +81,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 routeTrpc(
                     {
                         'zepp.getConnectionStatus': mocks.invalidateStatus,
+                        'zepp.getActivityCount': mocks.invalidateStatus,
                         'training.getCalendar': mocks.invalidateCalendar,
                         'training.getRunProgress': mocks.invalidateRunProgress,
                     },

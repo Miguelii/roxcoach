@@ -11,6 +11,7 @@ import { useTRPC } from '@/lib/trpc'
 import { formatDateTime } from '@/lib/formatters'
 import { pollWhileSyncing } from '@/lib/sync-state'
 import { messageForLyftaError } from '@/modules/lyfta/lyfta-ui.utils'
+import { useClearLyftaActivities } from '@/modules/lyfta/use-clear-lyfta-activities'
 import { useLyftaSync } from '@/modules/lyfta/use-lyfta-sync'
 
 export type LyftaFormValues = z.infer<typeof lyftaFormSchema>
@@ -29,6 +30,8 @@ export function useLyftaConnection() {
             refetchInterval: (current) => pollWhileSyncing(current.state.data),
         })
     )
+    const countQuery = useQuery(trpc.lyfta.getActivityCount.queryOptions())
+    const clearActivities = useClearLyftaActivities()
     const queryClient = useQueryClient()
     const connectMutation = useMutation(trpc.lyfta.connect.mutationOptions({ gcTime: 0 }))
     const disconnectMutation = useMutation(trpc.lyfta.disconnect.mutationOptions())
@@ -110,6 +113,8 @@ export function useLyftaConnection() {
         isConnecting: form.formState.isSubmitting || connectMutation.isPending,
         isSyncing: lyftaSync.isSyncing,
         isDisconnecting: disconnectMutation.isPending,
+        activityCount: countQuery.data?.count,
+        clearActivities,
         submitApiKey,
         syncWorkouts,
         disconnect,
