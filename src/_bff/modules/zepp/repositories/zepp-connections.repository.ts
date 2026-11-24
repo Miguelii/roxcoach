@@ -235,7 +235,11 @@ export const resetZeppCheckpoint = Effect.fn('resetZeppCheckpoint')(function* (
     userId: string
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        try: () =>
+            supabase
+                .from(DbTables.ZEPP_CONNECTIONS)
+                .update({ last_synced_at: null })
+                .eq('user_id', userId),
         catch: (cause) =>
             new ZeppConnectionWriteError({
                 cause: String(cause),
@@ -260,7 +264,7 @@ export const releaseZeppClearLease = Effect.fn('releaseZeppClearLease')(function
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({ sync_status: 'idle', sync_started_at: null })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)

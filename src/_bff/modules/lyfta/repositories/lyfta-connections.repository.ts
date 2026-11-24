@@ -257,7 +257,11 @@ export const resetLyftaCheckpoint = Effect.fn('resetLyftaCheckpoint')(function* 
     userId: string
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        try: () =>
+            supabase
+                .from(DbTables.LYFTA_CONNECTIONS)
+                .update({ last_synced_at: null })
+                .eq('user_id', userId),
         catch: (cause) =>
             new LyftaConnectionWriteError({
                 cause: String(cause),
@@ -282,7 +286,7 @@ export const releaseLyftaClearLease = Effect.fn('releaseLyftaClearLease')(functi
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.LYFTA_CONNECTIONS)
                 .update({ sync_status: 'idle', sync_started_at: null })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)

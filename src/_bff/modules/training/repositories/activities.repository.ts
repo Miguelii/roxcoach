@@ -361,7 +361,7 @@ export const countActivitiesBySource = Effect.fn('countActivitiesBySource')(func
     const { count, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('source', source),
@@ -385,7 +385,12 @@ export const deleteActivitiesBySource = Effect.fn('deleteActivitiesBySource')(fu
 ) {
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).delete().eq('user_id', userId).eq('source', source).select('id'),
+            supabase
+                .from(DbTables.ACTIVITIES)
+                .delete()
+                .eq('user_id', userId)
+                .eq('source', source)
+                .select('id'),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     clearSourceActivities,
     countSourceActivities,
