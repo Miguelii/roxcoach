@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { TRPCError } from '@trpc/server'
-import { protectedProcedure, router } from '@/_bff/trpc/server'
+import { adminProcedure, protectedProcedure, router } from '@/_bff/trpc/server'
 import { GetUserError } from '@/_bff/lib/errors'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 
@@ -14,6 +14,7 @@ vi.mock('@/_bff/modules/auth/services/get-session.service', () => ({
 
 const testRouter = router({
     whoami: protectedProcedure.query(({ ctx }) => ctx.user.id),
+    adminWhoami: adminProcedure.query(({ ctx }) => ctx.user.id),
 })
 
 const caller = testRouter.createCaller({})
@@ -83,5 +84,44 @@ describe('protectedProcedure', () => {
         const error = await caught(caller.whoami())
 
         expect(error.code).toBe('INTERNAL_SERVER_ERROR')
+    })
+})
+
+describe('adminProcedure', () => {
+    beforeEach(() => {
+        getSessionMock.mockReset()
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    it('fails UNAUTHORIZED when there is no session user', async () => {
+        getSessionMock.mockReturnValue(Effect.succeed(null))
+
+        const error = await caught(caller.adminWhoami())
+
+        expect(error.code).toBe('UNAUTHORIZED')
+    })
+
+    it.each([
+        ['without the admin flag', { roxcoach: true }],
+        ['with a non-boolean admin flag', { roxcoach: true, roxcoach_admin: 'true' }],
+        ['with the admin flag but without access', { roxcoach_admin: true }],
+    ])('fails FORBIDDEN %s', async (_label, appMetadata) => {
+        getSessionMock.mockReturnValue(Effect.succeed({ id: 'user-1', app_metadata: appMetadata }))
+
+        const error = await caught(caller.adminWhoami())
+
+        expect(error.code).toBe('FORBIDDEN')
+    })
+
+    it('reaches the resolver with ctx.user for an admin', async () => {
+        getSessionMock.mockReturnValue(
+            Effect.succeed({ id: 'user-1', app_metadata: { roxcoach: true, roxcoach_admin: true } })
+        )
+
+        await expect(caller.adminWhoami()).resolves.toBe('user-1')
     })
 })

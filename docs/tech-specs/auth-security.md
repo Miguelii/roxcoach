@@ -37,6 +37,24 @@ Being signed in is not enough. Every entry point checks the flag:
 | `protectedProcedure` | `getSession()` returns the user, the middleware also requires `user.app_metadata.roxcoach === true`, otherwise `FORBIDDEN`           |
 | Database             | `roxcoach.has_access()` in every RLS policy (see [database.md](database.md))                                                         |
 
+### Admin flag
+
+Some pages are for admins only (today `/logs`, see [logs.md](logs.md)). An admin is a user with
+access whose `app_metadata.roxcoach_admin === true` (strict boolean), checked by
+`isRoxcoachAdmin` in `src/_bff/core/helpers/access.helper.ts` (it also requires the access flag).
+Like the access flag, only the service role can write it, so a user cannot make themselves an
+admin, and `user_metadata` is never read. It is granted with `db/seed/grant-admin.sql` (steps in
+`db/README.md`), never by the app.
+
+| Layer            | Check                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Proxy            | a path under `ADMIN_PATHS` needs the flag in the JWT claims: signed out goes to `/login`, access without it to `/dashboard` |
+| `adminProcedure` | `protectedProcedure` plus the flag on the live user (`getUser()`), otherwise `FORBIDDEN`                                    |
+| App shell        | the Logs sidebar link renders only when `getCachedClaims().isAdmin` (UI only, never an authorization decision)              |
+
+Granting and revoking behave like the access flag: the proxy and the sidebar follow the JWT (a new
+sign-in to grant, up to about 1 hour to revoke), `adminProcedure` refuses a revoked admin at once.
+
 The proxy and `roxcoach.has_access()` (RLS) both read the flag from the JWT claims, so revoking
 `app_metadata.roxcoach` only takes effect in them when the access token is reissued (it expires
 after about 1 hour by default). Only `protectedProcedure` is immediate: `getSession()` calls
@@ -90,6 +108,8 @@ Redirect rules in `sbProxy`:
 | ------------------------------------------------------ | ----------------------------------- |
 | No claims and path starts with a protected path        | redirect to `/login`                |
 | Claims without the flag on a protected path            | redirect to `/login`                |
+| No claims or no flag on an admin path                  | redirect to `/login`                |
+| Claims with the flag, no admin flag, on an admin path  | redirect to `/dashboard`            |
 | Claims with the flag and path is `/login` or `/signup` | redirect to `/dashboard`            |
 | Anything else                                          | pass through with refreshed cookies |
 
@@ -102,7 +122,8 @@ those headers, so a response that sets a session cookie is never cacheable.
 Constants in `src/_bff/core/constants/auth.constants.ts` (importable from client code):
 `AUTH_PAGE_PATH = '/login'`, `SIGNUP_PAGE_PATH = '/signup'`,
 `PUBLIC_AUTH_PATHS = [AUTH_PAGE_PATH, SIGNUP_PAGE_PATH]`, `DEFAULT_POST_AUTH_PATH = '/dashboard'`,
-`PROTECTED_PATHS = ['/dashboard', '/calendar', '/activities', '/races', '/settings']`.
+`PROTECTED_PATHS = ['/dashboard', '/calendar', '/activities', '/races', '/settings']`,
+`ADMIN_PATHS = ['/logs']` (protected too, and also need the admin flag).
 
 The proxy matcher excludes `_next`, `api/` (route handlers there authenticate themselves),
 static assets (`public/assets/`, the PWA icons), the favicon, `robots.txt` and `sitemap.xml`, so

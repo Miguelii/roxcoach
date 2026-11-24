@@ -22,6 +22,8 @@ in the app, in the Soft Studio design, lets the athlete search and read them.
 
 - No admin gating of `/logs` for now: any user with Roxcoach access sees all Roxcoach logs. Gating
   (an `app_metadata` admin flag) is a later change, and the page must be easy to put behind it.
+  Done on 2026-11-24: `/logs` and `logs.getAll` are admin only (`app_metadata.roxcoach_admin`), see
+  [logs.md](logs.md) and [auth-security.md](auth-security.md#admin-flag).
 - No client-side (browser) error reporting, no alerts or notifications, no retention change (the
   wallet's daily `purge_old_logs` job already deletes rows older than 30 days, ours included).
 - No change to the wallet repository in this change. Its `sql/logs.sql` needs the same column as a

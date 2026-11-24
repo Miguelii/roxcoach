@@ -31,6 +31,7 @@ type NavItem = {
 
 type Props = {
     children: React.ReactNode
+    isAdmin: boolean
 }
 
 type AccountMenuProps = {
@@ -47,10 +48,12 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
 
 const MOBILE_NAV_ITEMS = PRIMARY_NAV_ITEMS
 
-const DESKTOP_NAV_ITEMS: NavItem[] = [
-    ...PRIMARY_NAV_ITEMS,
-    { href: '/logs', label: 'Logs', Icon: IconListDetails, testId: 'nav-logs' },
-]
+const LOGS_NAV_ITEM: NavItem = {
+    href: '/logs',
+    label: 'Logs',
+    Icon: IconListDetails,
+    testId: 'nav-logs',
+}
 
 // The phone top bar has a direct Log out icon button; the desktop sidebar has a labelled one.
 function MobileLogoutButton({ isPending, onLogout }: AccountMenuProps) {
@@ -68,7 +71,7 @@ function MobileLogoutButton({ isPending, onLogout }: AccountMenuProps) {
     )
 }
 
-export function AppShell({ children }: Props) {
+export function AppShell({ children, isAdmin }: Props) {
     const {
         setOpen: setCoachOpen,
         enabled: coachEnabled,
@@ -79,8 +82,9 @@ export function AppShell({ children }: Props) {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
     const logout = useMutation(trpc.auth.logout.mutationOptions())
+    const desktopNavItems = isAdmin ? [...PRIMARY_NAV_ITEMS, LOGS_NAV_ITEM] : PRIMARY_NAV_ITEMS
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
-    const activeIndex = DESKTOP_NAV_ITEMS.findIndex((item) => isActive(item.href))
+    const activeIndex = desktopNavItems.findIndex((item) => isActive(item.href))
 
     const onLogout = async () => {
         const request: Promise<{ status: 200 }> = logout.mutateAsync()
@@ -117,7 +121,7 @@ export function AppShell({ children }: Props) {
                             className="pointer-events-none absolute inset-x-0 top-0 h-11 rounded-[var(--radius-surface-inner)] bg-ink transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
                         />
                     ) : null}
-                    {DESKTOP_NAV_ITEMS.map(({ href, label, Icon, testId }) => (
+                    {desktopNavItems.map(({ href, label, Icon, testId }) => (
                         <Link
                             key={href}
                             data-testid={testId}

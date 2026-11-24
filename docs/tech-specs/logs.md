@@ -22,18 +22,21 @@ the `/logs` page. The decision and the reasoning are in
 
 ## API
 
-`logs.getAll` (protected query). Input `{ range: '30m' | '1h' | '24h' | '7d' | '30d', search?:
+`logs.getAll` (admin query: `adminProcedure`, see [auth-security.md](auth-security.md#admin-flag)). Input `{ range: '30m' | '1h' | '24h' | '7d' | '30d', search?:
 string (trimmed, max 200) }`. Output `{ logs: LogEntry[], isTruncated: boolean }`: the 1000 most
 recent Roxcoach rows since the start of the range, newest first, filtered by `message` or `prefix`
 containing the search (wildcards escaped, value quoted). `isTruncated` is true when the limit was
-reached. Each row also carries `display_name`, read in one extra query from `athlete_profiles` for the distinct `user_id`s of the page (null without a profile; a failed read leaves the names empty, never the logs). Not cached. Every signed-in athlete sees every Roxcoach row, including rows without a
-`user_id`. Errors: `LogsClientError` (`logs001`) and `LogsQueryError` (`logs002`), both
+reached. Each row also carries `display_name`, read in one extra query from `athlete_profiles` for the distinct `user_id`s of the page (null without a profile; a failed read leaves the names empty, never the logs). Not cached. An admin sees every Roxcoach row, including rows without a `user_id`; a signed-in
+athlete without the admin flag gets `FORBIDDEN`. Errors: `LogsClientError` (`logs001`) and `LogsQueryError` (`logs002`), both
 `INTERNAL_SERVER_ERROR`.
 
 ## Page
 
-`/logs` is a server page: it reads `range` and `search` from the URL (nuqs), calls `logs.getAll`
+`/logs` is admin only. The proxy sends a signed-out user to `/login` and a user with access but
+without the admin flag to `/dashboard` (`ADMIN_PATHS`); `logs.getAll` refuses them again with the
+live user. `/logs` is a server page: it reads `range` and `search` from the URL (nuqs), calls `logs.getAll`
 with the server caller and renders `LogsExplorer` with the rows, `isTruncated` and the fetch time
 (the end of the histogram window). Level and source filters and the selected row are client state
 over the fetched rows. Details and design: [ux-design.md](ux-design.md#logs). The link to `/logs` is
-a sidebar item on desktop only (no phone entry point yet).
+a sidebar item on desktop only, shown only to admins (the layout reads `isAdmin` from
+`getCachedClaims()`), with no phone entry point.

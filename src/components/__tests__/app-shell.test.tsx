@@ -45,7 +45,7 @@ vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 const clickLogout = async (queryClient: QueryClient) => {
     render(
         <QueryClientProvider client={queryClient}>
-            <AppShell>content</AppShell>
+            <AppShell isAdmin={false}>content</AppShell>
         </QueryClientProvider>
     )
     fireEvent.click(screen.getByTestId('logout-button'))
@@ -96,7 +96,7 @@ describe('AppShell navigation', () => {
     it('lists Dashboard, Calendar and Races in the sidebar and mobile navigation', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
-                <AppShell>content</AppShell>
+                <AppShell isAdmin={true}>content</AppShell>
             </QueryClientProvider>
         )
         const desktopNav = screen.getByTestId('nav-desktop')
@@ -116,6 +116,17 @@ describe('AppShell navigation', () => {
         expect(mobileNav).toHaveTextContent('Settings')
     })
 
+    it('hides the Logs link from a user without the admin flag', () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AppShell isAdmin={false}>content</AppShell>
+            </QueryClientProvider>
+        )
+
+        expect(screen.queryByTestId('nav-logs')).toBeNull()
+        expect(screen.getByTestId('nav-desktop')).not.toHaveTextContent('Logs')
+    })
+
     it('toggles the desktop coach preference and stores it in a cookie', () => {
         const Probe = () => (
             <span data-testid="coach-enabled">{String(useCoachPanel().enabled)}</span>
@@ -123,7 +134,7 @@ describe('AppShell navigation', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
                 <CoachPanelProvider>
-                    <AppShell>content</AppShell>
+                    <AppShell isAdmin={false}>content</AppShell>
                     <Probe />
                 </CoachPanelProvider>
             </QueryClientProvider>
@@ -140,7 +151,7 @@ describe('AppShell navigation', () => {
     it('has a direct Log out button at the bottom of the sidebar, with no account dropdown', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
-                <AppShell>content</AppShell>
+                <AppShell isAdmin={false}>content</AppShell>
             </QueryClientProvider>
         )
 
@@ -151,7 +162,7 @@ describe('AppShell navigation', () => {
     it('has a Log out icon button in the phone top bar, with no account dropdown', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
-                <AppShell>content</AppShell>
+                <AppShell isAdmin={false}>content</AppShell>
             </QueryClientProvider>
         )
 
@@ -163,7 +174,7 @@ describe('AppShell navigation', () => {
         mocks.mutateAsync.mockResolvedValue({ status: 200 })
         render(
             <QueryClientProvider client={new QueryClient()}>
-                <AppShell>content</AppShell>
+                <AppShell isAdmin={false}>content</AppShell>
             </QueryClientProvider>
         )
 
@@ -175,7 +186,7 @@ describe('AppShell navigation', () => {
     it('has the dashboard mode switch at the bottom of the sidebar and saves a change', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
-                <AppShell>content</AppShell>
+                <AppShell isAdmin={false}>content</AppShell>
             </QueryClientProvider>
         )
 
@@ -189,7 +200,7 @@ describe('AppShell navigation', () => {
         render(
             <QueryClientProvider client={new QueryClient()}>
                 <CoachPanelProvider>
-                    <AppShell>content</AppShell>
+                    <AppShell isAdmin={false}>content</AppShell>
                     <Probe />
                 </CoachPanelProvider>
             </QueryClientProvider>

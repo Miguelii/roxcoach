@@ -3,13 +3,14 @@ import 'server-only'
 import { cache } from 'react'
 import { z } from 'zod'
 import { createDBServerClient } from '@/_bff/core/db'
-import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
+import { hasRoxcoachAccess, isRoxcoachAdmin } from '@/_bff/core/helpers/access.helper'
 
 export type SessionClaims = {
     userId: string
     email: string | null
     fullName: string | null
     hasAccess: boolean
+    isAdmin: boolean
 }
 
 // JWT claims are user-editable metadata: a missing or malformed field reads as null
@@ -45,6 +46,7 @@ export const getCachedClaims = cache(async (): Promise<SessionClaims | null> => 
             email: claims.data.email,
             fullName: claims.data.user_metadata.full_name,
             hasAccess: hasRoxcoachAccess({ app_metadata: claims.data.app_metadata }),
+            isAdmin: isRoxcoachAdmin({ app_metadata: claims.data.app_metadata }),
         }
     } catch {
         return null

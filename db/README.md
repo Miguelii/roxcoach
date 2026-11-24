@@ -181,6 +181,22 @@ Revoking access is the reverse: remove the key with
 RLS and the proxy stop honouring the old JWT only when it is reissued (it expires after about 1
 hour by default). `protectedProcedure` checks the live user and refuses at once.
 
+## Making a user an admin
+
+Admins see the Logs page (see `docs/tech-specs/auth-security.md`, "Admin flag"). Do this once per
+admin, after granting access:
+
+1. Open `db/seed/grant-admin.sql`, replace the `<EMAIL>` placeholders and run it in the SQL editor
+   as the default `postgres` role. It sets `app_metadata.roxcoach_admin = true` only for a user
+   that already has `app_metadata.roxcoach = true`. Running it twice is harmless.
+2. Run the check query at the end of the file: one row with `is_admin = true`. No row means the
+   email matched no user, `false` means the user has no Roxcoach access.
+3. The user signs out and signs in again so the flag reaches the JWT.
+
+Revoking is
+`update auth.users set raw_app_meta_data = raw_app_meta_data - 'roxcoach_admin' where email = '<EMAIL>';`.
+`logs.getAll` refuses at once; the proxy and the sidebar follow when the JWT is reissued.
+
 ## Confirming nothing landed in `public`
 
 Before the first migration (rollout checklist, "Before you start"), note what `public` contains:
@@ -219,3 +235,5 @@ Supabase provides (`auth.users`, `auth.uid()`, `auth.jwt()` and the `anon`, `aut
 - `tenant-isolation.test.ts`: users A and B (with the flag) and C (without) against every table
   found in the schema, so a table added without policies or fixtures fails the suite.
 - `seed.test.ts`: runs `db/seed/grant-access.sql` with its placeholders filled.
+- `grant-admin-seed.test.ts`: runs `db/seed/grant-admin.sql` for a user with access, one without
+  and an unknown email.

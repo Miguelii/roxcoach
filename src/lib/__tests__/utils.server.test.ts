@@ -44,6 +44,7 @@ const mockClient = (claims: Claims, refresh = false) => {
 const request = (path: string) => new NextRequest(new URL(path, 'https://roxcoach.test'))
 
 const flagged = { sub: 'user-1', app_metadata: { roxcoach: true } }
+const admin = { sub: 'user-1', app_metadata: { roxcoach: true, roxcoach_admin: true } }
 
 describe('sbProxy', () => {
     beforeEach(() => {
@@ -98,6 +99,32 @@ describe('sbProxy', () => {
         mockClient(flagged)
 
         const response = await sbProxy(request('/dashboard'))
+
+        expect(response.headers.get('location')).toBeNull()
+        expect(response.headers.get('x-middleware-next')).toBe('1')
+    })
+
+    it('redirects /logs to /login without claims', async () => {
+        mockClient(null)
+
+        const response = await sbProxy(request('/logs'))
+
+        expect(response.headers.get('location')).toBe('https://roxcoach.test/login')
+    })
+
+    it('redirects /logs to /dashboard with the flag but without the admin flag', async () => {
+        mockClient(flagged)
+
+        const response = await sbProxy(request('/logs?range=7d'))
+
+        expect(response.status).toBe(307)
+        expect(response.headers.get('location')).toBe('https://roxcoach.test/dashboard')
+    })
+
+    it('passes /logs through for an admin', async () => {
+        mockClient(admin)
+
+        const response = await sbProxy(request('/logs'))
 
         expect(response.headers.get('location')).toBeNull()
         expect(response.headers.get('x-middleware-next')).toBe('1')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
+import { hasRoxcoachAccess, isRoxcoachAdmin } from '@/_bff/core/helpers/access.helper'
 
 describe('hasRoxcoachAccess', () => {
     it('grants access only for the strict boolean flag', () => {
@@ -37,5 +37,29 @@ describe('hasRoxcoachAccess', () => {
         ['an object flag', { app_metadata: { roxcoach: {} } }],
     ])('denies access for %s', (_label, subject) => {
         expect(hasRoxcoachAccess(subject)).toBe(false)
+    })
+})
+
+describe('isRoxcoachAdmin', () => {
+    it('is true only with both strict boolean flags', () => {
+        expect(isRoxcoachAdmin({ app_metadata: { roxcoach: true, roxcoach_admin: true } })).toBe(
+            true
+        )
+    })
+
+    it.each([
+        ['null', null],
+        ['undefined', undefined],
+        ['access without the admin flag', { app_metadata: { roxcoach: true } }],
+        ['the admin flag without access', { app_metadata: { roxcoach_admin: true } }],
+        ['a false admin flag', { app_metadata: { roxcoach: true, roxcoach_admin: false } }],
+        ['a string admin flag', { app_metadata: { roxcoach: true, roxcoach_admin: 'true' } }],
+        ['a numeric admin flag', { app_metadata: { roxcoach: true, roxcoach_admin: 1 } }],
+        [
+            'a user_metadata admin flag',
+            { app_metadata: { roxcoach: true }, user_metadata: { roxcoach_admin: true } },
+        ],
+    ])('is false for %s', (_label, subject) => {
+        expect(isRoxcoachAdmin(subject)).toBe(false)
     })
 })
