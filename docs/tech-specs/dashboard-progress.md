@@ -238,6 +238,8 @@ All aggregation lives in pure helpers under `_bff/modules/training/helpers`, fed
 queries that always filter by `user_id`. Queries select only the columns they need and are bounded
 by the range.
 
+The run progress reads the profile first (its timezone gives the local day), then the runs and the upcoming races together. The runs query leaves out `pace_histogram`, which is large and only the race readiness of the last 28 days uses: a second query reads it for those runs only, in parallel, and the two are joined by activity id.
+
 Strength sets are read in chunks of 100 workouts, each paged (500 rows per page, ordered by `id`) until a short page: a chunk holds more rows than PostgREST's max rows, which would otherwise cut the response silently and skew volume and top sets.
 
 ## Frontend

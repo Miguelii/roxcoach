@@ -5,11 +5,12 @@ import { Effect } from 'effect'
 import { createDBServerClient } from '@/_bff/core/db'
 import { zoneBoundsBpm } from '@/_bff/core/constants/hr-zones.constants'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
+import { RACE_READINESS } from '@/_bff/core/constants/race-readiness.constants'
 import { todayIn } from '@/_bff/core/utils/date.utils'
+import { addDays } from '@/_bff/core/utils/week-dates.utils'
 import { rangeBounds } from '@/_bff/core/utils/progress-range.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { CreateSbClientError, type ProfileQueryError, type RaceQueryError } from '@/_bff/lib/errors'
-import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
 import { getProfile } from '@/_bff/modules/athlete/services/get-profile.service'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { listRaces } from '@/_bff/modules/races/services/list-races.service'
@@ -22,7 +23,6 @@ import type { TrainingClient } from '@/_bff/modules/training/types'
 
 type RunProgressDeps = {
     createClient: () => Effect.Effect<TrainingClient, CreateSbClientError>
-    getTimezone: (user: User) => Effect.Effect<string, ProfileQueryError | CreateSbClientError>
     getProfile: (user: User) => Effect.Effect<ProfileDTO, ProfileQueryError | CreateSbClientError>
     listRaces: (
         user: User,
@@ -38,7 +38,6 @@ const defaultDeps: RunProgressDeps = {
             catch: (cause) =>
                 new CreateSbClientError({ cause, error_hash: ErrorCode.TRAINING_SB_CLIENT }),
         }),
-    getTimezone: getAthleteTimezone,
     getProfile,
     listRaces,
     now: () => new Date(),
@@ -51,17 +50,22 @@ export const getRunProgress = Effect.fn('getRunProgress')(function* (
     deps: RunProgressDeps = defaultDeps
 ) {
     const supabase = yield* deps.createClient()
-    const timezone = yield* deps.getTimezone(user)
-    const today = todayIn(timezone, deps.now())
+    const profile = yield* deps.getProfile(user)
+    const today = todayIn(profile.timezone, deps.now())
     const { from } = rangeBounds(today, range)
 
-    const [runs, profile, races] = yield* Effect.all(
+    const [runs, races] = yield* Effect.all(
         [
-            selectRunsInRange(supabase, user.id, from, today),
-            deps.getProfile(user),
+            selectRunsInRange(
+                supabase,
+                user.id,
+                from,
+                today,
+                addDays(today, -(RACE_READINESS.WINDOW_DAYS - 1))
+            ),
             deps.listRaces(user, { status: ['upcoming'] }),
         ],
-        { concurrency: 3 }
+        { concurrency: 2 }
     )
 
     return buildRunProgress({

@@ -403,35 +403,37 @@ export const deleteActivitiesBySource = Effect.fn('deleteActivitiesBySource')(fu
 })
 
 const runRowSchema = z.object({
+    id: z.string(),
     local_date: z.string(),
     distance_m: numeric,
     moving_time_s: numeric,
     avg_hr: numeric,
     // Validated by parseHrHistogram: a corrupt value must not fail the whole request.
     hr_histogram: z.unknown(),
+})
+
+const paceRowSchema = z.object({
+    id: z.string(),
+    // Validated by parsePaceHistogram: a corrupt value must not fail the whole request.
     pace_histogram: z.unknown(),
 })
 
-// Runs bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
-export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
+const selectPaceHistograms = Effect.fn('selectPaceHistograms')(function* (
     supabase: TrainingClient,
     userId: string,
-    from: string,
+    paceFrom: string,
     to: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
                 .from(DbTables.ACTIVITIES)
-                .select(
-                    'local_date, distance_m, moving_time_s, avg_hr, hr_histogram, pace_histogram'
-                )
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'pace_histogram']))
                 .eq('user_id', userId)
                 .eq('category', 'run')
                 .is('deleted_at', null)
-                .gte('local_date', from)
-                .lte('local_date', to)
-                .order('started_at', { ascending: true }),
+                .gte('local_date', paceFrom)
+                .lte('local_date', to),
         catch: (cause) =>
             new ActivityQueryError({
                 cause: String(cause),
@@ -441,17 +443,76 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
 
     if (error) return yield* queryError(error, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_ERR)
 
-    const parsed = z.array(runRowSchema).safeParse(data)
+    const parsed = z.array(paceRowSchema).safeParse(data)
     if (!parsed.success)
         return yield* parseError(parsed.error.issues, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_PARSE)
 
-    return parsed.data.map((row) => ({
+    return new Map(parsed.data.map((row) => [row.id, parsePaceHistogram(row.pace_histogram)]))
+})
+
+// Runs bounded by `from` and `to` (plain YYYY-MM-DD), oldest first. The pace histogram is large and
+// only the last weeks use it, so it is read apart, for the runs from `paceFrom` on; older runs
+// carry a null pace histogram.
+export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    from: string,
+    to: string,
+    paceFrom: string
+) {
+    const [runs, paceById] = yield* Effect.all(
+        [
+            Effect.gen(function* () {
+                const { data, error } = yield* Effect.tryPromise({
+                    try: () =>
+                        supabase
+                            .from(DbTables.ACTIVITIES)
+                            .select(
+                                selectColumns(DbTables.ACTIVITIES, [
+                                    'id',
+                                    'local_date',
+                                    'distance_m',
+                                    'moving_time_s',
+                                    'avg_hr',
+                                    'hr_histogram',
+                                ])
+                            )
+                            .eq('user_id', userId)
+                            .eq('category', 'run')
+                            .is('deleted_at', null)
+                            .gte('local_date', from)
+                            .lte('local_date', to)
+                            .order('started_at', { ascending: true }),
+                    catch: (cause) =>
+                        new ActivityQueryError({
+                            cause: String(cause),
+                            error_hash: ErrorCode.TRAINING_RUN_PROGRESS_SELECT,
+                        }),
+                })
+
+                if (error)
+                    return yield* queryError(error, ErrorCode.TRAINING_RUN_PROGRESS_SELECT_ERR)
+
+                const parsed = z.array(runRowSchema).safeParse(data)
+                if (!parsed.success)
+                    return yield* parseError(
+                        parsed.error.issues,
+                        ErrorCode.TRAINING_RUN_PROGRESS_SELECT_PARSE
+                    )
+                return parsed.data
+            }),
+            selectPaceHistograms(supabase, userId, paceFrom, to),
+        ],
+        { concurrency: 2 }
+    )
+
+    return runs.map((row) => ({
         localDate: row.local_date,
         distanceM: row.distance_m,
         movingTimeS: row.moving_time_s,
         avgHr: row.avg_hr,
         hrHistogram: parseHrHistogram(row.hr_histogram),
-        paceHistogram: parsePaceHistogram(row.pace_histogram),
+        paceHistogram: paceById.get(row.id) ?? null,
     }))
 })
 

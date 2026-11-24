@@ -47,8 +47,11 @@ const runDeps = (
         filters,
         deps: {
             createClient: () => Effect.succeed(supabase),
-            getTimezone: () => Effect.succeed(overrides.timezone ?? 'Europe/Lisbon'),
-            getProfile: () => Effect.succeed(overrides.profile ?? PROFILE),
+            getProfile: () =>
+                Effect.succeed({
+                    ...(overrides.profile ?? PROFILE),
+                    timezone: overrides.timezone ?? overrides.profile?.timezone ?? 'Europe/Lisbon',
+                }),
             listRaces: (_user: User, filter: RaceFilter) => {
                 filters.push(filter)
                 return Effect.succeed(overrides.races ?? [])
@@ -63,14 +66,15 @@ describe('getRunProgress', () => {
         const { chains, supabase } = makeFakeDb([
             okRows([
                 {
+                    id: 'r1',
                     local_date: '2026-11-10',
                     distance_m: 10000,
                     moving_time_s: 3000,
                     avg_hr: 150,
                     hr_histogram: { v: 1, bins: [[150, 600, 2000]] },
-                    pace_histogram: { v: 1, bins: [[300, 600, 2000]] },
                 },
             ]),
+            okRows([{ id: 'r1', pace_histogram: { v: 1, bins: [[300, 600, 2000]] } }]),
         ])
         const { deps, filters } = runDeps(supabase, { races: [RACE], timezone: 'Pacific/Auckland' })
         const dto = await Effect.runPromise(getRunProgress(USER, '3m', deps))
@@ -79,6 +83,8 @@ describe('getRunProgress', () => {
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-22')
         expect(chains[0]?.gte).toHaveBeenCalledWith('local_date', expect.any(String))
         expect(chains[0]?.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        // The pace histograms are read apart, for the 28 days of the readiness window only.
+        expect(chains[1]?.gte).toHaveBeenCalledWith('local_date', '2026-10-26')
         expect(filters).toEqual([{ status: ['upcoming'] }])
         expect(dto.range).toBe('3m')
         expect(dto.zoneBounds).not.toBeNull()
@@ -90,14 +96,15 @@ describe('getRunProgress', () => {
         const { supabase } = makeFakeDb([
             okRows([
                 {
+                    id: 'r1',
                     local_date: '2026-11-10',
                     distance_m: 10000,
                     moving_time_s: 3000,
                     avg_hr: 150,
                     hr_histogram: null,
-                    pace_histogram: { v: 9, bins: 'nope' },
                 },
             ]),
+            okRows([{ id: 'r1', pace_histogram: { v: 9, bins: 'nope' } }]),
         ])
         const hyrox = { ...RACE, id: 'hyrox-1', raceType: 'hyrox' as const, distanceM: null }
         const { deps } = runDeps(supabase, { races: [hyrox] })

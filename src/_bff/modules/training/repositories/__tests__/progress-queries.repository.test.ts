@@ -16,21 +16,30 @@ const USER_ID = 'user-1'
 const okRows = (rows: unknown[]) => ok(rows as never)
 
 describe('selectRunsInRange', () => {
-    it('filters by user, category, deletion and bounds and parses the histogram', async () => {
+    it('filters by user, category, deletion and bounds and reads the recent pace histograms apart', async () => {
         const { chains, from, supabase } = makeFakeDb([
             okRows([
                 {
+                    id: 'r1',
                     local_date: '2026-11-10',
                     distance_m: '10000',
                     moving_time_s: 3000,
                     avg_hr: '152.5',
                     hr_histogram: { v: 1, bins: [[150, 10, 30]] },
-                    pace_histogram: { v: 1, bins: [[250, 10, 40]] },
+                },
+                {
+                    id: 'r0',
+                    local_date: '2026-09-01',
+                    distance_m: 5000,
+                    moving_time_s: 1500,
+                    avg_hr: null,
+                    hr_histogram: null,
                 },
             ]),
+            okRows([{ id: 'r1', pace_histogram: { v: 1, bins: [[250, 10, 40]] } }]),
         ])
         const rows = await Effect.runPromise(
-            selectRunsInRange(supabase, USER_ID, '2026-08-21', '2026-11-21')
+            selectRunsInRange(supabase, USER_ID, '2026-08-21', '2026-11-21', '2026-10-25')
         )
 
         expect(from).toHaveBeenCalledWith('activities')
@@ -40,6 +49,8 @@ describe('selectRunsInRange', () => {
         expect(chains[0]?.gte).toHaveBeenCalledWith('local_date', '2026-08-21')
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-21')
         expect(chains[0]?.order).toHaveBeenCalledWith('started_at', { ascending: true })
+        expect(chains[1]?.eq).toHaveBeenCalledWith('user_id', USER_ID)
+        expect(chains[1]?.gte).toHaveBeenCalledWith('local_date', '2026-10-25')
         expect(rows).toEqual([
             {
                 localDate: '2026-11-10',
@@ -48,6 +59,14 @@ describe('selectRunsInRange', () => {
                 avgHr: 152.5,
                 hrHistogram: { v: 1, bins: [[150, 10, 30]] },
                 paceHistogram: { v: 1, bins: [[250, 10, 40]] },
+            },
+            {
+                localDate: '2026-09-01',
+                distanceM: 5000,
+                movingTimeS: 1500,
+                avgHr: null,
+                hrHistogram: null,
+                paceHistogram: null,
             },
         ])
     })
@@ -61,11 +80,15 @@ describe('selectRunsInRange', () => {
         }
         const { supabase } = makeFakeDb([
             okRows([
-                { ...base, hr_histogram: { v: 9, bins: 'nope' }, pace_histogram: { v: 9 } },
-                { ...base, hr_histogram: null, pace_histogram: null },
+                { ...base, id: 'a', hr_histogram: { v: 9, bins: 'nope' } },
+                { ...base, id: 'b', hr_histogram: null },
+            ]),
+            okRows([
+                { id: 'a', pace_histogram: { v: 9 } },
+                { id: 'b', pace_histogram: null },
             ]),
         ])
-        const rows = await Effect.runPromise(selectRunsInRange(supabase, USER_ID, 'a', 'b'))
+        const rows = await Effect.runPromise(selectRunsInRange(supabase, USER_ID, 'a', 'b', 'a'))
 
         expect(rows.map((row) => row.hrHistogram)).toEqual([null, null])
         expect(rows.map((row) => row.paceHistogram)).toEqual([null, null])
@@ -73,12 +96,14 @@ describe('selectRunsInRange', () => {
 
     it('tags thrown, returned and malformed results as ActivityQueryError', async () => {
         const run = (queue: Parameters<typeof makeFakeDb>[0]) =>
-            Effect.runPromiseExit(selectRunsInRange(makeFakeDb(queue).supabase, USER_ID, 'a', 'b'))
+            Effect.runPromiseExit(
+                selectRunsInRange(makeFakeDb(queue).supabase, USER_ID, 'a', 'b', 'a')
+            )
         expect(failureTag(await run([new Error('x')]))).toBe('ActivityQueryError')
         expect(
             failureTag(await run([{ data: null, error: { code: '42501', message: 'denied' } }]))
         ).toBe('ActivityQueryError')
-        expect(failureTag(await run([okRows([{ nope: 1 }])]))).toBe('ActivityQueryError')
+        expect(failureTag(await run([okRows([{ id: 1 }]), okRows([])]))).toBe('ActivityQueryError')
     })
 })
 
