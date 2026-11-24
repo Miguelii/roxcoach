@@ -23,7 +23,11 @@ import type { ExerciseComparisonDTO } from '@/_bff/modules/training/types'
 // The activity, its laps and its sets are read in one parallel round-trip: laps and sets are
 // filtered by `user_id` too, so reading them before the activity is confirmed leaks nothing, and on
 // a miss they are simply discarded.
-export const getActivity = Effect.fn('getActivity')(function* (user: User, id: string) {
+export const getActivity = Effect.fn('getActivity')(function* (
+    user: User,
+    id: string,
+    options: { withComparisons?: boolean } = {}
+) {
     const supabase = yield* Effect.tryPromise({
         try: () => createDBServerClient(),
         catch: (cause) =>
@@ -42,7 +46,15 @@ export const getActivity = Effect.fn('getActivity')(function* (user: User, id: s
 
     // A strength workout is compared with the athlete's earlier ones, exercise by exercise.
     let strengthComparisons: ExerciseComparisonDTO[] = []
-    if (activity.category === 'strength' && strengthSets.length > 0) {
+    if (
+        options.withComparisons !== false &&
+        activity.category === 'strength' &&
+        strengthSets.length > 0
+    ) {
+        const currentIds = strengthSets.map((set) => set.sourceExerciseId)
+        const exerciseIds = currentIds.every((value) => value !== null)
+            ? [...new Set(currentIds)]
+            : null
         const history = yield* selectStrengthWorkoutsBefore(
             supabase,
             user.id,
@@ -55,7 +67,8 @@ export const getActivity = Effect.fn('getActivity')(function* (user: User, id: s
                 : yield* selectSetsForActivities(
                       supabase,
                       user.id,
-                      history.map((workout) => workout.activityId)
+                      history.map((workout) => workout.activityId),
+                      exerciseIds
                   )
         strengthComparisons = buildStrengthComparison({
             current: strengthSets,

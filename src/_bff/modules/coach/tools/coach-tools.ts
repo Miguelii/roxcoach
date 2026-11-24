@@ -15,7 +15,8 @@ const REAL_DEPS: CoachToolDeps = {
     listRaces: (user, filter) => Effect.runPromise(listRaces(user, filter)),
     getAvailability: (user) => Effect.runPromise(getAvailability(user)),
     getCalendar: (user, range) => Effect.runPromise(getCalendar(user, range)),
-    getActivity: (user, id) => Effect.runPromise(getActivity(user, id)),
+    // The tool drops the comparisons, so it skips reading the history for them.
+    getActivity: (user, id) => Effect.runPromise(getActivity(user, id, { withComparisons: false })),
 }
 
 /** The read-only coach tools. The user is closed over: no tool input ever carries a user id. */

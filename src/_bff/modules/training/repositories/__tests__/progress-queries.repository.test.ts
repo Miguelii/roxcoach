@@ -190,6 +190,15 @@ describe('selectSetsForActivities', () => {
         for (const chain of chains) expect(chain.eq).toHaveBeenCalledWith('user_id', USER_ID)
     })
 
+    it('keeps only the wanted exercises and the sets without an exercise id', async () => {
+        const { chains, supabase } = makeFakeDb([ok([])])
+        await Effect.runPromise(selectSetsForActivities(supabase, USER_ID, ['w1'], ['7', '9']))
+
+        expect(chains[0]?.or).toHaveBeenCalledWith(
+            'source_exercise_id.in.(7,9),source_exercise_id.is.null'
+        )
+    })
+
     it('pages a chunk until a short page comes back', async () => {
         const row = {
             activity_id: 'w1',

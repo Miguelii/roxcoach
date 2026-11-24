@@ -174,10 +174,13 @@ const INSERT_CHUNK_SIZE = 1000
 
 // Sets of many workouts, queried in chunks so the `in` filter stays within the URL length limit.
 // A chunk holds far more rows than PostgREST's max rows, so each one is paged by a stable order.
+// `sourceExerciseIds` keeps only those exercises plus the sets with no exercise id (older imports
+// are matched by name), which the partial index on `source_exercise_id` serves.
 export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(function* (
     supabase: TrainingClient,
     userId: string,
-    activityIds: string[]
+    activityIds: string[],
+    sourceExerciseIds: string[] | null = null
 ) {
     const chunks: string[][] = []
     for (let index = 0; index < activityIds.length; index += ID_CHUNK_SIZE)
@@ -191,16 +194,22 @@ export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(func
 
                 for (let from = 0; ; from += PAGE_SIZE) {
                     const { data, error } = yield* Effect.tryPromise({
-                        try: () =>
-                            supabase
+                        try: () => {
+                            const query = supabase
                                 .from(DbTables.STRENGTH_SETS)
                                 .select(
                                     'activity_id, exercise, exercise_image_url, source_exercise_id, reps, load_kg'
                                 )
                                 .eq('user_id', userId)
                                 .in('activity_id', chunk)
-                                .order('id')
-                                .range(from, from + PAGE_SIZE - 1),
+                            const filtered =
+                                sourceExerciseIds === null
+                                    ? query
+                                    : query.or(
+                                          `source_exercise_id.in.(${sourceExerciseIds.join(',')}),source_exercise_id.is.null`
+                                      )
+                            return filtered.order('id').range(from, from + PAGE_SIZE - 1)
+                        },
                         catch: (cause) =>
                             new ActivityQueryError({
                                 cause: String(cause),
