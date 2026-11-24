@@ -15,6 +15,9 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
+        // Each db suite boots a PGlite and applies every migration, slow when many run at once.
+        hookTimeout: 60_000,
+        testTimeout: 20_000,
         include: ['src/**/*.test.{ts,tsx}', 'tools/__tests__/*.test.ts', 'db/tests/**/*.test.ts'],
         env: {
             NEXT_SUPABASE_URL: 'http://localhost:54321',
