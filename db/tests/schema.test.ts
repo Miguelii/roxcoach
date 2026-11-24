@@ -109,6 +109,7 @@ describe('schema layout', () => {
             '0021_background_sync.sql',
             '0022_shared_logs_project.sql',
             '0023_rls_initplan.sql',
+            '0024_query_indexes.sql',
         ])
     })
 
