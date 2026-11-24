@@ -342,7 +342,10 @@ types `report_status` and `planned_session_status`.
   `update` and `delete`, `to authenticated`, with `using (user_id = auth.uid() and
   roxcoach.has_access())` and, for writes, `with check (user_id = auth.uid() and
   roxcoach.has_access())`. The policy is identical on every client-facing table because every
-  table, children included, carries `user_id`.
+  table, children included, carries `user_id`. Since `0023` both calls sit inside a scalar subselect,
+  `user_id = (select auth.uid()) and (select roxcoach.has_access())`, so Postgres evaluates them once
+  per statement (an InitPlan) and not once per scanned row (Supabase lint `auth_rls_initplan`). The
+  `storage.objects` policies do the same.
 - `roxcoach.has_access()` is a stable SQL function, `security invoker` with `search_path = ''`,
   returning `coalesce(auth.jwt() -> 'app_metadata' -> 'roxcoach' = 'true'::jsonb, false)`. The
   flag is compared as jsonb because `(... ->> 'roxcoach')::boolean` also accepts the strings
@@ -433,6 +436,7 @@ gets a `DbTables` member.
 | `0020_zepp.sql`                         | Adds the `zepp` activity source and `zepp_connections` (service role only)                                  |
 | `0021_background_sync.sql`              | Adds the `sync_status` enum and sync state columns to `lyfta_connections` and `zepp_connections`            |
 | `0022_shared_logs_project.sql`          | Adds `project` to the shared `public.logs` table and its indexes (see Shared logs table)                    |
+| `0023_rls_initplan.sql`                 | Wraps `auth.uid()` and `has_access()` in a subselect in every policy (evaluated once per statement)         |
 
 Isolation is tested by the PGlite suites in `db/tests/`, not by a migration. The access flag and
 the initial `athlete_profiles` row are written by `roxcoach.grant_access`: automatically by the

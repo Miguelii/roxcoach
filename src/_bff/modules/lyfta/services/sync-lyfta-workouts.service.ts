@@ -22,7 +22,7 @@ import {
     createImportContext,
     type ImportContext,
 } from '@/_bff/modules/training/services/import-context.service'
-import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
+import { importLyftaWorkouts } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import { MAX_PAGES_PER_SYNC } from '@/_bff/modules/lyfta/constants'
 import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
 import { ownsSyncLease } from '@/_bff/core/helpers/sync-state.helper'
@@ -33,7 +33,7 @@ import {
 } from '@/_bff/modules/lyfta/utils/sync-windows.utils'
 
 type SyncDependencies = LyftaConnectionDependencies & {
-    importWorkout: typeof importLyftaWorkout
+    importWorkouts: typeof importLyftaWorkouts
     createImportContext: typeof createImportContext
     now: () => Date
 }
@@ -52,7 +52,7 @@ type SyncSummary = LyftaSyncResult & { lastSyncedAt: string | null }
 
 const DEFAULT_DEPENDENCIES: SyncDependencies = {
     ...DEFAULT_LYFTA_CONNECTION_DEPENDENCIES,
-    importWorkout: importLyftaWorkout,
+    importWorkouts: importLyftaWorkouts,
     createImportContext,
     now: () => new Date(),
 }
@@ -114,10 +114,12 @@ const importWindow = Effect.fn('importLyftaWindow')(function* (
                 })
             }
             seenSourceIds.add(workout.sourceId)
+        }
 
-            const result = yield* dependencies.importWorkout(userId, workout, run.context)
-            if (result.created) created += 1
-            else updated += 1
+        if (page.workouts.length > 0) {
+            const imported = yield* dependencies.importWorkouts(userId, page.workouts, run.context)
+            created += imported.created
+            updated += imported.updated
         }
 
         pageNumber += 1

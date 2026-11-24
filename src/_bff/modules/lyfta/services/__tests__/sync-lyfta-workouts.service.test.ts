@@ -27,7 +27,7 @@ describe('syncLyftaWorkouts', () => {
             windows.push([paramOf(input, 'from'), paramOf(input, 'to')])
             return page(1, 1, windows.length === 1 ? [workout(1), workout(2)] : [])
         }
-        const { run, state, importWorkout } = setup({ fetcher })
+        const { run, state, importWorkouts } = setup({ fetcher })
 
         const exit = await run()
 
@@ -35,7 +35,8 @@ describe('syncLyftaWorkouts', () => {
         expect(windows[0]).toEqual([FIRST_FROM, WINDOW_ENDS[0]])
         expect(windows.map(([, to]) => to)).toEqual(WINDOW_ENDS)
         expect(windows[1]?.[0]).toBe('2026-02-23')
-        expect(importWorkout).toHaveBeenCalledTimes(2)
+        expect(importWorkouts).toHaveBeenCalledTimes(1)
+        expect(importWorkouts.mock.calls[0]?.[1]).toHaveLength(2)
         expect(state.checkpoints).toEqual([
             '2026-02-22T00:00:00.000Z',
             '2026-05-23T00:00:00.000Z',
@@ -82,12 +83,12 @@ describe('syncLyftaWorkouts', () => {
 
     it('completes a history of 25 pages in one run', async () => {
         const pages: number[] = []
-        const { run, state, importWorkout } = setup({ fetcher: longWindow(FIRST_FROM, 25, pages) })
+        const { run, state, importWorkouts } = setup({ fetcher: longWindow(FIRST_FROM, 25, pages) })
 
         const exit = await run()
 
         expect(pages).toHaveLength(25)
-        expect(importWorkout).toHaveBeenCalledTimes(25)
+        expect(importWorkouts).toHaveBeenCalledTimes(25)
         expect(state.checkpoints).toHaveLength(WINDOW_ENDS.length)
         expect(succeeded(exit)).toMatchObject({ created: 25, hasMore: false })
     })

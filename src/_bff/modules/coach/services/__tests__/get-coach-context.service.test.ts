@@ -55,17 +55,11 @@ const PROFILE: ProfileDTO = {
     dashboardMode: 'run',
 }
 
+const BASE = { profile: PROFILE, timezone: 'Pacific/Auckland', today: '2026-11-21' }
+
 const make = () => {
     const calls: { name: string; args: unknown[] }[] = []
-    const deps: NonNullable<Parameters<typeof getCoachContext>[1]> = {
-        getAthleteTimezone: (user) => {
-            calls.push({ name: 'tz', args: [user] })
-            return Effect.succeed('Pacific/Auckland')
-        },
-        getProfile: (user) => {
-            calls.push({ name: 'profile', args: [user] })
-            return Effect.succeed(PROFILE)
-        },
+    const deps: NonNullable<Parameters<typeof getCoachContext>[2]> = {
         getAvailability: (user) => {
             calls.push({ name: 'availability', args: [user] })
             return Effect.succeed([])
@@ -81,28 +75,15 @@ const make = () => {
                 RACE_ITEM,
             ])
         },
-        now: () => new Date('2026-11-20T12:00:00Z'),
     }
 
     return { calls, deps }
 }
 
 describe('getCoachContext', () => {
-    it('falls back to UTC for an invalid stored timezone instead of failing', async () => {
-        const { deps } = make()
-        const result = await Effect.runPromise(
-            getCoachContext(USER, {
-                ...deps,
-                getAthleteTimezone: () => Effect.succeed('Mars/Olympus'),
-            })
-        )
-        expect(result.timezone).toBe('UTC')
-        expect(result.context).toContain('timezone UTC')
-    })
-
     it('gathers the data for the user and renders the block', async () => {
         const { calls, deps } = make()
-        const result = await Effect.runPromise(getCoachContext(USER, deps))
+        const result = await Effect.runPromise(getCoachContext(USER, BASE, deps))
 
         expect(result.timezone).toBe('Pacific/Auckland')
         // 12:00 UTC is already the next day in Auckland.
@@ -114,7 +95,7 @@ describe('getCoachContext', () => {
 
     it('asks for upcoming races and the last 35 days of the calendar', async () => {
         const { calls, deps } = make()
-        await Effect.runPromise(getCoachContext(USER, deps))
+        await Effect.runPromise(getCoachContext(USER, BASE, deps))
 
         expect(calls.find((call) => call.name === 'races')?.args[1]).toEqual({
             status: ['upcoming'],

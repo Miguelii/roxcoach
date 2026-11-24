@@ -270,34 +270,15 @@ export const updateHistograms = Effect.fn('updateHistograms')(function* (
     if (error) return yield* writeError(error, ErrorCode.TRAINING_HR_HISTOGRAM_UPDATE_ERR)
 })
 
-export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
+// Upserts a whole page of Lyfta workouts in one statement. Returns activity id by source id.
+export const upsertLyftaActivities = Effect.fn('upsertLyftaActivities')(function* (
     supabase: TrainingClient,
     userId: string,
-    row: LyftaActivityRow
+    rows: LyftaActivityRow[]
 ) {
-    const { data: existing, error: lookupError } = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(DbTables.ACTIVITIES)
-                .select(selectColumns(DbTables.ACTIVITIES, ['id']))
-                .eq('user_id', userId)
-                .eq('source', 'lyfta')
-                .eq('source_id', row.source_id)
-                .maybeSingle(),
-        catch: (cause) =>
-            new ActivityQueryError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT,
-            }),
-    })
+    if (rows.length === 0) return new Map<string, string>()
 
-    if (lookupError)
-        return yield* new ActivityQueryError({
-            cause: `${lookupError.code}: ${lookupError.message}`,
-            error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT_ERR,
-        })
-
-    const writeRow = {
+    const writeRows = rows.map((row) => ({
         ...row,
         user_id: userId,
         source: 'lyfta' as const,
@@ -308,18 +289,17 @@ export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
         max_hr: null,
         avg_speed_mps: null,
         calories: null,
-    }
+    }))
 
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
                 .from(DbTables.ACTIVITIES)
-                .upsert(writeRow, {
+                .upsert(writeRows, {
                     onConflict: 'user_id,source,source_id',
                     defaultToNull: false,
                 })
-                .select(selectColumns(DbTables.ACTIVITIES, ['id']))
-                .single(),
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'source_id'])),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -332,13 +312,15 @@ export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
             cause: `${error.code}: ${error.message}`,
             error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
         })
-    if (data === null)
+
+    const parsed = z.array(z.object({ id: z.string(), source_id: z.string() })).safeParse(data)
+    if (!parsed.success || parsed.data.length !== rows.length)
         return yield* new ActivityWriteError({
-            cause: 'Lyfta activity upsert returned no row',
+            cause: 'Lyfta activity upsert returned unexpected rows',
             error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
         })
 
-    return { activityId: data.id, created: existing === null }
+    return new Map(parsed.data.map((row) => [row.source_id, row.id]))
 })
 
 export const deleteActivity = Effect.fn('deleteActivity')(function* (

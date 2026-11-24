@@ -99,6 +99,7 @@ respected, screen-reader labels on every icon-only control and on every calendar
 ## Layout
 
 - App shell: a left sidebar with the logo and primary nav (Dashboard, Calendar, Races, Settings) and a Logs item after them for admins only (desktop only: the phone bar keeps its items and has no link to Logs),
+- App shell loading: the authenticated layout streams the real shell behind a `Suspense` whose fallback is `AppShellSkeleton` (logo and primary links, no active item, admin link or coach toggle), so the app chrome is part of the prerendered static shell and paints before the dynamic render finishes.
   plus a Log out button at its bottom (a direct button, not a dropdown). On a phone the top bar
   has a Log out icon button (no dropdown). On mobile use a compact top bar and a floating bottom
   navigation pill ("liquid glass": white at about 55% over a blurred, saturated backdrop, bright inset rim, lifted

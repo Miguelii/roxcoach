@@ -109,7 +109,9 @@ const makeConnection = (initial: ConnectionOptions) => {
 
 export const setup = (options: ConnectionOptions & { fetcher?: Fetch } = {}) => {
     const connection = makeConnection(options)
-    const importWorkout = vi.fn(() => Effect.succeed({ activityId: 'activity', created: true }))
+    const importWorkouts = vi.fn((_userId: string, workouts: unknown[]) =>
+        Effect.succeed({ created: workouts.length, updated: 0 })
+    )
     const createImportContext = vi.fn(() =>
         Effect.succeed({ supabase: connection.db.supabase, timeZone: 'UTC' })
     )
@@ -119,13 +121,13 @@ export const setup = (options: ConnectionOptions & { fetcher?: Fetch } = {}) => 
         createAdminClient: () => connection.db.supabase,
         encryptionKey: ENCRYPTION_KEY,
         fetcher,
-        importWorkout,
+        importWorkouts,
         createImportContext,
         now: () => START,
     }
     const run = () =>
         Effect.runPromiseExit(syncLyftaWorkouts(USER_ID, RUN_STARTED_AT, dependencies))
-    return { ...connection, run, importWorkout, createImportContext, dependencies }
+    return { ...connection, run, importWorkouts, createImportContext, dependencies }
 }
 
 // A fetcher whose window starting at `from` reports `totalPages` pages of one workout each; every

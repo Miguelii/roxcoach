@@ -5,7 +5,7 @@ import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     deleteActivity,
     insertActivity,
-    upsertLyftaActivity,
+    upsertLyftaActivities,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import type { LyftaActivityRow, NewActivityRow } from '@/_bff/modules/training/types'
 
@@ -40,38 +40,41 @@ const LYFTA_ROW: LyftaActivityRow = {
     lyfta_total_volume_kg_reps: 1840,
 }
 
-describe('upsertLyftaActivity', () => {
-    it('uses the tenant-scoped provider key and does not send local fields', async () => {
-        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'lyfta-act-1' })])
+const runUpsert = (queue: Parameters<typeof makeFakeDb>[0]) =>
+    Effect.runPromiseExit(upsertLyftaActivities(makeFakeDb(queue).supabase, USER_ID, [LYFTA_ROW]))
 
-        const result = await Effect.runPromise(upsertLyftaActivity(supabase, USER_ID, LYFTA_ROW))
+describe('upsertLyftaActivities', () => {
+    it('upserts the page with the tenant-scoped provider key and does not send local fields', async () => {
+        const { chains, supabase } = makeFakeDb([ok([{ id: 'lyfta-act-1', source_id: '1001' }])])
 
-        expect(result).toEqual({ activityId: 'lyfta-act-1', created: true })
-        expect(chains[0]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER_ID)
-        expect(chains[0]?.eq).toHaveBeenNthCalledWith(2, 'source', 'lyfta')
-        expect(chains[0]?.eq).toHaveBeenNthCalledWith(3, 'source_id', '1001')
-        expect(chains[1]?.upsert).toHaveBeenCalledWith(
-            expect.objectContaining({ ...LYFTA_ROW, user_id: USER_ID, source: 'lyfta' }),
+        const result = await Effect.runPromise(
+            upsertLyftaActivities(supabase, USER_ID, [LYFTA_ROW])
+        )
+
+        expect(result).toEqual(new Map([['1001', 'lyfta-act-1']]))
+        expect(chains[0]?.upsert).toHaveBeenCalledWith(
+            [expect.objectContaining({ ...LYFTA_ROW, user_id: USER_ID, source: 'lyfta' })],
             { onConflict: 'user_id,source,source_id', defaultToNull: false }
         )
-        expect(chains[1]?.upsert.mock.calls[0]?.[0]).not.toHaveProperty('notes')
-        expect(chains[1]?.upsert.mock.calls[0]?.[0]).not.toHaveProperty('perceived_effort')
+        expect(chains[0]?.upsert.mock.calls[0]?.[0]?.[0]).not.toHaveProperty('notes')
+        expect(chains[0]?.upsert.mock.calls[0]?.[0]?.[0]).not.toHaveProperty('perceived_effort')
     })
 
-    it('reports an existing source id as updated and handles lookup failures', async () => {
-        const existing = makeFakeDb([ok({ id: 'lyfta-act-1' }), ok({ id: 'lyfta-act-1' })])
-        const failedLookup = makeFakeDb([{ data: null, error: failed }])
+    it('does not query for an empty page', async () => {
+        const { from, supabase } = makeFakeDb([])
 
         await expect(
-            Effect.runPromise(upsertLyftaActivity(existing.supabase, USER_ID, LYFTA_ROW))
-        ).resolves.toEqual({ activityId: 'lyfta-act-1', created: false })
-        expect(
-            failureTag(
-                await Effect.runPromiseExit(
-                    upsertLyftaActivity(failedLookup.supabase, USER_ID, LYFTA_ROW)
-                )
-            )
-        ).toBe('ActivityQueryError')
+            Effect.runPromise(upsertLyftaActivities(supabase, USER_ID, []))
+        ).resolves.toEqual(new Map())
+        expect(from).not.toHaveBeenCalled()
+    })
+
+    it('tags thrown, returned and incomplete results as ActivityWriteError', async () => {
+        expect(failureTag(await runUpsert([new Error('x')]))).toBe('ActivityWriteError')
+        expect(failureTag(await runUpsert([{ data: null, error: failed }]))).toBe(
+            'ActivityWriteError'
+        )
+        expect(failureTag(await runUpsert([ok([])]))).toBe('ActivityWriteError')
     })
 })
 

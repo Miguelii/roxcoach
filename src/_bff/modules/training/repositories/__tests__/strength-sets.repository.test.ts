@@ -68,11 +68,17 @@ describe('strength sets repository', () => {
             },
         ]
 
-        await Effect.runPromise(deleteStrengthSets(supabase, USER_ID, ACTIVITY_ID))
-        await Effect.runPromise(insertStrengthSets(supabase, USER_ID, ACTIVITY_ID, sets))
+        await Effect.runPromise(deleteStrengthSets(supabase, USER_ID, [ACTIVITY_ID]))
+        await Effect.runPromise(
+            insertStrengthSets(
+                supabase,
+                USER_ID,
+                sets.map((set) => ({ ...set, activity_id: ACTIVITY_ID }))
+            )
+        )
 
         expect(chains[0]?.eq).toHaveBeenNthCalledWith(1, 'user_id', USER_ID)
-        expect(chains[0]?.eq).toHaveBeenNthCalledWith(2, 'activity_id', ACTIVITY_ID)
+        expect(chains[0]?.in).toHaveBeenCalledWith('activity_id', [ACTIVITY_ID])
         expect(chains[1]?.insert).toHaveBeenCalledWith([
             {
                 user_id: USER_ID,
@@ -123,7 +129,7 @@ describe('strength sets repository', () => {
     it('does not send an empty insert and fails invalid returned rows', async () => {
         const empty = makeFakeDb([])
         await expect(
-            Effect.runPromise(insertStrengthSets(empty.supabase, USER_ID, ACTIVITY_ID, []))
+            Effect.runPromise(insertStrengthSets(empty.supabase, USER_ID, []))
         ).resolves.toBeUndefined()
         expect(empty.from).not.toHaveBeenCalled()
 

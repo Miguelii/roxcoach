@@ -1,21 +1,23 @@
-import type { ComponentProps } from 'react'
-import Markdown from 'react-markdown'
+import { lazy, Suspense } from 'react'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/modules/coach/use-coach-chat'
 
 type Props = { message: ChatMessage }
 
-function ExternalLink({ href, children }: ComponentProps<'a'>) {
-    return (
-        <a href={href} target="_blank" rel="noopener noreferrer">
-            {children}
-        </a>
-    )
-}
+type MarkdownFallbackProps = { content: string }
 
-// No raw HTML (react-markdown escapes it), no images, and the default URL filter drops
-// javascript: links. Links open in a new tab without opener access.
-const DISALLOWED = ['img']
+const loadCoachMarkdown = () =>
+    import('@/modules/coach/coach-markdown').then((module) => ({ default: module.CoachMarkdown }))
+
+// react-markdown and its parser stack stay out of the first-load bundle: they load when the first
+// assistant reply renders, or earlier when the launcher is hovered (see `preloadCoachMarkdown`).
+const CoachMarkdown = lazy(loadCoachMarkdown)
+
+export const preloadCoachMarkdown = () => void loadCoachMarkdown()
+
+function MarkdownFallback({ content }: MarkdownFallbackProps) {
+    return <p className="whitespace-pre-wrap break-words">{content}</p>
+}
 
 export function CoachMessage({ message }: Props) {
     const isUser = message.role === 'user'
@@ -37,13 +39,9 @@ export function CoachMessage({ message }: Props) {
                         data-testid="coach-message-markdown"
                         className="space-y-2 break-words [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
                     >
-                        <Markdown
-                            disallowedElements={DISALLOWED}
-                            unwrapDisallowed
-                            components={{ a: ExternalLink }}
-                        >
-                            {message.content}
-                        </Markdown>
+                        <Suspense fallback={<MarkdownFallback content={message.content} />}>
+                            <CoachMarkdown content={message.content} />
+                        </Suspense>
                     </div>
                 )}
             </div>

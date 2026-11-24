@@ -3,6 +3,7 @@ import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { getCachedClaims } from '@/_bff/modules/auth/services/get-cached-claims.service'
 import { AppShell } from '@/components/app-shell'
+import { AppShellSkeleton } from '@/components/app-shell-skeleton'
 import { CoachChat } from '@/modules/coach/coach-chat'
 import { CoachPanelProvider } from '@/modules/coach/coach-panel-context'
 import { COACH_ENABLED_COOKIE } from '@/modules/coach/constants'
@@ -28,10 +29,11 @@ async function CoachSession({ children }: Props) {
 }
 
 // The shell reads the pathname and the cookie, which are request-time data (e.g. on dynamic
-// routes such as /activities/[id]), so it streams in behind a boundary instead of blocking.
+// routes such as /activities/[id]), so it streams in behind a boundary instead of blocking. The
+// fallback draws the app chrome, so it is already on screen in the static shell.
 export default function AppLayout({ children }: LayoutProps<'/'>) {
     return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<AppShellSkeleton />}>
             <CoachSession>{children}</CoachSession>
         </Suspense>
     )

@@ -24,8 +24,10 @@ const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations', '
 // Tables whose client rows are never deleted by a client: they have no DELETE policy.
 const NO_DELETE_POLICY_TABLES = new Set(['coach_usage'])
 
-// How PostgreSQL prints the owner check of every client policy.
-const OWNER_CHECK = '((user_id = auth.uid()) AND roxcoach.has_access())'
+// How PostgreSQL prints the owner check of every client policy: both calls sit in a subselect so
+// they run once per statement (an InitPlan) instead of once per row.
+const OWNER_CHECK =
+    '((user_id = ( SELECT auth.uid() AS uid)) AND ( SELECT roxcoach.has_access() AS has_access))'
 
 const INSUFFICIENT_PRIVILEGE = '42501'
 const USER_ID = '00000000-0000-4000-8000-000000000001'
