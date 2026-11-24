@@ -51,11 +51,8 @@ export function ProfileTab() {
             throw error
         }
         toast.success('Profile saved')
-        await Promise.all([
-            queryClient.invalidateQueries(trpc.athlete.getProfile.queryFilter()),
-            queryClient.invalidateQueries(trpc.athlete.getTimezone.queryFilter()),
-            queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter()),
-        ])
+        void queryClient.invalidateQueries(trpc.athlete.getProfile.queryFilter())
+        void queryClient.invalidateQueries(trpc.training.getRunProgress.queryFilter())
     }
 
     return (

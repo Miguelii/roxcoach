@@ -11,11 +11,6 @@ const RACES_QUERY_STALE_TIME = 30_000
 
 export function RacesView() {
     const trpc = useTRPC()
-    const timezone = useQuery(
-        trpc.athlete.getTimezone.queryOptions(undefined, {
-            staleTime: RACES_QUERY_STALE_TIME,
-        })
-    )
     const profile = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             staleTime: RACES_QUERY_STALE_TIME,
@@ -30,18 +25,17 @@ export function RacesView() {
         )
     )
 
-    const missingData =
-        timezone.data === undefined || profile.data === undefined || races.data === undefined
+    const missingData = profile.data === undefined || races.data === undefined
 
     if (missingData) {
-        const hasError = timezone.isError || profile.isError || races.isError
+        const hasError = profile.isError || races.isError
 
         if (hasError) {
             return (
                 <QueryError
                     message="Could not load your races."
                     onRetry={() => {
-                        void Promise.all([timezone.refetch(), profile.refetch(), races.refetch()])
+                        void Promise.all([profile.refetch(), races.refetch()])
                     }}
                     testId="races-page-error"
                 />
@@ -54,7 +48,7 @@ export function RacesView() {
     return (
         <RacesManager
             races={races.data}
-            today={todayIn(timezone.data)}
+            today={todayIn(profile.data.timezone)}
             defaultDivision={profile.data.hyroxDivision}
         />
     )

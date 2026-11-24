@@ -20,8 +20,8 @@ describe('SettingsTabs', () => {
             />
         )
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
-        expect(screen.getByTestId('panel-availability')).not.toBeVisible()
-        expect(screen.getByTestId('panel-integrations')).not.toBeVisible()
+        expect(screen.queryByTestId('panel-availability')).toBeNull()
+        expect(screen.queryByTestId('panel-integrations')).toBeNull()
     })
 
     it('names the fourth tab Integrations', () => {
@@ -46,7 +46,7 @@ describe('SettingsTabs', () => {
                 integrations={panels.integrations}
             />
         )
-        expect(screen.getByTestId('panel-dashboard')).not.toBeVisible()
+        expect(screen.queryByTestId('panel-dashboard')).toBeNull()
         fireEvent.click(screen.getByTestId('settings-tab-dashboard'))
         await waitFor(() => {
             expect(screen.getByTestId('panel-dashboard')).toBeVisible()
@@ -68,7 +68,7 @@ describe('SettingsTabs', () => {
         })
     })
 
-    it('switches to Integrations while keeping all panels mounted', async () => {
+    it('mounts a panel when its tab is first opened and keeps the ones already opened', async () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
@@ -82,7 +82,7 @@ describe('SettingsTabs', () => {
             expect(screen.getByTestId('panel-integrations')).toBeVisible()
         })
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
-        expect(screen.getByTestId('panel-availability')).toBeInTheDocument()
+        expect(screen.queryByTestId('panel-availability')).toBeNull()
     })
 
     it('keeps an unsaved edit in one panel after switching tabs and back', async () => {

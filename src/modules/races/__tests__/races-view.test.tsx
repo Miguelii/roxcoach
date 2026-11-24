@@ -22,13 +22,6 @@ type RacesManagerProps = {
 }
 
 const mocks = vi.hoisted(() => {
-    const timezone: QueryState<string> = {
-        data: 'UTC',
-        isPending: false,
-        isError: false,
-        isFetching: false,
-        refetch: () => Promise.resolve(),
-    }
     const profile: QueryState<ProfileDTO> = {
         data: {
             displayName: '',
@@ -52,7 +45,7 @@ const mocks = vi.hoisted(() => {
         isFetching: false,
         refetch: () => Promise.resolve(),
     }
-    return { timezone, profile, races }
+    return { profile, races }
 })
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
@@ -63,7 +56,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         useQuery: (options: TrpcKeyed) =>
             routeTrpc(
                 {
-                    'athlete.getTimezone': () => mocks.timezone,
                     'athlete.getProfile': () => mocks.profile,
                     'races.list': () => mocks.races,
                 },
@@ -85,10 +77,6 @@ vi.mock('@/modules/races/races-manager', () => ({
 
 describe('RacesView', () => {
     beforeEach(() => {
-        mocks.timezone.data = 'UTC'
-        mocks.timezone.isPending = false
-        mocks.timezone.isError = false
-        mocks.timezone.isFetching = false
         mocks.profile.data = {
             displayName: '',
             timezone: 'UTC',
@@ -109,7 +97,6 @@ describe('RacesView', () => {
     })
 
     it('keeps cached races visible during a background refetch', () => {
-        mocks.timezone.isFetching = true
         mocks.profile.isFetching = true
         mocks.races.isFetching = true
 
@@ -122,8 +109,6 @@ describe('RacesView', () => {
     })
 
     it('shows the loading skeleton before the first query results arrive', () => {
-        mocks.timezone.data = undefined
-        mocks.timezone.isPending = true
         mocks.profile.data = undefined
         mocks.profile.isPending = true
         mocks.races.data = undefined

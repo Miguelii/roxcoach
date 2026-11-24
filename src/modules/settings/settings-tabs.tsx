@@ -1,7 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+type TabValue = 'profile' | 'dashboard' | 'availability' | 'integrations'
 
 type Props = {
     profile: ReactNode
@@ -10,9 +12,26 @@ type Props = {
     integrations: ReactNode
 }
 
+const isTabValue = (value: unknown): value is TabValue =>
+    value === 'profile' ||
+    value === 'dashboard' ||
+    value === 'availability' ||
+    value === 'integrations'
+
+// A panel mounts when its tab is first opened (so the tabs the athlete never opens fetch nothing)
+// and then stays mounted, so unsaved edits survive switching tabs.
 export function SettingsTabs({ profile, dashboard, availability, integrations }: Props) {
+    const [visited, setVisited] = useState<ReadonlySet<TabValue>>(new Set(['profile']))
+    const open = (value: TabValue) => visited.has(value)
+
     return (
-        <Tabs defaultValue="profile" data-testid="settings-tabs">
+        <Tabs
+            defaultValue="profile"
+            data-testid="settings-tabs"
+            onValueChange={(value) => {
+                if (isTabValue(value)) setVisited((current) => new Set(current).add(value))
+            }}
+        >
             <TabsList>
                 <TabsTrigger value="profile" data-testid="settings-tab-profile">
                     Profile
@@ -27,18 +46,17 @@ export function SettingsTabs({ profile, dashboard, availability, integrations }:
                     Integrations
                 </TabsTrigger>
             </TabsList>
-            {/* The panels stay mounted so unsaved edits survive switching tabs. */}
             <TabsContent value="profile" keepMounted>
-                {profile}
+                {open('profile') ? profile : null}
             </TabsContent>
             <TabsContent value="dashboard" keepMounted>
-                {dashboard}
+                {open('dashboard') ? dashboard : null}
             </TabsContent>
             <TabsContent value="availability" keepMounted>
-                {availability}
+                {open('availability') ? availability : null}
             </TabsContent>
             <TabsContent value="integrations" keepMounted>
-                {integrations}
+                {open('integrations') ? integrations : null}
             </TabsContent>
         </Tabs>
     )

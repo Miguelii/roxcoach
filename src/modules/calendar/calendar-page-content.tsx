@@ -10,7 +10,11 @@ import { Calendar } from '@/modules/calendar/calendar'
 
 export function CalendarPageContent() {
     const trpc = useTRPC()
-    const timezone = useQuery(trpc.athlete.getTimezone.queryOptions())
+    const timezone = useQuery(
+        trpc.athlete.getProfile.queryOptions(undefined, {
+            select: (profile) => profile.timezone,
+        })
+    )
 
     if (timezone.isPending && timezone.data === undefined) {
         return (

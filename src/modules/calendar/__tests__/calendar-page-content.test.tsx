@@ -13,7 +13,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     return {
         ...(await importOriginal<typeof import('@tanstack/react-query')>()),
         useQuery: (options: TrpcKeyed) =>
-            routeTrpc({ 'athlete.getTimezone': mocks.getTimezoneQuery }, options),
+            routeTrpc({ 'athlete.getProfile': mocks.getTimezoneQuery }, options),
     }
 })
 
