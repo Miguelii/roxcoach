@@ -11,7 +11,6 @@ import { CreateSbClientError, type ProfileQueryError } from '@/_bff/lib/errors'
 import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
 import { buildStrengthProgress } from '@/_bff/modules/training/helpers/build-strength-progress.helper'
 import { selectStrengthWorkoutsInRange } from '@/_bff/modules/training/repositories/activities.repository'
-import { selectSetsForActivities } from '@/_bff/modules/training/repositories/strength-sets.repository'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 
 type StrengthProgressDeps = {
@@ -43,11 +42,11 @@ export const getStrengthProgress = Effect.fn('getStrengthProgress')(function* (
     const { from } = rangeBounds(today, range)
 
     const workouts = yield* selectStrengthWorkoutsInRange(supabase, user.id, from, today)
-    const sets = yield* selectSetsForActivities(
-        supabase,
-        user.id,
-        workouts.map((workout) => workout.activityId)
-    )
 
-    return buildStrengthProgress({ range, today, workouts, sets })
+    return buildStrengthProgress({
+        range,
+        today,
+        workouts,
+        sets: workouts.flatMap((workout) => workout.sets),
+    })
 })

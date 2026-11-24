@@ -521,6 +521,18 @@ const strengthWorkoutRowSchema = z.object({
     local_date: z.string(),
 })
 
+const workoutWithSetsRowSchema = strengthWorkoutRowSchema.extend({
+    strength_sets: z.array(
+        z.object({
+            exercise: z.string(),
+            exercise_image_url: z.string().nullable(),
+            source_exercise_id: z.string().nullable(),
+            reps: z.number().int().nullable(),
+            load_kg: numeric,
+        })
+    ),
+})
+
 // The `limit` strength workouts that started before `startedAt`, most recent first.
 export const selectStrengthWorkoutsBefore = Effect.fn('selectStrengthWorkoutsBefore')(function* (
     supabase: TrainingClient,
@@ -558,7 +570,9 @@ export const selectStrengthWorkoutsBefore = Effect.fn('selectStrengthWorkoutsBef
     return parsed.data.map((row) => ({ activityId: row.id, localDate: row.local_date }))
 })
 
-// Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first.
+// Strength workouts bounded by `from` and `to` (plain YYYY-MM-DD), oldest first, each with its sets.
+// The sets are embedded: PostgREST's max rows counts only the workouts of the top level, so a long
+// range cannot be cut short the way a separate read of thousands of set rows would be.
 export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsInRange')(function* (
     supabase: TrainingClient,
     userId: string,
@@ -569,8 +583,11 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
         try: () =>
             supabase
                 .from(DbTables.ACTIVITIES)
-                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'local_date']))
+                .select(
+                    'id, local_date, strength_sets(exercise, exercise_image_url, source_exercise_id, reps, load_kg)'
+                )
                 .eq('user_id', userId)
+                .eq('strength_sets.user_id', userId)
                 .eq('category', 'strength')
                 .is('deleted_at', null)
                 .gte('local_date', from)
@@ -585,7 +602,7 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
 
     if (error) return yield* queryError(error, ErrorCode.TRAINING_STRENGTH_WORKOUTS_SELECT_ERR)
 
-    const parsed = z.array(strengthWorkoutRowSchema).safeParse(data)
+    const parsed = z.array(workoutWithSetsRowSchema).safeParse(data)
     if (!parsed.success)
         return yield* parseError(
             parsed.error.issues,
@@ -595,6 +612,14 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
     return parsed.data.map((row) => ({
         activityId: row.id,
         localDate: row.local_date,
+        sets: row.strength_sets.map((set) => ({
+            activityId: row.id,
+            exercise: set.exercise,
+            exerciseImageUrl: set.exercise_image_url,
+            sourceExerciseId: set.source_exercise_id,
+            reps: set.reps,
+            loadKg: set.load_kg,
+        })),
     }))
 })
 

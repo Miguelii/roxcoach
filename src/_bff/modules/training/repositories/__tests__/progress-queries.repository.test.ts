@@ -109,7 +109,9 @@ describe('selectRunsInRange', () => {
 
 describe('selectStrengthWorkoutsInRange', () => {
     it('filters by user, strength category, deletion and bounds', async () => {
-        const { chains, supabase } = makeFakeDb([okRows([{ id: 'w1', local_date: '2026-11-10' }])])
+        const { chains, supabase } = makeFakeDb([
+            okRows([{ id: 'w1', local_date: '2026-11-10', strength_sets: [] }]),
+        ])
         const rows = await Effect.runPromise(
             selectStrengthWorkoutsInRange(supabase, USER_ID, '2026-08-21', '2026-11-21')
         )
@@ -120,7 +122,8 @@ describe('selectStrengthWorkoutsInRange', () => {
         expect(chains[0]?.gte).toHaveBeenCalledWith('local_date', '2026-08-21')
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-21')
         expect(chains[0]?.order).toHaveBeenCalledWith('started_at', { ascending: true })
-        expect(rows).toEqual([{ activityId: 'w1', localDate: '2026-11-10' }])
+        expect(chains[0]?.eq).toHaveBeenCalledWith('strength_sets.user_id', USER_ID)
+        expect(rows).toEqual([{ activityId: 'w1', localDate: '2026-11-10', sets: [] }])
     })
 
     it('tags thrown, returned and malformed results as ActivityQueryError', async () => {

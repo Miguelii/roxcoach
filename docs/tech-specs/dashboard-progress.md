@@ -242,7 +242,9 @@ The run progress reads the profile first (its timezone gives the local day), the
 
 The activity page compares a strength workout with its earlier ones reading only the sets of the exercises of the current workout (plus sets with no exercise id, matched by name), and the coach `getActivity` tool skips the comparison entirely.
 
-Strength sets are read in chunks of 100 workouts, each paged (500 rows per page, ordered by `id`) until a short page: a chunk holds more rows than PostgREST's max rows, which would otherwise cut the response silently and skew volume and top sets.
+The strength progress reads the workouts of the range with their sets embedded (`strength_sets(...)`, filtered by `user_id`), in one query after the timezone. PostgREST's max rows counts only the top-level workouts, so a long range is never cut short.
+
+Other reads of many workouts' sets (the activity page comparison) go in chunks of 100 workouts, each paged (500 rows per page, ordered by `id`) until a short page: a chunk holds more rows than PostgREST's max rows, which would otherwise cut the response silently and skew volume and top sets.
 
 ## Frontend
 

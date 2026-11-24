@@ -157,22 +157,26 @@ describe('getStrengthProgress', () => {
 
     it('returns the top exercises with their picture', async () => {
         const { chains, supabase } = makeFakeDb([
-            okRows([{ id: 'w1', local_date: '2026-11-10' }]),
             okRows([
                 {
-                    activity_id: 'w1',
-                    exercise: 'Squat',
-                    exercise_image_url: 'https://lyfta.app/images/exercises/squat.png',
-                    source_exercise_id: '7',
-                    reps: 5,
-                    load_kg: 100,
+                    id: 'w1',
+                    local_date: '2026-11-10',
+                    strength_sets: [
+                        {
+                            exercise: 'Squat',
+                            exercise_image_url: 'https://lyfta.app/images/exercises/squat.png',
+                            source_exercise_id: '7',
+                            reps: 5,
+                            load_kg: 100,
+                        },
+                    ],
                 },
             ]),
         ])
         const dto = await Effect.runPromise(getStrengthProgress(USER, '3m', strengthDeps(supabase)))
 
         expect(chains[0]?.lte).toHaveBeenCalledWith('local_date', '2026-11-21')
-        expect(chains[1]?.in).toHaveBeenCalledWith('activity_id', ['w1'])
+        expect(chains[0]?.eq).toHaveBeenCalledWith('strength_sets.user_id', 'user-1')
         expect(dto.exercises.map((exercise) => exercise.name)).toEqual(['Squat'])
         expect(dto.exercises[0]?.imageUrl).toBe('https://lyfta.app/images/exercises/squat.png')
         expect(dto.exercises[0]?.points).toEqual([
@@ -180,7 +184,7 @@ describe('getStrengthProgress', () => {
         ])
     })
 
-    it('returns empty series for an empty history without querying sets', async () => {
+    it('returns empty series for an empty history', async () => {
         const { from, supabase } = makeFakeDb([okRows([])])
         const dto = await Effect.runPromise(
             getStrengthProgress(USER, '12m', strengthDeps(supabase))
