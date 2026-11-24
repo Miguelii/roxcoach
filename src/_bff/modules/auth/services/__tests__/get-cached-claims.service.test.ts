@@ -15,7 +15,7 @@ type Claims = {
     sub?: string
     email?: string | number
     user_metadata?: string | { full_name?: string | { nested: boolean } }
-    app_metadata?: { roxcoach?: string | boolean }
+    app_metadata?: { roxcoach?: string | boolean; roxcoach_admin?: string | boolean }
 }
 
 const withClaims = (claims: Claims) => getClaims.mockResolvedValue({ data: { claims } })
@@ -39,7 +39,20 @@ describe('getCachedClaims', () => {
             email: 'athlete@example.com',
             fullName: 'Alex Runner',
             hasAccess: true,
+            isAdmin: false,
         })
+    })
+
+    it('sets isAdmin with the strict boolean admin flag', async () => {
+        withClaims({ sub: 'user-1', app_metadata: { roxcoach: true, roxcoach_admin: true } })
+
+        expect(await getCachedClaims()).toMatchObject({ hasAccess: true, isAdmin: true })
+    })
+
+    it('sets isAdmin to false when the admin flag is a string', async () => {
+        withClaims({ sub: 'user-1', app_metadata: { roxcoach: true, roxcoach_admin: 'true' } })
+
+        expect(await getCachedClaims()).toMatchObject({ isAdmin: false })
     })
 
     it('reads a malformed email as null', async () => {

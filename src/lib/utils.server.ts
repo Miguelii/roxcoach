@@ -2,7 +2,7 @@ import 'server-only'
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { createDBServerClient } from '@/_bff/core/db'
-import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
+import { hasRoxcoachAccess, isRoxcoachAdmin } from '@/_bff/core/helpers/access.helper'
 import { decideAuthRedirect } from '@/_bff/core/helpers/auth-redirect.helper'
 
 /**
@@ -10,7 +10,9 @@ import { decideAuthRedirect } from '@/_bff/core/helpers/auth-redirect.helper'
  * Refreshes the user session via `getClaims()` and syncs auth cookies
  * between the incoming request and outgoing response.
  * A session without `app_metadata.roxcoach === true` counts as signed out on protected paths
- * (the Supabase project is shared with another app). The decision is `decideAuthRedirect`.
+ * (the Supabase project is shared with another app), and one without
+ * `app_metadata.roxcoach_admin === true` is sent away from admin paths. The decision is
+ * `decideAuthRedirect`.
  * @param request - The incoming Next.js proxy request.
  */
 export async function sbProxy(request: NextRequest): Promise<NextResponse> {
@@ -48,6 +50,7 @@ export async function sbProxy(request: NextRequest): Promise<NextResponse> {
     const target = decideAuthRedirect({
         pathname: request.nextUrl.pathname,
         hasAccess: hasRoxcoachAccess(data?.claims),
+        isAdmin: isRoxcoachAdmin(data?.claims),
     })
 
     if (target) {

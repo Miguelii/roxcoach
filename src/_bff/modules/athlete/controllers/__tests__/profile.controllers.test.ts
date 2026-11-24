@@ -66,8 +66,18 @@ describe('profile controllers', () => {
     it('getProfile returns the profile of the signed-in user', async () => {
         getProfileMock.mockReturnValue(Effect.succeed(INPUT))
 
-        await expect(caller.athlete.getProfile()).resolves.toEqual(INPUT)
+        await expect(caller.athlete.getProfile()).resolves.toEqual({ ...INPUT, email: null })
         expect(getProfileMock).toHaveBeenCalledWith(USER)
+    })
+
+    it('getProfile adds the sign-in email of the auth user', async () => {
+        getSessionMock.mockReturnValue(Effect.succeed({ ...USER, email: 'ana@example.com' }))
+        getProfileMock.mockReturnValue(Effect.succeed(INPUT))
+
+        await expect(caller.athlete.getProfile()).resolves.toEqual({
+            ...INPUT,
+            email: 'ana@example.com',
+        })
     })
 
     it('getProfile maps query failures to INTERNAL_SERVER_ERROR without the cause', async () => {

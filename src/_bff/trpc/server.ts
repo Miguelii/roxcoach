@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import { Effect, Exit } from 'effect'
-import { hasRoxcoachAccess } from '@/_bff/core/helpers/access.helper'
+import { hasRoxcoachAccess, isRoxcoachAdmin } from '@/_bff/core/helpers/access.helper'
 import { Logger } from '@/_bff/lib/server-logger'
 import { getSession } from '@/_bff/modules/auth/services/get-session.service'
 import type { Context } from '@/_bff/trpc/context'
@@ -44,5 +44,18 @@ const isAuthed = t.middleware(async ({ next }) => {
  * Protected procedure: guarantees a non-null authenticated `ctx.user` with roxcoach access.
  **/
 export const protectedProcedure = t.procedure.use(isAuthed)
+
+/**
+ * Admin procedure: a protected procedure whose `ctx.user` also carries
+ * `app_metadata.roxcoach_admin === true`, otherwise 403. `ctx.user` comes from `getUser()`, so a
+ * revoked admin flag is refused at once, unlike the proxy, which reads the JWT claims.
+ **/
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+    if (!isRoxcoachAdmin(ctx.user)) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+    }
+
+    return next()
+})
 
 export const router = t.router

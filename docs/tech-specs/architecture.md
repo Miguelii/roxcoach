@@ -93,7 +93,9 @@ dashboard summary and calendar page live in `src/_bff/core/utils/week-stats.util
 - **Errors**: `Data.TaggedError` classes in `src/_bff/lib/errors.ts`, each with
   `cause: unknown` and `error_hash: ErrorCode`. Codes live in `src/_bff/lib/error-codes.ts`.
 - **Auth**: `protectedProcedure` guarantees `ctx.user`. Never map `UnauthenticatedError` or
-  `GetUserError` in a controller `Match`.
+  `GetUserError` in a controller `Match`. `adminProcedure` is a `protectedProcedure` that also
+  requires the admin flag (403 otherwise, see [auth-security.md](auth-security.md#admin-flag)); its
+  controllers keep the `_PROTECTED_CONTROLLER` suffix.
 - **Router files** are the only place that import `server-only` alongside the controllers they
   compose. `src/_bff/trpc/router.ts` composes the module routers by namespace.
 

@@ -18,3 +18,7 @@ export const PROTECTED_PATHS: string[] = [
     '/races',
     '/settings',
 ]
+
+// Path prefixes that also require `app_metadata.roxcoach_admin === true`. A user with access but
+// without the admin flag is sent to DEFAULT_POST_AUTH_PATH.
+export const ADMIN_PATHS: string[] = ['/logs']

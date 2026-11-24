@@ -60,7 +60,11 @@ export function ProfileTab() {
 
     return (
         <>
-            <ProfileForm defaults={toFormValues(query.data)} onSubmit={onSubmit} />
+            <ProfileForm
+                defaults={toFormValues(query.data)}
+                email={query.data.email}
+                onSubmit={onSubmit}
+            />
             <DeleteProfileSection />
         </>
     )

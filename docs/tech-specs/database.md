@@ -391,7 +391,8 @@ carry `'roxcoach'`). Columns: `id`, `created_at`, `level` (`debug`, `info`, `war
 RLS is on with no policies, so only the service-role client reads and writes it, through a client on
 the `public` schema used by the logger and the logs repository only. The other app's daily job
 deletes rows older than 30 days, ours included. The logs repository is a deliberate exception to
-"every query filters by `user_id`": every signed-in Roxcoach user sees every Roxcoach row.
+"every query filters by `user_id`": an admin (`app_metadata.roxcoach_admin === true`, see
+[auth-security.md](auth-security.md#admin-flag)) sees every Roxcoach row, and nobody else reads them.
 
 ## Migrations
 
