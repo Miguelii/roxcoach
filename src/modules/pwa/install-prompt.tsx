@@ -1,8 +1,15 @@
 'use client'
 
+import { lazy, Suspense } from 'react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { InstallPromptView } from '@/modules/pwa/install-prompt-view'
 import { useInstallPrompt } from '@/modules/pwa/use-install-prompt'
+
+// The sheet pulls in the drawer, so it loads only once the prompt is about to show, not with every page.
+const InstallPromptView = lazy(() =>
+    import('@/modules/pwa/install-prompt-view').then((module) => ({
+        default: module.InstallPromptView,
+    }))
+)
 
 type Props = {
     // The deployed build: a dismissal saved on another build is stale. Null when unknown (local dev).
@@ -20,12 +27,14 @@ export function InstallPrompt({ buildId = null, delayMs }: Props) {
     if (!isMobile || prompt.kind === 'hidden') return null
 
     return (
-        <InstallPromptView
-            variant={prompt.kind}
-            onInstall={() => {
-                if (prompt.kind === 'native') void prompt.install()
-            }}
-            onDismiss={prompt.dismiss}
-        />
+        <Suspense fallback={null}>
+            <InstallPromptView
+                variant={prompt.kind}
+                onInstall={() => {
+                    if (prompt.kind === 'native') void prompt.install()
+                }}
+                onDismiss={prompt.dismiss}
+            />
+        </Suspense>
     )
 }
