@@ -12,13 +12,21 @@ import {
 import type { SyncOutcome } from '@/_bff/core/helpers/sync-state.helper'
 import type { ZeppSyncResult } from '@/_bff/core/constants/zepp.constants'
 import type { ZeppConnectionRecord } from '@/_bff/modules/zepp/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type AdminClient = ReturnType<typeof createDBAdminClient>
 type ReturnedError = { code: string; message: string }
 
-const TABLE = 'zepp_connections'
-const SELECT_COLUMNS =
-    'encrypted_app_token, last_synced_at, sync_status, sync_started_at, sync_finished_at, sync_result, sync_error'
+const SELECT_COLUMNS = selectColumns(DbTables.ZEPP_CONNECTIONS, [
+    'encrypted_app_token',
+    'last_synced_at',
+    'sync_status',
+    'sync_started_at',
+    'sync_finished_at',
+    'sync_result',
+    'sync_error',
+])
 const connectionRowSchema = z.object({
     encrypted_app_token: z.string().min(1),
     last_synced_at: z.string().nullable(),
@@ -55,7 +63,12 @@ export const selectZeppConnection = Effect.fn('selectZeppConnection')(function* 
     userId: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select(SELECT_COLUMNS).eq('user_id', userId).maybeSingle(),
+        try: () =>
+            supabase
+                .from(DbTables.ZEPP_CONNECTIONS)
+                .select(SELECT_COLUMNS)
+                .eq('user_id', userId)
+                .maybeSingle(),
         catch: (cause) =>
             new ZeppConnectionQueryError({
                 cause: String(cause),
@@ -95,7 +108,7 @@ export const upsertZeppConnection = Effect.fn('upsertZeppConnection')(function* 
 ) {
     const { error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).upsert(
+            supabase.from(DbTables.ZEPP_CONNECTIONS).upsert(
                 {
                     user_id: userId,
                     encrypted_app_token: encryptedAppToken,
@@ -120,12 +133,12 @@ export const updateZeppLastSyncedAt = Effect.fn('updateZeppLastSyncedAt')(functi
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({ last_synced_at: lastSyncedAt })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
                 .eq('sync_status', 'running')
-                .select('user_id')
+                .select(selectColumns(DbTables.ZEPP_CONNECTIONS, ['user_id']))
                 .maybeSingle(),
         catch: writeFailure,
     })
@@ -147,7 +160,7 @@ export const takeZeppSyncLease = Effect.fn('takeZeppSyncLease')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({
                     sync_status: 'running',
                     sync_started_at: startedAtIso,
@@ -158,7 +171,7 @@ export const takeZeppSyncLease = Effect.fn('takeZeppSyncLease')(function* (
                 })
                 .eq('user_id', userId)
                 .or(`sync_status.neq.running,sync_started_at.lt.${staleBeforeIso}`)
-                .select('user_id')
+                .select(selectColumns(DbTables.ZEPP_CONNECTIONS, ['user_id']))
                 .maybeSingle(),
         catch: (cause) => syncStateWriteError(String(cause)),
     })
@@ -178,7 +191,7 @@ export const setZeppSyncRunId = Effect.fn('setZeppSyncRunId')(function* (
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({ sync_run_id: runId })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
@@ -205,7 +218,7 @@ export const finishZeppSync = Effect.fn('finishZeppSync')(function* (
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({ sync_status: outcome.status, sync_finished_at: finishedAtIso, ...update })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
@@ -222,7 +235,11 @@ export const resetZeppCheckpoint = Effect.fn('resetZeppCheckpoint')(function* (
     userId: string
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).update({ last_synced_at: null }).eq('user_id', userId),
+        try: () =>
+            supabase
+                .from(DbTables.ZEPP_CONNECTIONS)
+                .update({ last_synced_at: null })
+                .eq('user_id', userId),
         catch: (cause) =>
             new ZeppConnectionWriteError({
                 cause: String(cause),
@@ -247,7 +264,7 @@ export const releaseZeppClearLease = Effect.fn('releaseZeppClearLease')(function
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ZEPP_CONNECTIONS)
                 .update({ sync_status: 'idle', sync_started_at: null })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
@@ -271,7 +288,7 @@ export const deleteZeppConnection = Effect.fn('deleteZeppConnection')(function* 
     userId: string
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).delete().eq('user_id', userId),
+        try: () => supabase.from(DbTables.ZEPP_CONNECTIONS).delete().eq('user_id', userId),
         catch: writeFailure,
     })
     if (error) return yield* writeError(error)

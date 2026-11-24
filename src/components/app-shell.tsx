@@ -2,18 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-    IconCalendar,
-    IconChartLine,
-    IconFlag,
-    IconListDetails,
-    IconLogout,
-    IconSettings,
-    IconSparkles,
-    type Icon,
-} from '@tabler/icons-react'
+import { IconListDetails, IconLogout, IconSparkles } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { PRIMARY_NAV_ITEMS, type NavItem } from '@/components/app-nav-items'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useTRPC } from '@/lib/trpc'
@@ -21,13 +13,6 @@ import { cn } from '@/lib/utils'
 import { MobileNav } from '@/components/mobile-nav'
 import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
 import { useCoachPanel } from '@/modules/coach/coach-panel-context'
-
-type NavItem = {
-    href: string
-    label: string
-    Icon: Icon
-    testId?: string
-}
 
 type Props = {
     children: React.ReactNode
@@ -38,13 +23,6 @@ type AccountMenuProps = {
     isPending: boolean
     onLogout: () => void
 }
-
-const PRIMARY_NAV_ITEMS: NavItem[] = [
-    { href: '/dashboard', label: 'Dashboard', Icon: IconChartLine },
-    { href: '/calendar', label: 'Calendar', Icon: IconCalendar },
-    { href: '/races', label: 'Races', Icon: IconFlag },
-    { href: '/settings', label: 'Settings', Icon: IconSettings },
-]
 
 const MOBILE_NAV_ITEMS = PRIMARY_NAV_ITEMS
 

@@ -8,13 +8,13 @@ import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ProfileQueryError } from '@/_bff/lib/errors'
 import type { ProfileDTO, ProfileInput } from '@/_bff/modules/athlete/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 // The service-role client (jobs, webhook) or the signed-in user's client.
 export type ProfilesClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>
-
-const TABLE = 'athlete_profiles'
 
 // The column default, used when the athlete has no profile row yet.
 const DEFAULT_TIMEZONE = 'Europe/Lisbon'
@@ -26,7 +26,12 @@ export const selectTimezone = Effect.fn('selectTimezone')(function* (
     userId: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select('timezone').eq('user_id', userId).maybeSingle(),
+        try: () =>
+            supabase
+                .from(DbTables.ATHLETE_PROFILES)
+                .select(selectColumns(DbTables.ATHLETE_PROFILES, ['timezone']))
+                .eq('user_id', userId)
+                .maybeSingle(),
         catch: (cause) =>
             new ProfileQueryError({
                 cause: String(cause),
@@ -73,15 +78,28 @@ const profileRowSchema = z.object({
     dashboard_mode: z.enum(DASHBOARD_MODES),
 })
 
-const PROFILE_COLUMNS =
-    'display_name, timezone, max_hr, resting_hr, hyrox_division, weekly_hours_cap, notes, dashboard_mode'
+const PROFILE_COLUMNS = selectColumns(DbTables.ATHLETE_PROFILES, [
+    'display_name',
+    'timezone',
+    'max_hr',
+    'resting_hr',
+    'hyrox_division',
+    'weekly_hours_cap',
+    'notes',
+    'dashboard_mode',
+])
 
 export const selectProfile = Effect.fn('selectProfile')(function* (
     supabase: ProfilesClient,
     userId: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select(PROFILE_COLUMNS).eq('user_id', userId).maybeSingle(),
+        try: () =>
+            supabase
+                .from(DbTables.ATHLETE_PROFILES)
+                .select(PROFILE_COLUMNS)
+                .eq('user_id', userId)
+                .maybeSingle(),
         catch: (cause) =>
             new ProfileQueryError({
                 cause: String(cause),
@@ -124,7 +142,7 @@ export const upsertProfile = Effect.fn('upsertProfile')(function* (
 ) {
     const { error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).upsert(
+            supabase.from(DbTables.ATHLETE_PROFILES).upsert(
                 {
                     user_id: userId,
                     display_name: input.displayName,
@@ -161,10 +179,10 @@ export const updateDashboardMode = Effect.fn('updateDashboardMode')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ATHLETE_PROFILES)
                 .update({ dashboard_mode: mode })
                 .eq('user_id', userId)
-                .select('user_id'),
+                .select(selectColumns(DbTables.ATHLETE_PROFILES, ['user_id'])),
         catch: (cause) =>
             new ProfileQueryError({
                 cause: String(cause),
@@ -191,7 +209,11 @@ export const selectDisplayNames = Effect.fn('selectDisplayNames')(function* (
     userIds: string[]
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select('user_id, display_name').in('user_id', userIds),
+        try: () =>
+            supabase
+                .from(DbTables.ATHLETE_PROFILES)
+                .select(selectColumns(DbTables.ATHLETE_PROFILES, ['user_id', 'display_name']))
+                .in('user_id', userIds),
         catch: (cause) =>
             new ProfileQueryError({
                 cause: String(cause),

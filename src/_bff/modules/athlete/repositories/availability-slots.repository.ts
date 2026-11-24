@@ -7,13 +7,20 @@ import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { AvailabilityQueryError } from '@/_bff/lib/errors'
 import type { AvailabilitySlotDTO } from '@/_bff/modules/athlete/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type SlotsClient =
     | ReturnType<typeof createDBAdminClient>
     | Awaited<ReturnType<typeof createDBServerClient>>
 
-const TABLE = 'availability_slots'
-const COLUMNS = 'weekday, session_kind, is_fixed, max_minutes, notes'
+const COLUMNS = selectColumns(DbTables.AVAILABILITY_SLOTS, [
+    'weekday',
+    'session_kind',
+    'is_fixed',
+    'max_minutes',
+    'notes',
+])
 
 const slotRowSchema = z.object({
     weekday: z.number().int().min(1).max(7),
@@ -39,7 +46,7 @@ export const selectSlots = Effect.fn('selectSlots')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.AVAILABILITY_SLOTS)
                 .select(COLUMNS)
                 .eq('user_id', userId)
                 .order('weekday', { ascending: true })
@@ -76,7 +83,7 @@ export const upsertSlots = Effect.fn('upsertSlots')(function* (
 
     const { error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).upsert(
+            supabase.from(DbTables.AVAILABILITY_SLOTS).upsert(
                 slots.map((slot) => ({
                     user_id: userId,
                     weekday: slot.weekday,
@@ -115,7 +122,7 @@ export const deleteSlotsExcept = Effect.fn('deleteSlotsExcept')(function* (
 ) {
     if (keep.length === 0) {
         const { error } = yield* Effect.tryPromise({
-            try: () => supabase.from(TABLE).delete().eq('user_id', userId),
+            try: () => supabase.from(DbTables.AVAILABILITY_SLOTS).delete().eq('user_id', userId),
             catch: (cause) =>
                 new AvailabilityQueryError({
                     cause: String(cause),
@@ -131,7 +138,11 @@ export const deleteSlotsExcept = Effect.fn('deleteSlotsExcept')(function* (
     }
 
     const { data, error: selectError } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select('weekday, session_kind').eq('user_id', userId),
+        try: () =>
+            supabase
+                .from(DbTables.AVAILABILITY_SLOTS)
+                .select(selectColumns(DbTables.AVAILABILITY_SLOTS, ['weekday', 'session_kind']))
+                .eq('user_id', userId),
         catch: (cause) =>
             new AvailabilityQueryError({
                 cause: String(cause),
@@ -164,7 +175,7 @@ export const deleteSlotsExcept = Effect.fn('deleteSlotsExcept')(function* (
         const { error } = yield* Effect.tryPromise({
             try: () =>
                 supabase
-                    .from(TABLE)
+                    .from(DbTables.AVAILABILITY_SLOTS)
                     .delete()
                     .eq('user_id', userId)
                     .eq('weekday', weekday)

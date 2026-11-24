@@ -7,6 +7,8 @@ import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { RaceQueryError } from '@/_bff/lib/errors'
 import type { RaceDTO, RaceFilter, RaceInput, RaceStatus } from '@/_bff/modules/races/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type RacesClient =
     | ReturnType<typeof createDBAdminClient>
@@ -18,9 +20,20 @@ type RaceRow = z.infer<typeof raceRowSchema>
 
 type Codes = { call: ErrorCode; returned: ErrorCode; parse: ErrorCode }
 
-const TABLE = 'races'
-const COLUMNS =
-    'id, name, race_type, race_date, location, distance_m, hyrox_division, target_time_s, priority, status, result_time_s, notes'
+const COLUMNS = selectColumns(DbTables.RACES, [
+    'id',
+    'name',
+    'race_type',
+    'race_date',
+    'location',
+    'distance_m',
+    'hyrox_division',
+    'target_time_s',
+    'priority',
+    'status',
+    'result_time_s',
+    'notes',
+])
 
 const raceRowSchema = z.object({
     id: z.string(),
@@ -142,7 +155,7 @@ export const selectRaces = Effect.fn('selectRaces')(function* (
 ) {
     const rows = yield* run(
         () => {
-            let query = supabase.from(TABLE).select(COLUMNS).eq('user_id', userId)
+            let query = supabase.from(DbTables.RACES).select(COLUMNS).eq('user_id', userId)
             if (filter.status) query = query.in('status', filter.status)
             if (filter.from) query = query.gte('race_date', filter.from)
             if (filter.to) query = query.lte('race_date', filter.to)
@@ -161,7 +174,13 @@ export const selectRaceById = Effect.fn('selectRaceById')(function* (
     id: string
 ) {
     const row = yield* run(
-        () => supabase.from(TABLE).select(COLUMNS).eq('id', id).eq('user_id', userId).maybeSingle(),
+        () =>
+            supabase
+                .from(DbTables.RACES)
+                .select(COLUMNS)
+                .eq('id', id)
+                .eq('user_id', userId)
+                .maybeSingle(),
         SELECT_CODES,
         maybeRow
     )
@@ -176,7 +195,7 @@ export const insertRace = Effect.fn('insertRace')(function* (
     const row = yield* run(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.RACES)
                 .insert({ ...toColumns(input), user_id: userId })
                 .select(COLUMNS)
                 .single(),
@@ -196,7 +215,7 @@ export const updateRace = Effect.fn('updateRace')(function* (
     const row = yield* run(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.RACES)
                 .update(toColumns(input))
                 .eq('id', id)
                 .eq('user_id', userId)
@@ -218,7 +237,7 @@ export const setRaceResult = Effect.fn('setRaceResult')(function* (
     const row = yield* run(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.RACES)
                 .update({ result_time_s: resultTimeS, status: 'completed' })
                 .eq('id', id)
                 .eq('user_id', userId)
@@ -240,7 +259,7 @@ export const setRaceStatus = Effect.fn('setRaceStatus')(function* (
     const row = yield* run(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.RACES)
                 .update({ status })
                 .eq('id', id)
                 .eq('user_id', userId)
@@ -262,12 +281,12 @@ export const deleteRace = Effect.fn('deleteRace')(function* (
     const deleted = yield* run(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.RACES)
                 .delete()
                 .eq('id', id)
                 .eq('user_id', userId)
                 .is('result_time_s', null)
-                .select('id'),
+                .select(selectColumns(DbTables.RACES, ['id'])),
         DELETE_CODES,
         idList
     )

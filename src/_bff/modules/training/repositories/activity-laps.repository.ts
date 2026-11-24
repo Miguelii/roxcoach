@@ -6,13 +6,21 @@ import { z } from 'zod'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ActivityQueryError, ActivityWriteError } from '@/_bff/lib/errors'
 import type { LapDTO, LapRow, TrainingClient } from '@/_bff/modules/training/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
-const TABLE = 'activity_laps'
-
-const COLUMNS =
-    'lap_index, name, distance_m, elapsed_time_s, moving_time_s, avg_hr, avg_speed_mps, station'
+const COLUMNS = selectColumns(DbTables.ACTIVITY_LAPS, [
+    'lap_index',
+    'name',
+    'distance_m',
+    'elapsed_time_s',
+    'moving_time_s',
+    'avg_hr',
+    'avg_speed_mps',
+    'station',
+])
 
 // PostgREST serializes numeric as a JSON number, but a string is accepted too.
 const numeric = z
@@ -61,7 +69,11 @@ export const replaceLaps = Effect.fn('replaceLaps')(function* (
 ) {
     const removed = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).delete().eq('user_id', userId).eq('activity_id', activityId),
+            supabase
+                .from(DbTables.ACTIVITY_LAPS)
+                .delete()
+                .eq('user_id', userId)
+                .eq('activity_id', activityId),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -75,7 +87,7 @@ export const replaceLaps = Effect.fn('replaceLaps')(function* (
     const inserted = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITY_LAPS)
                 .insert(laps.map((lap) => ({ ...lap, user_id: userId, activity_id: activityId }))),
         catch: (cause) =>
             new ActivityWriteError({
@@ -94,7 +106,7 @@ export const selectLaps = Effect.fn('selectLaps')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITY_LAPS)
                 .select(COLUMNS)
                 .eq('user_id', userId)
                 .eq('activity_id', activityId)
@@ -131,37 +143,56 @@ export const selectLaps = Effect.fn('selectLaps')(function* (
     }))
 })
 
-// Which of these activities of the user have at least one lap.
+const LAP_ID_CHUNK_SIZE = 200
+const LAP_PAGE_SIZE = 500
+
+// Which of these activities of the user have at least one lap. Chunked and paged because it
+// returns one row per lap, which exceeds PostgREST's max rows for a year of runs.
 export const selectActivityIdsWithLaps = Effect.fn('selectActivityIdsWithLaps')(function* (
     supabase: TrainingClient,
     userId: string,
     activityIds: string[]
 ) {
-    const { data, error } = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(TABLE)
-                .select('activity_id')
-                .eq('user_id', userId)
-                .in('activity_id', activityIds),
-        catch: (cause) =>
-            new ActivityQueryError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_LAPS_SELECT,
-            }),
-    })
+    const withLaps = new Set<string>()
 
-    if (error)
-        return yield* new ActivityQueryError({
-            cause: `${error.code}: ${error.message}`,
-            error_hash: ErrorCode.TRAINING_LAPS_SELECT_ERR,
-        })
+    for (let start = 0; start < activityIds.length; start += LAP_ID_CHUNK_SIZE) {
+        const chunk = activityIds.slice(start, start + LAP_ID_CHUNK_SIZE)
 
-    const parsed = z.array(z.object({ activity_id: z.string() })).safeParse(data)
-    if (!parsed.success)
-        return yield* new ActivityQueryError({
-            cause: 'activity_id rows failed schema validation',
-            error_hash: ErrorCode.TRAINING_LAPS_SELECT_PARSE,
-        })
-    return new Set(parsed.data.map((row) => row.activity_id))
+        for (let from = 0; ; from += LAP_PAGE_SIZE) {
+            const { data, error } = yield* Effect.tryPromise({
+                try: () =>
+                    supabase
+                        .from(DbTables.ACTIVITY_LAPS)
+                        .select(selectColumns(DbTables.ACTIVITY_LAPS, ['activity_id']))
+                        .eq('user_id', userId)
+                        .in('activity_id', chunk)
+                        .order('activity_id')
+                        .order('lap_index')
+                        .range(from, from + LAP_PAGE_SIZE - 1),
+                catch: (cause) =>
+                    new ActivityQueryError({
+                        cause: String(cause),
+                        error_hash: ErrorCode.TRAINING_LAPS_SELECT,
+                    }),
+            })
+
+            if (error)
+                return yield* new ActivityQueryError({
+                    cause: `${error.code}: ${error.message}`,
+                    error_hash: ErrorCode.TRAINING_LAPS_SELECT_ERR,
+                })
+
+            const parsed = z.array(z.object({ activity_id: z.string() })).safeParse(data)
+            if (!parsed.success)
+                return yield* new ActivityQueryError({
+                    cause: 'activity_id rows failed schema validation',
+                    error_hash: ErrorCode.TRAINING_LAPS_SELECT_PARSE,
+                })
+
+            parsed.data.forEach((row) => withLaps.add(row.activity_id))
+            if (parsed.data.length < LAP_PAGE_SIZE) break
+        }
+    }
+
+    return withLaps
 })

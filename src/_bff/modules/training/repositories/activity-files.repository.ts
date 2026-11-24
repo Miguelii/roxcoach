@@ -8,8 +8,9 @@ import {
     DuplicateActivityFileError,
 } from '@/_bff/lib/errors'
 import type { NewActivityFileRow, TrainingClient } from '@/_bff/modules/training/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
-const TABLE = 'activity_files'
 const UNIQUE_VIOLATION = '23505'
 
 // Only the code and the message of a returned error are kept (details can echo the row, which
@@ -20,7 +21,7 @@ export const insertActivityFile = Effect.fn('insertActivityFile')(function* (
     row: NewActivityFileRow
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).insert({ ...row, user_id: userId }),
+        try: () => supabase.from(DbTables.ACTIVITY_FILES).insert({ ...row, user_id: userId }),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -49,8 +50,8 @@ export const selectFileIdBySha256 = Effect.fn('selectFileIdBySha256')(function* 
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .select('id')
+                .from(DbTables.ACTIVITY_FILES)
+                .select(selectColumns(DbTables.ACTIVITY_FILES, ['id']))
                 .eq('user_id', userId)
                 .eq('sha256', sha256)
                 .maybeSingle(),

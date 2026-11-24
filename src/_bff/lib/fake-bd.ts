@@ -51,6 +51,7 @@ const makeChain = (item: QueryResult | Error) => {
         lt: vi.fn(() => chain),
         order: vi.fn(() => chain),
         limit: vi.fn(() => chain),
+        range: vi.fn((_from: number, _to: number) => chain),
         maybeSingle: vi.fn(() => chain),
         single: vi.fn(() => chain),
     })

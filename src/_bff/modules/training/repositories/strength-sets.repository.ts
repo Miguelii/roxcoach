@@ -9,10 +9,12 @@ import type {
     StrengthSetDTO,
     TrainingClient,
 } from '@/_bff/modules/training/types'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type ReturnedError = { code: string; message: string }
 
-const TABLE = 'strength_sets'
+type StrengthSetInsert = NewStrengthSetRow & { activity_id: string }
+
 const numeric = z
     .union([
         z.number(),
@@ -56,7 +58,7 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.STRENGTH_SETS)
                 .select(
                     'exercise, exercise_index, exercise_image_url, source_exercise_id, set_index, reps, load_kg, rir, rpe, lyfta_records'
                 )
@@ -95,14 +97,21 @@ export const selectStrengthSets = Effect.fn('selectStrengthSets')(function* (
     }))
 })
 
+// Deletes the sets of several activities of the user in one statement.
 export const deleteStrengthSets = Effect.fn('deleteStrengthSets')(function* (
     supabase: TrainingClient,
     userId: string,
-    activityId: string
+    activityIds: string[]
 ) {
+    if (activityIds.length === 0) return
+
     const { error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).delete().eq('user_id', userId).eq('activity_id', activityId),
+            supabase
+                .from(DbTables.STRENGTH_SETS)
+                .delete()
+                .eq('user_id', userId)
+                .in('activity_id', activityIds),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -116,14 +125,11 @@ export const deleteStrengthSets = Effect.fn('deleteStrengthSets')(function* (
 export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
     supabase: TrainingClient,
     userId: string,
-    activityId: string,
-    sets: NewStrengthSetRow[]
+    sets: StrengthSetInsert[]
 ) {
-    if (sets.length === 0) return
-
     const rows = sets.map((set) => ({
         user_id: userId,
-        activity_id: activityId,
+        activity_id: set.activity_id,
         exercise: set.exercise,
         exercise_index: set.exercise_index,
         exercise_image_url: set.exercise_image_url,
@@ -136,16 +142,21 @@ export const insertStrengthSets = Effect.fn('insertStrengthSets')(function* (
         lyfta_records: set.lyfta_records ?? null,
     }))
 
-    const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).insert(rows),
-        catch: (cause) =>
-            new ActivityWriteError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_STRENGTH_SETS_INSERT,
-            }),
-    })
+    for (let start = 0; start < rows.length; start += INSERT_CHUNK_SIZE) {
+        const { error } = yield* Effect.tryPromise({
+            try: () =>
+                supabase
+                    .from(DbTables.STRENGTH_SETS)
+                    .insert(rows.slice(start, start + INSERT_CHUNK_SIZE)),
+            catch: (cause) =>
+                new ActivityWriteError({
+                    cause: String(cause),
+                    error_hash: ErrorCode.TRAINING_STRENGTH_SETS_INSERT,
+                }),
+        })
 
-    if (error) return yield* writeError(error, ErrorCode.TRAINING_STRENGTH_SETS_INSERT_ERR)
+        if (error) return yield* writeError(error, ErrorCode.TRAINING_STRENGTH_SETS_INSERT_ERR)
+    }
 })
 
 const progressSetRowSchema = z.object({
@@ -158,8 +169,11 @@ const progressSetRowSchema = z.object({
 })
 
 const ID_CHUNK_SIZE = 100
+const PAGE_SIZE = 500
+const INSERT_CHUNK_SIZE = 1000
 
 // Sets of many workouts, queried in chunks so the `in` filter stays within the URL length limit.
+// A chunk holds far more rows than PostgREST's max rows, so each one is paged by a stable order.
 export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(function* (
     supabase: TrainingClient,
     userId: string,
@@ -173,33 +187,45 @@ export const selectSetsForActivities = Effect.fn('selectSetsForActivities')(func
         chunks,
         (chunk) =>
             Effect.gen(function* () {
-                const { data, error } = yield* Effect.tryPromise({
-                    try: () =>
-                        supabase
-                            .from(TABLE)
-                            .select(
-                                'activity_id, exercise, exercise_image_url, source_exercise_id, reps, load_kg'
-                            )
-                            .eq('user_id', userId)
-                            .in('activity_id', chunk),
-                    catch: (cause) =>
-                        new ActivityQueryError({
-                            cause: String(cause),
-                            error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT,
-                        }),
-                })
+                const rows: z.infer<typeof progressSetRowSchema>[] = []
 
-                if (error)
-                    return yield* selectError(error, ErrorCode.TRAINING_PROGRESS_SETS_SELECT_ERR)
-
-                const parsed = z.array(progressSetRowSchema).safeParse(data)
-                if (!parsed.success)
-                    return yield* new ActivityQueryError({
-                        cause: `Rows failed schema validation: ${parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
-                        error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT_PARSE,
+                for (let from = 0; ; from += PAGE_SIZE) {
+                    const { data, error } = yield* Effect.tryPromise({
+                        try: () =>
+                            supabase
+                                .from(DbTables.STRENGTH_SETS)
+                                .select(
+                                    'activity_id, exercise, exercise_image_url, source_exercise_id, reps, load_kg'
+                                )
+                                .eq('user_id', userId)
+                                .in('activity_id', chunk)
+                                .order('id')
+                                .range(from, from + PAGE_SIZE - 1),
+                        catch: (cause) =>
+                            new ActivityQueryError({
+                                cause: String(cause),
+                                error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT,
+                            }),
                     })
 
-                return parsed.data
+                    if (error)
+                        return yield* selectError(
+                            error,
+                            ErrorCode.TRAINING_PROGRESS_SETS_SELECT_ERR
+                        )
+
+                    const parsed = z.array(progressSetRowSchema).safeParse(data)
+                    if (!parsed.success)
+                        return yield* new ActivityQueryError({
+                            cause: `Rows failed schema validation: ${parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
+                            error_hash: ErrorCode.TRAINING_PROGRESS_SETS_SELECT_PARSE,
+                        })
+
+                    rows.push(...parsed.data)
+                    if (parsed.data.length < PAGE_SIZE) break
+                }
+
+                return rows
             }),
         { concurrency: 3 }
     )

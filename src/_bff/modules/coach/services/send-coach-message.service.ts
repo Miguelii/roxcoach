@@ -17,7 +17,8 @@ import {
     type RaceQueryError,
 } from '@/_bff/lib/errors'
 import { Logger } from '@/_bff/lib/server-logger'
-import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
+import { getProfile } from '@/_bff/modules/athlete/services/get-profile.service'
+import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import {
     DAILY_MESSAGE_CAP,
     HISTORY_WINDOW,
@@ -73,7 +74,7 @@ type Ported<T> = Effect.Effect<T, PortError>
 // response streams, when the request cookies may no longer be readable. The context and the tools
 // create their own session-bound clients.
 export type CoachPorts = {
-    getTimezone: (user: User) => Ported<string>
+    getProfile: (user: User) => Ported<ProfileDTO>
     findConversation: (user: User, id: string) => Ported<ConversationDTO | null>
     createConversation: (user: User, title: string) => Ported<ConversationDTO>
     saveMessage: (user: User, input: MessageInput) => Ported<MessageDTO>
@@ -81,7 +82,10 @@ export type CoachPorts = {
     touch: (user: User, conversationId: string) => Ported<boolean>
     // Atomically takes one slot of the athlete's local `day` (YYYY-MM-DD). False: the cap is reached.
     takeMessageSlot: (user: User, day: string, cap: number) => Ported<boolean>
-    getContext: (user: User) => Ported<{ context: string; timezone: string }>
+    getContext: (
+        user: User,
+        base: { profile: ProfileDTO; timezone: string; today: string }
+    ) => Ported<{ context: string; timezone: string }>
     makeTools: (user: User) => CoachTool[]
 }
 
@@ -90,7 +94,7 @@ type Input = { conversationId: string | null; message: string }
 type Deps = { model: CoachModel; now?: Date; signal: AbortSignal; ports?: CoachPorts }
 
 const makeRealPorts = (supabase: CoachClient): CoachPorts => ({
-    getTimezone: (user) => getAthleteTimezone(user),
+    getProfile: (user) => getProfile(user),
     findConversation: (user, id) => selectConversation(supabase, user.id, id),
     createConversation: (user, title) => insertConversation(supabase, user.id, title),
     saveMessage: (user, input) => insertMessage(supabase, user.id, input),
@@ -98,7 +102,7 @@ const makeRealPorts = (supabase: CoachClient): CoachPorts => ({
         selectLatestMessages(supabase, user.id, conversationId, limit),
     touch: (user, conversationId) => touchConversation(supabase, user.id, conversationId),
     takeMessageSlot: (_user, day, cap) => takeMessageSlot(supabase, day, cap),
-    getContext: (user) => getCoachContext(user),
+    getContext: (user, base) => getCoachContext(user, base),
     makeTools: (user) => makeCoachTools(user),
 })
 
@@ -172,9 +176,10 @@ async function* streamReply(
 }
 
 // Does every check and write that must happen before the response starts, then returns the event
-// stream. Order: ownership of the conversation, the daily cap (one atomic slot per athlete-local
-// day, taken before anything is written, so a cancelled or failed attempt still counts and
-// deleting a conversation never gives it back), the new conversation, the user message, the context.
+// stream. The profile and the conversation are read together, then the daily cap (one atomic slot
+// per athlete-local day, so a cancelled or failed attempt still counts and deleting a conversation
+// never gives it back), the context and the history run together. Nothing is written before the cap
+// is taken: the new conversation and the user message come last.
 export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
     user: User,
     input: Input,
@@ -183,19 +188,34 @@ export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
     const ports = deps.ports ?? makeRealPorts(yield* createCoachClient())
     const now = deps.now ?? new Date()
 
-    let existingId: string | null = null
-    if (input.conversationId !== null) {
-        const found = yield* ports.findConversation(user, input.conversationId)
-        if (found === null)
-            return yield* new ConversationNotFoundError({
-                cause: 'Conversation not found',
-                error_hash: ErrorCode.COACH_CONVERSATION_NOT_FOUND,
-            })
-        existingId = found.id
-    }
+    const [found, profile] = yield* Effect.all(
+        [
+            input.conversationId === null
+                ? Effect.succeed(null)
+                : ports.findConversation(user, input.conversationId),
+            ports.getProfile(user),
+        ],
+        { concurrency: 'unbounded' }
+    )
+    if (input.conversationId !== null && found === null)
+        return yield* new ConversationNotFoundError({
+            cause: 'Conversation not found',
+            error_hash: ErrorCode.COACH_CONVERSATION_NOT_FOUND,
+        })
 
-    const timezone = validTimezoneOrUtc(yield* ports.getTimezone(user))
-    const slotTaken = yield* ports.takeMessageSlot(user, todayIn(timezone, now), DAILY_MESSAGE_CAP)
+    const timezone = validTimezoneOrUtc(profile.timezone)
+    const today = todayIn(timezone, now)
+
+    const [slotTaken, { context }, previous] = yield* Effect.all(
+        [
+            ports.takeMessageSlot(user, today, DAILY_MESSAGE_CAP),
+            ports.getContext(user, { profile, timezone, today }),
+            found === null
+                ? Effect.succeed([])
+                : ports.latestMessages(user, found.id, HISTORY_WINDOW - 1),
+        ],
+        { concurrency: 'unbounded' }
+    )
     if (!slotTaken)
         return yield* new DailyCapReachedError({
             cause: 'Daily message cap reached',
@@ -203,16 +223,18 @@ export const sendCoachMessage = Effect.fn('sendCoachMessage')(function* (
         })
 
     const id =
-        existingId ??
+        found?.id ??
         (yield* ports.createConversation(
             user,
             Array.from(input.message).slice(0, TITLE_MAX_CHARS).join('')
         )).id
 
-    yield* ports.saveMessage(user, { conversationId: id, role: 'user', content: input.message })
-
-    const { context } = yield* ports.getContext(user)
-    const messages = buildHistory(yield* ports.latestMessages(user, id, HISTORY_WINDOW))
+    const saved = yield* ports.saveMessage(user, {
+        conversationId: id,
+        role: 'user',
+        content: input.message,
+    })
+    const messages = buildHistory([...previous, saved])
 
     return streamReply(
         user,

@@ -68,6 +68,9 @@ Controller to service to (repository | processor | helper). Full layout in `docs
 
 - Every Supabase client is created with `db: { schema: 'roxcoach' }`. Nothing is created in the `public` schema (the Supabase project is shared with another app). The one exception is `public.logs`, the log table shared with the other app: it is told apart by its `project` column (`'roxcoach'` for our rows), only the service-role client touches it, and only the logger module and the logs page code use a client on the `public` schema.
 - Access flag is exactly `app_metadata.roxcoach === true` (strict boolean). Admin flag (admin-only pages such as `/logs`) is exactly `app_metadata.roxcoach_admin === true` on top of it, checked by `isRoxcoachAdmin` and enforced by `adminProcedure` and `ADMIN_PATHS` in the proxy.
+- Table names are never string literals: use `DbTables` (`PublicDbTables.LOGS` for `public.logs`) from `src/_bff/core/db/tables.ts`, and give every new table a member. No `const TABLE = '...'` in a repository.
+- Every column list of a `select()` goes through `selectColumns(DbTables.X, [...])` (`src/_bff/core/db/columns.ts`) so a column that does not exist fails the build. Always do this when touching a repository. Selects with joins or `*` are the only exception.
+- `src/_bff/core/db/database.types.ts` is generated, never edited. Run `pnpm db:types` in the same change as every migration (`db/tests/database-types.test.ts` fails when it is stale).
 - Login failure shows one generic message for a wrong password and for an account without the flag: "Invalid email or password".
 - Secrets, tokens and passwords never reach logs or error payloads.
 - Read `docs/tech-specs/database.md` and `docs/tech-specs/auth-security.md` before touching schema, RLS or auth.

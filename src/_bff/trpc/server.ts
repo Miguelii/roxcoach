@@ -13,14 +13,14 @@ const t = initTRPC.context<Context>().create()
 export const publicProcedure = t.procedure
 
 /**
- * Resolves the session once (request-cached) and injects the authenticated `user` into ctx.
+ * Resolves the session once per request (memoized in the context) and injects the authenticated `user` into ctx.
  * Infrastructure failures map to 500, a missing user to 401. The Supabase project is shared with
  * another app, so a signed-in user without `app_metadata.roxcoach === true` maps to 403.
  * Protected services receive `ctx.user` and keep creating their own Supabase client for queries so
  * each one stays in control of which key (publishable vs service-role) it uses.
  **/
-const isAuthed = t.middleware(async ({ next }) => {
-    const session = await Effect.runPromiseExit(getSession())
+const isAuthed = t.middleware(async ({ ctx, next }) => {
+    const session = await (ctx.session?.() ?? Effect.runPromiseExit(getSession()))
 
     if (Exit.isFailure(session)) {
         Logger({ level: 'error', prefix: 'protectedProcedure', error: session.cause })

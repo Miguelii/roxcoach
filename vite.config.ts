@@ -86,6 +86,7 @@ export default defineConfig({
             'build',
             'node_modules',
             'src/components/ui',
+            'src/_bff/core/db/database.types.ts',
             '.agent/**',
             '.agents/**',
             '.claude/**',

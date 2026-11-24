@@ -13,7 +13,7 @@ import {
     updateLyftaLastSyncedAt,
     upsertLyftaConnection,
 } from '@/_bff/modules/lyfta/repositories/lyfta-connections.repository'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 const USER_ID = 'user-lyfta-1'
 const ENCRYPTED_KEY = 'v1.encrypted.fixture'

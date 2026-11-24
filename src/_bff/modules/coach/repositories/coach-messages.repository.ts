@@ -10,11 +10,18 @@ import {
     type CoachClient,
 } from '@/_bff/modules/coach/repositories/coach-query'
 import type { MessageDTO, MessageInput } from '@/_bff/modules/coach/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type MessageRow = z.infer<typeof messageRowSchema>
 
-const TABLE = 'coach_messages'
-const COLUMNS = 'id, role, content, model, created_at'
+const COLUMNS = selectColumns(DbTables.COACH_MESSAGES, [
+    'id',
+    'role',
+    'content',
+    'model',
+    'created_at',
+])
 
 const messageRowSchema = z.object({
     id: z.string(),
@@ -53,7 +60,7 @@ export const insertMessage = Effect.fn('insertMessage')(function* (
     const row = yield* runCoachWrite(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.COACH_MESSAGES)
                 .insert({
                     user_id: userId,
                     conversation_id: input.conversationId,
@@ -82,7 +89,7 @@ export const selectLatestMessages = Effect.fn('selectLatestMessages')(function* 
     const rows = yield* runCoachRead(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.COACH_MESSAGES)
                 .select(COLUMNS)
                 .eq('conversation_id', conversationId)
                 .eq('user_id', userId)

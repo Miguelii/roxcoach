@@ -18,13 +18,31 @@ import type {
 import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import { parsePaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type ReturnedError = Pick<PostgrestError, 'code' | 'message'>
 
-const TABLE = 'activities'
-
-const COLUMNS =
-    'id, source, category, name, started_at, local_date, distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, avg_hr, max_hr, avg_speed_mps, calories, body_weight_kg, lyfta_total_volume_kg_reps, perceived_effort, notes'
+const COLUMNS = selectColumns(DbTables.ACTIVITIES, [
+    'id',
+    'source',
+    'category',
+    'name',
+    'started_at',
+    'local_date',
+    'distance_m',
+    'moving_time_s',
+    'elapsed_time_s',
+    'elevation_gain_m',
+    'avg_hr',
+    'max_hr',
+    'avg_speed_mps',
+    'calories',
+    'body_weight_kg',
+    'lyfta_total_volume_kg_reps',
+    'perceived_effort',
+    'notes',
+])
 
 // PostgREST serializes numeric and bigint as JSON numbers, but a string is accepted too.
 const numeric = z
@@ -100,7 +118,7 @@ export const selectActivitiesInRange = Effect.fn('selectActivitiesInRange')(func
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select(COLUMNS)
                 .eq('user_id', userId)
                 .is('deleted_at', null)
@@ -131,7 +149,7 @@ export const selectActivityById = Effect.fn('selectActivityById')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select(COLUMNS)
                 .eq('id', id)
                 .eq('user_id', userId)
@@ -166,9 +184,9 @@ export const insertActivity = Effect.fn('insertActivity')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .insert({ ...row, source: 'manual', user_id: userId })
-                .select('id')
+                .select(selectColumns(DbTables.ACTIVITIES, ['id']))
                 .single(),
         catch: (cause) =>
             new ActivityWriteError({
@@ -201,7 +219,7 @@ export const selectBackfillTargets = Effect.fn('selectBackfillTargets')(function
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select('id, activity_files!inner(storage_path)')
                 .eq('user_id', userId)
                 .or('hr_histogram.is.null,pace_histogram.is.null')
@@ -236,7 +254,7 @@ export const updateHistograms = Effect.fn('updateHistograms')(function* (
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .update({
                     hr_histogram: histograms.hrHistogram,
                     pace_histogram: histograms.paceHistogram,
@@ -253,34 +271,15 @@ export const updateHistograms = Effect.fn('updateHistograms')(function* (
     if (error) return yield* writeError(error, ErrorCode.TRAINING_HR_HISTOGRAM_UPDATE_ERR)
 })
 
-export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
+// Upserts a whole page of Lyfta workouts in one statement. Returns activity id by source id.
+export const upsertLyftaActivities = Effect.fn('upsertLyftaActivities')(function* (
     supabase: TrainingClient,
     userId: string,
-    row: LyftaActivityRow
+    rows: LyftaActivityRow[]
 ) {
-    const { data: existing, error: lookupError } = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(TABLE)
-                .select('id')
-                .eq('user_id', userId)
-                .eq('source', 'lyfta')
-                .eq('source_id', row.source_id)
-                .maybeSingle(),
-        catch: (cause) =>
-            new ActivityQueryError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT,
-            }),
-    })
+    if (rows.length === 0) return new Map<string, string>()
 
-    if (lookupError)
-        return yield* new ActivityQueryError({
-            cause: `${lookupError.code}: ${lookupError.message}`,
-            error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_SELECT_ERR,
-        })
-
-    const writeRow = {
+    const writeRows = rows.map((row) => ({
         ...row,
         user_id: userId,
         source: 'lyfta' as const,
@@ -291,18 +290,17 @@ export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
         max_hr: null,
         avg_speed_mps: null,
         calories: null,
-    }
+    }))
 
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .upsert(writeRow, {
+                .from(DbTables.ACTIVITIES)
+                .upsert(writeRows, {
                     onConflict: 'user_id,source,source_id',
                     defaultToNull: false,
                 })
-                .select('id')
-                .single(),
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'source_id'])),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -315,13 +313,15 @@ export const upsertLyftaActivity = Effect.fn('upsertLyftaActivity')(function* (
             cause: `${error.code}: ${error.message}`,
             error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
         })
-    if (data === null)
+
+    const parsed = z.array(z.object({ id: z.string(), source_id: z.string() })).safeParse(data)
+    if (!parsed.success || parsed.data.length !== rows.length)
         return yield* new ActivityWriteError({
-            cause: 'Lyfta activity upsert returned no row',
+            cause: 'Lyfta activity upsert returned unexpected rows',
             error_hash: ErrorCode.TRAINING_LYFTA_ACTIVITY_UPSERT_ERR,
         })
 
-    return { activityId: data.id, created: existing === null }
+    return new Map(parsed.data.map((row) => [row.source_id, row.id]))
 })
 
 export const deleteActivity = Effect.fn('deleteActivity')(function* (
@@ -330,7 +330,13 @@ export const deleteActivity = Effect.fn('deleteActivity')(function* (
     id: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).delete().eq('user_id', userId).eq('id', id).select('id'),
+        try: () =>
+            supabase
+                .from(DbTables.ACTIVITIES)
+                .delete()
+                .eq('user_id', userId)
+                .eq('id', id)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id'])),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -355,7 +361,7 @@ export const countActivitiesBySource = Effect.fn('countActivitiesBySource')(func
     const { count, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('source', source),
@@ -379,7 +385,12 @@ export const deleteActivitiesBySource = Effect.fn('deleteActivitiesBySource')(fu
 ) {
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
-            supabase.from(TABLE).delete().eq('user_id', userId).eq('source', source).select('id'),
+            supabase
+                .from(DbTables.ACTIVITIES)
+                .delete()
+                .eq('user_id', userId)
+                .eq('source', source)
+                .select('id'),
         catch: (cause) =>
             new ActivityWriteError({
                 cause: String(cause),
@@ -411,7 +422,7 @@ export const selectRunsInRange = Effect.fn('selectRunsInRange')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .select(
                     'local_date, distance_m, moving_time_s, avg_hr, hr_histogram, pace_histogram'
                 )
@@ -459,8 +470,8 @@ export const selectStrengthWorkoutsBefore = Effect.fn('selectStrengthWorkoutsBef
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .select('id, local_date')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'local_date']))
                 .eq('user_id', userId)
                 .eq('category', 'strength')
                 .is('deleted_at', null)
@@ -496,8 +507,8 @@ export const selectStrengthWorkoutsInRange = Effect.fn('selectStrengthWorkoutsIn
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .select('id, local_date')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'local_date']))
                 .eq('user_id', userId)
                 .eq('category', 'strength')
                 .is('deleted_at', null)
@@ -538,9 +549,9 @@ export const insertZeppActivity = Effect.fn('insertZeppActivity')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.ACTIVITIES)
                 .insert({ ...row, source: 'zepp', user_id: userId })
-                .select('id')
+                .select(selectColumns(DbTables.ACTIVITIES, ['id']))
                 .single(),
         catch: (cause) =>
             new ActivityWriteError({
@@ -568,8 +579,8 @@ export const selectZeppActivityIds = Effect.fn('selectZeppActivityIds')(function
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .select('id, source_id')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id', 'source_id']))
                 .eq('user_id', userId)
                 .eq('source', 'zepp')
                 .in('source_id', sourceIds),
@@ -602,8 +613,8 @@ export const selectSourceIds = Effect.fn('selectSourceIds')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
-                .select('source_id')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['source_id']))
                 .eq('user_id', userId)
                 .eq('source', source)
                 .in('source_id', sourceIds),
@@ -646,8 +657,8 @@ export const selectIdNearStartedAt = Effect.fn('selectIdNearStartedAt')(function
     const { data, error } = yield* Effect.tryPromise({
         try: () => {
             const query = supabase
-                .from(TABLE)
-                .select('id')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id']))
                 .eq('user_id', userId)
                 .gte('started_at', from)
                 .lte('started_at', to)
@@ -678,8 +689,8 @@ export const selectStartedAtsBetween = Effect.fn('selectStartedAtsBetween')(func
     const { data, error } = yield* Effect.tryPromise({
         try: () => {
             const query = supabase
-                .from(TABLE)
-                .select('started_at')
+                .from(DbTables.ACTIVITIES)
+                .select(selectColumns(DbTables.ACTIVITIES, ['started_at']))
                 .eq('user_id', userId)
                 .gte('started_at', from)
                 .lte('started_at', to)

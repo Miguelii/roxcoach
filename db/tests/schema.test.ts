@@ -108,6 +108,7 @@ describe('schema layout', () => {
             '0020_zepp.sql',
             '0021_background_sync.sql',
             '0022_shared_logs_project.sql',
+            '0023_rls_initplan.sql',
         ])
     })
 

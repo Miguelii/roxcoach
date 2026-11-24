@@ -97,7 +97,17 @@ export const makeStore = (options: { timezone?: string; tools?: CoachTool[] } = 
     const clock = { now: NOW }
 
     const ports: CoachPorts = {
-        getTimezone: () => Effect.succeed(options.timezone ?? 'UTC'),
+        getProfile: () =>
+            Effect.succeed({
+                displayName: '',
+                timezone: options.timezone ?? 'UTC',
+                maxHr: null,
+                restingHr: null,
+                hyroxDivision: null,
+                weeklyHoursCap: null,
+                notes: null,
+                dashboardMode: 'run' as const,
+            }),
         findConversation: (user, id) =>
             Effect.succeed(
                 conversations

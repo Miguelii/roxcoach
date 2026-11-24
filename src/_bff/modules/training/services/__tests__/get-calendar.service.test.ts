@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Cause, Effect, Exit, Option } from 'effect'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { makeFakeDb } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb } from '@/_bff/lib/fake-bd'
 import { getCalendar } from '@/_bff/modules/training/services/get-calendar.service'
 
 const { createDBServerClientMock } = vi.hoisted(() => ({ createDBServerClientMock: vi.fn() }))

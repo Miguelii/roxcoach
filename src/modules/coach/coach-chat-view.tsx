@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { CoachHistoryMenu, type ConversationSummary } from '@/modules/coach/coach-history-menu'
 import { CoachModelCaption } from '@/modules/coach/coach-model-caption'
 import { CoachModelSwitchNote } from '@/modules/coach/coach-model-switch-note'
-import { CoachMessage } from '@/modules/coach/coach-message'
+import { CoachMessage, preloadCoachMarkdown } from '@/modules/coach/coach-message'
 import { COACH_MESSAGE_MAX_CHARS } from '@/modules/coach/suggestions'
 import {
     type ChatErrorKind,
@@ -118,6 +118,8 @@ function CoachLauncher({ onOpenChange, onDismissLauncher }: LauncherProps) {
                     type="button"
                     data-testid="coach-launcher"
                     onClick={() => onOpenChange(true)}
+                    onPointerEnter={preloadCoachMarkdown}
+                    onFocus={preloadCoachMarkdown}
                     className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full pl-2 text-left text-sm text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
                 >
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-signal/10 text-signal-strong transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">

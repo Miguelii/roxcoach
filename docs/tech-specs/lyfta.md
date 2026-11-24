@@ -251,8 +251,10 @@ network calls stay in the server-side `lyfta` module.
    final window is not completed. The UI then shows "More workouts to sync. Press Sync workouts
    again to continue."; false is a plain success. Each workout upsert is idempotent by source id,
    so overlaps and re-processing are harmless.
-6. Upsert activities by `(user_id, source, source_id)` through the `training` service, then replace
-   that activity's imported sets with the already validated set list. Use the service-role client
+6. Write each fetched page in four statements through the `training` service
+   (`importLyftaWorkouts`): read which source ids exist (for the created count), upsert all the
+   page's activities by `(user_id, source, source_id)` in one statement, delete the imported sets of
+   those activities in one statement, and insert all their validated sets (chunks of 1000 rows). Use the service-role client
    and filter each read, update and delete by `user_id` (RLS does not back it up on this path). Keep all orchestration and mapping in the
    application; the database migration contains only schema, indexes, RLS and grants. These
    PostgREST writes are not one transaction. If set replacement fails after the activity upsert or

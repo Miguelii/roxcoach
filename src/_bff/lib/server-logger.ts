@@ -2,6 +2,7 @@ import 'server-only'
 
 import { after } from 'next/server'
 import { createDBPublicAdminClient } from '@/_bff/core/db'
+import { PublicDbTables } from '@/_bff/core/db/tables'
 import {
     serializeLogMetadata,
     serializeLogValue,
@@ -57,7 +58,7 @@ function logToConsole(props: LogProps): void {
 }
 
 const insertLogRow = async (row: LogRow) => {
-    const { error } = await createDBPublicAdminClient().from('logs').insert(row)
+    const { error } = await createDBPublicAdminClient().from(PublicDbTables.LOGS).insert(row)
     if (error) throw new Error(error.message)
 }
 
