@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AppLoader } from '@/components/app-loader'
 import { PRIMARY_NAV_ITEMS } from '@/components/app-nav-items'
 
 // The frame of AppShell without anything that needs the request (admin link, coach toggle, active
@@ -33,6 +34,7 @@ export function AppShellSkeleton() {
                         ROXCOACH
                     </Link>
                 </header>
+                <AppLoader />
             </div>
         </div>
     )

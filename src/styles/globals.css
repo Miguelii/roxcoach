@@ -220,3 +220,45 @@ html {
     outline: none !important;
     box-shadow: none !important;
 }
+
+/* Loading screen: a dot runs the eight Hyrox stations, one tick and one label at a time. The base
+   styles already show the first station, so reduced motion (animations cut short) stays readable. */
+@keyframes station-step {
+    to {
+        left: calc(100% - 0.75rem);
+    }
+}
+
+@keyframes station-hop {
+    50% {
+        transform: translateY(-0.5rem);
+    }
+}
+
+@keyframes station-label {
+    0%,
+    11% {
+        opacity: 1;
+    }
+    12.5%,
+    100% {
+        opacity: 0;
+    }
+}
+
+.station-dot {
+    animation: station-step 7.2s steps(8, jump-none) infinite;
+}
+
+.station-dot > span {
+    animation: station-hop 0.9s ease-in-out infinite;
+}
+
+.station-label {
+    opacity: 0;
+    animation: station-label 7.2s linear infinite;
+}
+
+.station-label:first-child {
+    opacity: 1;
+}
