@@ -5,7 +5,7 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import { uploadActivity } from '@/_bff/modules/training/services/upload-activity.service'
 import type { StorageClient } from '@/_bff/modules/training/types'
 

@@ -6,7 +6,7 @@ import { createImportContext } from '@/_bff/modules/training/services/import-con
 import { importLyftaWorkout } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 const USER = 'user-training-1'
 const ACTIVITY_ID = 'activity-lyfta-1'

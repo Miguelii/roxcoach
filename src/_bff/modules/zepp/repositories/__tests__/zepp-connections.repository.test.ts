@@ -13,7 +13,7 @@ import {
     updateZeppLastSyncedAt,
     upsertZeppConnection,
 } from '@/_bff/modules/zepp/repositories/zepp-connections.repository'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 const USER_ID = 'user-zepp-1'
 const ENCRYPTED = 'v1.encrypted.fixture'

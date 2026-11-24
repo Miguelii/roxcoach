@@ -111,7 +111,7 @@ that run only. The unique `(user_id, source, source_id)` index turns a concurren
 "already imported". The result is `{ imported, skipped, updated, remaining }`
 (`zeppSyncResultSchema`), where `updated` counts the runs that got their laps and `remaining` counts
 both the new runs and the runs still without laps (above zero only when the ceiling is hit). An
-expired token aborts the sync.
+expired token aborts the sync. The lap lookup (`selectActivityIdsWithLaps`) returns one row per lap, so it is chunked by activity id and paged, because PostgREST cuts a response at its max rows without an error.
 
 Every 25 detail requests the sync re-reads the connection. When it is gone (the athlete
 disconnected) or no longer holds this run's lease (`ownsSyncLease`: `running` with `sync_started_at`

@@ -7,7 +7,7 @@ import {
     insertStrengthSets,
     selectStrengthSets,
 } from '@/_bff/modules/training/repositories/strength-sets.repository'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 const USER_ID = 'strength-user-1'
 const ACTIVITY_ID = 'strength-activity-1'

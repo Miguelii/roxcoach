@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     selectRunsInRange,
     selectStrengthWorkoutsInRange,
@@ -163,6 +163,27 @@ describe('selectSetsForActivities', () => {
         })
         expect(sizes).toEqual([100, 100, 50])
         for (const chain of chains) expect(chain.eq).toHaveBeenCalledWith('user_id', USER_ID)
+    })
+
+    it('pages a chunk until a short page comes back', async () => {
+        const row = {
+            activity_id: 'w1',
+            exercise: 'Squat',
+            exercise_image_url: null,
+            source_exercise_id: null,
+            reps: 5,
+            load_kg: '100',
+        }
+        const { chains, supabase } = makeFakeDb([
+            ok(Array.from({ length: 500 }, () => row)),
+            ok([row]),
+        ])
+        const rows = await Effect.runPromise(selectSetsForActivities(supabase, USER_ID, ['w1']))
+
+        expect(rows).toHaveLength(501)
+        expect(chains).toHaveLength(2)
+        expect(chains[0]?.range).toHaveBeenCalledWith(0, 499)
+        expect(chains[1]?.range).toHaveBeenCalledWith(500, 999)
     })
 
     it('tags thrown, returned and malformed results as ActivityQueryError', async () => {

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import { getRunProgress } from '@/_bff/modules/training/services/get-run-progress.service'
 import { getStrengthProgress } from '@/_bff/modules/training/services/get-strength-progress.service'
 import type { RaceDTO, RaceFilter } from '@/_bff/modules/races/types'

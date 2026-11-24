@@ -6,7 +6,7 @@ import {
     DB_ROW,
     DTO,
 } from '@/_bff/modules/training/repositories/__tests__/activity-fixtures'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     selectActivitiesInRange,
     selectActivityById,

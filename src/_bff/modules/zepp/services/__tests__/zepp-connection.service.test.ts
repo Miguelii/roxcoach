@@ -11,7 +11,7 @@ import {
     getZeppConnectionStatus,
 } from '@/_bff/modules/zepp/services/zepp-connection.service'
 import { decryptZeppToken, encryptZeppToken } from '@/_bff/modules/zepp/utils/credentials.utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 // SAFETY: these services only read the authenticated user's ID.
 const USER = { id: 'user-zepp-1' } as User

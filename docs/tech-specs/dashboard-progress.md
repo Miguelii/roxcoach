@@ -238,6 +238,8 @@ All aggregation lives in pure helpers under `_bff/modules/training/helpers`, fed
 queries that always filter by `user_id`. Queries select only the columns they need and are bounded
 by the range.
 
+Strength sets are read in chunks of 100 workouts, each paged (500 rows per page, ordered by `id`) until a short page: a chunk holds more rows than PostgREST's max rows, which would otherwise cut the response silently and skew volume and top sets.
+
 ## Frontend
 
 ### Layout

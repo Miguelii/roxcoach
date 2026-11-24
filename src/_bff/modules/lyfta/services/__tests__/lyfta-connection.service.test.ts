@@ -8,7 +8,7 @@ import {
     getLyftaConnectionStatus,
 } from '@/_bff/modules/lyfta/services/lyfta-connection.service'
 import { encryptLyftaApiKey } from '@/_bff/modules/lyfta/utils/credentials.utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
 // SAFETY: These services only read the authenticated user's ID.
 const USER = { id: 'user-lyfta-1' } as User

@@ -394,6 +394,19 @@ deletes rows older than 30 days, ours included. The logs repository is a deliber
 "every query filters by `user_id`": an admin (`app_metadata.roxcoach_admin === true`, see
 [auth-security.md](auth-security.md#admin-flag)) sees every Roxcoach row, and nobody else reads them.
 
+## Table names and generated types
+
+Repositories never write a table name as a string: they use `DbTables` (and `PublicDbTables.LOGS`
+for `public.logs`) from `src/_bff/core/db/tables.ts`. Column lists of a `select()` are built with
+`selectColumns(DbTables.X, [...])` (`core/db/columns.ts`), which checks every column against
+`src/_bff/core/db/database.types.ts` and fails the build for one that does not exist.
+
+`database.types.ts` is generated, never edited: `pnpm db:types` applies `db/migrations` to an
+in-memory PGlite and writes the `Row`, `Insert` and `Update` types and the enums
+(`tools/generate-db-types.ts`). No Supabase access is needed. Run it in the same change as every
+migration; `db/tests/database-types.test.ts` fails when the committed file is stale. A new table also
+gets a `DbTables` member.
+
 ## Migrations
 
 | File                                    | Content                                                                                                     |

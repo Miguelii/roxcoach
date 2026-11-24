@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { asClient } from '@/_bff/lib/tests-utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import { backfillHistograms } from '@/_bff/modules/training/services/backfill-histograms.service'
 import type { StorageReadClient, TrainingClient } from '@/_bff/modules/training/types'
 

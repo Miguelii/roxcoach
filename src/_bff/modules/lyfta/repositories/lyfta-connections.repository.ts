@@ -12,6 +12,8 @@ import type { LyftaConnectionRecord } from '@/_bff/modules/lyfta/types'
 import type { createDBAdminClient } from '@/_bff/core/db'
 import type { SyncOutcome } from '@/_bff/core/helpers/sync-state.helper'
 import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type AdminClient = ReturnType<typeof createDBAdminClient>
 type ReturnedError = { code: string; message: string }
@@ -30,9 +32,15 @@ type ConnectionUpsert = {
     encrypted_api_key: string
 } & Partial<IdleSyncState & { last_synced_at: null }>
 
-const TABLE = 'lyfta_connections'
-const SELECT_COLUMNS =
-    'encrypted_api_key, last_synced_at, sync_status, sync_started_at, sync_finished_at, sync_result, sync_error'
+const SELECT_COLUMNS = selectColumns(DbTables.LYFTA_CONNECTIONS, [
+    'encrypted_api_key',
+    'last_synced_at',
+    'sync_status',
+    'sync_started_at',
+    'sync_finished_at',
+    'sync_result',
+    'sync_error',
+])
 const IDLE_SYNC_STATE: IdleSyncState = {
     sync_status: 'idle',
     sync_started_at: null,
@@ -62,7 +70,12 @@ export const selectLyftaConnection = Effect.fn('selectLyftaConnection')(function
     userId: string
 ) {
     const { data, error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).select(SELECT_COLUMNS).eq('user_id', userId).maybeSingle(),
+        try: () =>
+            supabase
+                .from(DbTables.LYFTA_CONNECTIONS)
+                .select(SELECT_COLUMNS)
+                .eq('user_id', userId)
+                .maybeSingle(),
         catch: (cause) =>
             new LyftaConnectionQueryError({
                 cause: String(cause),
@@ -107,7 +120,7 @@ export const upsertLyftaConnection = Effect.fn('upsertLyftaConnection')(function
           }
         : { user_id: userId, encrypted_api_key: encryptedApiKey }
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).upsert(row, { onConflict: 'user_id' }),
+        try: () => supabase.from(DbTables.LYFTA_CONNECTIONS).upsert(row, { onConflict: 'user_id' }),
         catch: (cause) =>
             new LyftaConnectionWriteError({
                 cause: String(cause),
@@ -133,12 +146,12 @@ export const updateLyftaLastSyncedAt = Effect.fn('updateLyftaLastSyncedAt')(func
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.LYFTA_CONNECTIONS)
                 .update({ last_synced_at: lastSyncedAt })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
                 .eq('sync_status', 'running')
-                .select('user_id')
+                .select(selectColumns(DbTables.LYFTA_CONNECTIONS, ['user_id']))
                 .maybeSingle(),
         catch: (cause) =>
             new LyftaConnectionWriteError({
@@ -169,7 +182,7 @@ export const takeLyftaSyncLease = Effect.fn('takeLyftaSyncLease')(function* (
     const { data, error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.LYFTA_CONNECTIONS)
                 .update({
                     sync_status: 'running',
                     sync_started_at: startedAtIso,
@@ -180,7 +193,7 @@ export const takeLyftaSyncLease = Effect.fn('takeLyftaSyncLease')(function* (
                 })
                 .eq('user_id', userId)
                 .or(`sync_status.neq.running,sync_started_at.lt.${staleBeforeIso}`)
-                .select('user_id')
+                .select(selectColumns(DbTables.LYFTA_CONNECTIONS, ['user_id']))
                 .maybeSingle(),
         catch: (cause) => syncStateWriteError(String(cause)),
     })
@@ -200,7 +213,7 @@ export const setLyftaSyncRunId = Effect.fn('setLyftaSyncRunId')(function* (
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.LYFTA_CONNECTIONS)
                 .update({ sync_run_id: runId })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
@@ -227,7 +240,7 @@ export const finishLyftaSync = Effect.fn('finishLyftaSync')(function* (
     const { error } = yield* Effect.tryPromise({
         try: () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.LYFTA_CONNECTIONS)
                 .update({ sync_status: outcome.status, sync_finished_at: finishedAtIso, ...update })
                 .eq('user_id', userId)
                 .eq('sync_started_at', startedAtIso)
@@ -243,7 +256,7 @@ export const deleteLyftaConnection = Effect.fn('deleteLyftaConnection')(function
     userId: string
 ) {
     const { error } = yield* Effect.tryPromise({
-        try: () => supabase.from(TABLE).delete().eq('user_id', userId),
+        try: () => supabase.from(DbTables.LYFTA_CONNECTIONS).delete().eq('user_id', userId),
         catch: (cause) =>
             new LyftaConnectionWriteError({
                 cause: String(cause),

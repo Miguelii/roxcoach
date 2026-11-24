@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     deleteActivity,
     insertActivity,

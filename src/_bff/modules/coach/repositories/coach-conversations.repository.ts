@@ -11,11 +11,12 @@ import {
     type CoachClient,
 } from '@/_bff/modules/coach/repositories/coach-query'
 import type { ConversationDTO } from '@/_bff/modules/coach/types'
+import { selectColumns } from '@/_bff/core/db/columns'
+import { DbTables } from '@/_bff/core/db/tables'
 
 type ConversationRow = z.infer<typeof conversationRowSchema>
 
-const TABLE = 'coach_conversations'
-const COLUMNS = 'id, title, updated_at'
+const COLUMNS = selectColumns(DbTables.COACH_CONVERSATIONS, ['id', 'title', 'updated_at'])
 const TITLE_MAX_CHARS = 60
 
 // Cuts by code points, so an emoji (a surrogate pair) is never split.
@@ -71,7 +72,7 @@ export const selectConversations = Effect.fn('selectConversations')(function* (
     const rows = yield* runCoachRead(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.COACH_CONVERSATIONS)
                 .select(COLUMNS)
                 .eq('user_id', userId)
                 .order('updated_at', { ascending: false })
@@ -90,7 +91,13 @@ export const selectConversation = Effect.fn('selectConversation')(function* (
     id: string
 ) {
     const row = yield* runCoachRead(
-        () => supabase.from(TABLE).select(COLUMNS).eq('id', id).eq('user_id', userId).maybeSingle(),
+        () =>
+            supabase
+                .from(DbTables.COACH_CONVERSATIONS)
+                .select(COLUMNS)
+                .eq('id', id)
+                .eq('user_id', userId)
+                .maybeSingle(),
         SELECT_CODES,
         maybeRow
     )
@@ -106,7 +113,7 @@ export const insertConversation = Effect.fn('insertConversation')(function* (
     const row = yield* runCoachWrite(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.COACH_CONVERSATIONS)
                 .insert({ user_id: userId, title: cutTitle(title) })
                 .select(COLUMNS)
                 .single(),
@@ -126,11 +133,11 @@ export const touchConversation = Effect.fn('touchConversation')(function* (
     const updated = yield* runCoachWrite(
         () =>
             supabase
-                .from(TABLE)
+                .from(DbTables.COACH_CONVERSATIONS)
                 .update({ updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .eq('user_id', userId)
-                .select('id'),
+                .select(selectColumns(DbTables.COACH_CONVERSATIONS, ['id'])),
         TOUCH_CODES,
         idList
     )
@@ -144,7 +151,13 @@ export const deleteConversationById = Effect.fn('deleteConversationById')(functi
     id: string
 ) {
     const deleted = yield* runCoachWrite(
-        () => supabase.from(TABLE).delete().eq('id', id).eq('user_id', userId).select('id'),
+        () =>
+            supabase
+                .from(DbTables.COACH_CONVERSATIONS)
+                .delete()
+                .eq('id', id)
+                .eq('user_id', userId)
+                .select(selectColumns(DbTables.COACH_CONVERSATIONS, ['id'])),
         DELETE_CODES,
         idList
     )

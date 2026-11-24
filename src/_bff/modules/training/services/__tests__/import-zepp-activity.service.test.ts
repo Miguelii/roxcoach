@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { z } from 'zod'
-import { makeFakeDb, ok } from '@/_bff/modules/training/repositories/__tests__/fake-db'
+import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     findKnownZeppTrackIds,
     findZeppDuplicateTrackIds,

@@ -168,7 +168,7 @@ repositories.
 | `helpers/access-code.helper.ts`           | constant-time code comparison                                          |
 | `services/sb-login.service.ts`            | `signInWithPassword`, tagged errors                                    |
 | `services/sb-logout.service.ts`           | `signOut({ scope: 'local' })`                                          |
-| `services/get-session.service.ts`         | `getUser()` once per request via React `cache()`                       |
+| `services/get-session.service.ts`         | `getUser()` via React `cache()` (RSC); tRPC memoizes it in the context |
 | `services/get-cached-claims.service.ts`   | `getClaims()` for rendering UI without a network call                  |
 
 Copied from BrewStock, minus the OTP services and the OAuth callback route. `protectedProcedure`
