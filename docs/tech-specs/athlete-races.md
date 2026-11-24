@@ -28,6 +28,11 @@ required, see [dashboard-progress.md](dashboard-progress.md)); the weekly cap an
 stored for the coach chat. The profile also carries `dashboardMode` (`run` or `strength`, default
 `run`), saved on its own by `athlete.setDashboardMode`; `updateProfile` never writes it.
 
+The Profile tab also shows the sign-in email as a read-only field (hidden when the account has
+none). It is not a profile field: `athlete.getProfile` returns `ProfileViewDTO` (the profile plus
+`email`, read from the auth user by `getProfileView`), the form does not hold it and `updateProfile`
+never receives it. `ProfileDTO`, which the coach context reads, has no email.
+
 Defaults: without a saved row, `getProfile` returns an empty display name, `Europe/Lisbon`, nulls
 and mode `run` (a missing row is not an error, but `setDashboardMode` needs the row to exist). `updateProfile` validates first, writes nothing on invalid
 input and upserts the row for the signed-in user.

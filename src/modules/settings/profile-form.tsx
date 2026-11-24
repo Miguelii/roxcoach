@@ -30,13 +30,14 @@ import {
 
 type Props = {
     defaults: ProfileFormValues
+    email: string | null
     onSubmit: (values: ProfileValues) => Promise<void>
 }
 
 // Select value standing for "not set" (an empty value is not a valid select item).
 const NONE = 'none'
 
-export function ProfileForm({ defaults, onSubmit }: Props) {
+export function ProfileForm({ defaults, email, onSubmit }: Props) {
     const form = useProfileForm(defaults)
 
     const submit = async (raw: ProfileFormValues) => {
@@ -62,6 +63,24 @@ export function ProfileForm({ defaults, onSubmit }: Props) {
                 className="grid max-w-xl gap-4"
                 noValidate
             >
+                {email === null ? null : (
+                    <div className="flex flex-col gap-1.5">
+                        <label
+                            htmlFor="profile-email"
+                            className="text-xs font-semibold tracking-widest text-on-surface-muted uppercase"
+                        >
+                            Email
+                        </label>
+                        <Input
+                            id="profile-email"
+                            data-testid="profile-email"
+                            type="email"
+                            value={email}
+                            readOnly
+                            className="bg-muted text-muted-foreground"
+                        />
+                    </div>
+                )}
                 <FormField
                     control={form.control}
                     name="displayName"
