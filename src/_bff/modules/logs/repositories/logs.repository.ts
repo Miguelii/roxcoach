@@ -9,8 +9,8 @@ type PublicAdminClient = ReturnType<typeof createDBPublicAdminClient>
 
 const PROJECT = 'roxcoach'
 
-// Deliberately not filtered by user: every signed-in athlete reads every Roxcoach row (see
-// database.md). Never cached: logs are written on every request and must be fresh.
+// Deliberately not filtered by user: the page is admin-only (adminProcedure) and reads every
+// Roxcoach row (see database.md). Never cached: logs are written on every request and must be fresh.
 export function selectLogs(
     supabase: PublicAdminClient,
     { since, search }: { since: string; search?: string }

@@ -1,15 +1,21 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import type { LogEntry, LogRange } from '@/_bff/core/constants/logs.constants'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { DetailDrawer } from '@/components/ui/detail-drawer'
 import { LogDetails } from '@/modules/logs/log-details'
 import { LogsFilters } from '@/modules/logs/logs-filters'
-import { LogsHistogram } from '@/modules/logs/logs-histogram'
 import { LogsTable } from '@/modules/logs/logs-table'
 import { LogsToolbar } from '@/modules/logs/logs-toolbar'
 import { useLogsExplorer } from '@/modules/logs/use-logs-explorer'
+
+// Recharts stays out of the route chunk until the histogram renders.
+const LogsHistogram = dynamic(
+    () => import('@/modules/logs/logs-histogram').then((module) => module.LogsHistogram),
+    { ssr: false }
+)
 
 type Props = {
     logs: LogEntry[]
