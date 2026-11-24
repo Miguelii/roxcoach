@@ -63,7 +63,10 @@ export type CoachTool = {
 export type CoachToolDeps = {
     listRaces: (user: User, filter: RaceFilter) => Promise<RaceDTO[]>
     getAvailability: (user: User) => Promise<AvailabilitySlotDTO[]>
-    getCalendar: (user: User, range: { from: string; to: string }) => Promise<CalendarItem[]>
+    getActivityCalendar: (
+        user: User,
+        range: { from: string; to: string }
+    ) => Promise<CalendarItem[]>
     getActivity: (
         user: User,
         id: string

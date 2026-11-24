@@ -68,7 +68,7 @@ const make = () => {
             calls.push({ name: 'races', args: [user, filter] })
             return Effect.succeed([])
         },
-        getCalendar: (user, range) => {
+        getActivityCalendar: (user, range) => {
             calls.push({ name: 'calendar', args: [user, range] })
             return Effect.succeed([
                 { type: 'activity', date: '2026-11-19', activity: ACTIVITY },

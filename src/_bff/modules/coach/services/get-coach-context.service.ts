@@ -7,12 +7,12 @@ import { getAvailability } from '@/_bff/modules/athlete/services/get-availabilit
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { buildCoachContext } from '@/_bff/modules/coach/helpers/build-coach-context.helper'
 import { listRaces } from '@/_bff/modules/races/services/list-races.service'
-import { getCalendar } from '@/_bff/modules/training/services/get-calendar.service'
+import { getActivityCalendar } from '@/_bff/modules/training/services/get-activity-calendar.service'
 
 type CoachContextDeps = {
     getAvailability: typeof getAvailability
     listRaces: typeof listRaces
-    getCalendar: typeof getCalendar
+    getActivityCalendar: typeof getActivityCalendar
 }
 
 // Already resolved by the caller, so the profile is read once per message.
@@ -23,7 +23,7 @@ const CONTEXT_DAYS = 35
 const REAL_DEPS: CoachContextDeps = {
     getAvailability,
     listRaces,
-    getCalendar,
+    getActivityCalendar,
 }
 
 // Gathers the athlete data (as the signed-in user) and renders the always-sent context block.
@@ -36,7 +36,7 @@ export const getCoachContext = Effect.fn('getCoachContext')(function* (
         [
             deps.getAvailability(user),
             deps.listRaces(user, { status: ['upcoming'] }),
-            deps.getCalendar(user, { from: addDays(today, 1 - CONTEXT_DAYS), to: today }),
+            deps.getActivityCalendar(user, { from: addDays(today, 1 - CONTEXT_DAYS), to: today }),
         ],
         { concurrency: 3 }
     )

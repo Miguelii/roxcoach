@@ -94,7 +94,7 @@ block that goes into the system prompt on every request, between the markers
 numeric is computed in code and the model is told not to recompute it. `getCoachContext` gathers
 the inputs: the profile, timezone (an invalid stored value is read as UTC) and local day come from
 the caller, which reads the profile once per message; it reads the availability, the `upcoming`
-races and the calendar of the last 35 days (activities only are kept) concurrently. Sections, in this order, each a title line followed by
+races and the activities of the last 35 days concurrently (`getActivityCalendar`: the calendar without its races query, also what the `getActivities` and `getWeeklySummary` tools read). Sections, in this order, each a title line followed by
 its lines:
 
 | Section        | Content                                                                                                                                                                                                                 |

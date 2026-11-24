@@ -28,7 +28,7 @@ export const makeGetActivitiesTool = (user: User, deps: CoachToolDeps): CoachToo
     inputSchema,
     execute: (input) =>
         runTool(inputSchema, input, async ({ from, to, category }) => {
-            const items = await deps.getCalendar(user, { from, to })
+            const items = await deps.getActivityCalendar(user, { from, to })
             const activities = items
                 .flatMap((item) => (item.type === 'activity' ? [item.activity] : []))
                 .filter((activity) => !category || activity.category === category)

@@ -22,7 +22,7 @@ export const makeGetWeeklySummaryTool = (user: User, deps: CoachToolDeps): Coach
     execute: (input) =>
         runTool(inputSchema, input, async ({ weekStart }) => {
             const weekEnd = addDays(weekStart, 6)
-            const items = await deps.getCalendar(user, { from: weekStart, to: weekEnd })
+            const items = await deps.getActivityCalendar(user, { from: weekStart, to: weekEnd })
             const totals = computeTotals(items, weekStart, weekEnd)
 
             return {
