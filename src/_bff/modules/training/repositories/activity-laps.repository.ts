@@ -59,6 +59,29 @@ const lapRowSchema = z.object({
 const writeError = (error: ReturnedError, error_hash: ErrorCode) =>
     new ActivityWriteError({ cause: `${error.code}: ${error.message}`, error_hash })
 
+// For an activity that has no laps yet (just created): no delete first. An empty list does nothing.
+export const insertLaps = Effect.fn('insertLaps')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    activityId: string,
+    laps: LapRow[]
+) {
+    if (laps.length === 0) return
+
+    const inserted = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(DbTables.ACTIVITY_LAPS)
+                .insert(laps.map((lap) => ({ ...lap, user_id: userId, activity_id: activityId }))),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_LAPS_INSERT,
+            }),
+    })
+    if (inserted.error) return yield* writeError(inserted.error, ErrorCode.TRAINING_LAPS_INSERT_ERR)
+})
+
 // Delete then insert, not atomic: if the insert fails the activity is left without laps, and the
 // caller fails and may retry, which rewrites them. An empty list only deletes.
 export const replaceLaps = Effect.fn('replaceLaps')(function* (
@@ -82,20 +105,7 @@ export const replaceLaps = Effect.fn('replaceLaps')(function* (
     })
     if (removed.error) return yield* writeError(removed.error, ErrorCode.TRAINING_LAPS_DELETE_ERR)
 
-    if (laps.length === 0) return
-
-    const inserted = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(DbTables.ACTIVITY_LAPS)
-                .insert(laps.map((lap) => ({ ...lap, user_id: userId, activity_id: activityId }))),
-        catch: (cause) =>
-            new ActivityWriteError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_LAPS_INSERT,
-            }),
-    })
-    if (inserted.error) return yield* writeError(inserted.error, ErrorCode.TRAINING_LAPS_INSERT_ERR)
+    yield* insertLaps(supabase, userId, activityId, laps)
 })
 
 export const selectLaps = Effect.fn('selectLaps')(function* (

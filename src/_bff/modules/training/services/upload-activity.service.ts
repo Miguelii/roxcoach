@@ -20,7 +20,7 @@ import {
     insertActivity,
     selectIdNearStartedAt,
 } from '@/_bff/modules/training/repositories/activities.repository'
-import { replaceLaps } from '@/_bff/modules/training/repositories/activity-laps.repository'
+import { insertLaps } from '@/_bff/modules/training/repositories/activity-laps.repository'
 import {
     insertActivityFile,
     selectFileIdBySha256,
@@ -105,16 +105,16 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
     const sha256 = yield* sha256Hex(input.bytes)
     const { supabase, storage } = yield* deps.createClient()
 
-    if ((yield* selectFileIdBySha256(supabase, user.id, sha256)) !== null) return yield* duplicate()
-    const nearby = yield* selectIdNearStartedAt(
-        supabase,
-        user.id,
-        parsed.startedAt,
-        DUPLICATE_WINDOW_SECONDS
+    const [sameFile, nearby, timezone] = yield* Effect.all(
+        [
+            selectFileIdBySha256(supabase, user.id, sha256),
+            selectIdNearStartedAt(supabase, user.id, parsed.startedAt, DUPLICATE_WINDOW_SECONDS),
+            deps.getTimezone(user),
+        ],
+        { concurrency: 'unbounded' }
     )
-    if (nearby !== null) return yield* duplicate()
+    if (sameFile !== null || nearby !== null) return yield* duplicate()
 
-    const timezone = yield* deps.getTimezone(user)
     const laps = toLapRows(parsed, input.isHyrox)
     const isLabelled = laps.some((lap) => lap.station !== null)
 
@@ -143,18 +143,23 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
         })
 
         yield* Effect.gen(function* () {
-            yield* replaceLaps(supabase, user.id, activityId, laps)
-            yield* insertActivityFile(supabase, user.id, {
-                id: fileId,
-                activity_id: activityId,
-                format: parsed.format,
-                storage_path: storagePath,
-                sha256,
-                size_bytes: input.bytes.byteLength,
-                original_name: input.originalName,
-                status: 'parsed',
-                error_code: null,
-            })
+            yield* Effect.all(
+                [
+                    insertLaps(supabase, user.id, activityId, laps),
+                    insertActivityFile(supabase, user.id, {
+                        id: fileId,
+                        activity_id: activityId,
+                        format: parsed.format,
+                        storage_path: storagePath,
+                        sha256,
+                        size_bytes: input.bytes.byteLength,
+                        original_name: input.originalName,
+                        status: 'parsed',
+                        error_code: null,
+                    }),
+                ],
+                { concurrency: 'unbounded' }
+            )
         }).pipe(
             Effect.onError(() => deleteActivity(supabase, user.id, activityId).pipe(Effect.ignore))
         )

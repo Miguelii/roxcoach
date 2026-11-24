@@ -163,11 +163,11 @@ readable. Client-side checks
        workout in another format, or already synced from Zepp, is also a duplicate). Both are
        `DuplicateActivityFileError`. Two different workouts that start less than five minutes
        apart are treated as one.
-    4. Reads the athlete timezone through the `athlete` service and computes `local_date`.
+    4. Reads the athlete timezone through the `athlete` service and computes `local_date`. The two duplicate checks above and this read run together.
     5. Builds the lap rows. With the "Hyrox" flag, `labelHyroxLaps` sets `station` (below); when any
        lap got a station the activity `category` is `hyrox`, otherwise the category of its sport.
     6. Writes the object to Storage at `<user_id>/<file_id>.<format>`, then the `activities` row,
-       the laps and the `activity_files` row. If a later write fails, the activity (hard-deleted, laps
+       then the laps (a plain insert, the activity is new) and the `activity_files` row together. If a later write fails, the activity (hard-deleted, laps
        cascade) and
        the object are removed, without masking the original error.
 4. The response is `{ activityId }`. The drawer closes, shows the toast and invalidates the client

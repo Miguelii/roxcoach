@@ -70,8 +70,9 @@ const setup = (queue: Parameters<typeof makeFakeDb>[0], timezone = 'Europe/Lisbo
     return { db, upload, remove, run, deps }
 }
 
-// Calls in order: hash lookup, start lookup, activity insert, laps delete, laps insert, file insert.
-const HAPPY = [ok(), ok(), ok({ id: 'act-1' }), ok(), ok(), ok()]
+// Calls in order: hash lookup, start lookup, activity insert, laps insert, file insert (the last
+// two run together).
+const HAPPY = [ok(), ok(), ok({ id: 'act-1' }), ok(), ok()]
 
 describe('uploadActivity', () => {
     it('writes the object, the activity, the laps and the file row, labelling Hyrox laps', async () => {
@@ -87,7 +88,6 @@ describe('uploadActivity', () => {
             'activities',
             'activities',
             'activity_laps',
-            'activity_laps',
             'activity_files',
         ])
         expect(insertedActivity(db.chains[2])).toMatchObject({
@@ -97,7 +97,7 @@ describe('uploadActivity', () => {
             hr_histogram: { v: 1, bins: [] },
             pace_histogram: { v: 1, bins: [] },
         })
-        const stations = insertedLapStations(db.chains[4])
+        const stations = insertedLapStations(db.chains[3])
         expect(stations).toHaveLength(16)
         expect(stations.filter((station) => station !== null)).toHaveLength(8)
         const calls: unknown[][] = upload.mock.calls
@@ -109,7 +109,7 @@ describe('uploadActivity', () => {
     it('leaves laps unlabelled when the file is not marked as Hyrox', async () => {
         const { db, run } = setup(HAPPY)
         await run(sixteenLapTcx(), false)
-        const stations = insertedLapStations(db.chains[4])
+        const stations = insertedLapStations(db.chains[3])
         expect(stations).toHaveLength(16)
         expect(stations.every((station) => station === null)).toBe(true)
     })
@@ -158,15 +158,14 @@ describe('uploadActivity', () => {
             ok(),
             ok({ id: 'act-1' }),
             ok(),
-            ok(),
             { data: null, error: violation },
             ok(),
         ])
         const exit = await run(TCX)
         expect(failureTag(exit)).toBe('DuplicateActivityFileError')
         expect(remove).toHaveBeenCalledTimes(1)
-        expect(db.chains[6]?.delete).toHaveBeenCalled()
-        expect(db.chains[6]?.eq).toHaveBeenCalledWith('id', 'act-1')
+        expect(db.chains[5]?.delete).toHaveBeenCalled()
+        expect(db.chains[5]?.eq).toHaveBeenCalledWith('id', 'act-1')
     })
 
     it('removes the object and the activity when a database step fails, keeping the original error', async () => {
@@ -176,11 +175,12 @@ describe('uploadActivity', () => {
             ok({ id: 'act-1' }),
             { data: null, error: { code: '42501', message: 'denied' } },
             ok(),
+            ok(),
         ])
         const exit = await run(TCX)
         expect(failureTag(exit)).toBe('ActivityWriteError')
         expect(remove).toHaveBeenCalledTimes(1)
-        expect(db.chains[4]?.delete).toHaveBeenCalled()
+        expect(db.chains[5]?.delete).toHaveBeenCalled()
     })
 
     it('removes the object when the activity insert fails, even if the cleanup fails too', async () => {
@@ -202,12 +202,12 @@ describe('uploadActivity', () => {
                 throw new Error('defect')
             },
         }
-        const { db, remove, run } = setup([ok(), ok(), ok({ id: 'act-1' }), defect, ok()])
+        const { db, remove, run } = setup([ok(), ok(), ok({ id: 'act-1' }), defect, ok(), ok()])
         const exit = await run(TCX)
         expect(failureTag(exit)).toBeNull()
         expect(exit._tag).toBe('Failure')
         expect(remove).toHaveBeenCalledTimes(1)
-        expect(db.chains[4]?.delete).toHaveBeenCalled()
+        expect(db.chains[5]?.delete).toHaveBeenCalled()
     })
 
     it('keeps the local date in Lisbon winter and moves it forward in Tokyo', async () => {
