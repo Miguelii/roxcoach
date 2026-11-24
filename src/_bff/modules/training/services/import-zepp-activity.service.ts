@@ -16,6 +16,7 @@ import {
     selectZeppActivityIds,
 } from '@/_bff/modules/training/repositories/activities.repository'
 import {
+    insertLaps,
     replaceLaps,
     selectActivityIdsWithLaps,
 } from '@/_bff/modules/training/repositories/activity-laps.repository'
@@ -118,7 +119,7 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
 
     // Without its laps the run would look imported and never be split, so it is removed and the
     // next sync imports it again.
-    yield* replaceLaps(supabase, userId, inserted.id, toLapRows(activity.laps)).pipe(
+    yield* insertLaps(supabase, userId, inserted.id, toLapRows(activity.laps)).pipe(
         Effect.onError(() => deleteActivity(supabase, userId, inserted.id).pipe(Effect.ignore))
     )
     return { created: true }

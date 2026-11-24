@@ -123,7 +123,7 @@ describe('importZeppActivity', () => {
     })
 
     it('stores the laps of the run with the new activity', async () => {
-        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' }), ok(), ok()])
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' }), ok()])
 
         const result = await Effect.runPromise(
             importZeppActivity(
@@ -135,14 +135,13 @@ describe('importZeppActivity', () => {
         )
 
         expect(result).toEqual({ created: true })
-        expect(chains[3]?.insert).toHaveBeenCalledWith([LAP_ROW])
+        expect(chains[2]?.insert).toHaveBeenCalledWith([LAP_ROW])
     })
 
     it('removes the new activity when its laps cannot be stored, so the next sync retries it', async () => {
         const { chains, supabase } = makeFakeDb([
             ok(null),
             ok({ id: 'activity-1' }),
-            ok(),
             { data: null, error: { code: '500', message: 'boom' } },
             ok([{ id: 'activity-1' }]),
         ])
@@ -157,8 +156,8 @@ describe('importZeppActivity', () => {
         )
 
         expect(exit._tag).toBe('Failure')
-        expect(chains[4]?.delete).toHaveBeenCalled()
-        expect(chains[4]?.eq).toHaveBeenCalledWith('id', 'activity-1')
+        expect(chains[3]?.delete).toHaveBeenCalled()
+        expect(chains[3]?.eq).toHaveBeenCalledWith('id', 'activity-1')
     })
 
     it('uses the athlete timezone for the local date', async () => {
