@@ -188,7 +188,9 @@ the model and the setup config above, so a leaked token can only open one short 
 session. No body. Same status mapping as the v1 route (401, 403, 503, 429, 502, 500). The token is
 never logged.
 
-**Audio capture.** `MediaRecorder` is replaced by an `AudioContext` with an `AudioWorklet` that
+**Audio capture.** `MediaRecorder` is replaced by an `AudioContext` with an `AudioWorklet`
+(`public/assets/coach-pcm-worklet.js`, a static file because the CSP blocks scripts from blob URLs;
+the CSP's `connect-src` allows `wss://generativelanguage.googleapis.com` for the socket) that
 posts each 128 frame block to the main thread, where it is downsampled to 16 kHz mono PCM16 and cut
 into 100 ms chunks (1600 samples). The downsampler keeps the samples left at the end of a block for
 the next one, since 128 does not divide by the rate ratio (3 at 48 kHz, 2.75625 at 44.1 kHz). The

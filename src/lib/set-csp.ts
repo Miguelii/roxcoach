@@ -25,6 +25,7 @@ const generateCSP = () => {
     const scriptEvalDirective =
         process.env.NODE_ENV === 'development' ? "'unsafe-eval' 'wasm-unsafe-eval'" : ''
 
+    // The coach voice input streams audio from the browser straight to Gemini Live.
     const csp = `
         default-src 'self';
         style-src 'self' 'unsafe-inline';
@@ -35,7 +36,7 @@ const generateCSP = () => {
         object-src 'none';
         media-src 'self';
         base-uri 'self';
-        connect-src 'self';
+        connect-src 'self' wss://generativelanguage.googleapis.com;
         worker-src 'self';
         form-action 'self';
         frame-ancestors 'none';

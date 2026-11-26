@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { LiveSocket } from '@/modules/coach/live-transcription'
-import { PCM_WORKLET_NAME, PCM_WORKLET_SOURCE } from '@/modules/coach/pcm-worklet'
+import { PCM_WORKLET_NAME, PCM_WORKLET_URL } from '@/modules/coach/pcm-worklet'
 import type { AudioSource, VoiceDeps } from '@/modules/coach/use-voice-recorder'
 
 const FramesSchema = z.instanceof(Float32Array)
@@ -16,14 +16,7 @@ async function openBrowserAudio(): Promise<AudioSource> {
             audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
         })
         await resumed
-        const moduleUrl = URL.createObjectURL(
-            new Blob([PCM_WORKLET_SOURCE], { type: 'text/javascript' })
-        )
-        try {
-            await context.audioWorklet.addModule(moduleUrl)
-        } finally {
-            URL.revokeObjectURL(moduleUrl)
-        }
+        await context.audioWorklet.addModule(PCM_WORKLET_URL)
         const source = context.createMediaStreamSource(stream)
         const capture = new AudioWorkletNode(context, PCM_WORKLET_NAME)
         // Some engines only run a node that reaches the destination; a muted gain keeps it silent.

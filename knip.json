@@ -8,5 +8,10 @@
     ],
     "ignoreDependencies": ["@trigger.dev/build"],
     "tags": ["-lintignore"],
-    "ignore": ["src/env/client.ts", "src/components/ui/**", "tools/oxlint/anti-slop/**"]
+    "ignore": [
+        "src/env/client.ts",
+        "src/components/ui/**",
+        "tools/oxlint/anti-slop/**",
+        "public/assets/coach-pcm-worklet.js"
+    ]
 }

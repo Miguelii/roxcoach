@@ -192,7 +192,11 @@ and of every other device. Local scope ends only this browser's session.
 Already implemented in `src/lib/set-csp.ts`: `default-src 'self'`, `frame-ancestors 'none'`,
 `object-src 'none'`, `upgrade-insecure-requests`, `'unsafe-eval'` in development only.
 
-All Gemini calls are server-side, so `connect-src` stays `'self'`.
+Gemini calls are server-side, with one exception: the coach voice input streams audio from the
+browser to Gemini Live, authenticated by a one-use ephemeral token (never the API key), so
+`connect-src` is `'self' wss://generativelanguage.googleapis.com` and nothing broader. Its
+AudioWorklet is a static file, `public/assets/coach-pcm-worklet.js`, so `script-src` needs no
+`blob:` (see [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 
 ## Security headers
 
