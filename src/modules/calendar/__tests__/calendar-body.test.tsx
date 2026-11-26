@@ -15,11 +15,11 @@ const base = {
 }
 
 describe('CalendarBody', () => {
-    it('shows a skeleton while the first range loads', () => {
+    it('draws the month grid while the first range loads', () => {
         render(<CalendarBody {...base} isLoading items={[]} />)
 
-        expect(screen.getByTestId('calendar-skeleton')).toBeInTheDocument()
-        expect(screen.queryByTestId('month-view')).toBeNull()
+        expect(screen.getByTestId('month-view')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('month-day-2026-11-19')).toBeInTheDocument()
     })
 
     it('shows an inline error with a retry button on failure', () => {

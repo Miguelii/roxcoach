@@ -1,6 +1,5 @@
 import type { CalendarItem } from '@/_bff/modules/training/types'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { monthGrid, weekDays } from '@/modules/calendar/date-utils'
 import { MonthView } from '@/modules/calendar/month-view'
 import { WeekView } from '@/modules/calendar/week-view'
@@ -16,7 +15,7 @@ type Props = {
     onSelectDay: (date: string) => void
 }
 
-/** The calendar content for one visible range: skeleton, inline error or the chosen view. */
+/** The calendar content for one visible range: inline error or the chosen view, drawn before its items arrive. */
 export function CalendarBody({
     view,
     cursor,
@@ -48,23 +47,22 @@ export function CalendarBody({
             </div>
         )
 
-    if (isLoading)
-        return (
-            <Skeleton
-                data-testid="calendar-skeleton"
-                className="h-[36rem] rounded-[var(--radius-surface)]"
-            />
-        )
-
     return view === 'month' ? (
         <MonthView
             weeks={monthGrid(cursor)}
             month={cursor}
             today={today}
             items={items}
+            isLoading={isLoading}
             onSelectDay={onSelectDay}
         />
     ) : (
-        <WeekView days={weekDays(cursor)} today={today} items={items} onSelectDay={onSelectDay} />
+        <WeekView
+            days={weekDays(cursor)}
+            today={today}
+            items={items}
+            isLoading={isLoading}
+            onSelectDay={onSelectDay}
+        />
     )
 }

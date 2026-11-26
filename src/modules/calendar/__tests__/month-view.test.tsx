@@ -6,13 +6,14 @@ import { makeItem } from '@/modules/calendar/__tests__/fixtures'
 
 const WEEKS = monthGrid('2026-11-19')
 
-const renderView = (items = [makeItem()], onSelectDay = vi.fn()) =>
+const renderView = (items = [makeItem()], onSelectDay = vi.fn(), isLoading = false) =>
     render(
         <MonthView
             weeks={WEEKS}
             month="2026-11-19"
             today="2026-11-19"
             items={items}
+            isLoading={isLoading}
             onSelectDay={onSelectDay}
         />
     )
@@ -49,6 +50,16 @@ describe('MonthView', () => {
 
         expect(screen.getByTestId('month-empty')).toHaveTextContent('No activities')
         expect(screen.queryByTestId('calendar-chip-act-1')).toBeNull()
+    })
+
+    it('draws the grid without the empty state or week totals while loading', () => {
+        renderView([], vi.fn(), true)
+
+        expect(screen.getByTestId('month-view')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('month-day-2026-11-18')).toBeInTheDocument()
+        expect(screen.queryByTestId('month-empty')).toBeNull()
+        expect(screen.getByTestId('week-summary-2026-11-23-loading')).toBeInTheDocument()
+        expect(screen.getByTestId('week-summary-2026-11-23')).not.toHaveTextContent('No sessions')
     })
 
     it('selects a day from its button', () => {

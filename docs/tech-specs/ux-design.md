@@ -259,7 +259,20 @@ merged and ordered by date. Every switch on `type` is exhaustive (`Match.exhaust
 - Each day shows up to three activity or race chips. A "+N" overflow opens the day panel. Races
   link to `/races` and do not count as training activity or load.
 - Selecting a day opens a side panel, or a bottom sheet on mobile, with links to its activities.
-- The calendar page uses the athlete timezone from `athlete.getTimezone`, never the browser clock.
+- While a range has no data yet, the real grid is drawn at once (marked `aria-busy`) and the items
+  fill in when the query returns. Nothing claims emptiness before that: the month view hides the
+  "No activities" line and shows small placeholders in the week totals column instead of "No
+  sessions", and the week view shows a placeholder where a day would say "Rest". Moving to another
+  range keeps the previous items on screen until the new ones arrive (`keepPreviousData`).
+- The calendar page uses the athlete timezone from the profile (`athlete.getProfile`), never the
+  browser clock.
+- The page reads the profile on the server (after `connection()`), behind one `Suspense` whose
+  fallback is `CalendarPageContent` itself, so a return visit draws from the client cache at once.
+  The profile reaches the client cache through a `HydrationBoundary`, and the server timezone is
+  also passed as `initialTimezone`, which the page renders from until the client query has data
+  (the shell creates that query before hydration, so the hydrated value lands after commit). A
+  failed server read is left out and the client query fetches it with its own skeleton and error.
+  The calendar range is not prefetched: the server cannot tell whether a phone forces the week view.
 - After a race mutation, the Races page invalidates `training.getCalendar` and `races.list`
   (`runRaceAction` with an injected `onChanged`), since `router.refresh()` does not reach client
   queries.
