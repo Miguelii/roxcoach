@@ -89,24 +89,38 @@ describe('createGeminiTranscriber', () => {
         expect(await transcribe({ bytes: BYTES, mimeType: 'audio/webm' }, signal())).toEqual({
             ok: false,
             kind: 'rate_limited',
+            reason: '429',
         })
     })
 
     it.each([
-        ['a 500', () => Response.json({}, { status: 500 })],
-        ['a malformed body', () => new Response('not json')],
-        ['a failed interaction', () => Response.json({ ...completed('x'), status: 'failed' })],
+        ['a 500', () => Response.json({}, { status: 500 }), '500'],
+        ['a 400', () => Response.json({}, { status: 400 }), '400'],
+        ['a malformed body', () => new Response('not json'), 'parse'],
+        ['an unexpected shape', () => Response.json({ outputs: [] }), 'parse'],
+        [
+            'a failed interaction',
+            () => Response.json({ ...completed('x'), status: 'failed' }),
+            'failed',
+        ],
+        [
+            'an incomplete interaction',
+            () => Response.json({ ...completed('x'), status: 'incomplete' }),
+            'incomplete',
+        ],
         [
             'a rejected fetch',
             () => {
                 throw new TypeError('network')
             },
+            'network',
         ],
-    ])('returns unavailable on %s', async (_label, respond) => {
+    ])('returns unavailable on %s with its reason', async (_label, respond, reason) => {
         const transcribe = transcriberWith(fakeFetch(respond))
         expect(await transcribe({ bytes: BYTES, mimeType: 'audio/webm' }, signal())).toEqual({
             ok: false,
             kind: 'unavailable',
+            reason,
         })
     })
 
@@ -126,7 +140,7 @@ describe('createGeminiTranscriber', () => {
         )
         await vi.advanceTimersByTimeAsync(1000)
         expect(received?.aborted).toBe(true)
-        expect(await pending).toEqual({ ok: false, kind: 'unavailable' })
+        expect(await pending).toEqual({ ok: false, kind: 'unavailable', reason: 'timeout' })
     })
 
     it('aborts the request when the caller signal aborts', async () => {

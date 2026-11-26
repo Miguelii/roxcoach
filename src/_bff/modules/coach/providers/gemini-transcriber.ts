@@ -6,7 +6,11 @@ type Options = { apiKey: string; timeoutMs: number; fetch?: typeof fetch }
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions'
 
-const UNAVAILABLE: TranscribeOutcome = { ok: false, kind: 'unavailable' }
+const unavailable = (reason: string): TranscribeOutcome => ({
+    ok: false,
+    kind: 'unavailable',
+    reason,
+})
 
 // Gemini lists Safari's mp4 audio container as audio/m4a and rejects audio/mp4.
 const GEMINI_MIME_ALIASES = new Map([['audio/mp4', 'audio/m4a']])
@@ -60,13 +64,14 @@ export const createGeminiTranscriber =
                 }),
                 signal: AbortSignal.any([signal, timeout.signal]),
             })
-            if (response.status === 429) return { ok: false, kind: 'rate_limited' }
-            if (!response.ok) return UNAVAILABLE
-            const parsed = InteractionSchema.safeParse(await response.json())
-            if (!parsed.success || parsed.data.status === 'failed') return UNAVAILABLE
+            if (response.status === 429) return { ok: false, kind: 'rate_limited', reason: '429' }
+            if (!response.ok) return unavailable(String(response.status))
+            const parsed = InteractionSchema.safeParse(await response.json().catch(() => null))
+            if (!parsed.success) return unavailable('parse')
+            if (parsed.data.status !== 'completed') return unavailable(parsed.data.status)
             return { ok: true, text: transcriptOf(parsed.data.steps) }
         } catch {
-            return UNAVAILABLE
+            return unavailable(timeout.signal.aborted ? 'timeout' : 'network')
         } finally {
             clearTimeout(timer)
         }

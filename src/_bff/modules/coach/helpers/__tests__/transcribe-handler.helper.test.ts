@@ -170,7 +170,7 @@ describe('createTranscribeHandler', () => {
     })
 
     it('returns 429 when the model is rate limited', async () => {
-        const { handler } = setup({ outcome: { ok: false, kind: 'rate_limited' } })
+        const { handler } = setup({ outcome: { ok: false, kind: 'rate_limited', reason: '429' } })
         await expectError(
             await handler(request({ audio: clip() })),
             429,
@@ -179,7 +179,7 @@ describe('createTranscribeHandler', () => {
     })
 
     it('returns 502 when the model is unavailable', async () => {
-        const { handler } = setup({ outcome: { ok: false, kind: 'unavailable' } })
+        const { handler } = setup({ outcome: { ok: false, kind: 'unavailable', reason: '500' } })
         await expectError(
             await handler(request({ audio: clip() })),
             502,

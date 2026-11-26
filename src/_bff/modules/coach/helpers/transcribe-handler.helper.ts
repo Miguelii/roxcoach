@@ -64,12 +64,22 @@ export const createTranscribeHandler =
                 { bytes: new Uint8Array(await audio.arrayBuffer()), mimeType: audio.type },
                 request.signal
             )
-            if (outcome.ok) return Response.json({ text: outcome.text })
+            if (outcome.ok) {
+                // Silence is normal, but every clip coming back empty means the response shape moved.
+                if (outcome.text === '')
+                    Logger({
+                        level: 'warn',
+                        prefix: 'coachTranscribe',
+                        userId: user.id,
+                        metadata: { tag: 'EmptyTranscript' },
+                    })
+                return Response.json({ text: outcome.text })
+            }
             Logger({
                 level: 'warn',
                 prefix: 'coachTranscribe',
                 userId: user.id,
-                metadata: { tag: outcome.kind },
+                metadata: { tag: outcome.kind, reason: outcome.reason },
             })
             return outcome.kind === 'rate_limited'
                 ? fail(429, 'Transcription is busy. Try again in a minute.')

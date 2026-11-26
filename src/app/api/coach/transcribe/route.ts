@@ -33,7 +33,7 @@ const handler = createTranscribeHandler({
     },
     transcribe: (input, signal) =>
         transcriber === null
-            ? Promise.resolve({ ok: false, kind: 'unavailable' })
+            ? Promise.resolve({ ok: false, kind: 'unavailable', reason: 'not_configured' })
             : transcriber(input, signal),
 })
 
