@@ -30,3 +30,15 @@ export const TITLE_MAX_CHARS = 60
 
 // Strength sets of one activity returned to the model by the getActivity tool.
 export const ACTIVITY_SETS_RETURNED = 200
+
+// Largest voice clip accepted. 60 seconds of browser audio is well under 1 MB.
+export const AUDIO_MAX_BYTES = 2 * 1024 * 1024
+
+// Container types browsers record in, compared without codec parameters.
+export const AUDIO_MIME_TYPES = [
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg',
+    'audio/mpeg',
+    'audio/wav',
+] as const
