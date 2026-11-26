@@ -332,9 +332,11 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   images are disallowed, links open in a new tab with `noopener noreferrer`. User text is plain.
 - A stop button cancels the stream (the partial text stays, marked "Incomplete reply").
 - Voice input: a mic button next to Send (`coach-voice-button.tsx`, hook `use-voice-recorder.ts`)
-  records up to 60 seconds, posts the clip to `POST /api/coach/transcribe` and appends the
-  transcript to the message box (never sends it). Hidden when the browser cannot record, usable
-  while a reply streams, cancelled when the panel closes. Design and copy in
+  streams up to 60 seconds of audio to Gemini Live (`live-transcription.ts`, PCM helpers in
+  `pcm-audio.ts`) and writes the text into the message box while the athlete speaks, after what was
+  already typed (never sends it). The box is read only while recording. If the live path fails, the
+  same audio is uploaded as WAV to `POST /api/coach/transcribe`. Hidden when the browser cannot
+  stream audio, usable while a reply streams, cancelled (typed text restored) when the panel closes. Design and copy in
   [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md).
 - States: empty, loading history, streaming, error with retry (busy, conversation not found),
   blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The

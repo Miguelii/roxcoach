@@ -1,16 +1,20 @@
 import { vi } from 'vitest'
 import type { LiveSocket } from '@/modules/coach/live-transcription'
-import type { VoiceDeps, VoiceRecorderLike } from '@/modules/coach/use-voice-recorder'
+import type { AudioSource, VoiceDeps } from '@/modules/coach/use-voice-recorder'
 
-export type FakeRecorder = VoiceRecorderLike & {
+export type FakeAudio = AudioSource & {
     released: boolean
-    started: boolean
+    push: (frames: Float32Array) => void
 }
 
 export type FakeVoiceOptions = {
     supported?: boolean
     openError?: Error
-    chunks?: Blob[]
+    framesError?: Error
+    // Leaves every openAudio pending until the test calls resolveAudio(index).
+    pendingAudio?: boolean
+    tokenStatus?: number
+    tokenError?: boolean
     respond?: (audio: Blob, signal: AbortSignal) => Promise<Response>
 }
 
@@ -65,51 +69,65 @@ export const streamOf = (...chunks: string[]) =>
 
 export const jsonStatus = (status: number) => Response.json({ error: 'x' }, { status })
 
-const voiceClip = (text = 'audio') => new Blob([text], { type: 'audio/webm' })
-
-// A recorder whose stop emits the given chunks synchronously, like a browser that already has them.
-const fakeRecorder = (chunks: Blob[]): FakeRecorder => {
-    const dataListeners: ((chunk: Blob) => void)[] = []
-    const stopListeners: (() => void)[] = []
-    const recorder: FakeRecorder = {
-        mimeType: 'audio/webm;codecs=opus',
+// 48 kHz frames, so 4800 of them make one 1600 sample chunk at 16 kHz.
+const fakeAudio = (framesError?: Error): FakeAudio => {
+    const listeners: ((frames: Float32Array) => void)[] = []
+    const audio: FakeAudio = {
+        sampleRate: 48_000,
         released: false,
-        started: false,
-        start: () => {
-            recorder.started = true
-        },
-        stop: () => {
-            chunks.forEach((chunk) => dataListeners.forEach((listener) => listener(chunk)))
-            stopListeners.forEach((listener) => listener())
+        onFrames: (listener) => {
+            if (framesError) throw framesError
+            listeners.push(listener)
         },
         release: () => {
-            recorder.released = true
+            audio.released = true
         },
-        onData: (listener) => dataListeners.push(listener),
-        onStop: (listener) => stopListeners.push(listener),
+        push: (frames) => listeners.forEach((listener) => listener(frames)),
     }
-    return recorder
+    return audio
 }
 
 export const fakeVoiceDeps = ({
     supported = true,
     openError,
-    chunks = [voiceClip()],
+    framesError,
+    pendingAudio = false,
+    tokenStatus = 200,
+    tokenError = false,
     respond = async () => Response.json({ text: 'hello coach' }),
 }: FakeVoiceOptions = {}) => {
-    const recorders: FakeRecorder[] = []
+    const audios: FakeAudio[] = []
+    const sockets: FakeSocket[] = []
+    const audioResolvers: (() => void)[] = []
     const transcribe = vi.fn(respond)
+    const fetchToken = vi.fn(async (_signal: AbortSignal) => {
+        if (tokenError) throw new TypeError('network')
+        return tokenStatus === 200
+            ? Response.json({ token: 'auth_tokens/t1' })
+            : Response.json({ error: 'x' }, { status: tokenStatus })
+    })
+    const openAudio = vi.fn(() => {
+        if (openError) return Promise.reject(openError)
+        const audio = fakeAudio(framesError)
+        audios.push(audio)
+        if (!pendingAudio) return Promise.resolve<AudioSource>(audio)
+        return new Promise<AudioSource>((resolve) => {
+            audioResolvers.push(() => resolve(audio))
+        })
+    })
     const deps: VoiceDeps = {
         isSupported: () => supported,
-        openRecorder: async () => {
-            if (openError) throw openError
-            const recorder = fakeRecorder(chunks)
-            recorders.push(recorder)
-            return recorder
+        openAudio,
+        fetchToken,
+        openSocket: (url) => {
+            const socket = fakeSocket(url)
+            sockets.push(socket)
+            return socket.socket
         },
         transcribe,
     }
-    return { deps, recorders, transcribe }
+    const resolveAudio = (index: number) => audioResolvers[index]?.()
+    return { deps, audios, sockets, transcribe, fetchToken, openAudio, resolveAudio }
 }
 
 export const deferredResponse = () => {

@@ -124,7 +124,13 @@ outcome is recorded in this spec.
 
 ## Live transcription (v2)
 
-Status: design approved by the athlete on 2026-11-26 ("Live with fallback"), not implemented.
+Status: implemented (design approved by the athlete on 2026-11-26, "Live with fallback"). The live
+smoke run and the manual checks are still pending (see "Not verified yet" below).
+
+Built differently from the plan, on purpose: the mic button stays tappable while the permission
+prompt is pending (a tap starts over, since a dismissed prompt can hang forever), so `starting`
+shows a spinner but is not disabled; an empty live result stays "Didn't catch that" rather than an
+error (silence is normal), with a warn log `EmptyTranscript` on the upload route.
 
 The first version works, but the athlete waits for the whole clip to upload and transcribe after
 they stop. v2 writes the text into the box while they speak.

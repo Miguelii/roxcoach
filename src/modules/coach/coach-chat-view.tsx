@@ -222,8 +222,9 @@ function PanelBody({
     onRetry,
     voiceDeps,
 }: Props) {
-    const { form, submit, appendText } = useCoachComposer({ onSend })
-    const voice = useVoiceRecorder({ deps: voiceDeps, onTranscript: appendText })
+    const { form, submit, voiceTarget } = useCoachComposer({ onSend })
+    const voice = useVoiceRecorder({ deps: voiceDeps, target: voiceTarget })
+    const voiceWriting = voice.state === 'recording' || voice.state === 'finishing'
     const { cancel: cancelVoice } = voice
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
@@ -380,6 +381,7 @@ function PanelBody({
                                         aria-label="Message to Migueli Coach"
                                         placeholder="Ask Migueli Coach..."
                                         data-testid="coach-input"
+                                        readOnly={voiceWriting}
                                         className="min-h-0 max-h-32"
                                         onKeyDown={(event) => {
                                             if (

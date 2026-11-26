@@ -1,7 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { COACH_MESSAGE_MAX_CHARS } from '@/modules/coach/suggestions'
+import type { VoiceTarget } from '@/modules/coach/use-voice-recorder'
 
 const composerSchema = z.object({
     message: z
@@ -15,6 +17,11 @@ const composerSchema = z.object({
 type FormValues = z.infer<typeof composerSchema>
 
 type Options = { onSend: (text: string) => void }
+
+const ENDS_IN_SPACE = /\s$/u
+
+const joinVoiceText = (prefix: string, text: string) =>
+    prefix === '' || ENDS_IN_SPACE.test(prefix) ? `${prefix}${text}` : `${prefix} ${text}`
 
 export function useCoachComposer({ onSend }: Options) {
     const form = useForm<FormValues>({
@@ -31,14 +38,28 @@ export function useCoachComposer({ onSend }: Options) {
         form.reset({ message: '' })
     }
 
-    // Voice input adds to what is already typed, never replaces it.
-    const appendText = (text: string) => {
-        const current = form.getValues('message').trimEnd()
-        form.setValue('message', current === '' ? text : `${current} ${text}`, {
-            shouldValidate: true,
-        })
-        form.setFocus('message')
+    // Voice text goes after what was already typed (the prefix), which is never changed.
+    const prefixRef = useRef<string | null>(null)
+    const voiceTarget: VoiceTarget = {
+        begin: () => {
+            prefixRef.current = form.getValues('message')
+        },
+        show: (text) => {
+            if (prefixRef.current !== null)
+                form.setValue('message', joinVoiceText(prefixRef.current, text))
+        },
+        commit: (text) => {
+            const prefix = prefixRef.current ?? form.getValues('message')
+            prefixRef.current = null
+            form.setValue('message', joinVoiceText(prefix, text), { shouldValidate: true })
+            form.setFocus('message')
+        },
+        discard: () => {
+            if (prefixRef.current === null) return
+            form.setValue('message', prefixRef.current, { shouldValidate: true })
+            prefixRef.current = null
+        },
     }
 
-    return { form, submit, appendText }
+    return { form, submit, voiceTarget }
 }

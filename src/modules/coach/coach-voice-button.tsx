@@ -1,4 +1,4 @@
-import { Loader2Icon, MicIcon, SquareIcon } from 'lucide-react'
+import { CircleIcon, Loader2Icon, MicIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { useVoiceRecorder, VoiceErrorKind } from '@/modules/coach/use-voice-recorder'
 
@@ -13,7 +13,9 @@ const VOICE_ERROR_COPY: Record<VoiceErrorKind, string> = {
 
 const ARIA_LABEL = {
     idle: 'Record a voice message',
+    starting: 'Waiting for the microphone',
     recording: 'Stop recording',
+    finishing: 'Transcribing',
     transcribing: 'Transcribing',
 } as const
 
@@ -23,6 +25,8 @@ const formatElapsed = (seconds: number) =>
 export function CoachVoiceButton({ voice }: Props) {
     if (!voice.supported) return null
     const recording = voice.state === 'recording'
+    // Starting stays tappable: a tap while the permission prompt hangs starts over.
+    const busy = voice.state === 'finishing' || voice.state === 'transcribing'
 
     return (
         <div className="flex items-center gap-2">
@@ -45,12 +49,19 @@ export function CoachVoiceButton({ voice }: Props) {
                 aria-label={ARIA_LABEL[voice.state]}
                 aria-pressed={recording}
                 data-testid="coach-voice"
-                disabled={voice.state === 'transcribing'}
+                disabled={busy}
                 onClick={voice.toggle}
             >
                 {voice.state === 'idle' ? <MicIcon /> : null}
-                {recording ? <SquareIcon /> : null}
-                {voice.state === 'transcribing' ? <Loader2Icon className="animate-spin" /> : null}
+                {recording ? (
+                    <CircleIcon
+                        data-testid="coach-voice-stop-icon"
+                        className="fill-destructive text-destructive"
+                    />
+                ) : null}
+                {voice.state === 'starting' || busy ? (
+                    <Loader2Icon className="animate-spin" />
+                ) : null}
             </Button>
         </div>
     )
