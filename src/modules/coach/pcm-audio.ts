@@ -9,22 +9,36 @@ const WAV_HEADER_BYTES = 44
 const BASE64_SLICE = 0x8000
 
 // Averages each window of input samples into one output sample (a box filter), enough for speech.
-export function downsample(
-    input: Float32Array,
+// The worklet delivers 128 frame blocks that do not divide by the rate ratio, so the samples left
+// at the end of a block are kept for the next one instead of being dropped.
+export function createDownsampler(
     inputRate: number,
     outputRate = LIVE_SAMPLE_RATE
-): Float32Array {
-    if (inputRate === outputRate) return input.slice()
+): (input: Float32Array) => Float32Array {
     const ratio = inputRate / outputRate
-    const output = new Float32Array(Math.floor(input.length / ratio))
-    for (let index = 0; index < output.length; index += 1) {
-        const start = Math.floor(index * ratio)
-        const end = Math.min(input.length, Math.floor((index + 1) * ratio))
-        let sum = 0
-        for (let at = start; at < end; at += 1) sum += input[at] ?? 0
-        output[index] = sum / Math.max(1, end - start)
+    let pending = new Float32Array(0)
+    let produced = 0
+    let consumed = 0
+    const edge = (index: number) => Math.floor(index * ratio) - consumed
+    return (input) => {
+        if (inputRate === outputRate) return input.slice()
+        const samples = new Float32Array(pending.length + input.length)
+        samples.set(pending)
+        samples.set(input, pending.length)
+        const output: number[] = []
+        while (edge(produced + 1) <= samples.length) {
+            const start = edge(produced)
+            const end = edge(produced + 1)
+            let sum = 0
+            for (let at = start; at < end; at += 1) sum += samples[at] ?? 0
+            output.push(sum / Math.max(1, end - start))
+            produced += 1
+        }
+        const keepFrom = edge(produced)
+        pending = samples.slice(keepFrom)
+        consumed += keepFrom
+        return Float32Array.from(output)
     }
-    return output
 }
 
 export function toPcm16(samples: Float32Array): Int16Array {

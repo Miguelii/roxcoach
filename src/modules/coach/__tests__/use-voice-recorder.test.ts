@@ -253,6 +253,27 @@ describe('useVoiceRecorder', () => {
         expect(context.result.current.state).toBe('idle')
     })
 
+    it.each<[string, FakeVoiceOptions]>([
+        ['the microphone is blocked', { openError: permissionDenied() }],
+        ['the capture cannot start', { framesError: new Error('worklet') }],
+    ])('aborts the token request and leaves no socket open when %s', async (_label, options) => {
+        const context = setup(options)
+        await toggle(context)
+        expect(context.fetchToken.mock.calls[0]?.[0].aborted).toBe(true)
+        expect(context.sockets.filter((socket) => !socket.closed)).toHaveLength(0)
+    })
+
+    it('uploads right away when the token has not arrived at stop', async () => {
+        const context = setup({ pendingToken: true })
+        await toggle(context)
+        speak(context)
+        await toggle(context)
+        expect(context.fetchToken.mock.calls[0]?.[0].aborted).toBe(true)
+        expect(context.transcribe).toHaveBeenCalledTimes(1)
+        expect(context.target.commit).toHaveBeenCalledWith('hello coach')
+        expect(context.sockets).toHaveLength(0)
+    })
+
     it('reports a failure when the microphone cannot open for another reason', async () => {
         const context = setup({ openError: new Error('no device') })
         await toggle(context)

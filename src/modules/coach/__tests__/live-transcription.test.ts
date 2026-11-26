@@ -67,14 +67,18 @@ describe('openLiveSession', () => {
         expect(socket.sent.at(-1)).toEqual(audioMessage(third))
     })
 
-    it('shows the final text followed by the current partial', () => {
+    it('replaces the partial with each sentence final and keeps every earlier sentence', () => {
         const { socket, onText } = ready()
-        socket.receive(liveMessages.final(' Amanhã tenho '))
+        socket.receive(liveMessages.partial('Amanhã tenho'))
         expect(onText).toHaveBeenLastCalledWith('Amanhã tenho')
-        socket.receive(liveMessages.partial('treino'))
-        expect(onText).toHaveBeenLastCalledWith('Amanhã tenho treino')
-        socket.receive(liveMessages.final('Amanhã tenho treino de Hyrox.'))
+        socket.receive(liveMessages.final(' Amanhã tenho treino de Hyrox. '))
         expect(onText).toHaveBeenLastCalledWith('Amanhã tenho treino de Hyrox.')
+        socket.receive(liveMessages.partial('Achas que'))
+        expect(onText).toHaveBeenLastCalledWith('Amanhã tenho treino de Hyrox. Achas que')
+        socket.receive(liveMessages.final('Achas que devo descansar?'))
+        expect(onText).toHaveBeenLastCalledWith(
+            'Amanhã tenho treino de Hyrox. Achas que devo descansar?'
+        )
     })
 
     it('ignores messages that are not JSON or carry no transcript', () => {

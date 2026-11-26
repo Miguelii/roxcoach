@@ -9,6 +9,7 @@ import { useCoachChat, type SendBody } from '@/modules/coach/use-coach-chat'
 import type { VoiceDeps } from '@/modules/coach/use-voice-recorder'
 import {
     controlledStream,
+    deferredResponse,
     fakeVoiceDeps,
     jsonStatus,
     liveMessages,
@@ -730,6 +731,41 @@ describe('CoachChatView', () => {
             expect(screen.getByTestId('coach-input')).toHaveAttribute('readonly')
             act(() => socket.receive(liveMessages.final('done')))
             await flushVoice()
+            expect(screen.getByTestId('coach-input')).not.toHaveAttribute('readonly')
+        })
+
+        it('does not send with the button or Enter while recording', async () => {
+            const send = vi.fn()
+            const voice = fakeVoiceDeps()
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('Plan for')
+            await tapMic()
+            const socket = connect(voice)
+            speak(voice)
+            act(() => socket.receive(liveMessages.partial('tomorrow')))
+            expect(screen.getByTestId('coach-send')).toBeDisabled()
+            fireEvent.click(screen.getByTestId('coach-send'))
+            fireEvent.keyDown(screen.getByTestId('coach-input'), { key: 'Enter' })
+            expect(send).not.toHaveBeenCalled()
+            expect(screen.getByTestId('coach-input')).toHaveValue('Plan for tomorrow')
+        })
+
+        it('locks the box and sending while the fallback upload runs', async () => {
+            const send = vi.fn()
+            const pending = deferredResponse()
+            const voice = fakeVoiceDeps({ tokenStatus: 502, respond: () => pending.promise })
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('Plan for')
+            await tapMic()
+            speak(voice)
+            await tapMic()
+            expect(screen.getByTestId('coach-voice')).toHaveAttribute('aria-label', 'Transcribing')
+            expect(screen.getByTestId('coach-input')).toHaveAttribute('readonly')
+            fireEvent.keyDown(screen.getByTestId('coach-input'), { key: 'Enter' })
+            expect(send).not.toHaveBeenCalled()
+            await act(async () => pending.resolve(Response.json({ text: 'tomorrow' })))
+            await flushVoice()
+            expect(screen.getByTestId('coach-input')).toHaveValue('Plan for tomorrow')
             expect(screen.getByTestId('coach-input')).not.toHaveAttribute('readonly')
         })
 

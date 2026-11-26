@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { liveTokenRequestBody } from '@/_bff/core/constants/transcribe-live.constants'
 import { createLiveTokenIssuer } from '@/_bff/modules/coach/providers/gemini-live-token'
 
@@ -14,8 +14,14 @@ const fakeFetch = (respond: () => Response, calls: Call[] = []) =>
         return respond()
     })
 
+const TIMEOUT_MS = 5000
+
 const issuerWith = (doFetch: typeof fetch) =>
-    createLiveTokenIssuer({ apiKey: KEY, fetch: doFetch, now: () => NOW })
+    createLiveTokenIssuer({ apiKey: KEY, timeoutMs: TIMEOUT_MS, fetch: doFetch, now: () => NOW })
+
+afterEach(() => {
+    vi.useRealTimers()
+})
 
 describe('createLiveTokenIssuer', () => {
     it('posts the shared one-use token request with the key header', async () => {
@@ -35,6 +41,19 @@ describe('createLiveTokenIssuer', () => {
     it('returns rate_limited on a 429', async () => {
         const issue = issuerWith(fakeFetch(() => Response.json({}, { status: 429 })))
         expect(await issue()).toEqual({ ok: false, kind: 'rate_limited', reason: '429' })
+    })
+
+    it('returns unavailable with a timeout reason when Google does not answer in time', async () => {
+        vi.useFakeTimers()
+        const hanging = vi.fn<typeof fetch>(
+            (_input, init) =>
+                new Promise((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+                })
+        )
+        const outcome = issuerWith(hanging)()
+        await vi.advanceTimersByTimeAsync(TIMEOUT_MS)
+        expect(await outcome).toEqual({ ok: false, kind: 'unavailable', reason: 'timeout' })
     })
 
     it.each([

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-    LIVE_TRANSCRIBE_CONFIG,
-    TRANSCRIBE_LIVE_MODEL_ID,
     liveSetupMessage,
     liveSocketUrl,
     liveTokenRequestBody,
@@ -18,9 +16,9 @@ describe('live transcription config', () => {
         })
     })
 
-    it('puts the token in the access_token query parameter', () => {
+    it('opens the constrained socket, the only one that accepts an ephemeral token', () => {
         expect(liveSocketUrl('a b')).toBe(
-            'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?access_token=a%20b'
+            'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=a%20b'
         )
     })
 
@@ -30,10 +28,7 @@ describe('live transcription config', () => {
             uses: 1,
             newSessionExpireTime: '2026-11-26T10:01:00.000Z',
             expireTime: '2026-11-26T10:03:00.000Z',
-            liveConnectConstraints: {
-                model: TRANSCRIBE_LIVE_MODEL_ID,
-                config: LIVE_TRANSCRIBE_CONFIG,
-            },
+            bidiGenerateContentSetup: liveSetupMessage().setup,
         })
     })
 })

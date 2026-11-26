@@ -15,6 +15,8 @@ export type FakeVoiceOptions = {
     pendingAudio?: boolean
     tokenStatus?: number
     tokenError?: boolean
+    // Leaves the token request pending until its signal aborts.
+    pendingToken?: boolean
     respond?: (audio: Blob, signal: AbortSignal) => Promise<Response>
 }
 
@@ -94,13 +96,18 @@ export const fakeVoiceDeps = ({
     pendingAudio = false,
     tokenStatus = 200,
     tokenError = false,
+    pendingToken = false,
     respond = async () => Response.json({ text: 'hello coach' }),
 }: FakeVoiceOptions = {}) => {
     const audios: FakeAudio[] = []
     const sockets: FakeSocket[] = []
     const audioResolvers: (() => void)[] = []
     const transcribe = vi.fn(respond)
-    const fetchToken = vi.fn(async (_signal: AbortSignal) => {
+    const fetchToken = vi.fn(async (signal: AbortSignal) => {
+        if (pendingToken)
+            await new Promise((_resolve, reject) => {
+                signal.addEventListener('abort', () => reject(signal.reason))
+            })
         if (tokenError) throw new TypeError('network')
         return tokenStatus === 200
             ? Response.json({ token: 'auth_tokens/t1' })

@@ -224,13 +224,17 @@ function PanelBody({
 }: Props) {
     const { form, submit, voiceTarget } = useCoachComposer({ onSend })
     const voice = useVoiceRecorder({ deps: voiceDeps, target: voiceTarget })
-    const voiceWriting = voice.state === 'recording' || voice.state === 'finishing'
+    // Voice text lands in the box until the recording settles, so sending in between would bring
+    // the sent text back. Typing stays open only while the microphone is starting.
+    const voiceActive = voice.state !== 'idle'
+    const voiceWriting = voiceActive && voice.state !== 'starting'
     const { cancel: cancelVoice } = voice
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
     const text = useWatch({ control: form.control, name: 'message' })
     const streaming = status === 'streaming'
-    const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
+    const canSend =
+        !streaming && !voiceActive && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
 
     // The panel stays mounted while it animates out, so a recording is dropped as soon as it closes.
     useEffect(() => {
@@ -365,7 +369,7 @@ function PanelBody({
                 <form
                     onSubmit={(event) => {
                         event.preventDefault()
-                        submit(streaming)
+                        submit(streaming || voiceActive)
                     }}
                     className="flex items-center gap-2 border-t border-hairline p-3"
                 >
@@ -390,7 +394,7 @@ function PanelBody({
                                                 !event.nativeEvent.isComposing
                                             ) {
                                                 event.preventDefault()
-                                                submit(streaming)
+                                                submit(streaming || voiceActive)
                                             }
                                         }}
                                     />

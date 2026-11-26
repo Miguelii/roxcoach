@@ -31,9 +31,9 @@ export function useCoachComposer({ onSend }: Options) {
     })
 
     // Sends the trimmed text and clears the input. Empty and over-long text is never sent.
-    const submit = (streaming: boolean) => {
+    const submit = (blocked: boolean) => {
         const text = form.getValues('message').trim()
-        if (streaming || text === '' || text.length > COACH_MESSAGE_MAX_CHARS) return
+        if (blocked || text === '' || text.length > COACH_MESSAGE_MAX_CHARS) return
         onSend(text)
         form.reset({ message: '' })
     }

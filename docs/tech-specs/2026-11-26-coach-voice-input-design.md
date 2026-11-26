@@ -124,13 +124,21 @@ outcome is recorded in this spec.
 
 ## Live transcription (v2)
 
-Status: implemented (design approved by the athlete on 2026-11-26, "Live with fallback"). The live
-smoke run and the manual checks are still pending (see "Not verified yet" below).
+Status: implemented (design approved by the athlete on 2026-11-26, "Live with fallback"). The
+protocol was verified against the real API on 2026-11-26 (see "Verified against the API" below);
+the manual checks on desktop Chrome and the iPhone home screen app are still pending.
 
 Built differently from the plan, on purpose: the mic button stays tappable while the permission
 prompt is pending (a tap starts over, since a dismissed prompt can hang forever), so `starting`
 shows a spinner but is not disabled; an empty live result stays "Didn't catch that" rather than an
-error (silence is normal), with a warn log `EmptyTranscript` on the upload route.
+error (silence is normal), with a warn log `EmptyTranscript` on the upload route. Send and Enter
+are blocked while a recording, its finishing or its upload runs, and the box stays read only
+through the upload too, because the voice text is written into the box until the recording settles
+(sending in between would bring the sent text back, and typing during the upload would be
+overwritten). If the token has not arrived when the athlete stops, the token request is aborted and
+the upload runs at once (it already has every chunk). Any end of a recording (success, failure or
+cancel) aborts the token request, so a blocked microphone never opens a socket. The token creator
+gives up after 10 seconds (`LIVE_TOKEN_TIMEOUT_MS`).
 
 The first version works, but the athlete waits for the whole clip to upload and transcribe after
 they stop. v2 writes the text into the box while they speak.
@@ -147,21 +155,28 @@ they stop. v2 writes the text into the box while they speak.
 ### What Google's docs say (read 2026-11-26)
 
 - The browser connects to
-  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent`
-  with an **ephemeral token** in the `access_token` query parameter, never the API key.
+  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained`
+  with an **ephemeral token** in the `access_token` query parameter, never the API key. The plain
+  `BidiGenerateContent` socket refuses an ephemeral token (close 1008, "Permission denied on the
+  service").
 - The server creates the token with `POST https://generativelanguage.googleapis.com/v1beta/auth_tokens`
   (header `x-goog-api-key`): `uses: 1`, `newSessionExpireTime` (time to open the session),
-  `expireTime` (time to keep sending), and `liveConnectConstraints` that lock the model and config.
-  The exact response JSON is not in the docs (the SDK reads the token from `name`).
+  `expireTime` (time to keep sending), and `bidiGenerateContentSetup` holding the same setup the
+  socket sends, which locks the model and config. `liveConnectConstraints` is only the SDK's name
+  for it: the REST API rejects that field with a 400 ("Unknown name"). The response is
+  `{ "name": "auth_tokens/..." }` and `name` is the token.
 - Setup message: `{ "setup": { "model": "models/gemini-3.5-transcribe-live", "generationConfig":
   { "responseModalities": ["TEXT"] }, "inputAudioTranscription": { "languageCodes": [], "mode":
   "SMART" } } }`.
 - Audio in: raw 16-bit PCM, 16 kHz, mono, little-endian, about 100 ms per chunk, sent as
   `{ "realtimeInput": { "audio": { "data": "<base64>", "mimeType": "audio/pcm;rate=16000" } } }`,
   and `{ "realtimeInput": { "audioStreamEnd": true } }` at the end. No webm or opus.
-- Text out: `serverContent.interimInputTranscription.text` is a fast, speculative partial;
-  `serverContent.inputTranscription.text` is final. In SMART mode the final text is the whole
-  cleaned transcript of the session so far and replaces what the client shows.
+- Text out: `serverContent.interimInputTranscription.text` is a fast, speculative partial of the
+  current sentence so far; `serverContent.inputTranscription.text` is the cleaned final text of
+  that one sentence, sent when the server detects a pause (and after `audioStreamEnd`). Finals are
+  not cumulative: after a pause the next partials and final cover only the new sentence. Server
+  messages arrive as binary frames holding JSON. The server also sends `voiceActivity`
+  (`ACTIVITY_START` / `ACTIVITY_END`) and `generationComplete`, which the client ignores.
 - Sessions last up to 10 minutes. No quota or latency numbers are published.
 
 ### Design
@@ -174,14 +189,16 @@ session. No body. Same status mapping as the v1 route (401, 403, 503, 429, 502, 
 never logged.
 
 **Audio capture.** `MediaRecorder` is replaced by an `AudioContext` with an `AudioWorklet` that
-downsamples the microphone to 16 kHz mono PCM16 and posts 100 ms chunks (1600 samples). The
+posts each 128 frame block to the main thread, where it is downsampled to 16 kHz mono PCM16 and cut
+into 100 ms chunks (1600 samples). The downsampler keeps the samples left at the end of a block for
+the next one, since 128 does not divide by the rate ratio (3 at 48 kHz, 2.75625 at 44.1 kHz). The
 `AudioContext` is created in the tap handler itself, before any await, because iOS only starts
 audio from a user gesture. The downsampling, the PCM16 conversion and a WAV encoder are pure
 functions with unit tests.
 
 **Live session.** On tap the client asks for the microphone and the token at the same time, opens
 the WebSocket, sends the setup, buffers chunks until `setupComplete`, then streams them. The text
-shown is the last final text plus the current partial. On stop (or at 60 seconds) it sends
+shown is every final so far, joined with spaces, plus the current partial. On stop (or at 60 seconds) it sends
 `audioStreamEnd` and waits up to 3 seconds for the last final text, then closes.
 
 **In the box.** The text already typed is kept as a prefix; while recording the field shows that
@@ -204,12 +221,18 @@ recorder hook with a fake socket and a fake audio source (partial then final tex
 setup, stop waits for the final, every fallback trigger, cancel restores the prefix, one session
 for a double tap); the view (live text in the box, read only while recording).
 
-### Not verified yet
+### Verified against the API
 
-The token response field, whether the token constraints accept `mode: "SMART"`, and how the live
-model handles Portuguese partials. A smoke script, `tools/gemini-live-smoke.ts`, creates a token
-and streams the existing sample WAV through the socket, printing every server message. The athlete
-runs it before the client is built on it; any difference goes into this section.
+On 2026-11-26 with the sample WAV (pt-PT voice) and `tools/gemini-live-smoke.ts`: the token
+request, the constrained socket, `mode: "SMART"` and `languageCodes: []` inside the locked setup
+are all accepted. `setupComplete` arrives about 0.4 to 0.8 seconds after the socket opens, partials
+about every 0.5 seconds, and the last final about 0.5 seconds after `audioStreamEnd`, well inside
+the 3 second wait. A clip with two sentences around 3 seconds of silence gave two separate finals.
+Partials are rough in Portuguese (early words are often wrong and get corrected) while the finals
+read well; Hyrox terms are still misheard in both (station names come out as other words).
+
+Still to check by hand: desktop Chrome and the iPhone home screen app, including the fallback with
+the network throttled or cut mid-recording.
 
 ## Left out
 

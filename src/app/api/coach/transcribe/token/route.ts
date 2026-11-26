@@ -2,13 +2,16 @@ import { Cause, Effect, Exit } from 'effect'
 import { ServerEnv } from '@/env/server'
 import { Logger } from '@/_bff/lib/server-logger'
 import { getSession } from '@/_bff/modules/auth/services/get-session.service'
+import { LIVE_TOKEN_TIMEOUT_MS } from '@/_bff/modules/coach/constants'
 import { createTranscribeTokenHandler } from '@/_bff/modules/coach/helpers/transcribe-token-handler.helper'
 import { createLiveTokenIssuer } from '@/_bff/modules/coach/providers/gemini-live-token'
 
 // The proxy matcher excludes `api/`, so this route authenticates itself, like the chat route.
 // The Gemini key is read here only; the handler receives the built issuer.
 const apiKey = ServerEnv.NEXT_GEMINI_API_KEY
-const issueToken = apiKey ? createLiveTokenIssuer({ apiKey }) : null
+const issueToken = apiKey
+    ? createLiveTokenIssuer({ apiKey, timeoutMs: LIVE_TOKEN_TIMEOUT_MS })
+    : null
 
 const handler = createTranscribeTokenHandler({
     isConfigured: issueToken !== null,

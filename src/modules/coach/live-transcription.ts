@@ -50,8 +50,9 @@ const parseMessage = (data: string) => {
     }
 }
 
-// One Gemini Live transcription over a socket. In SMART mode a final text is the whole cleaned
-// transcript so far, so it replaces the shown text; a partial only covers the words since it.
+// One Gemini Live transcription over a socket. Each final is the cleaned text of one sentence (the
+// server ends a sentence at a pause), so finals are joined; a partial is the current sentence so far
+// and is replaced by its final.
 export function openLiveSession({ token, openSocket, onText, onFailure }: Options): LiveSession {
     const socket = openSocket(liveSocketUrl(token))
     const queue: Int16Array[] = []
@@ -104,7 +105,7 @@ export function openLiveSession({ token, openSocket, onText, onFailure }: Option
         const final = message.serverContent?.inputTranscription?.text
         if (interim === undefined && final === undefined) return
         if (final !== undefined) {
-            finalText = final.trim()
+            finalText = [finalText, final.trim()].filter((text) => text !== '').join(' ')
             partialText = ''
         } else if (interim !== undefined) partialText = interim.trim()
         onText(composed())

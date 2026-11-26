@@ -47,3 +47,6 @@ export const AUDIO_MIME_TYPES = [
 export const TRANSCRIBE_MODEL_ID = 'gemini-3.5-transcribe'
 
 export const TRANSCRIBE_TIMEOUT_MS = 30_000
+
+// A live token is only worth having before the athlete stops; past this the upload takes over.
+export const LIVE_TOKEN_TIMEOUT_MS = 10_000

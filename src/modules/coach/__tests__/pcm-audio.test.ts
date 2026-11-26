@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
     createChunker,
-    downsample,
+    createDownsampler,
     encodeWav,
     pcmToBase64,
     toPcm16,
@@ -12,20 +12,50 @@ const near = (actual: Float32Array, expected: number[]) => {
     expected.forEach((value, index) => expect(actual[index]).toBeCloseTo(value, 5))
 }
 
-describe('downsample', () => {
+const RENDER_QUANTUM = 128
+
+const wave = (index: number) => Math.sin(index / 7)
+
+const inBlocks = (rate: number, seconds: number, fill: (index: number) => number) => {
+    const resample = createDownsampler(rate)
+    const total = rate * seconds
+    const outputs: Float32Array[] = []
+    for (let start = 0; start < total; start += RENDER_QUANTUM) {
+        const length = Math.min(RENDER_QUANTUM, total - start)
+        outputs.push(resample(Float32Array.from({ length }, (_, at) => fill(start + at))))
+    }
+    return outputs
+}
+
+describe('createDownsampler', () => {
     it('averages each window from 48 kHz to 16 kHz', () => {
-        near(downsample(Float32Array.of(0.3, 0.3, 0.3, 0.6, 0.6, 0.6), 48_000), [0.3, 0.6])
+        near(createDownsampler(48_000)(Float32Array.of(0.3, 0.3, 0.3, 0.6, 0.6, 0.6)), [0.3, 0.6])
     })
 
     it('returns an equal copy at the same rate', () => {
         const input = Float32Array.of(0.1, 0.2)
-        const output = downsample(input, 16_000)
+        const output = createDownsampler(16_000)(input)
         near(output, [0.1, 0.2])
         expect(output).not.toBe(input)
     })
 
-    it('rounds the length down at 44.1 kHz', () => {
-        expect(downsample(new Float32Array(441), 44_100)).toHaveLength(160)
+    it.each([48_000, 44_100])(
+        'keeps 16000 samples a second when fed 128 frame blocks at %i Hz',
+        (rate) => {
+            const samples = inBlocks(rate, 1, () => 0.5).reduce(
+                (total, block) => total + block.length,
+                0
+            )
+            expect(Math.abs(samples - 16_000)).toBeLessThanOrEqual(1)
+        }
+    )
+
+    it('gives the same samples in blocks as in one buffer', () => {
+        const joined = inBlocks(44_100, 1, wave).flatMap((block) => Array.from(block))
+        const whole = createDownsampler(44_100)(
+            Float32Array.from({ length: 44_100 }, (_, index) => wave(index))
+        )
+        near(Float32Array.from(joined), Array.from(whole))
     })
 })
 

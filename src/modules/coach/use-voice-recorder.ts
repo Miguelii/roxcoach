@@ -6,7 +6,7 @@ import {
     type LiveSession,
     type LiveSocket,
 } from '@/modules/coach/live-transcription'
-import { createChunker, downsample, encodeWav, toPcm16 } from '@/modules/coach/pcm-audio'
+import { createChunker, createDownsampler, encodeWav, toPcm16 } from '@/modules/coach/pcm-audio'
 import { browserVoiceDeps } from '@/modules/coach/browser-voice-deps'
 
 export type AudioSource = {
@@ -51,6 +51,7 @@ type Session = {
     flushChunks: () => void
     lastText: string
     controller: AbortController
+    tokenController: AbortController
     timer: ReturnType<typeof setInterval> | null
 }
 
@@ -101,8 +102,8 @@ const clearTimer = (session: Session) => {
     session.timer = null
 }
 
-// Each recording is a session object: a cancelled session keeps running its awaits, but every
-// step checks `cancelled` first, so a late microphone, socket message or upload never touches the
+// Each recording is a session object: an ended or cancelled session keeps running its awaits, but
+// every step checks `cancelled` first, so a late microphone, socket message or upload never touches the
 // state. The live socket is the main path; every chunk is also kept so a failed live session can
 // still be transcribed by uploading the same audio as WAV.
 // oxlint-disable-next-line max-lines-per-function -- one hook owns the whole recording state machine
@@ -125,6 +126,9 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
     }, [])
 
     const end = useCallback((session: Session, result: VoiceErrorKind | null) => {
+        session.cancelled = true
+        session.controller.abort()
+        session.tokenController.abort()
         clearTimer(session)
         session.audio?.release()
         session.live?.close()
@@ -184,6 +188,8 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             clearTimer(session)
             session.flushChunks()
             session.audio?.release()
+            // Waiting for a late token would only delay the upload that already has every chunk.
+            if (session.live === null) session.tokenController.abort()
             void complete(session)
         },
         [complete, setPhase]
@@ -213,10 +219,10 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
                 session.live?.sendChunk(chunk)
             })
             session.flushChunks = () => chunker.flush()
+            const resample = createDownsampler(audio.sampleRate)
             try {
                 audio.onFrames((frames) => {
-                    if (session.phase === 'recording')
-                        chunker.push(toPcm16(downsample(frames, audio.sampleRate)))
+                    if (session.phase === 'recording') chunker.push(toPcm16(resample(frames)))
                 })
             } catch {
                 end(session, 'failed')
@@ -239,6 +245,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
     const start = useCallback(() => {
         const { deps: voiceDeps } = optionsRef.current
         const controller = new AbortController()
+        const tokenController = new AbortController()
         const session: Session = {
             phase: 'starting',
             cancelled: false,
@@ -250,6 +257,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             flushChunks: () => {},
             lastText: '',
             controller,
+            tokenController,
             timer: null,
         }
         sessionRef.current = session
@@ -258,7 +266,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
         setState('starting')
 
         const audioReady = voiceDeps.openAudio()
-        session.liveReady = fetchLiveToken(voiceDeps.fetchToken, controller.signal).then(
+        session.liveReady = fetchLiveToken(voiceDeps.fetchToken, tokenController.signal).then(
             (token) => {
                 if (token === null || session.cancelled) return null
                 const live = openLiveSession({
@@ -284,8 +292,6 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
     const cancel = useCallback(() => {
         const session = sessionRef.current
         if (session === null) return
-        session.cancelled = true
-        session.controller.abort()
         if (session.begun) optionsRef.current.target.discard()
         end(session, null)
     }, [end])
