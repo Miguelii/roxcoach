@@ -1,3 +1,18 @@
+import { vi } from 'vitest'
+import type { VoiceDeps, VoiceRecorderLike } from '@/modules/coach/use-voice-recorder'
+
+export type FakeRecorder = VoiceRecorderLike & {
+    released: boolean
+    started: boolean
+}
+
+export type FakeVoiceOptions = {
+    supported?: boolean
+    openError?: Error
+    chunks?: Blob[]
+    respond?: (audio: Blob, signal: AbortSignal) => Promise<Response>
+}
+
 const encoder = new TextEncoder()
 
 export type Controlled = {
@@ -38,3 +53,64 @@ export const streamOf = (...chunks: string[]) =>
     streamOfBytes(...chunks.map((chunk) => encoder.encode(chunk)))
 
 export const jsonStatus = (status: number) => Response.json({ error: 'x' }, { status })
+
+const voiceClip = (text = 'audio') => new Blob([text], { type: 'audio/webm' })
+
+// A recorder whose stop emits the given chunks synchronously, like a browser that already has them.
+const fakeRecorder = (chunks: Blob[]): FakeRecorder => {
+    const dataListeners: ((chunk: Blob) => void)[] = []
+    const stopListeners: (() => void)[] = []
+    const recorder: FakeRecorder = {
+        mimeType: 'audio/webm;codecs=opus',
+        released: false,
+        started: false,
+        start: () => {
+            recorder.started = true
+        },
+        stop: () => {
+            chunks.forEach((chunk) => dataListeners.forEach((listener) => listener(chunk)))
+            stopListeners.forEach((listener) => listener())
+        },
+        release: () => {
+            recorder.released = true
+        },
+        onData: (listener) => dataListeners.push(listener),
+        onStop: (listener) => stopListeners.push(listener),
+    }
+    return recorder
+}
+
+export const fakeVoiceDeps = ({
+    supported = true,
+    openError,
+    chunks = [voiceClip()],
+    respond = async () => Response.json({ text: 'hello coach' }),
+}: FakeVoiceOptions = {}) => {
+    const recorders: FakeRecorder[] = []
+    const transcribe = vi.fn(respond)
+    const deps: VoiceDeps = {
+        isSupported: () => supported,
+        openRecorder: async () => {
+            if (openError) throw openError
+            const recorder = fakeRecorder(chunks)
+            recorders.push(recorder)
+            return recorder
+        },
+        transcribe,
+    }
+    return { deps, recorders, transcribe }
+}
+
+export const deferredResponse = () => {
+    let resolve!: (response: Response) => void
+    const promise = new Promise<Response>((done) => {
+        resolve = done
+    })
+    return { promise, resolve }
+}
+
+export const permissionDenied = () => {
+    const error = new Error('denied')
+    error.name = 'NotAllowedError'
+    return error
+}

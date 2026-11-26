@@ -29,7 +29,8 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
   The coach may suggest next sessions in the chat when asked, as text only.
 - The coach never changes data: it has read-only tools. Creating races, availability and uploads
   stays in the screens that exist for that.
-- No voice input, no file uploads in the chat, no image input.
+- No file uploads in the chat, no image input. Voice input only fills the message box (see
+  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 - Not a medical tool. Anti-goal: an answer that invents numbers or goals the data does not
   contain. When data is missing the coach says so.
 - No identity sent to the model: no user id, name or email.
@@ -324,8 +325,12 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   race?", "What should I do this week?". A chip sends its text.
 - Assistant text renders as markdown with `react-markdown`, loaded lazily (`lazy` in `coach-message.tsx`, preloaded when the launcher is hovered or focused; plain text shows meanwhile) so it stays out of the first-load bundle: raw HTML is not rendered (escaped),
   images are disallowed, links open in a new tab with `noopener noreferrer`. User text is plain.
-- A stop button cancels the stream (the partial text stays, marked "Incomplete reply"). No
-  microphone.
+- A stop button cancels the stream (the partial text stays, marked "Incomplete reply").
+- Voice input: a mic button next to Send (`coach-voice-button.tsx`, hook `use-voice-recorder.ts`)
+  records up to 60 seconds, posts the clip to `POST /api/coach/transcribe` and appends the
+  transcript to the message box (never sends it). Hidden when the browser cannot record, usable
+  while a reply streams, cancelled when the panel closes. Design and copy in
+  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md).
 - States: empty, loading history, streaming, error with retry (busy, conversation not found),
   blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The
   stream is read by a custom hook (`use-coach-chat.ts`), not by the AI SDK client.

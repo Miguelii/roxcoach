@@ -18,6 +18,8 @@ import {
     type ChatStatus,
 } from '@/modules/coach/use-coach-chat'
 import { useCoachComposer } from '@/modules/coach/use-coach-composer'
+import { CoachVoiceButton, CoachVoiceError } from '@/modules/coach/coach-voice-button'
+import { useVoiceRecorder, type VoiceDeps } from '@/modules/coach/use-voice-recorder'
 import { useLockPageScroll, useVisualViewport } from '@/modules/coach/use-visual-viewport'
 
 type Props = {
@@ -38,6 +40,7 @@ type Props = {
     onOpen: (id: string) => void
     onDelete: (id: string) => void
     onRetry: () => void
+    voiceDeps?: VoiceDeps
 }
 
 type FrameProps = PropsWithChildren<
@@ -202,6 +205,7 @@ function CoachPanelFrame({ open, onOpenChange, onExited, children }: FrameProps)
 }
 
 function PanelBody({
+    open,
     onOpenChange,
     messages,
     status,
@@ -216,13 +220,21 @@ function PanelBody({
     onOpen,
     onDelete,
     onRetry,
+    voiceDeps,
 }: Props) {
-    const { form, submit } = useCoachComposer({ onSend })
+    const { form, submit, appendText } = useCoachComposer({ onSend })
+    const voice = useVoiceRecorder({ deps: voiceDeps, onTranscript: appendText })
+    const { cancel: cancelVoice } = voice
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
     const text = useWatch({ control: form.control, name: 'message' })
     const streaming = status === 'streaming'
     const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
+
+    // The panel stays mounted while it animates out, so a recording is dropped as soon as it closes.
+    useEffect(() => {
+        if (!open) cancelVoice()
+    }, [open, cancelVoice])
 
     const listRef = useRef<HTMLDivElement | null>(null)
     const stickRef = useRef(true)
@@ -394,6 +406,7 @@ function PanelBody({
                                     </p>
                                 ) : null}
                                 <FormMessage data-testid="coach-input-error" />
+                                <CoachVoiceError voice={voice} />
                             </FormItem>
                         )}
                     />
@@ -409,6 +422,7 @@ function PanelBody({
                             <SquareIcon />
                         </Button>
                     ) : null}
+                    <CoachVoiceButton voice={voice} />
                     <Button
                         type="submit"
                         size="icon"

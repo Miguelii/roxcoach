@@ -6,7 +6,16 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
 import { COACH_SUGGESTIONS } from '@/modules/coach/suggestions'
 import { useCoachChat, type SendBody } from '@/modules/coach/use-coach-chat'
-import { controlledStream, jsonStatus, ndjson, streamOf } from '@/modules/coach/__tests__/helpers'
+import type { VoiceDeps } from '@/modules/coach/use-voice-recorder'
+import {
+    controlledStream,
+    deferredResponse,
+    fakeVoiceDeps,
+    jsonStatus,
+    ndjson,
+    permissionDenied,
+    streamOf,
+} from '@/modules/coach/__tests__/helpers'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const meta = { type: 'meta', conversationId: ID }
@@ -25,6 +34,7 @@ type HarnessProps = {
     conversations?: { id: string; title: string; updatedAt: string }[]
     onDelete?: (id: string) => void
     startOpen?: boolean
+    voiceDeps?: VoiceDeps
 }
 
 function Harness({
@@ -33,9 +43,10 @@ function Harness({
     conversations,
     onDelete = noop,
     startOpen = true,
+    voiceDeps = fakeVoiceDeps({ supported: false }).deps,
 }: HarnessProps) {
     const chat = useCoachChat({ send, loadMessages })
-    return <HarnessView {...{ chat, conversations, onDelete, startOpen }} />
+    return <HarnessView {...{ chat, conversations, onDelete, startOpen, voiceDeps }} />
 }
 
 import { useState } from 'react'
@@ -44,11 +55,13 @@ function HarnessView({
     conversations,
     onDelete,
     startOpen,
+    voiceDeps,
 }: {
     chat: ReturnType<typeof useCoachChat>
     conversations: HarnessProps['conversations']
     onDelete: (id: string) => void
     startOpen: boolean
+    voiceDeps: VoiceDeps
 }) {
     const [open, setOpen] = useState(startOpen)
     const [launcherEnabled, setLauncherEnabled] = useState(true)
@@ -72,6 +85,7 @@ function HarnessView({
             onOpen={(id) => void chat.openConversation(id)}
             onDelete={onDelete}
             onRetry={chat.retry}
+            voiceDeps={voiceDeps}
         />
     )
 }
@@ -639,6 +653,129 @@ describe('CoachChatView', () => {
                 expect(screen.getByTestId('coach-message-assistant')).toBeInTheDocument()
             )
             expect(screen.queryByTestId('coach-model-caption')).toBeNull()
+        })
+    })
+
+    describe('voice input', () => {
+        const record = async () => {
+            fireEvent.click(screen.getByTestId('coach-voice'))
+            await act(async () => {})
+        }
+
+        it('hides the mic button when the browser cannot record', () => {
+            render(<Harness voiceDeps={fakeVoiceDeps({ supported: false }).deps} />)
+            expect(screen.queryByTestId('coach-voice')).toBeNull()
+        })
+
+        it('shows the recording state with a timer and the transcribing state', async () => {
+            vi.useFakeTimers()
+            try {
+                const pending = deferredResponse()
+                const voice = fakeVoiceDeps({ respond: () => pending.promise })
+                render(<Harness voiceDeps={voice.deps} />)
+                const button = screen.getByTestId('coach-voice')
+                expect(button).toHaveAttribute('aria-label', 'Record a voice message')
+
+                await record()
+                act(() => vi.advanceTimersByTime(3000))
+                expect(screen.getByTestId('coach-voice-timer')).toHaveTextContent('0:03')
+                expect(screen.getByTestId('coach-voice')).toHaveAttribute(
+                    'aria-label',
+                    'Stop recording'
+                )
+
+                await record()
+                expect(screen.getByTestId('coach-voice')).toBeDisabled()
+                expect(screen.queryByTestId('coach-voice-timer')).toBeNull()
+            } finally {
+                vi.useRealTimers()
+            }
+        })
+
+        it('appends the transcript to the typed text without sending it', async () => {
+            const send = vi.fn()
+            const voice = fakeVoiceDeps({
+                respond: async () => Response.json({ text: "tomorrow's run" }),
+            })
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('Plan for')
+            await record()
+            await record()
+            await waitFor(() =>
+                expect(screen.getByTestId('coach-input')).toHaveValue("Plan for tomorrow's run")
+            )
+            expect(screen.getByTestId('coach-input')).toHaveFocus()
+            expect(send).not.toHaveBeenCalled()
+        })
+
+        it('appends to the text typed while the transcription was running', async () => {
+            const pending = deferredResponse()
+            const voice = fakeVoiceDeps({ respond: () => pending.promise })
+            render(<Harness voiceDeps={voice.deps} />)
+            await record()
+            await record()
+            type('Hi')
+            await act(async () => pending.resolve(Response.json({ text: 'coach' })))
+            expect(screen.getByTestId('coach-input')).toHaveValue('Hi coach')
+        })
+
+        it.each([
+            [
+                'busy',
+                { respond: async () => Response.json({}, { status: 429 }) },
+                'Transcription is busy. Try again in a minute.',
+            ],
+            [
+                'failed',
+                { respond: async () => Response.json({}, { status: 502 }) },
+                "Couldn't transcribe. Try again.",
+            ],
+            [
+                'no-speech',
+                { respond: async () => Response.json({ text: '' }) },
+                "Didn't catch that. Try again.",
+            ],
+        ])('shows the %s copy', async (_kind, options, copy) => {
+            render(<Harness voiceDeps={fakeVoiceDeps(options).deps} />)
+            await record()
+            await record()
+            await waitFor(() =>
+                expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(copy)
+            )
+        })
+
+        it('shows the blocked microphone copy', async () => {
+            const voice = fakeVoiceDeps({ openError: permissionDenied() })
+            render(<Harness voiceDeps={voice.deps} />)
+            await record()
+            expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(
+                'Allow microphone access in your browser settings'
+            )
+        })
+
+        it('stops the microphone and uploads nothing when the panel closes while recording', async () => {
+            const voice = fakeVoiceDeps()
+            render(<Harness voiceDeps={voice.deps} />)
+            await record()
+            fireEvent.click(screen.getByTestId('coach-scrim'))
+            await act(async () => {})
+            expect(voice.recorders[0]?.released).toBe(true)
+            expect(voice.transcribe).not.toHaveBeenCalled()
+        })
+
+        it('records while the coach is answering', async () => {
+            const stream = controlledStream()
+            const send = vi.fn().mockResolvedValue(stream.response)
+            const voice = fakeVoiceDeps()
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('hi')
+            fireEvent.click(screen.getByTestId('coach-send'))
+            await waitFor(() => expect(screen.getByTestId('coach-stop')).toBeInTheDocument())
+            await record()
+            expect(screen.getByTestId('coach-voice')).toHaveAttribute(
+                'aria-label',
+                'Stop recording'
+            )
         })
     })
 })

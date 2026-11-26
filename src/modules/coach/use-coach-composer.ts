@@ -31,5 +31,14 @@ export function useCoachComposer({ onSend }: Options) {
         form.reset({ message: '' })
     }
 
-    return { form, submit }
+    // Voice input adds to what is already typed, never replaces it.
+    const appendText = (text: string) => {
+        const current = form.getValues('message').trimEnd()
+        form.setValue('message', current === '' ? text : `${current} ${text}`, {
+            shouldValidate: true,
+        })
+        form.setFocus('message')
+    }
+
+    return { form, submit, appendText }
 }

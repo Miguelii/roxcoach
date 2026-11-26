@@ -2,70 +2,17 @@
 /* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
+import { useVoiceRecorder } from '@/modules/coach/use-voice-recorder'
 import {
-    useVoiceRecorder,
-    type VoiceDeps,
-    type VoiceRecorderLike,
-} from '@/modules/coach/use-voice-recorder'
+    deferredResponse,
+    fakeVoiceDeps,
+    permissionDenied,
+    type FakeVoiceOptions,
+} from '@/modules/coach/__tests__/helpers'
 
-type FakeRecorder = VoiceRecorderLike & {
-    released: boolean
-    started: boolean
-    emitStop: (chunks: Blob[]) => void
-}
-
-type FakeOptions = {
-    supported?: boolean
-    openError?: Error
-    chunks?: Blob[]
-    respond?: (audio: Blob, signal: AbortSignal) => Promise<Response>
-}
-
-const clip = (text = 'audio') => new Blob([text], { type: 'audio/webm' })
-
-const fakeRecorder = (chunks: Blob[]): FakeRecorder => {
-    const dataListeners: ((chunk: Blob) => void)[] = []
-    const stopListeners: (() => void)[] = []
-    const recorder: FakeRecorder = {
-        mimeType: 'audio/webm;codecs=opus',
-        released: false,
-        started: false,
-        start: () => {
-            recorder.started = true
-        },
-        stop: () => recorder.emitStop(chunks),
-        release: () => {
-            recorder.released = true
-        },
-        onData: (listener) => dataListeners.push(listener),
-        onStop: (listener) => stopListeners.push(listener),
-        emitStop: (emitted) => {
-            emitted.forEach((chunk) => dataListeners.forEach((listener) => listener(chunk)))
-            stopListeners.forEach((listener) => listener())
-        },
-    }
-    return recorder
-}
-
-const setup = ({
-    supported = true,
-    openError,
-    chunks = [clip()],
-    respond = async () => Response.json({ text: 'hello coach' }),
-}: FakeOptions = {}) => {
-    const recorders: FakeRecorder[] = []
-    const transcribe = vi.fn(respond)
+const setup = (options: FakeVoiceOptions = {}) => {
+    const { deps, recorders, transcribe } = fakeVoiceDeps(options)
     const onTranscript = vi.fn()
-    const deps: VoiceDeps = {
-        isSupported: () => supported,
-        openRecorder: async () => {
-            if (openError) throw openError
-            const recorder = fakeRecorder(chunks)
-            recorders.push(recorder)
-            return recorder
-        },
-        transcribe,
-    }
     const hook = renderHook(() => useVoiceRecorder({ deps, onTranscript }))
     return { ...hook, recorders, transcribe, onTranscript }
 }
@@ -75,14 +22,6 @@ const flush = () => act(async () => {})
 const toggle = async (result: { current: ReturnType<typeof useVoiceRecorder> }) => {
     act(() => result.current.toggle())
     await flush()
-}
-
-const deferred = () => {
-    let resolve!: (response: Response) => void
-    const promise = new Promise<Response>((done) => {
-        resolve = done
-    })
-    return { promise, resolve }
 }
 
 beforeEach(() => {
@@ -104,7 +43,7 @@ describe('useVoiceRecorder', () => {
     })
 
     it('records, transcribes on the second toggle and hands over the text', async () => {
-        const pending = deferred()
+        const pending = deferredResponse()
         const { result, recorders, transcribe, onTranscript } = setup({
             respond: () => pending.promise,
         })
@@ -150,9 +89,7 @@ describe('useVoiceRecorder', () => {
     })
 
     it('reports a blocked microphone', async () => {
-        const blocked = new Error('denied')
-        blocked.name = 'NotAllowedError'
-        const { result } = setup({ openError: blocked })
+        const { result } = setup({ openError: permissionDenied() })
         await toggle(result)
         expect(result.current.error).toBe('mic-blocked')
         expect(result.current.state).toBe('idle')
@@ -208,7 +145,7 @@ describe('useVoiceRecorder', () => {
     })
 
     it('ignores toggles while transcribing', async () => {
-        const pending = deferred()
+        const pending = deferredResponse()
         const { result, transcribe, recorders } = setup({ respond: () => pending.promise })
         await toggle(result)
         await toggle(result)
@@ -240,7 +177,7 @@ describe('useVoiceRecorder', () => {
     })
 
     it('cancels a transcription in flight and drops its text', async () => {
-        const pending = deferred()
+        const pending = deferredResponse()
         const { result, transcribe, onTranscript } = setup({ respond: () => pending.promise })
         await toggle(result)
         await toggle(result)
