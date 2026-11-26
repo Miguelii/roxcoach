@@ -52,6 +52,8 @@ type FrameProps = PropsWithChildren<
 
 type LauncherProps = Pick<Props, 'onOpenChange' | 'onDismissLauncher'>
 
+type HintsProps = { text: string; voice: ReturnType<typeof useVoiceRecorder> }
+
 const ERROR_COPY: Record<ChatErrorKind, string> = {
     busy: 'The coach is busy, try again in a minute',
     blocked: 'The coach cannot answer that. Try rephrasing.',
@@ -372,82 +374,97 @@ function PanelBody({
                         event.preventDefault()
                         submit(streaming || voiceActive)
                     }}
-                    className="flex items-center gap-2 border-t border-hairline p-3"
+                    className="border-t border-hairline p-3"
                 >
                     <FormField
                         control={form.control}
                         name="message"
                         render={({ field }) => (
-                            <FormItem className="min-w-0 flex-1">
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        rows={2}
-                                        aria-label="Message to Migueli Coach"
-                                        placeholder="Ask Migueli Coach..."
-                                        data-testid="coach-input"
-                                        readOnly={voiceWriting}
-                                        className="min-h-0 max-h-32"
-                                        onKeyDown={(event) => {
-                                            if (
-                                                event.key === 'Enter' &&
-                                                !event.shiftKey &&
-                                                !event.nativeEvent.isComposing
-                                            ) {
-                                                event.preventDefault()
-                                                submit(streaming || voiceActive)
-                                            }
-                                        }}
-                                    />
-                                </FormControl>
-                                {text.length >= NEAR_LIMIT ? (
-                                    <p
-                                        data-testid="coach-char-count"
+                            <FormItem>
+                                <div
+                                    data-testid="coach-compose-row"
+                                    className="flex items-center gap-2"
+                                >
+                                    <FormControl className="min-w-0 flex-1">
+                                        <Textarea
+                                            {...field}
+                                            rows={2}
+                                            aria-label="Message to Migueli Coach"
+                                            placeholder="Ask Migueli Coach..."
+                                            data-testid="coach-input"
+                                            readOnly={voiceWriting}
+                                            className="min-h-0 max-h-32"
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.key === 'Enter' &&
+                                                    !event.shiftKey &&
+                                                    !event.nativeEvent.isComposing
+                                                ) {
+                                                    event.preventDefault()
+                                                    submit(streaming || voiceActive)
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
+                                    {streaming ? (
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="outline"
+                                            aria-label="Stop"
+                                            data-testid="coach-stop"
+                                            onClick={onStop}
+                                        >
+                                            <SquareIcon />
+                                        </Button>
+                                    ) : null}
+                                    <div
+                                        data-testid="coach-compose-actions"
                                         className={cn(
-                                            'text-xs text-muted-foreground',
-                                            text.length > COACH_MESSAGE_MAX_CHARS &&
-                                                'text-destructive'
+                                            'flex items-center gap-2',
+                                            voiceActive && 'max-md:hidden'
                                         )}
                                     >
-                                        {text.length}/{COACH_MESSAGE_MAX_CHARS}
-                                    </p>
-                                ) : null}
-                                <FormMessage data-testid="coach-input-error" />
-                                <CoachVoiceError voice={voice} />
+                                        <CoachVoiceButton voice={voice} />
+                                        <Button
+                                            type="submit"
+                                            size="icon"
+                                            aria-label="Send"
+                                            data-testid="coach-send"
+                                            disabled={!canSend}
+                                        >
+                                            <SendIcon />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <ComposeHints text={text} voice={voice} />
                             </FormItem>
                         )}
                     />
-                    {streaming ? (
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            aria-label="Stop"
-                            data-testid="coach-stop"
-                            onClick={onStop}
-                        >
-                            <SquareIcon />
-                        </Button>
-                    ) : null}
-                    <div
-                        data-testid="coach-compose-actions"
-                        className={cn('flex items-center gap-2', voiceActive && 'max-md:hidden')}
-                    >
-                        <CoachVoiceButton voice={voice} />
-                        <Button
-                            type="submit"
-                            size="icon"
-                            aria-label="Send"
-                            data-testid="coach-send"
-                            disabled={!canSend}
-                        >
-                            <SendIcon />
-                        </Button>
-                    </div>
                 </form>
             </Form>
             <CoachModelCaption modelId={modelId} />
             <CoachVoicePanel voice={voice} />
+        </>
+    )
+}
+
+function ComposeHints({ text, voice }: HintsProps) {
+    return (
+        <>
+            {text.length >= NEAR_LIMIT ? (
+                <p
+                    data-testid="coach-char-count"
+                    className={cn(
+                        'text-xs text-muted-foreground',
+                        text.length > COACH_MESSAGE_MAX_CHARS && 'text-destructive'
+                    )}
+                >
+                    {text.length}/{COACH_MESSAGE_MAX_CHARS}
+                </p>
+            ) : null}
+            <FormMessage data-testid="coach-input-error" />
+            <CoachVoiceError voice={voice} />
         </>
     )
 }

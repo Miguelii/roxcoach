@@ -1027,6 +1027,16 @@ describe('CoachChatView', () => {
             )
         })
 
+        it('keeps the error line out of the row that centers the buttons on the box', async () => {
+            const voice = fakeVoiceDeps({ openError: permissionDenied() })
+            render(<Harness voiceDeps={voice.deps} />)
+            await tapMic()
+            const row = screen.getByTestId('coach-compose-row')
+            expect(row).toContainElement(screen.getByTestId('coach-input'))
+            expect(row).toContainElement(screen.getByTestId('coach-send'))
+            expect(row).not.toContainElement(screen.getByTestId('coach-voice-error'))
+        })
+
         it('shows the blocked microphone copy', async () => {
             const voice = fakeVoiceDeps({ openError: permissionDenied() })
             render(<Harness voiceDeps={voice.deps} />)
