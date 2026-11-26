@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import type { LiveSocket } from '@/modules/coach/live-transcription'
 import type { VoiceDeps, VoiceRecorderLike } from '@/modules/coach/use-voice-recorder'
 
 export type FakeRecorder = VoiceRecorderLike & {
@@ -11,6 +12,16 @@ export type FakeVoiceOptions = {
     openError?: Error
     chunks?: Blob[]
     respond?: (audio: Blob, signal: AbortSignal) => Promise<Response>
+}
+
+export type FakeSocket = {
+    socket: LiveSocket
+    url: string
+    sent: unknown[]
+    closed: boolean
+    open: () => void
+    receive: (data: string) => void
+    drop: () => void
 }
 
 const encoder = new TextEncoder()
@@ -113,4 +124,37 @@ export const permissionDenied = () => {
     const error = new Error('denied')
     error.name = 'NotAllowedError'
     return error
+}
+
+// A socket the test drives by hand: open, server messages and an unexpected close.
+export const fakeSocket = (url: string): FakeSocket => {
+    const openListeners: (() => void)[] = []
+    const messageListeners: ((data: string) => void)[] = []
+    const closeListeners: (() => void)[] = []
+    const fake: FakeSocket = {
+        url,
+        sent: [],
+        closed: false,
+        socket: {
+            send: (data) => fake.sent.push(JSON.parse(data)),
+            close: () => {
+                fake.closed = true
+            },
+            onOpen: (listener) => openListeners.push(listener),
+            onMessage: (listener) => messageListeners.push(listener),
+            onClose: (listener) => closeListeners.push(listener),
+        },
+        open: () => openListeners.forEach((listener) => listener()),
+        receive: (data) => messageListeners.forEach((listener) => listener(data)),
+        drop: () => closeListeners.forEach((listener) => listener()),
+    }
+    return fake
+}
+
+// Server frames as the socket delivers them: JSON text.
+export const liveMessages = {
+    setupComplete: JSON.stringify({ setupComplete: {} }),
+    partial: (text: string) =>
+        JSON.stringify({ serverContent: { interimInputTranscription: { text } } }),
+    final: (text: string) => JSON.stringify({ serverContent: { inputTranscription: { text } } }),
 }
