@@ -8,15 +8,23 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTRPC } from '@/lib/trpc'
 import { Calendar } from '@/modules/calendar/calendar'
 
-export function CalendarPageContent() {
+type Props = {
+    initialTimezone?: string | null
+}
+
+export function CalendarPageContent({ initialTimezone }: Props) {
     const trpc = useTRPC()
     const timezone = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             select: (profile) => profile.timezone,
         })
     )
+    // The shell's mode toggle and the Suspense fallback create the profile query before the page
+    // hydrates, so the hydrated profile only lands after commit: render from the server timezone
+    // until the client query has it.
+    const timezoneData = timezone.data ?? initialTimezone ?? undefined
 
-    if (timezone.isPending && timezone.data === undefined) {
+    if (timezone.isPending && timezoneData === undefined) {
         return (
             <div data-testid="calendar-page-skeleton" className="space-y-6">
                 <div className="flex items-center justify-between gap-4">
@@ -28,7 +36,7 @@ export function CalendarPageContent() {
         )
     }
 
-    if (timezone.data === undefined)
+    if (timezoneData === undefined)
         return (
             <QueryError
                 message="Could not load your timezone."
@@ -50,7 +58,7 @@ export function CalendarPageContent() {
                 </div>
                 <ActivityActions />
             </header>
-            <Calendar today={todayIn(timezone.data)} />
+            <Calendar today={todayIn(timezoneData)} />
         </div>
     )
 }

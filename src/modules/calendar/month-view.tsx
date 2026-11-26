@@ -2,6 +2,7 @@ import { formatDuration } from '@/_bff/core/utils/formatters.utils'
 import type { CalendarItem } from '@/_bff/modules/training/types'
 import { getItemKey } from '@/modules/calendar/item-key'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
+import { Skeleton } from '@/components/ui/skeleton'
 import { dayOfMonth, isoWeekNumber, WEEKDAY_LABELS } from '@/modules/calendar/date-utils'
 import { computeTotals } from '@/_bff/core/utils/week-stats.utils'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,7 @@ type Props = {
     month: string
     today: string
     items: CalendarItem[]
+    isLoading: boolean
     onSelectDay: (date: string) => void
 }
 
@@ -19,10 +21,11 @@ const MAX_CHIPS = 3
 const HEADER_CELL =
     'px-3 py-2.5 text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'
 
-export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
+export function MonthView({ weeks, month, today, items, isLoading, onSelectDay }: Props) {
     return (
         <div
             data-testid="month-view"
+            aria-busy={isLoading}
             className="overflow-hidden rounded-[var(--radius-surface)] shadow-soft bg-card border border-card"
         >
             <div className="grid grid-cols-7 border-b border-hairline bg-sunken/50 lg:grid-cols-[repeat(7,minmax(0,1fr))_150px]">
@@ -99,7 +102,15 @@ export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
                             <p className="font-mono text-[11px] text-muted-foreground">
                                 W{isoWeekNumber(week[0] ?? '')}
                             </p>
-                            {totals.doneSessions > 0 ? (
+                            {isLoading ? (
+                                <div
+                                    data-testid={`week-summary-${week[0]}-loading`}
+                                    className="space-y-1.5"
+                                >
+                                    <Skeleton className="h-4 w-14" />
+                                    <Skeleton className="h-3 w-20" />
+                                </div>
+                            ) : totals.doneSessions > 0 ? (
                                 <>
                                     <p className="text-sm font-semibold">
                                         {formatDuration(totals.doneMinutes * 60)}
@@ -118,7 +129,7 @@ export function MonthView({ weeks, month, today, items, onSelectDay }: Props) {
                 )
             })}
 
-            {items.length === 0 && (
+            {!isLoading && items.length === 0 && (
                 <p
                     data-testid="month-empty"
                     className="border-t border-hairline p-4 text-sm text-muted-foreground"

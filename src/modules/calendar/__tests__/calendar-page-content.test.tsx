@@ -55,4 +55,17 @@ describe('CalendarPageContent', () => {
 
         expect(screen.getByTestId('calendar-page-skeleton')).toBeInTheDocument()
     })
+
+    it('renders from the server timezone while the client query is still pending', () => {
+        mocks.getTimezoneQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
+
+        render(<CalendarPageContent initialTimezone="Europe/Lisbon" />)
+
+        expect(screen.queryByTestId('calendar-page-skeleton')).toBeNull()
+        expect(screen.getByTestId('calendar-view').dataset.today).toMatch(/^\d{4}-\d{2}-\d{2}$/u)
+    })
 })

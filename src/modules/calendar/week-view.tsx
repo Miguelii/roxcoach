@@ -1,6 +1,7 @@
 import type { CalendarItem } from '@/_bff/modules/training/types'
 import { getItemKey } from '@/modules/calendar/item-key'
 import { CalendarChip } from '@/modules/calendar/calendar-chip'
+import { Skeleton } from '@/components/ui/skeleton'
 import { dayOfMonth, WEEKDAY_LABELS } from '@/modules/calendar/date-utils'
 import { cn } from '@/lib/utils'
 
@@ -8,13 +9,14 @@ type Props = {
     days: string[]
     today: string
     items: CalendarItem[]
+    isLoading: boolean
     onSelectDay: (date: string) => void
 }
 
 /** Seven columns on desktop, a stacked agenda on mobile. */
-export function WeekView({ days, today, items, onSelectDay }: Props) {
+export function WeekView({ days, today, items, isLoading, onSelectDay }: Props) {
     return (
-        <div data-testid="week-view" className="grid gap-2 md:grid-cols-7">
+        <div data-testid="week-view" aria-busy={isLoading} className="grid gap-2 md:grid-cols-7">
             {days.map((date, index) => {
                 const dayItems = items.filter((item) => item.date === date)
 
@@ -49,8 +51,15 @@ export function WeekView({ days, today, items, onSelectDay }: Props) {
                             {dayItems.map((item) => (
                                 <CalendarChip key={getItemKey(item)} item={item} touch />
                             ))}
-                            {dayItems.length === 0 && (
-                                <p className="text-xs text-muted-foreground">Rest</p>
+                            {isLoading ? (
+                                <Skeleton
+                                    data-testid={`week-day-${date}-loading`}
+                                    className="h-4 w-10"
+                                />
+                            ) : (
+                                dayItems.length === 0 && (
+                                    <p className="text-xs text-muted-foreground">Rest</p>
+                                )
                             )}
                         </div>
                     </div>

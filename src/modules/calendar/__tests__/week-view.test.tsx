@@ -11,6 +11,7 @@ describe('WeekView', () => {
                 days={weekDays('2026-11-19')}
                 today="2026-11-19"
                 items={[makeItem({ id: 'abc', localDate: '2026-11-18' })]}
+                isLoading={false}
                 onSelectDay={() => {}}
             />
         )
@@ -20,5 +21,21 @@ describe('WeekView', () => {
         )
         expect(screen.getByTestId('week-day-2026-11-17')).toHaveTextContent('Rest')
         expect(screen.getByTestId('week-day-2026-11-19')).toHaveAttribute('data-today', 'true')
+    })
+
+    it('draws the days with placeholders instead of rest labels while loading', () => {
+        render(
+            <WeekView
+                days={weekDays('2026-11-19')}
+                today="2026-11-19"
+                items={[]}
+                isLoading
+                onSelectDay={() => {}}
+            />
+        )
+
+        expect(screen.getByTestId('week-view')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('week-day-2026-11-17-loading')).toBeInTheDocument()
+        expect(screen.getByTestId('week-day-2026-11-17')).not.toHaveTextContent('Rest')
     })
 })
