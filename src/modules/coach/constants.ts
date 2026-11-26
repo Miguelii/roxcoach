@@ -2,3 +2,6 @@
 // A cookie (not localStorage) so the server layout can render the right state with no flash.
 export const COACH_ENABLED_COOKIE = 'coach_enabled'
 export const COACH_ENABLED_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
+// A voice clip stops on its own after this many seconds.
+export const VOICE_MAX_SECONDS = 60
