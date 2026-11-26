@@ -35,7 +35,7 @@ type Props = {
     modelId: string | null
     conversations: ConversationSummary[] | undefined
     chips: readonly string[]
-    onSend: (text: string) => void
+    onSend: (text: string) => boolean
     onStop: () => void
     onNew: () => void
     onOpen: (id: string) => void
@@ -224,7 +224,7 @@ function PanelBody({
     voiceDeps,
 }: Props) {
     const streaming = status === 'streaming'
-    const { form, submit, voiceTarget } = useCoachComposer({ onSend, streaming })
+    const { form, submit, voiceTarget } = useCoachComposer({ onSend })
     const voice = useVoiceRecorder({ deps: voiceDeps, target: voiceTarget })
     // Voice text lands in the box until the recording settles, so sending in between would bring
     // the sent text back. Typing stays open only while the microphone is starting.
@@ -446,8 +446,8 @@ function PanelBody({
                     </div>
                 </form>
             </Form>
-            <CoachVoicePanel voice={voice} />
             <CoachModelCaption modelId={modelId} />
+            <CoachVoicePanel voice={voice} />
         </>
     )
 }

@@ -914,6 +914,35 @@ describe('CoachChatView', () => {
                 expect(screen.getByTestId('coach-voice-send-spinner')).toBeInTheDocument()
             })
 
+            it('is the last thing in the panel so the safe area pads the screen bottom', async () => {
+                const send = vi
+                    .fn()
+                    .mockResolvedValue(
+                        streamOf(
+                            ndjson(
+                                meta,
+                                { type: 'model', model: 'gemini-3.6-flash', switchedFrom: null },
+                                text('Hi'),
+                                done
+                            )
+                        )
+                    )
+                const voice = fakeVoiceDeps()
+                render(<Harness send={send} voiceDeps={voice.deps} />)
+                type('hi')
+                fireEvent.click(screen.getByTestId('coach-send'))
+                await waitFor(() =>
+                    expect(screen.getByTestId('coach-model-caption')).toBeInTheDocument()
+                )
+                await tapMic()
+                const panel = screen.getByTestId('coach-voice-panel')
+                expect(panel.nextElementSibling).toBeNull()
+                expect(
+                    screen.getByTestId('coach-model-caption').compareDocumentPosition(panel) &
+                        Node.DOCUMENT_POSITION_FOLLOWING
+                ).toBeTruthy()
+            })
+
             it('releases everything when the chat closes while paused', async () => {
                 const voice = fakeVoiceDeps()
                 render(<Harness voiceDeps={voice.deps} />)

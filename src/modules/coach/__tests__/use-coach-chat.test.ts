@@ -18,6 +18,26 @@ const setup = (send: (body: SendBody, signal: AbortSignal) => Promise<Response>,
     renderHook(() => useCoachChat({ send, ...extra }))
 
 describe('useCoachChat stream parsing', () => {
+    it('reports whether sendMessage took the message', async () => {
+        const stream = controlledStream()
+        const { result } = renderHook(() =>
+            useCoachChat({ send: vi.fn().mockResolvedValue(stream.response) })
+        )
+        let accepted: boolean | undefined
+        act(() => {
+            accepted = result.current.sendMessage('hi')
+        })
+        expect(accepted).toBe(true)
+        act(() => {
+            accepted = result.current.sendMessage('again')
+        })
+        expect(accepted).toBe(false)
+        act(() => {
+            accepted = result.current.sendMessage('   ')
+        })
+        expect(accepted).toBe(false)
+    })
+
     it('streams text into one assistant message and finishes idle', async () => {
         const send = vi
             .fn()
