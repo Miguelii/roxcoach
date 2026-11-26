@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DashboardModeSwitch } from '@/modules/dashboard/dashboard-mode-switch'
 import { DashboardModeToggle } from '@/modules/dashboard/dashboard-mode-toggle'
+import { DASHBOARD_MODE_COOKIE } from '@/modules/dashboard/constants'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
@@ -51,6 +52,31 @@ describe('DashboardModeToggle', () => {
     beforeEach(() => {
         mocks.mutate.mockReset()
         mocks.useMutation.mockReturnValue({ mutate: mocks.mutate })
+    })
+
+    it('shows the remembered mode until the profile arrives, and a skeleton without one', () => {
+        mocks.getProfileQuery.mockReturnValue({ data: undefined })
+        const { unmount } = render(<DashboardModeToggle testIdPrefix="t" initialMode="strength" />)
+        expect(screen.getByTestId('t-strength')).toHaveAttribute('aria-selected', 'true')
+        expect(screen.queryByTestId('t-loading')).toBeNull()
+        unmount()
+
+        render(<DashboardModeToggle testIdPrefix="t" />)
+        expect(screen.getByTestId('t-loading')).toBeInTheDocument()
+    })
+
+    it('prefers the profile over the remembered mode', () => {
+        mocks.getProfileQuery.mockReturnValue({ data: { dashboardMode: 'run' } })
+        render(<DashboardModeToggle testIdPrefix="t" initialMode="strength" />)
+
+        expect(screen.getByTestId('t-run')).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('remembers the saved mode in the cookie the server reads', () => {
+        mocks.getProfileQuery.mockReturnValue({ data: { dashboardMode: 'strength' } })
+        render(<DashboardModeToggle testIdPrefix="t" />)
+
+        expect(document.cookie).toContain(`${DASHBOARD_MODE_COOKIE}=strength`)
     })
 
     it('shows the saved mode and saves a change', () => {

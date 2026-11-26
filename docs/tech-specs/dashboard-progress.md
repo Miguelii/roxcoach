@@ -324,17 +324,41 @@ distance tile. The load ratio always uses every activity.
 - The page prefetches on the server, behind one `Suspense` whose fallback is `DashboardContent`
   itself (not a skeleton): it reads the client cache, so a return visit within the cache lifetime
   shows the last data at once instead of a skeleton on every navigation, and with an empty cache it
-  draws its own skeleton. Then the profile first (for the timezone and mode), then in parallel the week strip calendar
+  draws its own loading layout (see below). Then the profile first (for the timezone and mode), then in parallel the week strip calendar
   window (`weekStripWindow(today)`, the last 35 days) and the progress query of the current mode
-  for the `range` in the URL (parsed with the shared `PROGRESS_RANGE_PARSER`). The results reach
+  for the `range` in the URL (parsed with `loadProgressSearchParams`, a nuqs loader built on the shared `PROGRESS_RANGE_PARSER`). The results reach
   the client cache through a `HydrationBoundary`, so the page opens with data and no client
   round-trip. A failed server read is left out of the cache and the client query fetches it with
   its own loading and error states.
 - The shell's mode toggle creates the profile query before the page hydrates, so the hydrated
   profile only lands after commit. The page also passes the server profile to `DashboardContent`
   (`initialProfile`), which renders from it until the client query has data.
-- Without a profile (server read failed and the client query is still loading), the page shows the
-  dashboard skeleton (no flash of the wrong mode).
+- Loading never replaces the page with skeleton blocks. The real components are drawn at once
+  (marked `aria-busy`) with placeholders only where a value would go, and nothing claims a zero or an
+  empty state before the data arrives:
+    - Without a profile (empty cache, or a failed server read while the client query loads), the
+      header is real (title, range control, upload and sync), the week strip shows its tiles and
+      labels with placeholder values (`WeekStripLoading`), and the progress area shows the loading
+      layout of the remembered mode. The last known mode is kept in the `dashboard_mode` cookie
+      (written by `useDashboardMode` whenever the profile is known, so also after a mode change, one
+      year, `samesite=lax`). The page reads it with `cookies()` in a boundary above the prefetch, so
+      the fallback is drawn in the right mode with no query; a missing or unknown value falls back to
+      the column default (`LOADING_DASHBOARD_MODE`, `run`). The cookie only picks a loading layout:
+      the profile stays the source of truth and replaces it as soon as it arrives. The authenticated
+      layout reads the same cookie and passes it to the sidebar mode switch (`initialMode`), which
+      shows the remembered mode until the profile arrives and keeps its skeleton when there is no
+      cookie (it never guesses a selected mode). The Settings tab switch has no remembered mode and
+      keeps its skeleton.
+    - While the 35-day calendar loads, the week strip is the same `WeekStripLoading` in the athlete's mode.
+    - While the running series loads, `RunProgressLoading` shows the week dots (day letters, no run or
+      rest marks), the headline card (metric tabs, disabled arrows, stat labels) and the pace trend and
+      zone cards with their titles. The race and goal cards wait for the data, since an athlete may
+      have neither.
+    - While the strength series loads, `StrengthProgressLoading` shows the progress summary (tile
+      labels), the Top exercises heading with two exercise card frames, and the volume and workouts
+      cards with their titles.
+    - `ChartCard` takes `takeaway: null` while loading: the title stays and the takeaway is a
+      placeholder line.
 
 ### Chart cards
 

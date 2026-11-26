@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BucketChartCard } from '@/modules/dashboard/progress/bucket-chart-card'
 import { ChartCard } from '@/modules/dashboard/progress/chart-card'
-import { ChartFrame } from '@/modules/dashboard/progress/chart-frame'
+import { ChartFrame, ChartFrameSkeleton } from '@/modules/dashboard/progress/chart-frame'
 import {
     bucketLabel,
     bucketRangeLabel,
@@ -24,9 +24,9 @@ import {
 import { GoalPaceCard } from '@/modules/dashboard/progress/goal-pace-card'
 import { RaceBanner } from '@/modules/dashboard/progress/race-banner'
 import { RaceReadinessCard } from '@/modules/dashboard/progress/race-readiness-card'
-import { ProgressHero } from '@/modules/dashboard/progress/progress-hero'
+import { ProgressHero, ProgressHeroLoading } from '@/modules/dashboard/progress/progress-hero'
 import { RecentRuns } from '@/modules/dashboard/progress/recent-runs'
-import { WeekDots } from '@/modules/dashboard/progress/week-dots'
+import { WeekDots, WeekDotsLoading } from '@/modules/dashboard/progress/week-dots'
 import { ZONE_STYLES, HEART_RATE_COLOR } from '@/modules/dashboard/progress/series-styles'
 import { SeriesMarker } from '@/modules/dashboard/progress/series-marker'
 
@@ -64,6 +64,8 @@ function ZoneEmpty({ testId, children }: { testId: string; children: React.React
     )
 }
 
+const PACE_TITLE = 'Pace trend'
+const ZONE_TITLE = 'Pace by heart rate zone'
 const ZONE_TAKEAWAY = 'Average pace inside each zone, so you see if the same effort gets faster.'
 const ALL_ZONES_TAKEAWAY = 'The trend of every zone. Pick one to see its weekly points.'
 
@@ -161,7 +163,7 @@ function ZoneCard({ data }: Props) {
     return (
         <ChartCard
             testId="zone-chart"
-            title="Pace by heart rate zone"
+            title={ZONE_TITLE}
             takeaway={takeaway}
             controls={picker}
             footnote={showChart ? footnote : undefined}
@@ -177,7 +179,7 @@ function PaceCard({ data }: Props) {
     return (
         <ChartCard
             testId="pace-chart"
-            title="Pace trend"
+            title={PACE_TITLE}
             takeaway={paceSummary(buckets, range)}
             footnote="Faster is up."
         >
@@ -254,6 +256,25 @@ export function RunProgressView({ data, items, today }: ViewProps) {
             <PaceCard data={data} />
             <ZoneCard data={data} />
             <HeartRateCard data={data} />
+        </div>
+    )
+}
+
+/**
+ * The running layout while the series loads: the week, the headline and the pace charts with their
+ * titles. The race and goal cards wait for the data, since an athlete may have neither.
+ */
+export function RunProgressLoading() {
+    return (
+        <div data-testid="run-progress-loading" aria-busy className="space-y-4">
+            <WeekDotsLoading />
+            <ProgressHeroLoading />
+            <ChartCard testId="pace-chart" title={PACE_TITLE} takeaway={null}>
+                <ChartFrameSkeleton />
+            </ChartCard>
+            <ChartCard testId="zone-chart" title={ZONE_TITLE} takeaway={null}>
+                <ChartFrameSkeleton />
+            </ChartCard>
         </div>
     )
 }

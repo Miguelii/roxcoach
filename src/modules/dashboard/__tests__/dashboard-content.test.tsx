@@ -92,14 +92,21 @@ describe('DashboardContent', () => {
         expect(screen.queryByTestId('mode-tab-strength')).toBeNull()
     })
 
-    it('shows the skeleton while the profile loads and an error with retry when it fails', () => {
+    it('draws the page with loading cards while the profile loads and an error with retry when it fails', () => {
         mocks.getProfileQuery.mockReturnValue({
             data: undefined,
             isPending: true,
             refetch: vi.fn(),
         })
         const { unmount } = renderContent()
-        expect(screen.getByTestId('dashboard-skeleton')).toBeInTheDocument()
+        expect(screen.getByTestId('dashboard-content')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('dashboard-title')).toHaveTextContent('Progress')
+        expect(screen.getByTestId('range-tab-6m')).toBeInTheDocument()
+        expect(screen.getByTestId('activity-actions')).toBeInTheDocument()
+        expect(screen.getByTestId('week-strip')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('week-tile-time-loading')).toBeInTheDocument()
+        expect(screen.queryByTestId('week-tile-time-value')).toBeNull()
+        expect(screen.getByTestId('run-progress-loading')).toBeInTheDocument()
         unmount()
 
         const refetch = vi.fn()
@@ -108,6 +115,19 @@ describe('DashboardContent', () => {
         fireEvent.click(screen.getByText('Try again'))
         expect(screen.getByTestId('dashboard-profile-error')).toBeInTheDocument()
         expect(refetch).toHaveBeenCalled()
+    })
+
+    it('draws the strength loading layout when the remembered mode is strength', () => {
+        mocks.getProfileQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
+        render(<DashboardContent loadingMode="strength" />, { wrapper: withNuqsTestingAdapter() })
+
+        expect(screen.getByTestId('strength-progress-loading')).toBeInTheDocument()
+        expect(screen.queryByTestId('run-progress-loading')).toBeNull()
+        expect(screen.queryByTestId('week-tile-run')).toBeNull()
     })
 
     it('renders from the server profile while the client query has no data yet', () => {
@@ -135,8 +155,9 @@ describe('DashboardContent', () => {
             wrapper: withNuqsTestingAdapter(),
         })
 
-        expect(screen.queryByTestId('dashboard-skeleton')).toBeNull()
-        expect(screen.getByTestId('dashboard-content')).toBeInTheDocument()
-        expect(screen.getByTestId('strength-progress-skeleton')).toBeInTheDocument()
+        expect(screen.getByTestId('dashboard-content')).toHaveAttribute('aria-busy', 'false')
+        expect(screen.getByTestId('strength-progress-loading')).toBeInTheDocument()
+        expect(screen.getByTestId('volume-chart')).toHaveTextContent('Training volume')
+        expect(screen.getByTestId('volume-chart-takeaway-loading')).toBeInTheDocument()
     })
 })
