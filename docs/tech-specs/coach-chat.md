@@ -29,7 +29,8 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
   The coach may suggest next sessions in the chat when asked, as text only.
 - The coach never changes data: it has read-only tools. Creating races, availability and uploads
   stays in the screens that exist for that.
-- No file uploads in the chat, no image input. Voice input only fills the message box (see
+- No file uploads in the chat, no image input. Voice input fills the message box, and the phone
+  panel can send it (see
   [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 - Not a medical tool. Anti-goal: an answer that invents numbers or goals the data does not
   contain. When data is missing the coach says so.
@@ -334,10 +335,16 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
 - Voice input: a mic button next to Send (`coach-voice-button.tsx`, hook `use-voice-recorder.ts`)
   streams up to 60 seconds of audio to Gemini Live (`live-transcription.ts`, PCM helpers in
   `pcm-audio.ts`) and writes the text into the message box while the athlete speaks, after what was
-  already typed (never sends it). The box is read only while recording. If the live path fails, the
-  same audio is uploaded as WAV to `POST /api/coach/transcribe`. Hidden when the browser cannot
-  stream audio, usable while a reply streams, cancelled (typed text restored) when the panel closes. Design and copy in
-  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md).
+  already typed. On desktop stopping leaves the text in the box. On phones (below `md`) a
+  recording panel (`coach-voice-panel.tsx`) slides up under the box with the time, a waveform of the
+  microphone level, discard, pause and resume (the 60 second cap counts recorded time only), and
+  send, which sends the whole box to the coach once the text is ready (unless the transcription
+  failed or a reply is still streaming: then the text stays in the box). The box is read only while
+  recording. If the live path fails, the same audio is uploaded as WAV to
+  `POST /api/coach/transcribe`. Hidden when the browser cannot stream audio, usable while a reply
+  streams, cancelled (typed text restored) when the panel closes. Design and copy in
+  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md) and
+  [2026-11-26-coach-voice-panel-design.md](2026-11-26-coach-voice-panel-design.md).
 - States: empty, loading history, streaming, error with retry (busy, conversation not found),
   blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The
   stream is read by a custom hook (`use-coach-chat.ts`), not by the AI SDK client.

@@ -19,6 +19,7 @@ import {
 } from '@/modules/coach/use-coach-chat'
 import { useCoachComposer } from '@/modules/coach/use-coach-composer'
 import { CoachVoiceButton, CoachVoiceError } from '@/modules/coach/coach-voice-button'
+import { CoachVoicePanel } from '@/modules/coach/coach-voice-panel'
 import { useVoiceRecorder, type VoiceDeps } from '@/modules/coach/use-voice-recorder'
 import { useLockPageScroll, useVisualViewport } from '@/modules/coach/use-visual-viewport'
 
@@ -222,7 +223,8 @@ function PanelBody({
     onRetry,
     voiceDeps,
 }: Props) {
-    const { form, submit, voiceTarget } = useCoachComposer({ onSend })
+    const streaming = status === 'streaming'
+    const { form, submit, voiceTarget } = useCoachComposer({ onSend, streaming })
     const voice = useVoiceRecorder({ deps: voiceDeps, target: voiceTarget })
     // Voice text lands in the box until the recording settles, so sending in between would bring
     // the sent text back. Typing stays open only while the microphone is starting.
@@ -232,7 +234,6 @@ function PanelBody({
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
     const text = useWatch({ control: form.control, name: 'message' })
-    const streaming = status === 'streaming'
     const canSend =
         !streaming && !voiceActive && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
 
@@ -428,18 +429,24 @@ function PanelBody({
                             <SquareIcon />
                         </Button>
                     ) : null}
-                    <CoachVoiceButton voice={voice} />
-                    <Button
-                        type="submit"
-                        size="icon"
-                        aria-label="Send"
-                        data-testid="coach-send"
-                        disabled={!canSend}
+                    <div
+                        data-testid="coach-compose-actions"
+                        className={cn('flex items-center gap-2', voiceActive && 'max-md:hidden')}
                     >
-                        <SendIcon />
-                    </Button>
+                        <CoachVoiceButton voice={voice} />
+                        <Button
+                            type="submit"
+                            size="icon"
+                            aria-label="Send"
+                            data-testid="coach-send"
+                            disabled={!canSend}
+                        >
+                            <SendIcon />
+                        </Button>
+                    </div>
                 </form>
             </Form>
+            <CoachVoicePanel voice={voice} />
             <CoachModelCaption modelId={modelId} />
         </>
     )

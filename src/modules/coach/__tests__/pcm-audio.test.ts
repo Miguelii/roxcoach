@@ -3,6 +3,7 @@ import {
     createChunker,
     createDownsampler,
     encodeWav,
+    levelOf,
     pcmToBase64,
     toPcm16,
 } from '@/modules/coach/pcm-audio'
@@ -115,5 +116,15 @@ describe('createChunker', () => {
         const chunker = createChunker((chunk) => chunks.push(chunk))
         chunker.flush()
         expect(chunks).toHaveLength(0)
+    })
+})
+
+describe('levelOf', () => {
+    it('is the root mean square scaled to 0..1', () => {
+        expect(levelOf(Int16Array.of(16384, -16384))).toBeCloseTo(0.5, 3)
+    })
+
+    it('is 0 for an empty chunk', () => {
+        expect(levelOf(new Int16Array(0))).toBe(0)
     })
 })

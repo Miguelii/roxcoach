@@ -27,7 +27,7 @@ describe('live transcription config', () => {
         expect(liveTokenRequestBody(now)).toEqual({
             uses: 1,
             newSessionExpireTime: '2026-11-26T10:01:00.000Z',
-            expireTime: '2026-11-26T10:03:00.000Z',
+            expireTime: '2026-11-26T10:10:00.000Z',
             bidiGenerateContentSetup: liveSetupMessage().setup,
         })
     })

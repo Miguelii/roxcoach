@@ -4,7 +4,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { FINAL_WAIT_MS } from '@/modules/coach/live-transcription'
-import { useVoiceRecorder, type VoiceTarget } from '@/modules/coach/use-voice-recorder'
+import {
+    LEVEL_HISTORY,
+    useVoiceRecorder,
+    type VoiceTarget,
+} from '@/modules/coach/use-voice-recorder'
 import {
     deferredResponse,
     fakeVoiceDeps,
@@ -116,7 +120,7 @@ describe('useVoiceRecorder', () => {
 
         act(() => socket.receive(liveMessages.final('Long run no sábado?')))
         await flush()
-        expect(context.target.commit).toHaveBeenCalledWith('Long run no sábado?')
+        expect(context.target.commit).toHaveBeenCalledWith('Long run no sábado?', 'review')
         expect(context.result.current.state).toBe('idle')
         expect(socket.closed).toBe(true)
         expect(context.transcribe).not.toHaveBeenCalled()
@@ -136,6 +140,114 @@ describe('useVoiceRecorder', () => {
         act(() => vi.advanceTimersByTime(60_000))
         expect(context.result.current.state).toBe('finishing')
         expect(context.audios[0]?.released).toBe(true)
+    })
+
+    describe('pause and send', () => {
+        it('pauses: no audio is sent and the seconds freeze', async () => {
+            const context = setup()
+            await toggle(context)
+            const socket = connect(context)
+            act(() => vi.advanceTimersByTime(2000))
+            act(() => context.result.current.pause())
+            expect(context.result.current.state).toBe('paused')
+            const sent = audioSent(socket.sent).length
+            speak(context)
+            expect(audioSent(socket.sent)).toHaveLength(sent)
+            act(() => vi.advanceTimersByTime(5000))
+            expect(context.result.current.seconds).toBe(2)
+        })
+
+        it('resumes and counts only recorded time toward the 60 second cap', async () => {
+            const context = setup()
+            await toggle(context)
+            connect(context)
+            act(() => vi.advanceTimersByTime(10_000))
+            act(() => context.result.current.pause())
+            act(() => vi.advanceTimersByTime(120_000))
+            expect(context.result.current.state).toBe('paused')
+            act(() => context.result.current.resume())
+            expect(context.result.current.state).toBe('recording')
+            act(() => vi.advanceTimersByTime(50_000))
+            expect(context.result.current.state).toBe('finishing')
+        })
+
+        it('finishes from pause', async () => {
+            const context = setup()
+            await toggle(context)
+            const socket = connect(context)
+            speak(context)
+            act(() => context.result.current.pause())
+            act(() => context.result.current.finish('review'))
+            await flush()
+            expect(socket.sent.at(-1)).toEqual(STREAM_END)
+            expect(context.result.current.state).toBe('finishing')
+        })
+
+        it('commits with the send intent', async () => {
+            const context = setup()
+            await toggle(context)
+            const socket = connect(context)
+            speak(context)
+            act(() => context.result.current.finish('send'))
+            await flush()
+            act(() => socket.receive(liveMessages.final('ok')))
+            await flush()
+            expect(context.target.commit).toHaveBeenCalledWith('ok', 'send')
+        })
+
+        it('commits a partial left by a failed upload for review even when sending', async () => {
+            const context = setup({ respond: async () => Response.json({}, { status: 502 }) })
+            await toggle(context)
+            const socket = connect(context)
+            speak(context)
+            act(() => {
+                socket.receive(liveMessages.partial('wall balls'))
+                socket.drop()
+            })
+            act(() => context.result.current.finish('send'))
+            await flush()
+            expect(context.target.commit).toHaveBeenCalledWith('wall balls', 'review')
+        })
+
+        it('sends through the upload when the socket closed during a pause', async () => {
+            const context = setup()
+            await toggle(context)
+            const socket = connect(context)
+            speak(context)
+            act(() => context.result.current.pause())
+            act(() => socket.drop())
+            act(() => context.result.current.resume())
+            speak(context)
+            act(() => context.result.current.finish('send'))
+            await flush()
+            expect(context.transcribe).toHaveBeenCalledTimes(1)
+            expect(context.target.commit).toHaveBeenCalledWith('hello coach', 'send')
+        })
+
+        it('ignores a second finish', async () => {
+            const context = setup()
+            await toggle(context)
+            const socket = connect(context)
+            speak(context)
+            act(() => {
+                context.result.current.finish('send')
+                context.result.current.finish('send')
+            })
+            await flush()
+            act(() => socket.receive(liveMessages.final('once')))
+            await flush()
+            expect(context.target.commit).toHaveBeenCalledTimes(1)
+        })
+
+        it('keeps the last 40 chunk levels', async () => {
+            const context = setup()
+            await toggle(context)
+            speak(context, 50)
+            const { levels } = context.result.current
+            expect(levels).toHaveLength(LEVEL_HISTORY)
+            expect(LEVEL_HISTORY).toBe(40)
+            expect(levels.at(-1)).toBeCloseTo(0.25, 2)
+        })
     })
 
     describe('fallback', () => {
@@ -176,7 +288,7 @@ describe('useVoiceRecorder', () => {
                 expect(audio?.type).toBe('audio/wav')
                 const chunks = audioSent(context.sockets[0]?.sent ?? []).length
                 expect(audio?.size).toBe(44 + WAV_CHUNK_BYTES * Math.max(1, chunks + 1))
-                expect(context.target.commit).toHaveBeenCalledWith('hello coach')
+                expect(context.target.commit).toHaveBeenCalledWith('hello coach', 'review')
                 expect(context.result.current.state).toBe('idle')
             }
         )
@@ -194,7 +306,7 @@ describe('useVoiceRecorder', () => {
             expect(context.transcribe).toHaveBeenCalledTimes(1)
             await act(async () => pending.resolve(Response.json({ text: 'from upload' })))
             await flush()
-            expect(context.target.commit).toHaveBeenCalledWith('from upload')
+            expect(context.target.commit).toHaveBeenCalledWith('from upload', 'review')
         })
 
         it('keeps the partial text when the upload also fails', async () => {
@@ -207,7 +319,7 @@ describe('useVoiceRecorder', () => {
                 socket.drop()
             })
             await toggle(context)
-            expect(context.target.commit).toHaveBeenCalledWith('wall balls')
+            expect(context.target.commit).toHaveBeenCalledWith('wall balls', 'review')
             expect(context.result.current.error).toBe('failed')
         })
 
@@ -270,7 +382,7 @@ describe('useVoiceRecorder', () => {
         await toggle(context)
         expect(context.fetchToken.mock.calls[0]?.[0].aborted).toBe(true)
         expect(context.transcribe).toHaveBeenCalledTimes(1)
-        expect(context.target.commit).toHaveBeenCalledWith('hello coach')
+        expect(context.target.commit).toHaveBeenCalledWith('hello coach', 'review')
         expect(context.sockets).toHaveLength(0)
     })
 

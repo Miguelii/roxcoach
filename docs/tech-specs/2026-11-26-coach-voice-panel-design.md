@@ -1,6 +1,6 @@
 # Coach voice panel on mobile (design)
 
-Status: approved by the athlete on 2026-11-26. Builds on
+Status: implemented (approved by the athlete on 2026-11-26); not yet checked on a phone. Builds on
 [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md) (live
 transcription with the upload fallback), which stays binding for everything not changed here.
 

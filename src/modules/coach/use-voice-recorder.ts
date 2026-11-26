@@ -6,8 +6,15 @@ import {
     type LiveSession,
     type LiveSocket,
 } from '@/modules/coach/live-transcription'
-import { createChunker, createDownsampler, encodeWav, toPcm16 } from '@/modules/coach/pcm-audio'
+import {
+    createChunker,
+    createDownsampler,
+    encodeWav,
+    levelOf,
+    toPcm16,
+} from '@/modules/coach/pcm-audio'
 import { browserVoiceDeps } from '@/modules/coach/browser-voice-deps'
+import { fetchLiveToken, transcribeClip } from '@/modules/coach/voice-requests'
 
 export type AudioSource = {
     sampleRate: number
@@ -26,7 +33,10 @@ export type VoiceDeps = {
     transcribe: (audio: Blob, signal: AbortSignal) => Promise<Response>
 }
 
-export type VoiceState = 'idle' | 'starting' | 'recording' | 'finishing' | 'transcribing'
+export type VoiceState = 'idle' | 'starting' | 'recording' | 'paused' | 'finishing' | 'transcribing'
+
+// What the athlete wants once the text is ready: review it in the box, or send it to the coach.
+export type VoiceIntent = 'review' | 'send'
 
 export type VoiceErrorKind = 'mic-blocked' | 'no-speech' | 'busy' | 'failed'
 
@@ -34,7 +44,7 @@ export type VoiceErrorKind = 'mic-blocked' | 'no-speech' | 'busy' | 'failed'
 export type VoiceTarget = {
     begin: () => void
     show: (text: string) => void
-    commit: (text: string) => void
+    commit: (text: string, intent: VoiceIntent) => void
     discard: () => void
 }
 
@@ -53,49 +63,18 @@ type Session = {
     controller: AbortController
     tokenController: AbortController
     timer: ReturnType<typeof setInterval> | null
+    intent: VoiceIntent
+    recordedMs: number
+    resumedAt: number
 }
-
-type ClipResult = { ok: true; text: string } | { ok: false; error: VoiceErrorKind }
 
 const TICK_MS = 250
-const TokenSchema = z.object({ token: z.string().min(1) })
-const TranscriptSchema = z.object({ text: z.string() })
+
+// Bars of microphone level kept for the waveform, one per 100 ms chunk.
+export const LEVEL_HISTORY = 40
 const PermissionErrorSchema = z.object({ name: z.enum(['NotAllowedError', 'SecurityError']) })
-const FAILED: ClipResult = { ok: false, error: 'failed' }
 
 const subscribeToNothing = () => () => {}
-
-async function fetchLiveToken(
-    fetchToken: VoiceDeps['fetchToken'],
-    signal: AbortSignal
-): Promise<string | null> {
-    try {
-        const response = await fetchToken(signal)
-        if (!response.ok) return null
-        const parsed = TokenSchema.safeParse(await response.json())
-        return parsed.success ? parsed.data.token : null
-    } catch {
-        return null
-    }
-}
-
-async function transcribeClip(
-    transcribe: VoiceDeps['transcribe'],
-    audio: Blob,
-    signal: AbortSignal
-): Promise<ClipResult> {
-    try {
-        const response = await transcribe(audio, signal)
-        if (response.status === 429) return { ok: false, error: 'busy' }
-        if (!response.ok) return FAILED
-        const parsed = TranscriptSchema.safeParse(await response.json())
-        if (!parsed.success) return FAILED
-        const text = parsed.data.text.trim()
-        return text === '' ? { ok: false, error: 'no-speech' } : { ok: true, text }
-    } catch {
-        return FAILED
-    }
-}
 
 const clearTimer = (session: Session) => {
     if (session.timer !== null) clearInterval(session.timer)
@@ -111,6 +90,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
     const [state, setState] = useState<VoiceState>('idle')
     const [seconds, setSeconds] = useState(0)
     const [error, setError] = useState<VoiceErrorKind | null>(null)
+    const [levels, setLevels] = useState<number[]>([])
     // False on the server and during hydration, so the button never causes a mismatch.
     const supported = useSyncExternalStore(subscribeToNothing, deps.isSupported, () => false)
 
@@ -135,6 +115,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
         if (sessionRef.current === session) sessionRef.current = null
         setState('idle')
         setSeconds(0)
+        setLevels([])
         setError(result)
     }, [])
 
@@ -148,7 +129,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             if (session.cancelled) return
             const { target: voiceTarget, deps: voiceDeps } = optionsRef.current
             if (result.ok) {
-                voiceTarget.commit(result.text)
+                voiceTarget.commit(result.text, session.intent)
                 end(session, null)
                 return
             }
@@ -165,7 +146,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             )
             if (session.cancelled) return
             if (clip.ok) {
-                voiceTarget.commit(clip.text)
+                voiceTarget.commit(clip.text, session.intent)
                 end(session, null)
                 return
             }
@@ -175,7 +156,8 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
                 end(session, clip.error)
                 return
             }
-            voiceTarget.commit(session.lastText)
+            // Partial text is never sent on its own: the athlete gets to fix it first.
+            voiceTarget.commit(session.lastText, 'review')
             end(session, 'failed')
         },
         [end, setPhase]
@@ -183,7 +165,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
 
     const stop = useCallback(
         (session: Session) => {
-            if (session.phase !== 'recording') return
+            if (session.phase !== 'recording' && session.phase !== 'paused') return
             setPhase(session, 'finishing')
             clearTimer(session)
             session.flushChunks()
@@ -193,6 +175,20 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             void complete(session)
         },
         [complete, setPhase]
+    )
+
+    // The 60 second cap counts recorded time only, so a pause stops the clock.
+    const startClock = useCallback(
+        (session: Session) => {
+            session.resumedAt = Date.now()
+            session.timer = setInterval(() => {
+                const recorded = session.recordedMs + Date.now() - session.resumedAt
+                const elapsed = Math.floor(recorded / 1000)
+                setSeconds(elapsed)
+                if (elapsed >= VOICE_MAX_SECONDS) stop(session)
+            }, TICK_MS)
+        },
+        [stop]
     )
 
     const record = useCallback(
@@ -217,6 +213,7 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             const chunker = createChunker((chunk) => {
                 session.chunks.push(chunk)
                 session.live?.sendChunk(chunk)
+                setLevels((previous) => [...previous, levelOf(chunk)].slice(-LEVEL_HISTORY))
             })
             session.flushChunks = () => chunker.flush()
             const resample = createDownsampler(audio.sampleRate)
@@ -232,14 +229,9 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             session.begun = true
             optionsRef.current.target.begin()
             setPhase(session, 'recording')
-            const startedAt = Date.now()
-            session.timer = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-                setSeconds(elapsed)
-                if (elapsed >= VOICE_MAX_SECONDS) stop(session)
-            }, TICK_MS)
+            startClock(session)
         },
-        [end, setPhase, stop]
+        [end, setPhase, startClock]
     )
 
     const start = useCallback(() => {
@@ -259,10 +251,14 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             controller,
             tokenController,
             timer: null,
+            intent: 'review',
+            recordedMs: 0,
+            resumedAt: 0,
         }
         sessionRef.current = session
         setError(null)
         setSeconds(0)
+        setLevels([])
         setState('starting')
 
         const audioReady = voiceDeps.openAudio()
@@ -296,6 +292,31 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
         end(session, null)
     }, [end])
 
+    const pause = useCallback(() => {
+        const session = sessionRef.current
+        if (session?.phase !== 'recording') return
+        session.recordedMs += Date.now() - session.resumedAt
+        clearTimer(session)
+        setPhase(session, 'paused')
+    }, [setPhase])
+
+    const resume = useCallback(() => {
+        const session = sessionRef.current
+        if (session?.phase !== 'paused') return
+        setPhase(session, 'recording')
+        startClock(session)
+    }, [setPhase, startClock])
+
+    const finish = useCallback(
+        (intent: VoiceIntent) => {
+            const session = sessionRef.current
+            if (session?.phase !== 'recording' && session?.phase !== 'paused') return
+            session.intent = intent
+            stop(session)
+        },
+        [stop]
+    )
+
     const toggle = useCallback(() => {
         const session = sessionRef.current
         if (session === null) {
@@ -309,10 +330,10 @@ export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
             start()
             return
         }
-        if (session.phase === 'recording') stop(session)
-    }, [cancel, start, stop])
+        finish('review')
+    }, [cancel, finish, start])
 
     useEffect(() => cancel, [cancel])
 
-    return { supported, state, seconds, error, toggle, cancel }
+    return { supported, state, seconds, levels, error, toggle, pause, resume, finish, cancel }
 }

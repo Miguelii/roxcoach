@@ -11,9 +11,10 @@ export const LIVE_SAMPLE_RATE = 16_000
 // 100 ms of audio at LIVE_SAMPLE_RATE, the chunk size the Live API docs recommend.
 export const LIVE_CHUNK_SAMPLES = 1600
 
-// Time to open the session, then time to keep sending. The recording cap is 60 seconds.
+// Time to open the session, then time to keep sending: the Live API's 10 minute session limit, so a
+// paused recording (the cap counts recorded time only) does not outlive its token.
 const NEW_SESSION_WINDOW_MS = 60_000
-const SESSION_WINDOW_MS = 180_000
+const SESSION_WINDOW_MS = 600_000
 
 export function liveSetupMessage() {
     return {

@@ -769,6 +769,61 @@ describe('CoachChatView', () => {
             expect(screen.getByTestId('coach-input')).not.toHaveAttribute('readonly')
         })
 
+        it('sends the typed text and the transcript to the coach from the panel', async () => {
+            const send = vi.fn().mockResolvedValue(streamOf(ndjson(meta, text('a'), done)))
+            const voice = fakeVoiceDeps()
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('Plan for')
+            await tapMic()
+            const socket = connect(voice)
+            speak(voice)
+            act(() => socket.receive(liveMessages.partial('tomorrow')))
+            fireEvent.click(screen.getByTestId('coach-voice-send'))
+            await flushVoice()
+            act(() => socket.receive(liveMessages.final('tomorrow.')))
+            await flushVoice()
+            await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+            expect(send.mock.calls[0]?.[0]).toMatchObject({ message: 'Plan for tomorrow.' })
+            expect(screen.getByTestId('coach-input')).toHaveValue('')
+        })
+
+        it('keeps the voice text in the box when the coach is still answering', async () => {
+            const stream = controlledStream()
+            const send = vi.fn().mockResolvedValue(stream.response)
+            const voice = fakeVoiceDeps()
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            type('hi')
+            fireEvent.click(screen.getByTestId('coach-send'))
+            await waitFor(() => expect(screen.getByTestId('coach-stop')).toBeInTheDocument())
+            type('Plan for')
+            await tapMic()
+            const socket = connect(voice)
+            speak(voice)
+            fireEvent.click(screen.getByTestId('coach-voice-send'))
+            await flushVoice()
+            act(() => socket.receive(liveMessages.final('tomorrow.')))
+            await flushVoice()
+            expect(send).toHaveBeenCalledTimes(1)
+            expect(screen.getByTestId('coach-input')).toHaveValue('Plan for tomorrow.')
+        })
+
+        it('sends nothing when the transcription fails', async () => {
+            const send = vi.fn()
+            const voice = fakeVoiceDeps({
+                tokenStatus: 502,
+                respond: async () => Response.json({}, { status: 502 }),
+            })
+            render(<Harness send={send} voiceDeps={voice.deps} />)
+            await tapMic()
+            speak(voice)
+            fireEvent.click(screen.getByTestId('coach-voice-send'))
+            await flushVoice()
+            expect(send).not.toHaveBeenCalled()
+            expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(
+                "Couldn't transcribe. Try again."
+            )
+        })
+
         it('puts the typed text back when the panel closes while recording', async () => {
             const voice = fakeVoiceDeps()
             render(<Harness voiceDeps={voice.deps} />)
@@ -782,6 +837,97 @@ describe('CoachChatView', () => {
             expect(socket.closed).toBe(true)
             expect(voice.transcribe).not.toHaveBeenCalled()
             expect(screen.getByTestId('coach-input')).toHaveValue('Plan for')
+        })
+
+        describe('phone panel', () => {
+            it('shows the panel with the time, the waveform and three buttons while recording', async () => {
+                const voice = fakeVoiceDeps()
+                render(<Harness voiceDeps={voice.deps} />)
+                expect(screen.queryByTestId('coach-voice-panel')).toBeNull()
+                await tapMic()
+                connect(voice)
+                speak(voice)
+                speak(voice)
+                expect(screen.getByTestId('coach-voice-panel')).toBeInTheDocument()
+                expect(screen.getByTestId('coach-voice-panel-timer')).toHaveTextContent('0:00')
+                expect(screen.getAllByTestId('coach-voice-bar')).toHaveLength(2)
+                expect(screen.getByTestId('coach-voice-discard')).toBeEnabled()
+                expect(screen.getByTestId('coach-voice-pause')).toHaveAttribute(
+                    'aria-label',
+                    'Pause recording'
+                )
+                expect(screen.getByTestId('coach-voice-send')).toBeEnabled()
+            })
+
+            it('hides the row mic and Send on phones while recording', async () => {
+                const voice = fakeVoiceDeps()
+                render(<Harness voiceDeps={voice.deps} />)
+                expect(screen.getByTestId('coach-compose-actions')).not.toHaveClass('max-md:hidden')
+                await tapMic()
+                expect(screen.getByTestId('coach-compose-actions')).toHaveClass('max-md:hidden')
+                fireEvent.click(screen.getByTestId('coach-voice-discard'))
+                await flushVoice()
+                expect(screen.getByTestId('coach-compose-actions')).not.toHaveClass('max-md:hidden')
+            })
+
+            it('pauses and resumes from the panel', async () => {
+                const voice = fakeVoiceDeps()
+                render(<Harness voiceDeps={voice.deps} />)
+                await tapMic()
+                fireEvent.click(screen.getByTestId('coach-voice-pause'))
+                expect(screen.getByTestId('coach-voice-pause')).toHaveAttribute(
+                    'aria-label',
+                    'Resume recording'
+                )
+                fireEvent.click(screen.getByTestId('coach-voice-pause'))
+                expect(screen.getByTestId('coach-voice-pause')).toHaveAttribute(
+                    'aria-label',
+                    'Pause recording'
+                )
+            })
+
+            it('discards from the panel and restores the typed text', async () => {
+                const voice = fakeVoiceDeps()
+                render(<Harness voiceDeps={voice.deps} />)
+                type('Plan for')
+                await tapMic()
+                const socket = connect(voice)
+                act(() => socket.receive(liveMessages.partial('x')))
+                fireEvent.click(screen.getByTestId('coach-voice-discard'))
+                await flushVoice()
+                expect(screen.getByTestId('coach-input')).toHaveValue('Plan for')
+                expect(screen.queryByTestId('coach-voice-panel')).toBeNull()
+            })
+
+            it('disables send while the microphone starts and spins while finishing', async () => {
+                const voice = fakeVoiceDeps({ pendingAudio: true })
+                render(<Harness voiceDeps={voice.deps} />)
+                await tapMic()
+                expect(screen.getByTestId('coach-voice-send')).toBeDisabled()
+                await act(async () => voice.resolveAudio(0))
+                await flushVoice()
+                connect(voice)
+                speak(voice)
+                fireEvent.click(screen.getByTestId('coach-voice-send'))
+                await flushVoice()
+                expect(screen.getByTestId('coach-voice-send')).toBeDisabled()
+                expect(screen.getByTestId('coach-voice-send-spinner')).toBeInTheDocument()
+            })
+
+            it('releases everything when the chat closes while paused', async () => {
+                const voice = fakeVoiceDeps()
+                render(<Harness voiceDeps={voice.deps} />)
+                type('Plan for')
+                await tapMic()
+                const socket = connect(voice)
+                act(() => socket.receive(liveMessages.partial('x')))
+                fireEvent.click(screen.getByTestId('coach-voice-pause'))
+                fireEvent.click(screen.getByTestId('coach-scrim'))
+                await flushVoice()
+                expect(voice.audios[0]?.released).toBe(true)
+                expect(socket.closed).toBe(true)
+                expect(screen.getByTestId('coach-input')).toHaveValue('Plan for')
+            })
         })
 
         it('shows the button states, the timer and a stop icon unlike the reply Stop', async () => {

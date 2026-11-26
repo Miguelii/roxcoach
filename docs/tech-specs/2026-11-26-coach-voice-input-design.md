@@ -183,7 +183,8 @@ they stop. v2 writes the text into the box while they speak.
 
 **Token route.** `POST /api/coach/transcribe/token`, same session and access checks as the v1
 route, answers `{ token }`. It creates a token with `uses: 1`, `newSessionExpireTime` now + 1
-minute, `expireTime` now + 3 minutes (the recording cap is 60 seconds), and constraints locking
+minute, `expireTime` now + 10 minutes (raised from 3 for pauses, see
+[2026-11-26-coach-voice-panel-design.md](2026-11-26-coach-voice-panel-design.md)), and constraints locking
 the model and the setup config above, so a leaked token can only open one short transcription
 session. No body. Same status mapping as the v1 route (401, 403, 503, 429, 502, 500). The token is
 never logged.

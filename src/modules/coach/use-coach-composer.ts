@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { COACH_MESSAGE_MAX_CHARS } from '@/modules/coach/suggestions'
-import type { VoiceTarget } from '@/modules/coach/use-voice-recorder'
+import type { VoiceIntent, VoiceTarget } from '@/modules/coach/use-voice-recorder'
 
 const composerSchema = z.object({
     message: z
@@ -16,14 +16,14 @@ const composerSchema = z.object({
 
 type FormValues = z.infer<typeof composerSchema>
 
-type Options = { onSend: (text: string) => void }
+type Options = { onSend: (text: string) => void; streaming: boolean }
 
 const ENDS_IN_SPACE = /\s$/u
 
 const joinVoiceText = (prefix: string, text: string) =>
     prefix === '' || ENDS_IN_SPACE.test(prefix) ? `${prefix}${text}` : `${prefix} ${text}`
 
-export function useCoachComposer({ onSend }: Options) {
+export function useCoachComposer({ onSend, streaming }: Options) {
     const form = useForm<FormValues>({
         resolver: zodResolver(composerSchema),
         mode: 'onChange',
@@ -38,6 +38,12 @@ export function useCoachComposer({ onSend }: Options) {
         form.reset({ message: '' })
     }
 
+    // A voice commit lands after awaits, so it reads whether the coach is answering from a ref.
+    const streamingRef = useRef(streaming)
+    useEffect(() => {
+        streamingRef.current = streaming
+    })
+
     // Voice text goes after what was already typed (the prefix), which is never changed.
     const prefixRef = useRef<string | null>(null)
     const voiceTarget: VoiceTarget = {
@@ -48,10 +54,22 @@ export function useCoachComposer({ onSend }: Options) {
             if (prefixRef.current !== null)
                 form.setValue('message', joinVoiceText(prefixRef.current, text))
         },
-        commit: (text) => {
+        commit: (text: string, intent: VoiceIntent) => {
             const prefix = prefixRef.current ?? form.getValues('message')
             prefixRef.current = null
-            form.setValue('message', joinVoiceText(prefix, text), { shouldValidate: true })
+            const joined = joinVoiceText(prefix, text)
+            // Sent only when the chat can take it; otherwise it waits in the box like a review.
+            const message = joined.trim()
+            if (
+                intent === 'send' &&
+                !streamingRef.current &&
+                message.length <= COACH_MESSAGE_MAX_CHARS
+            ) {
+                onSend(message)
+                form.reset({ message: '' })
+                return
+            }
+            form.setValue('message', joined, { shouldValidate: true })
             form.setFocus('message')
         },
         discard: () => {

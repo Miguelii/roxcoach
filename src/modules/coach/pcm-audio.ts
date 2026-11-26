@@ -41,6 +41,14 @@ export function createDownsampler(
     }
 }
 
+// Root mean square of a chunk, scaled to 0..1: the loudness of one waveform bar.
+export function levelOf(chunk: Int16Array): number {
+    if (chunk.length === 0) return 0
+    let sum = 0
+    for (const sample of chunk) sum += (sample / 0x8000) ** 2
+    return Math.sqrt(sum / chunk.length)
+}
+
 export function toPcm16(samples: Float32Array): Int16Array {
     return Int16Array.from(samples, (sample) => {
         const clamped = Math.max(-1, Math.min(1, sample))

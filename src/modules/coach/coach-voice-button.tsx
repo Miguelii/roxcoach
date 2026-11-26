@@ -1,4 +1,5 @@
 import { CircleIcon, Loader2Icon, MicIcon } from 'lucide-react'
+import { formatClock } from '@/_bff/core/utils/formatters.utils'
 import { Button } from '@/components/ui/button'
 import type { useVoiceRecorder, VoiceErrorKind } from '@/modules/coach/use-voice-recorder'
 
@@ -15,16 +16,15 @@ const ARIA_LABEL = {
     idle: 'Record a voice message',
     starting: 'Waiting for the microphone',
     recording: 'Stop recording',
+    paused: 'Stop recording',
     finishing: 'Transcribing',
     transcribing: 'Transcribing',
 } as const
 
-const formatElapsed = (seconds: number) =>
-    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
-
 export function CoachVoiceButton({ voice }: Props) {
     if (!voice.supported) return null
-    const recording = voice.state === 'recording'
+    // Paused only happens from the phone panel; past the breakpoint it reads as recording.
+    const recording = voice.state === 'recording' || voice.state === 'paused'
     // Starting stays tappable: a tap while the permission prompt hangs starts over.
     const busy = voice.state === 'finishing' || voice.state === 'transcribing'
 
@@ -39,7 +39,7 @@ export function CoachVoiceButton({ voice }: Props) {
                         aria-hidden="true"
                         className="size-2 animate-pulse rounded-full bg-destructive"
                     />
-                    {formatElapsed(voice.seconds)}
+                    {formatClock(voice.seconds)}
                 </span>
             ) : null}
             <Button
