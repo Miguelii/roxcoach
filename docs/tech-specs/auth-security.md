@@ -198,8 +198,9 @@ All Gemini calls are server-side, so `connect-src` stays `'self'`.
 
 Add the same static headers BrewStock sets in `next.config.ts` `headers()`: `X-Content-Type-Options`,
 `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security`,
-`X-Xss-Protection: 0`, `Permissions-Policy` with camera, microphone, geolocation and
-browsing-topics denied.
+`X-Xss-Protection: 0`, `Permissions-Policy` with camera, geolocation and browsing-topics denied
+and the microphone allowed on our own origin only (`microphone=(self)`, for the coach voice input,
+see [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 
 ## Secrets
 

@@ -25,9 +25,10 @@ const nextConfig: NextConfig = {
                         value: 'max-age=31536000; includeSubDomains; preload',
                     },
                     { key: 'X-Xss-Protection', value: '0' },
+                    // The microphone is allowed on our own origin for the coach voice input.
                     {
                         key: 'Permissions-Policy',
-                        value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+                        value: 'camera=(), microphone=(self), geolocation=(), browsing-topics=()',
                     },
                 ],
             },

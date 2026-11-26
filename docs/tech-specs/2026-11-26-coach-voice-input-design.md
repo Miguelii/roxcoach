@@ -110,6 +110,10 @@ outcome is recorded in this spec.
   configured (the same status choices as the upload route). The audio and the
   transcript are never logged; failures log only the status and an error tag.
 
+- The `Permissions-Policy` header in `next.config.ts` allows the microphone on our own origin
+  (`microphone=(self)`). It used to deny it (`microphone=()`), which makes the browser refuse
+  `getUserMedia` at once, with no permission prompt (found in the first manual test).
+
 ### Spec and tests
 
 - `coach-chat.md` gets a "Voice input" section; this file records the smoke test outcome.
