@@ -6,10 +6,10 @@ export const TRANSCRIBE_LIVE_MODEL_ID = 'gemini-3.5-transcribe-live'
 const LIVE_SOCKET_URL =
     'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent'
 
-const LIVE_SAMPLE_RATE = 16_000
+export const LIVE_SAMPLE_RATE = 16_000
 
 // 100 ms of audio at LIVE_SAMPLE_RATE, the chunk size the Live API docs recommend.
-const LIVE_CHUNK_SAMPLES = 1600
+export const LIVE_CHUNK_SAMPLES = 1600
 
 // Time to open the session, then time to keep sending. The recording cap is 60 seconds.
 const NEW_SESSION_WINDOW_MS = 60_000
