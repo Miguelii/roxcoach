@@ -247,6 +247,10 @@ written.
   returns at most 200 strength sets (`ACTIVITY_SETS_RETURNED`) and adds `truncatedSets` with the
   number left out when there are more.
 
+Voice input has its own route, `POST /api/coach/transcribe` (multipart clip in, `{ text }` out),
+with the same session and access checks. Its checks and statuses are in
+[2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md).
+
 ## Known limitations
 
 - A Supabase token refresh that happens during the up to 60 s stream writes cookies into a store

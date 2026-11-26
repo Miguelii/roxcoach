@@ -4,7 +4,8 @@ A microphone button in the coach chat composer ([coach-chat.md](coach-chat.md)).
 it, speaks, taps again, and what they said is transcribed and written into the message box. The
 message is not sent: the athlete reviews or edits it and sends it as usual.
 
-Status: design approved, not implemented.
+Status: implemented. The smoke test against the live API and the manual check on the iPhone PWA
+are still pending (see "What is not verified yet").
 
 ## Intent
 
@@ -55,6 +56,14 @@ not `generateContent`, so the AI SDK cannot call it. Options go in
 `generation_config.transcription_config` (`mode: "smart"`, optional `language_codes`). The docs'
 examples pass a Files API `uri`; they do not show inline audio, and they do not confirm
 `audio/webm` (Chrome, Firefox, Android) or `audio/mp4` (Safari, iPhone).
+
+Confirmed from the docs on 2026-11-26 (Interactions API reference and the transcribe page, read by
+the author): an inline part is `{ "type": "audio", "data": "<base64>", "mime_type": "<type>" }`;
+the transcript is at `steps[].content[]` parts of type `text` (`steps[0].content[0].text` in the
+docs' example) and an interaction has a `status` (`completed`, `failed` and others). The supported
+list has `audio/webm` and `audio/m4a` but not `audio/mp4`, so the transcriber sends Safari's
+`audio/mp4` clips as `audio/m4a` and drops codec parameters. The docs disagree on the inline size
+limit (20 MB on the audio page, 100 MB on the file input page); clips here are under 2 MB either way.
 
 So step one is a smoke script, `tools/gemini-transcribe-smoke.ts <audio file>`, run by the athlete
 with their key, that sends a short clip inline (base64) in webm and in mp4 and prints the

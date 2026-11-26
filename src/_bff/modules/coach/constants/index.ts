@@ -42,3 +42,8 @@ export const AUDIO_MIME_TYPES = [
     'audio/mpeg',
     'audio/wav',
 ] as const
+
+// Speech to text model of the coach voice input.
+export const TRANSCRIBE_MODEL_ID = 'gemini-3.5-transcribe'
+
+export const TRANSCRIBE_TIMEOUT_MS = 30_000

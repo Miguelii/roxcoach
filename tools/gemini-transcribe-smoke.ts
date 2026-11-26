@@ -25,8 +25,8 @@ const MODEL_ID = 'gemini-3.5-transcribe'
 
 const MIME_BY_EXTENSION = new Map([
     ['.webm', 'audio/webm'],
-    ['.m4a', 'audio/mp4'],
-    ['.mp4', 'audio/mp4'],
+    ['.m4a', 'audio/m4a'],
+    ['.mp4', 'audio/m4a'],
     ['.mp3', 'audio/mpeg'],
     ['.wav', 'audio/wav'],
     ['.ogg', 'audio/ogg'],

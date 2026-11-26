@@ -77,8 +77,8 @@ describe('runTranscribeSmoke', () => {
 describe('mimeTypeFor', () => {
     it.each([
         ['clip.webm', 'audio/webm'],
-        ['clip.m4a', 'audio/mp4'],
-        ['clip.MP4', 'audio/mp4'],
+        ['clip.m4a', 'audio/m4a'],
+        ['clip.MP4', 'audio/m4a'],
         ['clip.mp3', 'audio/mpeg'],
         ['clip.wav', 'audio/wav'],
         ['clip.ogg', 'audio/ogg'],
