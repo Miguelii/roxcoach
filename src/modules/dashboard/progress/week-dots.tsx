@@ -1,6 +1,7 @@
 import { IconCheck } from '@tabler/icons-react'
 import { addDays, startOfWeek } from '@/_bff/core/utils/week-dates.utils'
 import type { CalendarItem } from '@/_bff/modules/training/types'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { dayLabel } from '@/modules/dashboard/progress/progress-utils'
 
@@ -9,12 +10,22 @@ type Props = {
     today: string
 }
 
-const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const DAYS = [
+    { id: 'mon', letter: 'M' },
+    { id: 'tue', letter: 'T' },
+    { id: 'wed', letter: 'W' },
+    { id: 'thu', letter: 'T' },
+    { id: 'fri', letter: 'F' },
+    { id: 'sat', letter: 'S' },
+    { id: 'sun', letter: 'S' },
+] as const
+
+const SECTION = 'space-y-3 rounded-[var(--radius-surface)] shadow-soft bg-card p-4'
 
 // The seven days of this week, a filled circle on every day you ran, today ringed.
 export function WeekDots({ items, today }: Props) {
     const start = startOfWeek(today)
-    const days = LETTERS.map((letter, offset) => {
+    const days = DAYS.map(({ letter }, offset) => {
         const date = addDays(start, offset)
         const runs = items.filter(
             (item) =>
@@ -32,11 +43,7 @@ export function WeekDots({ items, today }: Props) {
     const weekKm = days.reduce((sum, day) => sum + day.km, 0)
 
     return (
-        <section
-            data-testid="week-dots"
-            aria-label="Runs this week"
-            className="space-y-3 rounded-[var(--radius-surface)] shadow-soft bg-card p-4"
-        >
+        <section data-testid="week-dots" aria-label="Runs this week" className={SECTION}>
             <header className="flex items-baseline justify-between gap-3">
                 <h2 className="display text-lg">This week</h2>
                 <p
@@ -74,6 +81,31 @@ export function WeekDots({ items, today }: Props) {
                         <span className="text-[11px] tabular-nums text-muted-foreground">
                             {day.ran ? day.km.toFixed(1) : day.letter}
                         </span>
+                    </li>
+                ))}
+            </ol>
+        </section>
+    )
+}
+
+/** The week card with its day letters while the runs load, nothing marked as run or rest yet. */
+export function WeekDotsLoading() {
+    return (
+        <section
+            data-testid="week-dots-loading"
+            aria-label="Runs this week"
+            aria-busy
+            className={SECTION}
+        >
+            <header className="flex items-baseline justify-between gap-3">
+                <h2 className="display text-lg">This week</h2>
+                <Skeleton className="h-4 w-14" />
+            </header>
+            <ol className="grid grid-cols-7 gap-1.5">
+                {DAYS.map(({ id, letter }) => (
+                    <li key={id} className="flex flex-col items-center gap-1.5">
+                        <Skeleton className="size-9 rounded-full sm:size-11" />
+                        <span className="text-[11px] text-muted-foreground">{letter}</span>
                     </li>
                 ))}
             </ol>

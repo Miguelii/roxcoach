@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { PRIMARY_NAV_ITEMS, type NavItem } from '@/components/app-nav-items'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import { useTRPC } from '@/lib/trpc'
 import { cn } from '@/lib/utils'
 import { MobileNav } from '@/components/mobile-nav'
@@ -17,6 +18,7 @@ import { useCoachPanel } from '@/modules/coach/coach-panel-context'
 type Props = {
     children: React.ReactNode
     isAdmin: boolean
+    rememberedDashboardMode?: DashboardMode | null
 }
 
 type AccountMenuProps = {
@@ -49,7 +51,7 @@ function MobileLogoutButton({ isPending, onLogout }: AccountMenuProps) {
     )
 }
 
-export function AppShell({ children, isAdmin }: Props) {
+export function AppShell({ children, isAdmin, rememberedDashboardMode = null }: Props) {
     const {
         setOpen: setCoachOpen,
         enabled: coachEnabled,
@@ -134,7 +136,11 @@ export function AppShell({ children, isAdmin }: Props) {
                 <div className="mt-auto space-y-4 border-t border-hairline pt-4">
                     <div className="space-y-1.5 px-1">
                         <p className="eyebrow text-muted-foreground">Dashboard</p>
-                        <DashboardModeToggle testIdPrefix="nav-mode" compact />
+                        <DashboardModeToggle
+                            testIdPrefix="nav-mode"
+                            compact
+                            initialMode={rememberedDashboardMode}
+                        />
                     </div>
                     <Button
                         variant="ghost"

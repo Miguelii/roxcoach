@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
-import { Skeleton } from '@/components/ui/skeleton'
 import { QueryError } from '@/components/query-error'
 import { useTRPC } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { weekStripWindow } from '@/modules/dashboard/utils'
-import { WeekStripView } from '@/modules/dashboard/week-strip-view'
+import { WeekStripLoading, WeekStripView } from '@/modules/dashboard/week-strip-view'
 
 type Props = {
     today: string
@@ -20,7 +19,7 @@ export function WeekStrip({ today, mode }: Props) {
         })
     )
 
-    if (query.data === undefined && query.isPending) return <WeekStripSkeleton />
+    if (query.data === undefined && query.isPending) return <WeekStripLoading mode={mode} />
     if (query.data === undefined)
         return (
             <QueryError
@@ -41,15 +40,5 @@ export function WeekStrip({ today, mode }: Props) {
                 />
             )}
         </>
-    )
-}
-
-export function WeekStripSkeleton() {
-    return (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-                <Skeleton key={index} className="h-28 rounded-[var(--radius-surface-inner)]" />
-            ))}
-        </div>
     )
 }

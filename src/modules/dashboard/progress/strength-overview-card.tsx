@@ -2,6 +2,7 @@ import { IconTrendingDown, IconTrendingUp } from '@tabler/icons-react'
 import { formatKg } from '@/_bff/core/utils/formatters.utils'
 import type { TopExerciseDTO } from '@/_bff/modules/training/types/progress'
 import { PrMedal } from '@/components/pr-medal'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { ExerciseThumb } from '@/modules/dashboard/progress/exercise-thumb'
 import { strengthSummary } from '@/modules/dashboard/progress/progress-utils'
@@ -20,6 +21,21 @@ type Tile = {
 }
 
 const TEST_ID = 'strength-overview'
+
+const LABELS = {
+    progressing: 'Progressing',
+    records: 'Top set records',
+    heaviest: 'Heaviest top set',
+    reps: 'Top set reps',
+} as const
+
+const CARD = 'space-y-6 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6'
+const TILES = 'grid grid-cols-2 gap-y-6 lg:grid-cols-4'
+const TILE = cn(
+    'min-w-0 space-y-1 border-hairline',
+    'max-lg:odd:pr-4 max-lg:even:border-l max-lg:even:pl-4',
+    'lg:border-l lg:px-5 lg:first:border-l-0 lg:first:pl-0'
+)
 
 const signedReps = (value: number) => {
     const rounded = Math.round(value * 10) / 10
@@ -43,17 +59,17 @@ export function StrengthOverviewCard({ exercises }: Props) {
     const tiles: Tile[] = [
         {
             id: 'progressing',
-            label: 'Progressing',
+            label: LABELS.progressing,
             value: `${summary.progressing} of ${summary.rated}`,
         },
         {
             id: 'records',
-            label: 'Top set records',
+            label: LABELS.records,
             value: String(summary.records),
         },
         {
             id: 'heaviest',
-            label: 'Heaviest top set',
+            label: LABELS.heaviest,
             value:
                 summary.heaviest === null
                     ? '-'
@@ -64,7 +80,7 @@ export function StrengthOverviewCard({ exercises }: Props) {
         },
         {
             id: 'reps',
-            label: 'Top set reps',
+            label: LABELS.reps,
             value: summary.avgRepsDelta === null ? '-' : signedReps(summary.avgRepsDelta),
             hint: summary.avgRepsDelta === null ? undefined : 'average change per lift',
         },
@@ -72,7 +88,7 @@ export function StrengthOverviewCard({ exercises }: Props) {
 
     return (
         <section data-testid={TEST_ID} aria-label="Progress summary" className="min-w-0">
-            <div className="space-y-6 rounded-[var(--radius-surface)] bg-card p-5 shadow-soft md:p-6">
+            <div className={CARD}>
                 <header className="space-y-1">
                     <h2 className="display text-xl">Progress summary</h2>
                     <p
@@ -83,16 +99,9 @@ export function StrengthOverviewCard({ exercises }: Props) {
                     </p>
                 </header>
 
-                <dl className="grid grid-cols-2 gap-y-6 lg:grid-cols-4">
+                <dl className={TILES}>
                     {tiles.map((tile) => (
-                        <div
-                            key={tile.id}
-                            className={cn(
-                                'min-w-0 space-y-1 border-hairline',
-                                'max-lg:odd:pr-4 max-lg:even:border-l max-lg:even:pl-4',
-                                'lg:border-l lg:px-5 lg:first:border-l-0 lg:first:pl-0'
-                            )}
-                        >
+                        <div key={tile.id} className={TILE}>
                             <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
                                 {tile.label}
                                 {tile.id === 'records' && <PrMedal className="size-5" />}
@@ -176,6 +185,38 @@ export function StrengthOverviewCard({ exercises }: Props) {
                         )}
                     </div>
                 )}
+            </div>
+        </section>
+    )
+}
+
+/** The summary card with its tile labels while the lifts load. */
+export function StrengthOverviewLoading() {
+    return (
+        <section
+            data-testid={`${TEST_ID}-loading`}
+            aria-label="Progress summary"
+            aria-busy
+            className="min-w-0"
+        >
+            <div className={CARD}>
+                <header className="space-y-2">
+                    <h2 className="display text-xl">Progress summary</h2>
+                    <Skeleton className="h-4 w-72 max-w-full" />
+                </header>
+                <dl className={TILES}>
+                    {Object.entries(LABELS).map(([id, label]) => (
+                        <div key={id} className={TILE}>
+                            <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                {label}
+                                {id === 'records' && <PrMedal className="size-5" />}
+                            </dt>
+                            <dd>
+                                <Skeleton className="mt-1 h-8 w-16" />
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
             </div>
         </section>
     )

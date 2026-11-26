@@ -224,7 +224,9 @@ rules are in [dashboard-progress.md](dashboard-progress.md). "Today" comes from 
 timezone in `athlete.getProfile` (`todayIn(timezone)`), never from the browser clock. Upcoming races remain on `/races`. A shared action group offers activity upload
 and manual Lyfta sync.
 
-The dashboard loads its profile (timezone and mode), the 35-day summary and the progress series through tRPC client queries. React Query
+The dashboard loads its profile (timezone and mode), the 35-day summary and the progress series through tRPC client queries. While they load, the
+real header and cards are drawn with placeholders where the values go, never a page of skeleton
+blocks (see [dashboard-progress.md](dashboard-progress.md)). React Query
 retains the summary while navigating between routes and revalidates it after 30 seconds. Uploads
 invalidate the calendar and both progress queries, which refreshes the calendar, summary and charts. The client query
 cache is cleared on logout.

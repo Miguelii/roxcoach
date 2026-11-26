@@ -17,6 +17,19 @@ describe('ChartCard', () => {
         expect(screen.getByTestId('card')).toHaveTextContent('faster is up')
         expect(screen.getByTestId('chart-body')).toBeInTheDocument()
     })
+
+    it('keeps the title and shows a placeholder takeaway while loading', () => {
+        render(
+            <ChartCard title="Pace" takeaway={null} testId="card">
+                <div data-testid="chart-body" />
+            </ChartCard>
+        )
+
+        expect(screen.getByTestId('card')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('card')).toHaveTextContent('Pace')
+        expect(screen.getByTestId('card-takeaway-loading')).toBeInTheDocument()
+        expect(screen.queryByTestId('card-takeaway')).toBeNull()
+    })
 })
 
 describe('ChangeBadge', () => {

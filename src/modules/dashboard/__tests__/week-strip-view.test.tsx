@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { WeekStripView } from '@/modules/dashboard/week-strip-view'
+import { WeekStripLoading, WeekStripView } from '@/modules/dashboard/week-strip-view'
 import { makeItem } from '@/modules/calendar/__tests__/fixtures'
 
 describe('WeekStripView', () => {
+    it('keeps the tile labels with placeholders instead of zeros while loading', () => {
+        render(<WeekStripLoading mode="run" />)
+
+        expect(screen.getByTestId('week-strip')).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('week-tile-time')).toHaveTextContent('Time this week')
+        expect(screen.getByTestId('week-tile-run-loading')).toBeInTheDocument()
+        expect(screen.queryByTestId('week-tile-time-value')).toBeNull()
+        expect(screen.getByTestId('week-strip').textContent).not.toMatch(/0m|No history yet/u)
+    })
+
     it('shows zeros and "No history yet" for an athlete without activities', () => {
         render(<WeekStripView items={[]} today="2026-11-19" mode="run" />)
 

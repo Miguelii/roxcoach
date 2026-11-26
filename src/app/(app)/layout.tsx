@@ -7,12 +7,15 @@ import { AppShellSkeleton } from '@/components/app-shell-skeleton'
 import { CoachChat } from '@/modules/coach/coach-chat'
 import { CoachPanelProvider } from '@/modules/coach/coach-panel-context'
 import { COACH_ENABLED_COOKIE } from '@/modules/coach/constants'
+import { DASHBOARD_MODE_COOKIE } from '@/modules/dashboard/constants'
+import { modeFromCookie } from '@/modules/dashboard/utils'
 
 type Props = {
     children: React.ReactNode
 }
 
-// Reads the desktop coach preference on the server so the launcher renders in its final state.
+// Reads the desktop coach preference on the server so the launcher renders in its final state, and
+// the remembered dashboard mode so the sidebar switch shows it before the profile arrives.
 // The admin flag only decides whether the Logs link is shown: the proxy and adminProcedure gate the
 // page and its data. getClaims() checks the token expiry with Date.now(), which Cache Components
 // only allows after connection().
@@ -20,9 +23,12 @@ async function CoachSession({ children }: Props) {
     await connection()
     const [cookieStore, claims] = await Promise.all([cookies(), getCachedClaims()])
     const enabled = cookieStore.get(COACH_ENABLED_COOKIE)?.value !== '0'
+    const dashboardMode = modeFromCookie(cookieStore.get(DASHBOARD_MODE_COOKIE)?.value)
     return (
         <CoachPanelProvider initialEnabled={enabled}>
-            <AppShell isAdmin={claims?.isAdmin ?? false}>{children}</AppShell>
+            <AppShell isAdmin={claims?.isAdmin ?? false} rememberedDashboardMode={dashboardMode}>
+                {children}
+            </AppShell>
             <CoachChat />
         </CoachPanelProvider>
     )

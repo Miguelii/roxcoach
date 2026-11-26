@@ -23,6 +23,9 @@ const ExerciseTrendChart = dynamic(
     { ssr: false, loading: () => <Skeleton className="h-full w-full" /> }
 )
 
+const CARD = 'min-w-0 space-y-4 rounded-[var(--radius-surface)] shadow-soft bg-card p-4 md:p-5'
+const CHART = 'h-44 w-full md:h-52'
+
 const chartLabel = (exercise: TopExerciseDTO) => {
     const first = exercise.points[0]
     const last = exercise.points.at(-1)
@@ -50,11 +53,7 @@ export function ExerciseCard({ exercise }: Props) {
             : last.topSetKg - first.topSetKg
 
     return (
-        <section
-            data-testid="exercise-card"
-            aria-label={exercise.name}
-            className="min-w-0 space-y-4 rounded-[var(--radius-surface)] shadow-soft bg-card p-4 md:p-5"
-        >
+        <section data-testid="exercise-card" aria-label={exercise.name} className={CARD}>
             <header className="flex items-center gap-3">
                 <span className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius-surface-inner)] border border-hairline bg-background">
                     {exercise.imageUrl === null ? (
@@ -121,7 +120,7 @@ export function ExerciseCard({ exercise }: Props) {
                 role="img"
                 data-testid="exercise-chart-figure"
                 aria-label={chartLabel(exercise)}
-                className="h-44 w-full md:h-52"
+                className={CHART}
             >
                 <ExerciseTrendChart exercise={exercise} />
             </div>
@@ -144,6 +143,32 @@ export function ExerciseCard({ exercise }: Props) {
                     Reps of the top set
                 </span>
             </p>
+        </section>
+    )
+}
+
+/** An exercise card with its picture frame, labels and chart area while the lifts load. */
+export function ExerciseCardLoading() {
+    return (
+        <section data-testid="exercise-card-loading" aria-busy className={CARD}>
+            <header className="flex items-center gap-3">
+                <Skeleton className="size-14 shrink-0 rounded-[var(--radius-surface-inner)]" />
+                <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-6 w-40 max-w-full" />
+                    <Skeleton className="h-3 w-20" />
+                </div>
+            </header>
+            <div className="flex items-end justify-between gap-3">
+                <div className="space-y-2">
+                    <p className="eyebrow text-muted-foreground">Latest top set</p>
+                    <Skeleton className="h-10 w-28" />
+                </div>
+                <div className="space-y-2 text-right">
+                    <p className="eyebrow text-muted-foreground">Best</p>
+                    <Skeleton className="ml-auto h-6 w-20" />
+                </div>
+            </div>
+            <Skeleton className={CHART} />
         </section>
     )
 }
