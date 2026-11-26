@@ -1,0 +1,339 @@
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { z } from 'zod'
+import { VOICE_MAX_SECONDS } from '@/modules/coach/constants'
+import {
+    openLiveSession,
+    type LiveSession,
+    type LiveSocket,
+} from '@/modules/coach/live-transcription'
+import {
+    createChunker,
+    createDownsampler,
+    encodeWav,
+    levelOf,
+    toPcm16,
+} from '@/modules/coach/pcm-audio'
+import { browserVoiceDeps } from '@/modules/coach/browser-voice-deps'
+import { fetchLiveToken, transcribeClip } from '@/modules/coach/voice-requests'
+
+export type AudioSource = {
+    sampleRate: number
+    onFrames: (listener: (frames: Float32Array) => void) => void
+    // Stops the microphone tracks and the audio graph, so the browser's recording indicator goes away.
+    release: () => void
+}
+
+export type VoiceDeps = {
+    isSupported: () => boolean
+    // Must create and resume its AudioContext before its first await: iOS only starts audio inside
+    // the tap that asked for it.
+    openAudio: () => Promise<AudioSource>
+    fetchToken: (signal: AbortSignal) => Promise<Response>
+    openSocket: (url: string) => LiveSocket
+    transcribe: (audio: Blob, signal: AbortSignal) => Promise<Response>
+}
+
+export type VoiceState = 'idle' | 'starting' | 'recording' | 'paused' | 'finishing' | 'transcribing'
+
+// What the athlete wants once the text is ready: review it in the box, or send it to the coach.
+export type VoiceIntent = 'review' | 'send'
+
+export type VoiceErrorKind = 'mic-blocked' | 'no-speech' | 'busy' | 'failed'
+
+// Where the live text goes: the composer keeps what was typed before as a prefix.
+export type VoiceTarget = {
+    begin: () => void
+    show: (text: string) => void
+    commit: (text: string, intent: VoiceIntent) => void
+    discard: () => void
+}
+
+type Options = { deps?: VoiceDeps; target: VoiceTarget }
+
+type Session = {
+    phase: Exclude<VoiceState, 'idle'>
+    cancelled: boolean
+    begun: boolean
+    audio: AudioSource | null
+    live: LiveSession | null
+    liveReady: Promise<LiveSession | null>
+    chunks: Int16Array[]
+    flushChunks: () => void
+    lastText: string
+    controller: AbortController
+    tokenController: AbortController
+    timer: ReturnType<typeof setInterval> | null
+    intent: VoiceIntent
+    recordedMs: number
+    resumedAt: number
+}
+
+const TICK_MS = 250
+
+// Bars of microphone level kept for the waveform, one per 100 ms chunk.
+export const LEVEL_HISTORY = 40
+const PermissionErrorSchema = z.object({ name: z.enum(['NotAllowedError', 'SecurityError']) })
+
+const subscribeToNothing = () => () => {}
+
+const clearTimer = (session: Session) => {
+    if (session.timer !== null) clearInterval(session.timer)
+    session.timer = null
+}
+
+// Each recording is a session object: an ended or cancelled session keeps running its awaits, but
+// every step checks `cancelled` first, so a late microphone, socket message or upload never touches the
+// state. The live socket is the main path; every chunk is also kept so a failed live session can
+// still be transcribed by uploading the same audio as WAV.
+// oxlint-disable-next-line max-lines-per-function -- one hook owns the whole recording state machine
+export function useVoiceRecorder({ deps = browserVoiceDeps, target }: Options) {
+    const [state, setState] = useState<VoiceState>('idle')
+    const [seconds, setSeconds] = useState(0)
+    const [error, setError] = useState<VoiceErrorKind | null>(null)
+    const [levels, setLevels] = useState<number[]>([])
+    // False on the server and during hydration, so the button never causes a mismatch.
+    const supported = useSyncExternalStore(subscribeToNothing, deps.isSupported, () => false)
+
+    const sessionRef = useRef<Session | null>(null)
+    const optionsRef = useRef({ deps, target })
+    useEffect(() => {
+        optionsRef.current = { deps, target }
+    })
+
+    const setPhase = useCallback((session: Session, phase: Session['phase']) => {
+        session.phase = phase
+        setState(phase)
+    }, [])
+
+    const end = useCallback((session: Session, result: VoiceErrorKind | null) => {
+        session.cancelled = true
+        session.controller.abort()
+        session.tokenController.abort()
+        clearTimer(session)
+        session.audio?.release()
+        session.live?.close()
+        if (sessionRef.current === session) sessionRef.current = null
+        setState('idle')
+        setSeconds(0)
+        setLevels([])
+        setError(result)
+    }, [])
+
+    const complete = useCallback(
+        async (session: Session) => {
+            const live = await session.liveReady
+            const result =
+                live === null || session.live === null
+                    ? { ok: false as const }
+                    : await live.finish()
+            if (session.cancelled) return
+            const { target: voiceTarget, deps: voiceDeps } = optionsRef.current
+            if (result.ok) {
+                voiceTarget.commit(result.text, session.intent)
+                end(session, null)
+                return
+            }
+            if (session.chunks.length === 0) {
+                voiceTarget.discard()
+                end(session, 'no-speech')
+                return
+            }
+            setPhase(session, 'transcribing')
+            const clip = await transcribeClip(
+                voiceDeps.transcribe,
+                encodeWav(session.chunks),
+                session.controller.signal
+            )
+            if (session.cancelled) return
+            if (clip.ok) {
+                voiceTarget.commit(clip.text, session.intent)
+                end(session, null)
+                return
+            }
+            // A failed upload keeps the live partial text: losing words already shown is worse.
+            if (session.lastText === '') {
+                voiceTarget.discard()
+                end(session, clip.error)
+                return
+            }
+            // Partial text is never sent on its own: the athlete gets to fix it first.
+            voiceTarget.commit(session.lastText, 'review')
+            end(session, 'failed')
+        },
+        [end, setPhase]
+    )
+
+    const stop = useCallback(
+        (session: Session) => {
+            if (session.phase !== 'recording' && session.phase !== 'paused') return
+            setPhase(session, 'finishing')
+            clearTimer(session)
+            session.flushChunks()
+            session.audio?.release()
+            // Waiting for a late token would only delay the upload that already has every chunk.
+            if (session.live === null) session.tokenController.abort()
+            void complete(session)
+        },
+        [complete, setPhase]
+    )
+
+    // The 60 second cap counts recorded time only, so a pause stops the clock.
+    const startClock = useCallback(
+        (session: Session) => {
+            session.resumedAt = Date.now()
+            session.timer = setInterval(() => {
+                const recorded = session.recordedMs + Date.now() - session.resumedAt
+                const elapsed = Math.floor(recorded / 1000)
+                setSeconds(elapsed)
+                if (elapsed >= VOICE_MAX_SECONDS) stop(session)
+            }, TICK_MS)
+        },
+        [stop]
+    )
+
+    const record = useCallback(
+        async (session: Session, audioReady: Promise<AudioSource>) => {
+            let audio: AudioSource
+            try {
+                audio = await audioReady
+            } catch (openError) {
+                if (session.cancelled) return
+                end(
+                    session,
+                    PermissionErrorSchema.safeParse(openError).success ? 'mic-blocked' : 'failed'
+                )
+                return
+            }
+            if (session.cancelled) {
+                audio.release()
+                return
+            }
+            session.audio = audio
+
+            const chunker = createChunker((chunk) => {
+                session.chunks.push(chunk)
+                session.live?.sendChunk(chunk)
+                setLevels((previous) => [...previous, levelOf(chunk)].slice(-LEVEL_HISTORY))
+            })
+            session.flushChunks = () => chunker.flush()
+            const resample = createDownsampler(audio.sampleRate)
+            try {
+                audio.onFrames((frames) => {
+                    if (session.phase === 'recording') chunker.push(toPcm16(resample(frames)))
+                })
+            } catch {
+                end(session, 'failed')
+                return
+            }
+
+            session.begun = true
+            optionsRef.current.target.begin()
+            setPhase(session, 'recording')
+            startClock(session)
+        },
+        [end, setPhase, startClock]
+    )
+
+    const start = useCallback(() => {
+        const { deps: voiceDeps } = optionsRef.current
+        const controller = new AbortController()
+        const tokenController = new AbortController()
+        const session: Session = {
+            phase: 'starting',
+            cancelled: false,
+            begun: false,
+            audio: null,
+            live: null,
+            liveReady: Promise.resolve(null),
+            chunks: [],
+            flushChunks: () => {},
+            lastText: '',
+            controller,
+            tokenController,
+            timer: null,
+            intent: 'review',
+            recordedMs: 0,
+            resumedAt: 0,
+        }
+        sessionRef.current = session
+        setError(null)
+        setSeconds(0)
+        setLevels([])
+        setState('starting')
+
+        const audioReady = voiceDeps.openAudio()
+        session.liveReady = fetchLiveToken(voiceDeps.fetchToken, tokenController.signal).then(
+            (token) => {
+                if (token === null || session.cancelled) return null
+                const live = openLiveSession({
+                    token,
+                    openSocket: voiceDeps.openSocket,
+                    onText: (text) => {
+                        if (session.cancelled) return
+                        session.lastText = text
+                        optionsRef.current.target.show(text)
+                    },
+                    onFailure: () => {
+                        session.live = null
+                    },
+                })
+                session.chunks.forEach((chunk) => live.sendChunk(chunk))
+                session.live = live
+                return live
+            }
+        )
+        void record(session, audioReady)
+    }, [record])
+
+    const cancel = useCallback(() => {
+        const session = sessionRef.current
+        if (session === null) return
+        if (session.begun) optionsRef.current.target.discard()
+        end(session, null)
+    }, [end])
+
+    const pause = useCallback(() => {
+        const session = sessionRef.current
+        if (session?.phase !== 'recording') return
+        session.recordedMs += Date.now() - session.resumedAt
+        clearTimer(session)
+        setPhase(session, 'paused')
+    }, [setPhase])
+
+    const resume = useCallback(() => {
+        const session = sessionRef.current
+        if (session?.phase !== 'paused') return
+        setPhase(session, 'recording')
+        startClock(session)
+    }, [setPhase, startClock])
+
+    const finish = useCallback(
+        (intent: VoiceIntent) => {
+            const session = sessionRef.current
+            if (session?.phase !== 'recording' && session?.phase !== 'paused') return
+            session.intent = intent
+            stop(session)
+        },
+        [stop]
+    )
+
+    const toggle = useCallback(() => {
+        const session = sessionRef.current
+        if (session === null) {
+            if (optionsRef.current.deps.isSupported()) start()
+            return
+        }
+        // A permission prompt can stay pending forever (dismissed in Firefox, iOS home screen apps),
+        // so a tap while waiting starts over instead of being ignored.
+        if (session.phase === 'starting') {
+            cancel()
+            start()
+            return
+        }
+        finish('review')
+    }, [cancel, finish, start])
+
+    useEffect(() => cancel, [cancel])
+
+    return { supported, state, seconds, levels, error, toggle, pause, resume, finish, cancel }
+}

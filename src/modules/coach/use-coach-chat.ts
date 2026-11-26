@@ -273,10 +273,14 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         }
     }
 
+    // False when the message was not taken (empty, too long, or a reply already running), so the
+    // caller can keep the text instead of clearing it.
     const sendMessage = (text: string) => {
         const trimmed = text.trim()
-        if (trimmed === '' || trimmed.length > COACH_MESSAGE_MAX_CHARS) return
+        if (trimmed === '' || trimmed.length > COACH_MESSAGE_MAX_CHARS || busyRef.current)
+            return false
         void run(trimmed, false)
+        return true
     }
 
     const retry = () => {

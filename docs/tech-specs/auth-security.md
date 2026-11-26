@@ -192,14 +192,19 @@ and of every other device. Local scope ends only this browser's session.
 Already implemented in `src/lib/set-csp.ts`: `default-src 'self'`, `frame-ancestors 'none'`,
 `object-src 'none'`, `upgrade-insecure-requests`, `'unsafe-eval'` in development only.
 
-All Gemini calls are server-side, so `connect-src` stays `'self'`.
+Gemini calls are server-side, with one exception: the coach voice input streams audio from the
+browser to Gemini Live, authenticated by a one-use ephemeral token (never the API key), so
+`connect-src` is `'self' wss://generativelanguage.googleapis.com` and nothing broader. Its
+AudioWorklet is a static file, `public/assets/coach-pcm-worklet.js`, so `script-src` needs no
+`blob:` (see [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 
 ## Security headers
 
 Add the same static headers BrewStock sets in `next.config.ts` `headers()`: `X-Content-Type-Options`,
 `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security`,
-`X-Xss-Protection: 0`, `Permissions-Policy` with camera, microphone, geolocation and
-browsing-topics denied.
+`X-Xss-Protection: 0`, `Permissions-Policy` with camera, geolocation and browsing-topics denied
+and the microphone allowed on our own origin only (`microphone=(self)`, for the coach voice input,
+see [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 
 ## Secrets
 

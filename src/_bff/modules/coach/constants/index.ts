@@ -30,3 +30,23 @@ export const TITLE_MAX_CHARS = 60
 
 // Strength sets of one activity returned to the model by the getActivity tool.
 export const ACTIVITY_SETS_RETURNED = 200
+
+// Largest voice clip accepted. 60 seconds of browser audio is well under 1 MB.
+export const AUDIO_MAX_BYTES = 2 * 1024 * 1024
+
+// Container types browsers record in, compared without codec parameters.
+export const AUDIO_MIME_TYPES = [
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg',
+    'audio/mpeg',
+    'audio/wav',
+] as const
+
+// Speech to text model of the coach voice input.
+export const TRANSCRIBE_MODEL_ID = 'gemini-3.5-transcribe'
+
+export const TRANSCRIBE_TIMEOUT_MS = 30_000
+
+// A live token is only worth having before the athlete stops; past this the upload takes over.
+export const LIVE_TOKEN_TIMEOUT_MS = 10_000

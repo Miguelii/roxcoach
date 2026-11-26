@@ -46,6 +46,20 @@ describe('setCSP', () => {
         expect(csp).toContain('upgrade-insecure-requests')
     })
 
+    it('lets the browser reach the Gemini Live socket and nothing else outside', () => {
+        const connect = getCsp()
+            .split(';')
+            .find((directive) => directive.trim().startsWith('connect-src'))
+        expect(connect?.trim()).toBe("connect-src 'self' wss://generativelanguage.googleapis.com")
+    })
+
+    it('loads no script from blob URLs', () => {
+        const script = getCsp()
+            .split(';')
+            .find((directive) => directive.trim().startsWith('script-src'))
+        expect(script).not.toContain('blob:')
+    })
+
     it('allows unsafe-eval only in development', () => {
         vi.stubEnv('NODE_ENV', 'development')
         expect(getCsp()).toContain("'unsafe-eval'")

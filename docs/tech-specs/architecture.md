@@ -144,10 +144,12 @@ with `routeTrpc` from `src/lib/__mocks__/trpc-path.ts`.
 
 ## Non-tRPC entry points
 
-| Route                                    | Purpose                                                                                   |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `src/app/api/activities/upload/route.ts` | multipart activity upload, authenticates itself, delegates to the training upload service |
-| `src/app/api/coach/chat/route.ts`        | streaming coach chat (NDJSON), authenticates itself, delegates to the coach chat handler  |
+| Route                                         | Purpose                                                                                               |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `src/app/api/activities/upload/route.ts`      | multipart activity upload, authenticates itself, delegates to the training upload service             |
+| `src/app/api/coach/chat/route.ts`             | streaming coach chat (NDJSON), authenticates itself, delegates to the coach chat handler              |
+| `src/app/api/coach/transcribe/route.ts`       | coach voice input (multipart clip to text), authenticates itself, delegates to the transcribe handler |
+| `src/app/api/coach/transcribe/token/route.ts` | one-use Gemini Live token for live voice input, authenticates itself, delegates to the token handler  |
 
 These are plain route handlers because tRPC carries neither multipart bodies nor a streaming response. The proxy matcher excludes `api/`, so each route authenticates itself. There is no cron route. See [manual-upload.md](manual-upload.md) and [coach-chat.md](coach-chat.md).
 

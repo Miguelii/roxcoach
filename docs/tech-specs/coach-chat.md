@@ -29,7 +29,9 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
   The coach may suggest next sessions in the chat when asked, as text only.
 - The coach never changes data: it has read-only tools. Creating races, availability and uploads
   stays in the screens that exist for that.
-- No voice input, no file uploads in the chat, no image input.
+- No file uploads in the chat, no image input. Voice input fills the message box, and the phone
+  panel can send it (see
+  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md)).
 - Not a medical tool. Anti-goal: an answer that invents numbers or goals the data does not
   contain. When data is missing the coach says so.
 - No identity sent to the model: no user id, name or email.
@@ -246,6 +248,11 @@ written.
   returns at most 200 strength sets (`ACTIVITY_SETS_RETURNED`) and adds `truncatedSets` with the
   number left out when there are more.
 
+Voice input has two routes with the same session and access checks: `POST
+/api/coach/transcribe/token` (a one-use Gemini Live token for live transcription, `{ token }` out)
+and `POST /api/coach/transcribe` (multipart clip in, `{ text }` out, the fallback). Its checks and statuses are in
+[2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md).
+
 ## Known limitations
 
 - A Supabase token refresh that happens during the up to 60 s stream writes cookies into a store
@@ -324,8 +331,20 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   race?", "What should I do this week?". A chip sends its text.
 - Assistant text renders as markdown with `react-markdown`, loaded lazily (`lazy` in `coach-message.tsx`, preloaded when the launcher is hovered or focused; plain text shows meanwhile) so it stays out of the first-load bundle: raw HTML is not rendered (escaped),
   images are disallowed, links open in a new tab with `noopener noreferrer`. User text is plain.
-- A stop button cancels the stream (the partial text stays, marked "Incomplete reply"). No
-  microphone.
+- A stop button cancels the stream (the partial text stays, marked "Incomplete reply").
+- Voice input: a mic button next to Send (`coach-voice-button.tsx`, hook `use-voice-recorder.ts`)
+  streams up to 60 seconds of audio to Gemini Live (`live-transcription.ts`, PCM helpers in
+  `pcm-audio.ts`) and writes the text into the message box while the athlete speaks, after what was
+  already typed. On desktop stopping leaves the text in the box. On phones (below `md`) a
+  recording panel (`coach-voice-panel.tsx`) slides up under the box with the time, a waveform of the
+  microphone level, discard, pause and resume (the 60 second cap counts recorded time only), and
+  send, which sends the whole box to the coach once the text is ready (unless the transcription
+  failed or a reply is still streaming: then the text stays in the box). The box is read only while
+  recording. If the live path fails, the same audio is uploaded as WAV to
+  `POST /api/coach/transcribe`. Hidden when the browser cannot stream audio, usable while a reply
+  streams, cancelled (typed text restored) when the panel closes. Design and copy in
+  [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md) and
+  [2026-11-26-coach-voice-panel-design.md](2026-11-26-coach-voice-panel-design.md).
 - States: empty, loading history, streaming, error with retry (busy, conversation not found),
   blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The
   stream is read by a custom hook (`use-coach-chat.ts`), not by the AI SDK client.

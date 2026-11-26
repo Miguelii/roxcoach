@@ -1,0 +1,130 @@
+import { describe, expect, it } from 'vitest'
+import {
+    createChunker,
+    createDownsampler,
+    encodeWav,
+    levelOf,
+    pcmToBase64,
+    toPcm16,
+} from '@/modules/coach/pcm-audio'
+
+const near = (actual: Float32Array, expected: number[]) => {
+    expect(actual).toHaveLength(expected.length)
+    expected.forEach((value, index) => expect(actual[index]).toBeCloseTo(value, 5))
+}
+
+const RENDER_QUANTUM = 128
+
+const wave = (index: number) => Math.sin(index / 7)
+
+const inBlocks = (rate: number, seconds: number, fill: (index: number) => number) => {
+    const resample = createDownsampler(rate)
+    const total = rate * seconds
+    const outputs: Float32Array[] = []
+    for (let start = 0; start < total; start += RENDER_QUANTUM) {
+        const length = Math.min(RENDER_QUANTUM, total - start)
+        outputs.push(resample(Float32Array.from({ length }, (_, at) => fill(start + at))))
+    }
+    return outputs
+}
+
+describe('createDownsampler', () => {
+    it('averages each window from 48 kHz to 16 kHz', () => {
+        near(createDownsampler(48_000)(Float32Array.of(0.3, 0.3, 0.3, 0.6, 0.6, 0.6)), [0.3, 0.6])
+    })
+
+    it('returns an equal copy at the same rate', () => {
+        const input = Float32Array.of(0.1, 0.2)
+        const output = createDownsampler(16_000)(input)
+        near(output, [0.1, 0.2])
+        expect(output).not.toBe(input)
+    })
+
+    it.each([48_000, 44_100])(
+        'keeps 16000 samples a second when fed 128 frame blocks at %i Hz',
+        (rate) => {
+            const samples = inBlocks(rate, 1, () => 0.5).reduce(
+                (total, block) => total + block.length,
+                0
+            )
+            expect(Math.abs(samples - 16_000)).toBeLessThanOrEqual(1)
+        }
+    )
+
+    it('gives the same samples in blocks as in one buffer', () => {
+        const joined = inBlocks(44_100, 1, wave).flatMap((block) => Array.from(block))
+        const whole = createDownsampler(44_100)(
+            Float32Array.from({ length: 44_100 }, (_, index) => wave(index))
+        )
+        near(Float32Array.from(joined), Array.from(whole))
+    })
+})
+
+describe('toPcm16', () => {
+    it('clamps and scales to 16-bit integers', () => {
+        expect(Array.from(toPcm16(Float32Array.of(1.5, -2, 0, 0.5)))).toEqual([
+            32767, -32768, 0, 16384,
+        ])
+    })
+})
+
+describe('pcmToBase64', () => {
+    it('encodes little-endian bytes', () => {
+        expect(pcmToBase64(Int16Array.of(1, -1))).toBe('AQD//w==')
+    })
+})
+
+describe('encodeWav', () => {
+    it('writes a 44 byte PCM header and every chunk', async () => {
+        const wav = encodeWav([Int16Array.of(1, 2), Int16Array.of(3, 4)])
+        expect(wav.type).toBe('audio/wav')
+        const view = new DataView(await wav.arrayBuffer())
+        const text = (offset: number) =>
+            String.fromCodePoint(...new Uint8Array(view.buffer, offset, 4))
+        expect(view.byteLength).toBe(52)
+        expect(text(0)).toBe('RIFF')
+        expect(view.getUint32(4, true)).toBe(44)
+        expect(text(8)).toBe('WAVE')
+        expect(text(12)).toBe('fmt ')
+        expect(view.getUint16(20, true)).toBe(1)
+        expect(view.getUint16(22, true)).toBe(1)
+        expect(view.getUint32(24, true)).toBe(16_000)
+        expect(view.getUint32(28, true)).toBe(32_000)
+        expect(view.getUint16(34, true)).toBe(16)
+        expect(text(36)).toBe('data')
+        expect(view.getUint32(40, true)).toBe(8)
+        expect(view.getInt16(50, true)).toBe(4)
+    })
+})
+
+describe('createChunker', () => {
+    it('emits 1600 sample chunks and the remainder on flush', () => {
+        const chunks: Int16Array[] = []
+        const chunker = createChunker((chunk) => chunks.push(chunk))
+        chunker.push(new Int16Array(1000).fill(1))
+        expect(chunks).toHaveLength(0)
+        chunker.push(new Int16Array(1000).fill(2))
+        expect(chunks.map((chunk) => chunk.length)).toEqual([1600])
+        expect(chunks[0]?.[999]).toBe(1)
+        expect(chunks[0]?.[1000]).toBe(2)
+        chunker.flush()
+        expect(chunks.map((chunk) => chunk.length)).toEqual([1600, 400])
+    })
+
+    it('emits nothing for an empty flush', () => {
+        const chunks: Int16Array[] = []
+        const chunker = createChunker((chunk) => chunks.push(chunk))
+        chunker.flush()
+        expect(chunks).toHaveLength(0)
+    })
+})
+
+describe('levelOf', () => {
+    it('is the root mean square scaled to 0..1', () => {
+        expect(levelOf(Int16Array.of(16384, -16384))).toBeCloseTo(0.5, 3)
+    })
+
+    it('is 0 for an empty chunk', () => {
+        expect(levelOf(new Int16Array(0))).toBe(0)
+    })
+})

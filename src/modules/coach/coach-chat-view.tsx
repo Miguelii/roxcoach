@@ -18,6 +18,9 @@ import {
     type ChatStatus,
 } from '@/modules/coach/use-coach-chat'
 import { useCoachComposer } from '@/modules/coach/use-coach-composer'
+import { CoachVoiceButton, CoachVoiceError } from '@/modules/coach/coach-voice-button'
+import { CoachVoicePanel } from '@/modules/coach/coach-voice-panel'
+import { useVoiceRecorder, type VoiceDeps } from '@/modules/coach/use-voice-recorder'
 import { useLockPageScroll, useVisualViewport } from '@/modules/coach/use-visual-viewport'
 
 type Props = {
@@ -32,12 +35,13 @@ type Props = {
     modelId: string | null
     conversations: ConversationSummary[] | undefined
     chips: readonly string[]
-    onSend: (text: string) => void
+    onSend: (text: string) => boolean
     onStop: () => void
     onNew: () => void
     onOpen: (id: string) => void
     onDelete: (id: string) => void
     onRetry: () => void
+    voiceDeps?: VoiceDeps
 }
 
 type FrameProps = PropsWithChildren<
@@ -47,6 +51,8 @@ type FrameProps = PropsWithChildren<
 >
 
 type LauncherProps = Pick<Props, 'onOpenChange' | 'onDismissLauncher'>
+
+type HintsProps = { text: string; voice: ReturnType<typeof useVoiceRecorder> }
 
 const ERROR_COPY: Record<ChatErrorKind, string> = {
     busy: 'The coach is busy, try again in a minute',
@@ -202,6 +208,7 @@ function CoachPanelFrame({ open, onOpenChange, onExited, children }: FrameProps)
 }
 
 function PanelBody({
+    open,
     onOpenChange,
     messages,
     status,
@@ -216,13 +223,26 @@ function PanelBody({
     onOpen,
     onDelete,
     onRetry,
+    voiceDeps,
 }: Props) {
-    const { form, submit } = useCoachComposer({ onSend })
+    const streaming = status === 'streaming'
+    const { form, submit, voiceTarget } = useCoachComposer({ onSend })
+    const voice = useVoiceRecorder({ deps: voiceDeps, target: voiceTarget })
+    // Voice text lands in the box until the recording settles, so sending in between would bring
+    // the sent text back. Typing stays open only while the microphone is starting.
+    const voiceActive = voice.state !== 'idle'
+    const voiceWriting = voiceActive && voice.state !== 'starting'
+    const { cancel: cancelVoice } = voice
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
     const text = useWatch({ control: form.control, name: 'message' })
-    const streaming = status === 'streaming'
-    const canSend = !streaming && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
+    const canSend =
+        !streaming && !voiceActive && text.trim() !== '' && text.length <= COACH_MESSAGE_MAX_CHARS
+
+    // The panel stays mounted while it animates out, so a recording is dropped as soon as it closes.
+    useEffect(() => {
+        if (!open) cancelVoice()
+    }, [open, cancelVoice])
 
     const listRef = useRef<HTMLDivElement | null>(null)
     const stickRef = useRef(true)
@@ -352,75 +372,99 @@ function PanelBody({
                 <form
                     onSubmit={(event) => {
                         event.preventDefault()
-                        submit(streaming)
+                        submit(streaming || voiceActive)
                     }}
-                    className="flex items-center gap-2 border-t border-hairline p-3"
+                    className="border-t border-hairline p-3"
                 >
                     <FormField
                         control={form.control}
                         name="message"
                         render={({ field }) => (
-                            <FormItem className="min-w-0 flex-1">
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        rows={2}
-                                        aria-label="Message to Migueli Coach"
-                                        placeholder="Ask Migueli Coach..."
-                                        data-testid="coach-input"
-                                        className="min-h-0 max-h-32"
-                                        onKeyDown={(event) => {
-                                            if (
-                                                event.key === 'Enter' &&
-                                                !event.shiftKey &&
-                                                !event.nativeEvent.isComposing
-                                            ) {
-                                                event.preventDefault()
-                                                submit(streaming)
-                                            }
-                                        }}
-                                    />
-                                </FormControl>
-                                {text.length >= NEAR_LIMIT ? (
-                                    <p
-                                        data-testid="coach-char-count"
+                            <FormItem>
+                                <div
+                                    data-testid="coach-compose-row"
+                                    className="flex items-center gap-2"
+                                >
+                                    <FormControl className="min-w-0 flex-1">
+                                        <Textarea
+                                            {...field}
+                                            rows={2}
+                                            aria-label="Message to Migueli Coach"
+                                            placeholder="Ask Migueli Coach..."
+                                            data-testid="coach-input"
+                                            readOnly={voiceWriting}
+                                            className="min-h-0 max-h-32"
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.key === 'Enter' &&
+                                                    !event.shiftKey &&
+                                                    !event.nativeEvent.isComposing
+                                                ) {
+                                                    event.preventDefault()
+                                                    submit(streaming || voiceActive)
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
+                                    {streaming ? (
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="outline"
+                                            aria-label="Stop"
+                                            data-testid="coach-stop"
+                                            onClick={onStop}
+                                        >
+                                            <SquareIcon />
+                                        </Button>
+                                    ) : null}
+                                    <div
+                                        data-testid="coach-compose-actions"
                                         className={cn(
-                                            'text-xs text-muted-foreground',
-                                            text.length > COACH_MESSAGE_MAX_CHARS &&
-                                                'text-destructive'
+                                            'flex items-center gap-2',
+                                            voiceActive && 'max-md:hidden'
                                         )}
                                     >
-                                        {text.length}/{COACH_MESSAGE_MAX_CHARS}
-                                    </p>
-                                ) : null}
-                                <FormMessage data-testid="coach-input-error" />
+                                        <CoachVoiceButton voice={voice} />
+                                        <Button
+                                            type="submit"
+                                            size="icon"
+                                            aria-label="Send"
+                                            data-testid="coach-send"
+                                            disabled={!canSend}
+                                        >
+                                            <SendIcon />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <ComposeHints text={text} voice={voice} />
                             </FormItem>
                         )}
                     />
-                    {streaming ? (
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            aria-label="Stop"
-                            data-testid="coach-stop"
-                            onClick={onStop}
-                        >
-                            <SquareIcon />
-                        </Button>
-                    ) : null}
-                    <Button
-                        type="submit"
-                        size="icon"
-                        aria-label="Send"
-                        data-testid="coach-send"
-                        disabled={!canSend}
-                    >
-                        <SendIcon />
-                    </Button>
                 </form>
             </Form>
             <CoachModelCaption modelId={modelId} />
+            <CoachVoicePanel voice={voice} />
+        </>
+    )
+}
+
+function ComposeHints({ text, voice }: HintsProps) {
+    return (
+        <>
+            {text.length >= NEAR_LIMIT ? (
+                <p
+                    data-testid="coach-char-count"
+                    className={cn(
+                        'text-xs text-muted-foreground',
+                        text.length > COACH_MESSAGE_MAX_CHARS && 'text-destructive'
+                    )}
+                >
+                    {text.length}/{COACH_MESSAGE_MAX_CHARS}
+                </p>
+            ) : null}
+            <FormMessage data-testid="coach-input-error" />
+            <CoachVoiceError voice={voice} />
         </>
     )
 }
