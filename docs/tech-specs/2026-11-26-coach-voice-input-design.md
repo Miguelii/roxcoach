@@ -122,10 +122,92 @@ outcome is recorded in this spec.
   (auth, allowlist, size cap, status mapping); the view (button hidden when unsupported, states,
   transcript appended to existing text). All located by `data-testid`.
 
+## Live transcription (v2)
+
+Status: design approved by the athlete on 2026-11-26 ("Live with fallback"), not implemented.
+
+The first version works, but the athlete waits for the whole clip to upload and transcribe after
+they stop. v2 writes the text into the box while they speak.
+
+### Approaches
+
+1. **`gemini-3.5-transcribe-live` over a WebSocket, with the v1 route as fallback (chosen).** Free
+   on the free tier, in preview. Partial text arrives while speaking and a cleaned, punctuated text
+   at each pause. If the live connection fails, the same audio goes through the v1 route.
+2. **Live only.** Simpler, but a preview model that is down leaves the button useless. Rejected by
+   the athlete.
+3. **Browser Web Speech API.** Still rejected for the reasons in "Approaches" above.
+
+### What Google's docs say (read 2026-11-26)
+
+- The browser connects to
+  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent`
+  with an **ephemeral token** in the `access_token` query parameter, never the API key.
+- The server creates the token with `POST https://generativelanguage.googleapis.com/v1beta/auth_tokens`
+  (header `x-goog-api-key`): `uses: 1`, `newSessionExpireTime` (time to open the session),
+  `expireTime` (time to keep sending), and `liveConnectConstraints` that lock the model and config.
+  The exact response JSON is not in the docs (the SDK reads the token from `name`).
+- Setup message: `{ "setup": { "model": "models/gemini-3.5-transcribe-live", "generationConfig":
+  { "responseModalities": ["TEXT"] }, "inputAudioTranscription": { "languageCodes": [], "mode":
+  "SMART" } } }`.
+- Audio in: raw 16-bit PCM, 16 kHz, mono, little-endian, about 100 ms per chunk, sent as
+  `{ "realtimeInput": { "audio": { "data": "<base64>", "mimeType": "audio/pcm;rate=16000" } } }`,
+  and `{ "realtimeInput": { "audioStreamEnd": true } }` at the end. No webm or opus.
+- Text out: `serverContent.interimInputTranscription.text` is a fast, speculative partial;
+  `serverContent.inputTranscription.text` is final. In SMART mode the final text is the whole
+  cleaned transcript of the session so far and replaces what the client shows.
+- Sessions last up to 10 minutes. No quota or latency numbers are published.
+
+### Design
+
+**Token route.** `POST /api/coach/transcribe/token`, same session and access checks as the v1
+route, answers `{ token }`. It creates a token with `uses: 1`, `newSessionExpireTime` now + 1
+minute, `expireTime` now + 3 minutes (the recording cap is 60 seconds), and constraints locking
+the model and the setup config above, so a leaked token can only open one short transcription
+session. No body. Same status mapping as the v1 route (401, 403, 503, 429, 502, 500). The token is
+never logged.
+
+**Audio capture.** `MediaRecorder` is replaced by an `AudioContext` with an `AudioWorklet` that
+downsamples the microphone to 16 kHz mono PCM16 and posts 100 ms chunks (1600 samples). The
+`AudioContext` is created in the tap handler itself, before any await, because iOS only starts
+audio from a user gesture. The downsampling, the PCM16 conversion and a WAV encoder are pure
+functions with unit tests.
+
+**Live session.** On tap the client asks for the microphone and the token at the same time, opens
+the WebSocket, sends the setup, buffers chunks until `setupComplete`, then streams them. The text
+shown is the last final text plus the current partial. On stop (or at 60 seconds) it sends
+`audioStreamEnd` and waits up to 3 seconds for the last final text, then closes.
+
+**In the box.** The text already typed is kept as a prefix; while recording the field shows that
+prefix plus the live text, and the textarea is read only so typing cannot fight the live text. On
+stop the final text stays and the box is editable again. Cancelling (closing the panel) restores
+the prefix alone.
+
+**Fallback.** Every chunk is also kept in memory (60 seconds of 16 kHz PCM16 is about 1.9 MB,
+under the 2 MB cap of the v1 route). If the token request fails, the socket does not open, it
+closes with an error before a final text, or no text arrives at all, the chunks are encoded as WAV
+(`audio/wav`, already allowed) and posted to `POST /api/coach/transcribe`. The fallback result
+replaces any partial live text. The athlete sees the spinner during the fallback, as in v1.
+
+**Unchanged.** The 60 second cap, the error copy, the mic button states (plus live text), cancel on
+panel close, the v1 route and transcriber.
+
+**Tests.** Pure audio helpers (downsample, PCM16, WAV header); the token handler with a fake token
+creator; the token creator with a fake fetch (request body, constraints, status mapping); the live
+recorder hook with a fake socket and a fake audio source (partial then final text, buffering until
+setup, stop waits for the final, every fallback trigger, cancel restores the prefix, one session
+for a double tap); the view (live text in the box, read only while recording).
+
+### Not verified yet
+
+The token response field, whether the token constraints accept `mode: "SMART"`, and how the live
+model handles Portuguese partials. A smoke script, `tools/gemini-live-smoke.ts`, creates a token
+and streams the existing sample WAV through the socket, printing every server message. The athlete
+runs it before the client is built on it; any difference goes into this section.
+
 ## Left out
 
 - A daily transcription cap and usage counting. Revisit if the free tier quota becomes a problem.
-- Live streaming transcription (`gemini-3.5-transcribe-live`).
 - A language picker or custom vocabulary (Hyrox station names, for example) through
   `language_codes` or vocabulary biasing. Add only if auto detect gets terms wrong in practice.
 
