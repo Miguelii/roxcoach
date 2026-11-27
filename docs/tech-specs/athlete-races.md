@@ -99,10 +99,10 @@ Failures (`CreateSbClientError`, `WeeklyGoalsQueryError`) map to `INTERNAL_SERVE
 Saved through `athlete.saveWeeklyGoals` (`saveWeeklyGoals`, as the signed-in user). The zod input
 checks the field ranges and `validateWeeklyGoals` (`helpers/weekly-goals-validation.helper.ts`)
 checks them again plus `shortRunMaxM < longRunMinM`, failing with `WeeklyGoalsValidationError`
-(`field` names the field, `BAD_REQUEST`). The service reads the previous rules, upserts, and only
-when one of the three thresholds changed calls `reclassifyRuns` of `training` (runs set by hand are
-skipped there). It returns `{ goals, reclassified }`, the number of runs whose type changed. A failed
-reclassify leaves the goals saved. `CreateSbClientError`, `WeeklyGoalsQueryError`,
+(`field` names the field, `BAD_REQUEST`). The service reads the previous rules and, only when one
+of the three thresholds changed, calls `reclassifyRuns` of `training` (runs set by hand are skipped
+there) before the upsert. A failed reclassify leaves the stored rules unchanged, so the next save
+retries it. It returns `{ goals, reclassified }`, the number of runs whose type changed. `CreateSbClientError`, `WeeklyGoalsQueryError`,
 `ActivityQueryError` and `ActivityWriteError` map to `INTERNAL_SERVER_ERROR`.
 
 The rules classify a run with `classifyRun` (`src/_bff/modules/training/helpers/classify-run.helper.ts`,

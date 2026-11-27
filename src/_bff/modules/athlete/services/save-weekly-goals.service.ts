@@ -21,7 +21,8 @@ const sameRules = (a: RunTypeRules, b: RunTypeRules) =>
     a.fastPaceSPerKm === b.fastPaceSPerKm
 
 // Runs as the signed-in user. Reclassifying is skipped when no threshold changed, since every run
-// already carries the type of the current rules. A failed reclassify leaves the goals saved.
+// already carries the type of the current rules. It runs before the upsert: a failed reclassify
+// leaves the stored rules unchanged, so the next save still sees the change and retries it.
 export const saveWeeklyGoals = Effect.fn('saveWeeklyGoals')(function* (
     user: User,
     goals: WeeklyGoals,
@@ -42,11 +43,11 @@ export const saveWeeklyGoals = Effect.fn('saveWeeklyGoals')(function* (
     })
 
     const previous = yield* getWeeklyGoalsWithClient(supabase, user.id)
-    yield* upsertWeeklyGoals(supabase, user.id, goals)
-
     const reclassified = sameRules(previous.runTypeRules, goals.runTypeRules)
         ? 0
         : yield* deps.reclassifyRuns(supabase, user.id, goals.runTypeRules)
+
+    yield* upsertWeeklyGoals(supabase, user.id, goals)
 
     return { goals, reclassified }
 })

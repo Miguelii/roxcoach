@@ -6,6 +6,8 @@ import {
     DEFAULT_WEEKLY_GOALS,
     type WeeklyGoals,
 } from '@/_bff/core/constants/weekly-goals.constants'
+import { ActivityWriteError } from '@/_bff/lib/errors'
+import { ErrorCode } from '@/_bff/lib/error-codes'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import {
     getWeeklyGoals,
@@ -113,6 +115,27 @@ describe('saveWeeklyGoals', () => {
 
         expect(reclassifyRuns).toHaveBeenCalledTimes(1)
         expect(reclassifyRuns.mock.calls[0]).toEqual([supabase, 'user-1', goals.runTypeRules])
+    })
+
+    it('does not upsert when reclassify fails, and the error propagates', async () => {
+        const { calls, supabase } = makeFakeAdminDb(() => ok(ROW))
+        createDBServerClientMock.mockResolvedValue(supabase)
+        const reclassifyRuns = vi.fn(() =>
+            Effect.fail(
+                new ActivityWriteError({
+                    cause: 'down',
+                    error_hash: ErrorCode.ATHLETE_GOALS_SB_CLIENT,
+                })
+            )
+        )
+        const goals = { ...GOALS, runTypeRules: { ...GOALS.runTypeRules, longRunMinM: 8000 } }
+
+        expect(
+            failureTag(
+                await Effect.runPromiseExit(saveWeeklyGoals(USER, goals, { reclassifyRuns }))
+            )
+        ).toBe('ActivityWriteError')
+        expect(calls.some((call) => call.op === 'upsert')).toBe(false)
     })
 
     it('fails with WeeklyGoalsValidationError before creating a client', async () => {
