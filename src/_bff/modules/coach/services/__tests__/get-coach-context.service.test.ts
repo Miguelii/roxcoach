@@ -28,6 +28,8 @@ const ACTIVITY: ActivityDTO = {
     lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
+    runType: null,
+    runTypeManual: false,
 }
 
 const RACE_ITEM: CalendarItem = {

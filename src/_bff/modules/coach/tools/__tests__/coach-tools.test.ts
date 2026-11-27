@@ -30,6 +30,8 @@ const activity = (overrides: Partial<ActivityDTO>): ActivityDTO => ({
     lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
+    runType: null,
+    runTypeManual: false,
     ...overrides,
 })
 

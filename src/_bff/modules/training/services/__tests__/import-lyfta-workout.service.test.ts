@@ -2,12 +2,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { failureTag } from '@/_bff/lib/tests-utils'
+import {
+    DEFAULT_WEEKLY_GOALS,
+    DEFAULT_RUN_TYPE_RULES,
+} from '@/_bff/core/constants/weekly-goals.constants'
 import { createImportContext } from '@/_bff/modules/training/services/import-context.service'
 import { importLyftaWorkouts } from '@/_bff/modules/training/services/import-lyfta-workout.service'
 import type { TrainingClient } from '@/_bff/modules/training/types'
 import type { LyftaWorkout } from '@/_bff/modules/lyfta/types'
 import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 
+const RULES = { shortRunMaxM: 2000, longRunMinM: 8000, fastPaceSPerKm: 280 }
 const USER = 'user-training-1'
 const ACTIVITY_ID = 'activity-lyfta-1'
 const WORKOUT: LyftaWorkout = {
@@ -39,7 +44,7 @@ const WORKOUT: LyftaWorkout = {
 const context = (
     supabase: ReturnType<typeof makeFakeDb>['supabase'],
     timeZone = 'America/Los_Angeles'
-) => ({ supabase, timeZone })
+) => ({ supabase, timeZone, runTypeRules: DEFAULT_RUN_TYPE_RULES })
 
 const SECOND: LyftaWorkout = { ...WORKOUT, sourceId: '1002', title: 'Lower Strength' }
 
@@ -176,6 +181,7 @@ describe('importLyftaWorkouts', () => {
         const { supabase } = makeFakeDb([])
         const createClient = vi.fn(() => supabase)
         const getTimezone = vi.fn<(client: TrainingClient, userId: string) => void>()
+        const getGoals = vi.fn<(client: TrainingClient, userId: string) => void>()
         const make = (timezone: string) =>
             Effect.runPromise(
                 createImportContext(USER, {
@@ -184,12 +190,39 @@ describe('importLyftaWorkouts', () => {
                         getTimezone(client, userId)
                         return Effect.succeed(timezone)
                     },
+                    getGoals: (client, userId) => {
+                        getGoals(client, userId)
+                        return Effect.succeed({ ...DEFAULT_WEEKLY_GOALS, runTypeRules: RULES })
+                    },
                 })
             )
 
-        expect(await make('Europe/Lisbon')).toEqual({ supabase, timeZone: 'Europe/Lisbon' })
+        expect(await make('Europe/Lisbon')).toEqual({
+            supabase,
+            timeZone: 'Europe/Lisbon',
+            runTypeRules: RULES,
+        })
         expect((await make('Mars/Olympus')).timeZone).toBe('UTC')
         expect(createClient).toHaveBeenCalledTimes(2)
         expect(getTimezone).toHaveBeenCalledWith(supabase, USER)
+    })
+
+    it('createImportContext loads the run type rules once', async () => {
+        const { supabase } = makeFakeDb([])
+        const getGoals = vi.fn(() =>
+            Effect.succeed({ ...DEFAULT_WEEKLY_GOALS, runTypeRules: RULES })
+        )
+
+        const created = await Effect.runPromise(
+            createImportContext(USER, {
+                createClient: () => supabase,
+                getTimezone: () => Effect.succeed('UTC'),
+                getGoals,
+            })
+        )
+
+        expect(created.runTypeRules).toEqual(RULES)
+        expect(getGoals).toHaveBeenCalledTimes(1)
+        expect(getGoals).toHaveBeenCalledWith(supabase, USER)
     })
 })

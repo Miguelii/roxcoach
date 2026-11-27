@@ -33,6 +33,8 @@ const DB_ROW = {
     lyfta_total_volume_kg_reps: null,
     perceived_effort: null,
     notes: null,
+    run_type: null,
+    run_type_manual: false,
 }
 
 const DB_LAP = {

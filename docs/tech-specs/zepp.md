@@ -78,6 +78,8 @@ the summary, category `run`, no elevation. Samples are one per distance point, w
 rate and speed carried forward. The training import builds the heart rate and pace histograms from
 them and stores the row with `source = 'zepp'` and `source_id = trackid`; there is no
 `activity_files` row.
+Each imported run also gets `run_type` from `classifyRun` with the rules the import context loads
+once per sync (`runTypeRules`).
 
 Laps (`buildZeppLaps`, `zepp/utils/laps.utils.ts`): one lap per `kilo_pace` entry, 1000 m, starting
 where the previous one ended, with the moving time and heart rate of the entry and an elapsed time

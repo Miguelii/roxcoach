@@ -63,6 +63,9 @@ export class ActivityQueryError extends Data.TaggedError(
 export class ActivityWriteError extends Data.TaggedError(
     'ActivityWriteError'
 )<ServiceErrorFields> {}
+export class ActivityNotFoundError extends Data.TaggedError(
+    'ActivityNotFoundError'
+)<ServiceErrorFields> {}
 export class UnsupportedActivityFileError extends Data.TaggedError(
     'UnsupportedActivityFileError'
 )<ServiceErrorFields> {}

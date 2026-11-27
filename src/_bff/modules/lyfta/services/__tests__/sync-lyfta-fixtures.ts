@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { DEFAULT_RUN_TYPE_RULES } from '@/_bff/core/constants/weekly-goals.constants'
 import { Effect, Exit } from 'effect'
 import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 import { failureTag } from '@/_bff/lib/tests-utils'
@@ -113,7 +114,11 @@ export const setup = (options: ConnectionOptions & { fetcher?: Fetch } = {}) => 
         Effect.succeed({ created: workouts.length, updated: 0 })
     )
     const createImportContext = vi.fn(() =>
-        Effect.succeed({ supabase: connection.db.supabase, timeZone: 'UTC' })
+        Effect.succeed({
+            supabase: connection.db.supabase,
+            timeZone: 'UTC',
+            runTypeRules: DEFAULT_RUN_TYPE_RULES,
+        })
     )
     const fetcher: Fetch =
         options.fetcher ?? (async (input) => page(Number(paramOf(input, 'page')), 1, []))

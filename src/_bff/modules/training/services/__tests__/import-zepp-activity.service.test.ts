@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { z } from 'zod'
+import { DEFAULT_RUN_TYPE_RULES } from '@/_bff/core/constants/weekly-goals.constants'
 import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import {
     findKnownZeppTrackIds,
@@ -77,9 +78,14 @@ const LAP_ROW = {
     activity_id: 'activity-1',
 }
 
-const context = (supabase: ReturnType<typeof makeFakeDb>['supabase'], timeZone: string) => ({
+const context = (
+    supabase: ReturnType<typeof makeFakeDb>['supabase'],
+    timeZone: string,
+    runTypeRules = DEFAULT_RUN_TYPE_RULES
+) => ({
     supabase,
     timeZone,
+    runTypeRules,
 })
 
 const insertedRow = (chain: ReturnType<typeof makeFakeDb>['chains'][number] | undefined) =>
@@ -90,6 +96,7 @@ const insertedRow = (chain: ReturnType<typeof makeFakeDb>['chains'][number] | un
             user_id: z.string(),
             local_date: z.string(),
             category: z.string(),
+            run_type: z.string().nullable(),
             hr_histogram: z.object({ bins: z.array(z.array(z.number())) }),
             pace_histogram: z.object({ bins: z.array(z.array(z.number())) }),
         })
@@ -120,6 +127,22 @@ describe('importZeppActivity', () => {
         expect(row.hr_histogram.bins[0]?.[0]).toBe(150)
         expect(row.pace_histogram.bins.length).toBeGreaterThan(0)
         expect(chains).toHaveLength(2)
+    })
+
+    it('a Zepp run gets its type from context.runTypeRules', async () => {
+        const { chains, supabase } = makeFakeDb([ok(null), ok({ id: 'activity-1' })])
+        const rules = { shortRunMaxM: 50, longRunMinM: 80, fastPaceSPerKm: 300 }
+
+        await Effect.runPromise(
+            importZeppActivity(
+                USER,
+                SUMMARY,
+                ACTIVITY('2026-11-17T19:18:00.000Z'),
+                context(supabase, 'UTC', rules)
+            )
+        )
+
+        expect(insertedRow(chains[1]).run_type).toBe('long')
     })
 
     it('stores the laps of the run with the new activity', async () => {

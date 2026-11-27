@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { DEFAULT_RUN_TYPE_RULES } from '@/_bff/core/constants/weekly-goals.constants'
 import { Effect } from 'effect'
 import { makeFakeAdminDb, ok } from '@/_bff/lib/fake-admin-db'
 import { syncZeppActivities } from '@/_bff/modules/zepp/services/sync-zepp-activities.service'
@@ -97,7 +98,12 @@ export const setup = (
         createAdminClient: () => admin.supabase,
         encryptionKey: KEY,
         api: { fetch: fetcher },
-        createImportContext: () => Effect.succeed({ supabase: admin.supabase, timeZone: 'UTC' }),
+        createImportContext: () =>
+            Effect.succeed({
+                supabase: admin.supabase,
+                timeZone: 'UTC',
+                runTypeRules: DEFAULT_RUN_TYPE_RULES,
+            }),
         findKnownTrackIds,
         findDuplicateTrackIds,
         importActivity,
