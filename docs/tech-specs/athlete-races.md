@@ -174,8 +174,8 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `services/delete-account.service.ts`, `repositories/account-data.repository.ts`        | storage files, then the auth user (cascade), then local sign-out (service-role client)              |
 | `services/get-profile`, `update-profile`                                               | business logic and validation, run as the signed-in user                                            |
 | `services/get-athlete-timezone.service.ts`                                             | the timezone, used by the controller and by the races services                                      |
-| `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`            | pure validation                                                                                     |
-| `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts`      | data access                                                                                         |
+| `helpers/profile-validation.helper.ts`                                                 | pure validation                                                                                     |
+| `repositories/athlete-profiles.repository.ts`                                          | data access                                                                                         |
 | `controllers/get-weekly-goals.controller.ts`                                           | protected query `athlete.getWeeklyGoals`                                                            |
 | `services/get-weekly-goals.service.ts`, `repositories/weekly-goals.repository.ts`      | goals read (defaults without a row) and upsert on `user_id`                                         |
 | `controllers/save-weekly-goals.controller.ts`, `services/save-weekly-goals.service.ts` | protected mutation `athlete.saveWeeklyGoals`: validate, reclassify when a threshold changed, upsert |
