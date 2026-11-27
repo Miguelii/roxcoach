@@ -4,6 +4,7 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatKmNumber,
     formatPace,
 } from '@/_bff/core/utils/formatters.utils'
 import {
@@ -97,8 +98,6 @@ const toStatsItems = (activities: ActivityDTO[]) =>
         activity,
     }))
 
-const kmText = (meters: number) => String(Number((meters / 1000).toFixed(1)))
-
 const countLine = (label: string, progress: GoalProgress) =>
     progress ? [`${label}: ${progress.done} of ${progress.goal} done`] : []
 
@@ -107,9 +106,10 @@ const weeklyGoalsSection = ({ goals, activities, today }: CoachContextInput): Se
     const lines: string[] = []
     const { distanceM } = progress
     if (distanceM) {
-        const toGo = distanceM.remaining > 0 ? `, ${kmText(distanceM.remaining)} km to go` : ''
+        const toGo =
+            distanceM.remaining > 0 ? `, ${formatKmNumber(distanceM.remaining)} km to go` : ''
         lines.push(
-            `Running distance: ${kmText(distanceM.done)} of ${kmText(distanceM.goal)} km done${toGo}`
+            `Running distance: ${formatKmNumber(distanceM.done)} of ${formatKmNumber(distanceM.goal)} km done${toGo}`
         )
     }
     lines.push(

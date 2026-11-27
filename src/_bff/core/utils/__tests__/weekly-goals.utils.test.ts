@@ -8,7 +8,6 @@ import {
 import {
     computeWeeklyGoalProgress,
     describeRunTypeRules,
-    hasRunGoals,
 } from '@/_bff/core/utils/weekly-goals.utils'
 
 const TODAY = '2026-11-26'
@@ -113,17 +112,4 @@ describe('describeRunTypeRules', () => {
         ).toBe(
             'Runs from 3.5 to 6.5 km faster than 4:45/km are fast. Longer or slower runs are long. Runs under 3.5 km have no type.'
         ))
-})
-
-describe('hasRunGoals', () => {
-    it('is false when no run goal is set', () => {
-        expect(hasRunGoals(DEFAULT_WEEKLY_GOALS)).toBe(false)
-        expect(hasRunGoals(goals({ strengthSessionsPerWeek: 2 }))).toBe(false)
-    })
-
-    it('is true when any run goal is set', () => {
-        expect(hasRunGoals(goals({ weeklyRunDistanceM: 20000 }))).toBe(true)
-        expect(hasRunGoals(goals({ longRunsPerWeek: 1 }))).toBe(true)
-        expect(hasRunGoals(goals({ fastRunsPerWeek: 1 }))).toBe(true)
-    })
 })

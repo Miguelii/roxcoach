@@ -5,6 +5,8 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
 import { DEFAULT_RUN_TYPE_RULES } from '@/_bff/core/constants/weekly-goals.constants'
+import { ErrorCode } from '@/_bff/lib/error-codes'
+import { WeeklyGoalsQueryError } from '@/_bff/lib/errors'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import { uploadActivity } from '@/_bff/modules/training/services/upload-activity.service'
@@ -131,6 +133,31 @@ describe('uploadActivity', () => {
     it('an uploaded run gets its type from the athlete rules', async () => {
         const { db, run } = setup(HAPPY)
         await run(runTcx(), false)
+        expect(insertedActivity(db.chains[2])).toMatchObject({ category: 'run', run_type: 'fast' })
+    })
+
+    it('a failed goals read falls back to the default rules and still uploads', async () => {
+        const { db, deps } = setup(HAPPY)
+        const failingDeps = {
+            ...deps,
+            getRunTypeRules: () =>
+                Effect.fail(
+                    new WeeklyGoalsQueryError({
+                        cause: 'boom',
+                        error_hash: ErrorCode.ATHLETE_GOALS_SELECT_ERR,
+                    })
+                ),
+        }
+
+        const exit = await Effect.runPromiseExit(
+            uploadActivity(
+                USER,
+                { bytes: runTcx(), originalName: 'run.tcx', isHyrox: false },
+                failingDeps
+            )
+        )
+
+        expect(failureTag(exit)).toBeNull()
         expect(insertedActivity(db.chains[2])).toMatchObject({ category: 'run', run_type: 'fast' })
     })
 

@@ -2,7 +2,10 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
-import type { RunTypeRules } from '@/_bff/core/constants/weekly-goals.constants'
+import {
+    DEFAULT_RUN_TYPE_RULES,
+    type RunTypeRules,
+} from '@/_bff/core/constants/weekly-goals.constants'
 import { createDBServerClient } from '@/_bff/core/db'
 import { localDateIn } from '@/_bff/core/utils/date.utils'
 import { DUPLICATE_WINDOW_SECONDS } from '@/_bff/core/constants/import.constants'
@@ -118,7 +121,9 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
             selectFileIdBySha256(supabase, user.id, sha256),
             selectIdNearStartedAt(supabase, user.id, parsed.startedAt, DUPLICATE_WINDOW_SECONDS),
             deps.getTimezone(user),
-            deps.getRunTypeRules(user),
+            deps
+                .getRunTypeRules(user)
+                .pipe(Effect.catch(() => Effect.succeed(DEFAULT_RUN_TYPE_RULES))),
         ],
         { concurrency: 'unbounded' }
     )

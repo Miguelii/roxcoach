@@ -14,7 +14,6 @@ const savedMessage = (reclassified: number) => {
     return `Goals saved. ${reclassified} ${reclassified === 1 ? 'run' : 'runs'} reclassified.`
 }
 
-// Thin wrapper: fetches the goals and saves them. Covered through GoalsForm; it only wires trpc.
 export function GoalsTab() {
     const trpc = useTRPC()
     const query = useQuery(trpc.athlete.getWeeklyGoals.queryOptions())

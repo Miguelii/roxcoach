@@ -859,29 +859,33 @@ export const selectRunsForReclassify = Effect.fn('selectRunsForReclassify')(func
     }))
 })
 
+// PostgREST sends in() filters in the URL, so long id lists are split to keep it short.
+const RUN_TYPE_UPDATE_CHUNK = 100
+
 export const updateRunTypes = Effect.fn('updateRunTypes')(function* (
     supabase: TrainingClient,
     userId: string,
     ids: string[],
     runType: RunType | null
 ) {
-    if (ids.length === 0) return
+    for (let start = 0; start < ids.length; start += RUN_TYPE_UPDATE_CHUNK) {
+        const chunk = ids.slice(start, start + RUN_TYPE_UPDATE_CHUNK)
+        const { error } = yield* Effect.tryPromise({
+            try: () =>
+                supabase
+                    .from(DbTables.ACTIVITIES)
+                    .update({ run_type: runType })
+                    .eq('user_id', userId)
+                    .in('id', chunk),
+            catch: (cause) =>
+                new ActivityWriteError({
+                    cause: String(cause),
+                    error_hash: ErrorCode.TRAINING_RUN_TYPE_UPDATE,
+                }),
+        })
 
-    const { error } = yield* Effect.tryPromise({
-        try: () =>
-            supabase
-                .from(DbTables.ACTIVITIES)
-                .update({ run_type: runType })
-                .eq('user_id', userId)
-                .in('id', ids),
-        catch: (cause) =>
-            new ActivityWriteError({
-                cause: String(cause),
-                error_hash: ErrorCode.TRAINING_RUN_TYPE_UPDATE,
-            }),
-    })
-
-    if (error) return yield* writeError(error, ErrorCode.TRAINING_RUN_TYPE_UPDATE_ERR)
+        if (error) return yield* writeError(error, ErrorCode.TRAINING_RUN_TYPE_UPDATE_ERR)
+    }
 })
 
 // Returns false when no live run of the user has that id.

@@ -1,14 +1,13 @@
 import Link from 'next/link'
 import { CheckIcon } from 'lucide-react'
 import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
-import { formatKm } from '@/_bff/core/utils/formatters.utils'
+import { formatKmNumber } from '@/_bff/core/utils/formatters.utils'
 import type { WeeklyGoalProgress } from '@/_bff/core/utils/weekly-goals.utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 type Props = {
-    // Null while the goals or the week load.
-    progress: WeeklyGoalProgress | null
+    progress: WeeklyGoalProgress
     mode: DashboardMode
 }
 
@@ -30,8 +29,6 @@ type CardShellProps = {
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`
 
-const goalKm = (meters: number) => `${Number((meters / 1000).toFixed(1))}`
-
 const stillNeed = (remaining: number, kind: string) =>
     remaining === 1 ? `You still need a ${kind} run` : `You still need ${remaining} ${kind} runs`
 
@@ -43,7 +40,7 @@ function CardShell({ children, daysLeft }: CardShellProps) {
         <section
             data-testid="weekly-goals-card"
             aria-label="This week's goals"
-            className="rounded-[var(--radius-surface-inner)] bg-card p-4 shadow-soft"
+            className="min-h-40 rounded-[var(--radius-surface-inner)] bg-card p-4 shadow-soft"
         >
             <div className="flex items-baseline justify-between gap-3">
                 <h2 className="eyebrow text-muted-foreground">This week&apos;s goals</h2>
@@ -65,7 +62,7 @@ function GoalRow({ id, label, value, remaining, met, ratio }: GoalRowProps) {
     return (
         <li
             data-testid={`weekly-goal-${id}`}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[8rem_6rem_minmax(0,1fr)_auto]"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[8rem_minmax(6rem,auto)_minmax(0,1fr)_auto]"
         >
             <span className="text-sm">{label}</span>
             <span
@@ -113,8 +110,6 @@ function GoalRow({ id, label, value, remaining, met, ratio }: GoalRowProps) {
 
 /** What is left of this week's goals for the current mode, or a link to set them. */
 export function WeeklyGoalsCardView({ progress, mode }: Props) {
-    if (progress === null) return <WeeklyGoalsCardLoading />
-
     const { distanceM, longRuns, fastRuns, strengthSessions } = progress
     const rows: GoalRowProps[] = []
 
@@ -123,9 +118,11 @@ export function WeeklyGoalsCardView({ progress, mode }: Props) {
             rows.push({
                 id: 'distance',
                 label: 'Weekly distance',
-                value: `${goalKm(distanceM.done)} / ${goalKm(distanceM.goal)} km`,
+                value: `${formatKmNumber(distanceM.done)} / ${formatKmNumber(distanceM.goal)} km`,
                 remaining:
-                    distanceM.remaining === 0 ? 'Done' : `${formatKm(distanceM.remaining)} to go`,
+                    distanceM.remaining === 0
+                        ? 'Done'
+                        : `${formatKmNumber(distanceM.remaining)} km to go`,
                 met: distanceM.remaining === 0,
                 ratio: distanceM.goal > 0 ? Math.min(distanceM.done / distanceM.goal, 1) : 1,
             })
@@ -155,7 +152,7 @@ export function WeeklyGoalsCardView({ progress, mode }: Props) {
             remaining:
                 strengthSessions.remaining === 0
                     ? 'Done'
-                    : `${strengthSessions.remaining} more ${strengthSessions.remaining === 1 ? 'strength session' : 'strength sessions'} to go`,
+                    : `${plural(strengthSessions.remaining, 'more strength session')} to go`,
             met: strengthSessions.remaining === 0,
         })
     }

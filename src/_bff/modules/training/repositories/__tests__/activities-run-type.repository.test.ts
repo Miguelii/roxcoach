@@ -69,6 +69,19 @@ describe('updateRunTypes', () => {
         expect(from).not.toHaveBeenCalled()
     })
 
+    it('splits more than 100 ids into calls of 100, each filtered by user_id', async () => {
+        const ids = Array.from({ length: 250 }, (_, index) => `id-${index}`)
+        const { chains, supabase } = makeFakeDb([ok(), ok(), ok()])
+
+        await Effect.runPromise(updateRunTypes(supabase, USER_ID, ids, 'fast'))
+
+        expect(chains).toHaveLength(3)
+        expect(chains[0]?.in).toHaveBeenCalledWith('id', ids.slice(0, 100))
+        expect(chains[1]?.in).toHaveBeenCalledWith('id', ids.slice(100, 200))
+        expect(chains[2]?.in).toHaveBeenCalledWith('id', ids.slice(200))
+        for (const chain of chains) expect(chain.eq).toHaveBeenCalledWith('user_id', USER_ID)
+    })
+
     it('updates the ids of the user', async () => {
         const { chains, supabase } = makeFakeDb([ok()])
 

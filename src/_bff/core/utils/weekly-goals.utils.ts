@@ -3,7 +3,7 @@ import type {
     RunTypeRules,
     WeeklyGoals,
 } from '@/_bff/core/constants/weekly-goals.constants'
-import { formatClock } from '@/_bff/core/utils/formatters.utils'
+import { formatClock, formatKmNumber } from '@/_bff/core/utils/formatters.utils'
 import { addDays, isoWeekday, startOfWeek } from '@/_bff/core/utils/week-dates.utils'
 
 type GoalProgress = { goal: number; done: number; remaining: number }
@@ -27,8 +27,6 @@ type ProgressInput = { goals: WeeklyGoals; items: GoalItem[]; today: string }
 
 const progressOf = (goal: number | null, done: number): GoalProgress | null =>
     goal == null ? null : { goal, done, remaining: Math.max(goal - done, 0) }
-
-const kmOf = (meters: number) => Number((meters / 1000).toFixed(2))
 
 export const computeWeeklyGoalProgress = ({
     goals,
@@ -66,14 +64,9 @@ export const describeRunTypeRules = ({
     longRunMinM,
     fastPaceSPerKm,
 }: RunTypeRules) => {
-    const shortKm = kmOf(shortRunMaxM)
+    const shortKm = formatKmNumber(shortRunMaxM, 2)
     return (
-        `Runs from ${shortKm} to ${kmOf(longRunMinM)} km faster than ${formatClock(fastPaceSPerKm)}/km are fast. ` +
+        `Runs from ${shortKm} to ${formatKmNumber(longRunMinM, 2)} km faster than ${formatClock(fastPaceSPerKm)}/km are fast. ` +
         `Longer or slower runs are long. Runs under ${shortKm} km have no type.`
     )
 }
-
-export const hasRunGoals = (goals: WeeklyGoals) =>
-    goals.weeklyRunDistanceM != null ||
-    goals.longRunsPerWeek != null ||
-    goals.fastRunsPerWeek != null

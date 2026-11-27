@@ -66,7 +66,8 @@ of the three thresholds changed, calls `reclassifyRuns` of `training` (runs set 
 there) before the upsert. A failed reclassify leaves the stored rules unchanged, so the next save
 retries it. An upsert that fails after a successful reclassify leaves the runs on the new rules and
 the stored rules on the old ones; the next save with the same values reclassifies again and repairs
-it. It returns `{ goals, reclassified }`, the number of runs whose type changed.
+it. If the athlete instead saves the old rules again after such a failure, the reclassify is skipped
+and the runs keep the never-saved rules until the rules change again. It returns `{ goals, reclassified }`, the number of runs whose type changed.
 `CreateSbClientError`, `WeeklyGoalsQueryError`, `ActivityQueryError` and `ActivityWriteError` map to
 `INTERNAL_SERVER_ERROR`.
 

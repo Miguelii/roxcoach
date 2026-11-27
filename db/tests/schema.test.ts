@@ -749,6 +749,7 @@ describe('weekly goals', () => {
 
     it.each([
         [5100, 1708, null, 'long'],
+        [5000, 1500, null, 'long'],
         [5000, 1450, null, 'fast'],
         [6000, 1770, null, 'fast'],
         [6010, 1500, null, 'long'],
