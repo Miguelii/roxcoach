@@ -173,14 +173,15 @@ Type (`WeeklyGoals`, in `_bff/core/constants/weekly-goals.constants.ts` so the c
 Save returns the saved goals plus `reclassified: number` (runs whose type changed), so the toast can say "Goals saved.
 3 runs reclassified." when it is not zero.
 
-Errors: replace the availability tagged errors and codes with `WeeklyGoalsQueryError`, `WeeklyGoalsSaveError` and a
-validation error, each mapped exhaustively in the controllers.
+Errors: replace the availability tagged errors and codes with `WeeklyGoalsQueryError` (reads and saves) and
+`WeeklyGoalsValidationError`, each mapped exhaustively in the controllers.
 
 ### `training` module: run types
 
 - `insertActivity` (upload) and `insertZeppActivity` (Zepp) set `run_type` from `classifyRun` for `run` activities.
   Both import paths load the rules once per request or per sync: the upload service through `getWeeklyGoals`, the Zepp
-  sync through `createImportContext`, which gains `runTypeRules` next to `timeZone`.
+  sync through `createImportContext`, which gains `runTypeRules` next to `timeZone`. A failed goals read there falls
+  back to `DEFAULT_RUN_TYPE_RULES` and never stops a sync (the Lyfta sync shares the context and needs no rules).
   An activity labelled as Hyrox at upload is not a `run` and gets no type.
 - `services/set-run-type.service.ts` + `controllers/set-run-type.controller.ts`: protected mutation
   `training.setRunType` with input `{ activityId: uuid, runType: 'long' | 'fast' | 'none' | 'auto' }`.
