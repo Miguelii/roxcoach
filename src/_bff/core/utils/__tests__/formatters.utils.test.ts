@@ -3,6 +3,7 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatKmNumber,
     formatCompact,
     formatKg,
     formatPace,
@@ -45,6 +46,16 @@ describe('formatKm', () => {
     it('formats meters with one decimal', () => {
         expect(formatKm(10240)).toBe('10.2 km')
         expect(formatKm(null)).toBeNull()
+    })
+})
+
+describe('formatKmNumber', () => {
+    it('rounds to the given digits and strips trailing zeros', () => {
+        expect(formatKmNumber(10240)).toBe('10.2')
+        expect(formatKmNumber(10000)).toBe('10')
+        expect(formatKmNumber(10250, 2)).toBe('10.25')
+        expect(formatKmNumber(3500, 2)).toBe('3.5')
+        expect(formatKmNumber(null)).toBeNull()
     })
 })
 

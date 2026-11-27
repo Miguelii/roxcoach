@@ -2,6 +2,7 @@
 import { MessageCircleIcon, SendIcon, SquareIcon, XIcon } from 'lucide-react'
 import { Fragment, type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import { useWatch } from 'react-hook-form'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,7 +19,7 @@ import {
     type ChatStatus,
 } from '@/modules/coach/use-coach-chat'
 import { useCoachComposer } from '@/modules/coach/use-coach-composer'
-import { CoachVoiceButton, CoachVoiceError } from '@/modules/coach/coach-voice-button'
+import { CoachVoiceButton, useVoiceErrorToast } from '@/modules/coach/coach-voice-button'
 import { CoachVoicePanel } from '@/modules/coach/coach-voice-panel'
 import { useVoiceRecorder, type VoiceDeps } from '@/modules/coach/use-voice-recorder'
 import { useLockPageScroll, useVisualViewport } from '@/modules/coach/use-visual-viewport'
@@ -40,7 +41,7 @@ type Props = {
     onNew: () => void
     onOpen: (id: string) => void
     onDelete: (id: string) => void
-    onRetry: () => void
+    failedText: string | null
     voiceDeps?: VoiceDeps
 }
 
@@ -52,19 +53,18 @@ type FrameProps = PropsWithChildren<
 
 type LauncherProps = Pick<Props, 'onOpenChange' | 'onDismissLauncher'>
 
-type HintsProps = { text: string; voice: ReturnType<typeof useVoiceRecorder> }
+type HintsProps = { text: string }
 
 const ERROR_COPY: Record<ChatErrorKind, string> = {
     busy: 'The coach is busy, try again in a minute',
     blocked: 'The coach cannot answer that. Try rephrasing.',
     'sign-in': 'Your session ended. Sign in again to keep chatting.',
     'not-configured': 'The coach is not set up yet',
-    'not-found': 'That conversation no longer exists. Retry to start a new one.',
+    'not-found': 'That conversation no longer exists. Send again to start a new one.',
     history: 'Could not load that conversation.',
     limit: "You reached today's message limit",
 }
 
-const RETRYABLE = new Set<ChatErrorKind>(['busy', 'not-found'])
 const NEAR_LIMIT = COACH_MESSAGE_MAX_CHARS - 200
 // Within this distance from the bottom the list keeps following new text.
 const STICK_PX = 48
@@ -222,7 +222,7 @@ function PanelBody({
     onNew,
     onOpen,
     onDelete,
-    onRetry,
+    failedText,
     voiceDeps,
 }: Props) {
     const streaming = status === 'streaming'
@@ -233,6 +233,7 @@ function PanelBody({
     const voiceActive = voice.state !== 'idle'
     const voiceWriting = voiceActive && voice.state !== 'starting'
     const { cancel: cancelVoice } = voice
+    useVoiceErrorToast(voice.error)
     // useWatch, not form.watch: the React Compiler memoizes watch() and the Send button would stay
     // disabled while typing.
     const text = useWatch({ control: form.control, name: 'message' })
@@ -243,6 +244,14 @@ function PanelBody({
     useEffect(() => {
         if (!open) cancelVoice()
     }, [open, cancelVoice])
+
+    // A failed reply hands its text back to an empty box, so the athlete can send it again.
+    useEffect(() => {
+        if (errorKind === null) return
+        toast.error(ERROR_COPY[errorKind], { id: 'coach-error' })
+        if (failedText !== null && form.getValues('message') === '')
+            form.setValue('message', failedText, { shouldValidate: true })
+    }, [errorKind, failedText, form])
 
     const listRef = useRef<HTMLDivElement | null>(null)
     const stickRef = useRef(true)
@@ -346,22 +355,6 @@ function PanelBody({
                         Thinking...
                     </p>
                 ) : null}
-                {errorKind ? (
-                    <div
-                        role="alert"
-                        data-testid={errorKind === 'limit' ? 'coach-limit' : 'coach-error'}
-                        className="flex items-center gap-3 rounded-[var(--radius-surface)] border border-hairline bg-muted p-3 text-sm"
-                    >
-                        <span data-testid="coach-error-text" className="flex-1">
-                            {ERROR_COPY[errorKind]}
-                        </span>
-                        {RETRYABLE.has(errorKind) ? (
-                            <Button size="sm" data-testid="coach-retry" onClick={onRetry}>
-                                Retry
-                            </Button>
-                        ) : null}
-                    </div>
-                ) : null}
             </div>
 
             <div data-testid="coach-live-region" aria-live="polite" className="sr-only">
@@ -437,7 +430,7 @@ function PanelBody({
                                         </Button>
                                     </div>
                                 </div>
-                                <ComposeHints text={text} voice={voice} />
+                                <ComposeHints text={text} />
                             </FormItem>
                         )}
                     />
@@ -449,7 +442,7 @@ function PanelBody({
     )
 }
 
-function ComposeHints({ text, voice }: HintsProps) {
+function ComposeHints({ text }: HintsProps) {
     return (
         <>
             {text.length >= NEAR_LIMIT ? (
@@ -464,7 +457,6 @@ function ComposeHints({ text, voice }: HintsProps) {
                 </p>
             ) : null}
             <FormMessage data-testid="coach-input-error" />
-            <CoachVoiceError voice={voice} />
         </>
     )
 }

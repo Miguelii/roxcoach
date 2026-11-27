@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
+import { toast } from 'sonner'
 import { AUTH_PAGE_PATH, DEFAULT_POST_AUTH_PATH } from '@/_bff/core/constants/auth.constants'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,15 +30,13 @@ export function SignupCard() {
     const queryClient = useQueryClient()
     const form = useSignupForm()
     const signUp = useMutation(trpc.auth.signUp.mutationOptions())
-    const [failed, setFailed] = useState(false)
 
     const onSubmit = async (values: SignupValues) => {
-        setFailed(false)
         const request: Promise<{ status: 200 }> = signUp.mutateAsync(values)
         try {
             await request
         } catch {
-            setFailed(true)
+            toast.error(SIGNUP_ERROR_COPY, { id: 'signup-error' })
             return
         }
         // Drop any data cached for a previous session before the new user lands on the app.
@@ -129,16 +127,6 @@ export function SignupCard() {
                             </FormItem>
                         )}
                     />
-
-                    {failed && (
-                        <p
-                            data-testid="signup-error"
-                            role="alert"
-                            className="text-sm text-destructive"
-                        >
-                            {SIGNUP_ERROR_COPY}
-                        </p>
-                    )}
 
                     <Button
                         data-testid="signup-submit"

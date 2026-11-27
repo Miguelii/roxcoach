@@ -78,6 +78,8 @@ the summary, category `run`, no elevation. Samples are one per distance point, w
 rate and speed carried forward. The training import builds the heart rate and pace histograms from
 them and stores the row with `source = 'zepp'` and `source_id = trackid`; there is no
 `activity_files` row.
+Each imported run also gets `run_type` from `classifyRun` with the rules the import context loads
+once per sync (`runTypeRules`).
 
 Laps (`buildZeppLaps`, `zepp/utils/laps.utils.ts`): one lap per `kilo_pace` entry, 1000 m, starting
 where the previous one ended, with the moving time and heart rate of the entry and an elapsed time
@@ -150,9 +152,12 @@ when `remaining` is above zero, or the mapped error) and the hook invalidates
 no toast. The "More runs to sync" copy only appears when the 1000 detail ceiling is hit.
 
 The Settings card toasts that the sync started ("Syncing your activities. They will be available
-shortly."), that one is already running and any failure; the result is not toasted, it shows with
-the last run's mapped error straight from the status (an expired session reads "Your Zepp session expired. Sign in again." next to "Sign in
-again") until the athlete starts another sync. "Could not start the Zepp sync. Try again."
+shortly."), that one is already running and any failure; the result is not toasted, it shows
+straight from the status until the athlete starts another sync. The last run's mapped error is
+toasted when the card loads (an expired session toasts "Your Zepp session expired. Sign in again.",
+and the card keeps its "Sign in again" button), with the same toast id as a fresh failure so one
+failure never shows twice. Connect, disconnect and clear failures are toasts too; nothing is shown
+inline except field validation. "Could not start the Zepp sync. Try again."
 (`zepp018`) and "The Zepp sync stopped before finishing. Try again." (`zepp020`) cover a failed
 enqueue and a run that failed without a specific code or went stale.
 

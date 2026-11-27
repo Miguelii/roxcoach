@@ -2,6 +2,10 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 import { Effect } from 'effect'
+import {
+    DEFAULT_RUN_TYPE_RULES,
+    type RunTypeRules,
+} from '@/_bff/core/constants/weekly-goals.constants'
 import { createDBServerClient } from '@/_bff/core/db'
 import { localDateIn } from '@/_bff/core/utils/date.utils'
 import { DUPLICATE_WINDOW_SECONDS } from '@/_bff/core/constants/import.constants'
@@ -11,8 +15,11 @@ import {
     CreateSbClientError,
     DuplicateActivityFileError,
     type ProfileQueryError,
+    type WeeklyGoalsQueryError,
 } from '@/_bff/lib/errors'
+import { getWeeklyGoals } from '@/_bff/modules/athlete/services/get-weekly-goals.service'
 import { getAthleteTimezone } from '@/_bff/modules/athlete/services/get-athlete-timezone.service'
+import { classifyRun } from '@/_bff/modules/training/helpers/classify-run.helper'
 import { labelHyroxLaps } from '@/_bff/modules/training/helpers/label-hyrox-laps.helper'
 import { parseActivityFile } from '@/_bff/modules/training/helpers/parse-activity-file.helper'
 import {
@@ -42,6 +49,9 @@ type UploadClient = { supabase: TrainingClient; storage: StorageClient }
 
 type UploadDeps = {
     getTimezone: (user: User) => Effect.Effect<string, ProfileQueryError | CreateSbClientError>
+    getRunTypeRules: (
+        user: User
+    ) => Effect.Effect<RunTypeRules, WeeklyGoalsQueryError | CreateSbClientError>
     createClient: () => Effect.Effect<UploadClient, CreateSbClientError>
 }
 
@@ -49,6 +59,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 const defaultDeps: UploadDeps = {
     getTimezone: getAthleteTimezone,
+    getRunTypeRules: (user) => getWeeklyGoals(user).pipe(Effect.map((goals) => goals.runTypeRules)),
     createClient: () =>
         Effect.tryPromise({
             try: async () => {
@@ -105,11 +116,14 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
     const sha256 = yield* sha256Hex(input.bytes)
     const { supabase, storage } = yield* deps.createClient()
 
-    const [sameFile, nearby, timezone] = yield* Effect.all(
+    const [sameFile, nearby, timezone, runTypeRules] = yield* Effect.all(
         [
             selectFileIdBySha256(supabase, user.id, sha256),
             selectIdNearStartedAt(supabase, user.id, parsed.startedAt, DUPLICATE_WINDOW_SECONDS),
             deps.getTimezone(user),
+            deps
+                .getRunTypeRules(user)
+                .pipe(Effect.catch(() => Effect.succeed(DEFAULT_RUN_TYPE_RULES))),
         ],
         { concurrency: 'unbounded' }
     )
@@ -117,6 +131,7 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
 
     const laps = toLapRows(parsed, input.isHyrox)
     const isLabelled = laps.some((lap) => lap.station !== null)
+    const category = isLabelled ? 'hyrox' : parsed.category
 
     const fileId = crypto.randomUUID()
     const storagePath = `${user.id}/${fileId}.${parsed.format}`
@@ -126,7 +141,7 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
     return yield* Effect.gen(function* () {
         const activityId = yield* insertActivity(supabase, user.id, {
             sport_type: parsed.sportType,
-            category: isLabelled ? 'hyrox' : parsed.category,
+            category,
             name: parsed.name,
             started_at: parsed.startedAt,
             local_date: localDateIn(parsed.startedAt, timezone),
@@ -140,6 +155,7 @@ export const uploadActivity = Effect.fn('uploadActivity')(function* (
             calories: parsed.calories,
             hr_histogram: parsed.hrHistogram,
             pace_histogram: parsed.paceHistogram,
+            run_type: category === 'run' ? classifyRun(parsed, runTypeRules) : null,
         })
 
         yield* Effect.gen(function* () {

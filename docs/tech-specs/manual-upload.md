@@ -55,6 +55,10 @@ same pass with the same interval rules but without needing heart rate, only dist
 race readiness card uses it to find work faster than race pace. Anything else a later feature needs
 is re-parsed from the stored file.
 
+An uploaded `run` gets `activities.run_type` (long, fast or null) from `classifyRun` with the athlete's
+rules, loaded with the timezone; an upload labelled as Hyrox gets no type (see
+[2026-11-27-weekly-goals-design.md](2026-11-27-weekly-goals-design.md)).
+
 ### Backfill of the histograms
 
 Runs uploaded before `0015` have no HR histogram and runs uploaded before `0016` have no pace
@@ -117,7 +121,7 @@ Upload action use `DrawerFormLayout`, the same layout as the race form. The form
 `upload-activity-button`, `upload-activity-drawer`, `upload-close`, `upload-cancel`,
 `upload-format-banner`,
 `upload-file-input`, `upload-file-name`, `upload-file-error`, `upload-hyrox-checkbox`,
-`upload-hyrox-label`, `upload-error`, `upload-submit`. Opened by an "Upload activity" button on
+`upload-hyrox-label`, `upload-submit`. Opened by an "Upload activity" button on
 Dashboard and Calendar.
 
 Contents, top to bottom:
@@ -137,9 +141,9 @@ Contents, top to bottom:
    while uploading.
 
 States: idle, uploading (button disabled, drawer stays open), error (message from the tagged error
-class, shown inside the drawer, the file stays selected), success (the drawer closes, a plain toast
+class, shown as an error toast, the drawer stays open and the file stays selected), success (the drawer closes, a plain toast
 "Activity uploaded" appears without a link, the calendar and week strip refresh). While uploading
-the drawer cannot be dismissed. The message shown on error is the `error` field of the response
+the drawer cannot be dismissed. The message toasted on error is the `error` field of the response
 (fixed strings in "Route behavior"), or "Something went wrong. Try again." when the body is not
 readable. Client-side checks
 (extension and size) give an immediate message but never replace the server checks below.

@@ -9,18 +9,10 @@ type Props = {
     onOpenChange: (open: boolean) => void
     onConfirm: () => void
     disconnecting: boolean
-    // Why the last attempt failed, shown here because the dialog covers the page.
-    error: string | null
 }
 
 // Asks before disconnecting Lyfta: a popup on desktop and a sheet from the bottom on a phone.
-export function LyftaDisconnectDialog({
-    open,
-    onOpenChange,
-    onConfirm,
-    disconnecting,
-    error,
-}: Props) {
+export function LyftaDisconnectDialog({ open, onOpenChange, onConfirm, disconnecting }: Props) {
     return (
         <ConfirmDialog
             open={open}
@@ -43,16 +35,6 @@ export function LyftaDisconnectDialog({
                     {disconnecting ? 'Disconnecting...' : 'Disconnect Lyfta'}
                 </Button>
             }
-        >
-            {error === null ? null : (
-                <p
-                    role="alert"
-                    data-testid="lyfta-disconnect-error"
-                    className="text-sm text-destructive"
-                >
-                    {error}
-                </p>
-            )}
-        </ConfirmDialog>
+        />
     )
 }

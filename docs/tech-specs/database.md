@@ -72,7 +72,7 @@ make a second user work with no migration:
    Optional links use `on delete set null (<link column>)` (PostgreSQL 15 or later), so deleting the
    parent clears only the link column and never `user_id`.
 3. **Every unique constraint and every index starts with `user_id`**, for example
-   `(user_id, weekday, session_kind)`, `(user_id, local_date)`, `(user_id, week_start)`.
+   `(user_id, local_date)`, `(user_id, week_start)`.
 4. **Deleting a user deletes everything.** `on delete cascade` from `auth.users` on every
    `user_id`.
 5. **Service-role code does not get RLS.** Jobs and the report generator use the
@@ -88,10 +88,10 @@ make a second user work with no migration:
 | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `activity_source`   | `strava`, `manual`, `lyfta`                                                                                         |
 | `activity_category` | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
-| `session_kind`      | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
 | `race_type`         | `hyrox`, `running`, `other`                                                                                         |
 | `race_priority`     | `A`, `B`, `C`                                                                                                       |
 | `race_status`       | `upcoming`, `completed`, `cancelled`                                                                                |
+| `run_type`          | `long`, `fast` (`0025`; null on an activity = no type)                                                              |
 | `hyrox_station`     | `ski_erg`, `sled_push`, `sled_pull`, `burpee_broad_jump`, `rowing`, `farmers_carry`, `sandbag_lunges`, `wall_balls` |
 
 ## Tables
@@ -110,25 +110,6 @@ One row per user (`user_id` is the primary key).
 | `weekly_hours_cap` | numeric null  | upper bound the coach must respect                                         |
 | `notes`            | text null     | injuries, constraints, preferences                                         |
 | `dashboard_mode`   | text not null | `run` (default) or `strength`, check constraint (`0015`); dashboard charts |
-
-### `availability_slots`
-
-The athlete's typical week. A slot says what happens or can happen on a weekday.
-
-| Column         | Type           | Notes                                                                                                    |
-| -------------- | -------------- | -------------------------------------------------------------------------------------------------------- |
-| `weekday`      | smallint       | ISO, 1 = Monday to 7 = Sunday, check 1..7                                                                |
-| `session_kind` | `session_kind` |                                                                                                          |
-| `is_fixed`     | boolean        | `true`: commitment that already exists (for example a Hyrox class). `false`: open slot the coach may use |
-| `max_minutes`  | int null       | upper bound for the session length                                                                       |
-| `notes`        | text null      |                                                                                                          |
-
-Unique on `(user_id, weekday, session_kind)`. A `rest` slot marks a day with nothing allowed.
-
-Save strategy as built: the app upserts the new set on that unique key and then deletes the user's
-rows outside it. There is no transaction: a failed delete leaves stale extra slots until the next
-save, and two concurrent saves by the same user can race the delete. Every statement filters by
-`user_id`.
 
 ### `races`
 
@@ -182,11 +163,20 @@ Every workout, uploaded or entered by hand, or imported from Lyfta. Strava sync 
 | `deleted_at`                 | timestamptz null    | soft delete                                                                                                                  |
 | `hr_histogram`               | jsonb null          | `{"v":1,"bins":[[bpm,time_s,distance_m]]}` (`0015`); null = not computed, empty bins = no heart rate                         |
 | `pace_histogram`             | jsonb null          | `{"v":1,"bins":[[pace_s_per_km,time_s,distance_m]]}` (`0016`); null = not computed, empty bins = no usable distance or speed |
+| `run_type`                   | `run_type` null     | `long` or `fast` (`0025`); null = no type                                                                                    |
+| `run_type_manual`            | boolean             | default false; true once the athlete picked a type, including none                                                           |
 
 Index on `(user_id, local_date)`.
 Unique index on `(user_id, source, source_id)` makes provider imports idempotent. PostgreSQL's
 default `NULLS DISTINCT` behavior allows any number of rows without a provider ID. Also
 `unique (id, user_id)` so children can reference it with a composite key.
+Check `activities_run_type_category_check`: `category = 'run' or (run_type is null and run_type_manual = false)`.
+
+`roxcoach.classify_run_default(distance_m numeric, moving_time_s numeric, elapsed_time_s numeric) returns run_type`
+(`0025`, immutable, no client execute) is the default run rule, the SQL twin of
+`src/_bff/modules/training/helpers/classify-run.helper.ts`. Time is `coalesce(moving_time_s, elapsed_time_s)`. It returns
+null when distance or time is missing or not positive, or distance is under 3000 m; `long` above 6000 m; `fast` under
+300 s/km; otherwise `long`. `0025` used it to classify every existing, not deleted run.
 
 ### `activity_laps`
 
@@ -260,6 +250,16 @@ One row per athlete and athlete-local day: `user_id` (default `auth.uid()`, casc
 `select`, `insert` and `update` and no `delete` policy (a client can never reset the counter).
 `roxcoach.coach_take_message_slot(p_day date, p_cap int) returns boolean` (security invoker, execute
 for `authenticated` and `service_role`) takes one slot atomically. See [coach-chat.md](coach-chat.md).
+
+### `weekly_goals`
+
+One row per athlete (`0025`), missing row = no goals and default rules. `user_id` uuid primary key (default
+`auth.uid()`, cascade), `weekly_run_distance_m` int null (1000..500000), `long_runs_per_week` and `fast_runs_per_week`
+smallint null (1..7), `strength_sessions_per_week` smallint null (1..14), `short_run_max_m` int default 3000,
+`long_run_min_m` int default 6000 (check `short_run_max_m > 0 and short_run_max_m < long_run_min_m and long_run_min_m
+<= 100000`), `fast_pace_s_per_km` smallint default 300 (120..600), `created_at`, `updated_at` (`set_updated_at`
+trigger). RLS with the owner policy for `select`, `insert` and `update` and no `delete` policy (the row goes with the
+user). See [2026-11-27-weekly-goals-design.md](2026-11-27-weekly-goals-design.md).
 
 ### `lyfta_connections`
 
@@ -415,7 +415,7 @@ gets a `DbTables` member.
 | File                                    | Content                                                                                                                                                                                                     |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `0001_schema_and_enums.sql`             | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                                                                                                                              |
-| `0002_athlete_and_races.sql`            | `athlete_profiles`, `availability_slots`, `races`                                                                                                                                                           |
+| `0002_athlete_and_races.sql`            | `athlete_profiles`, `availability_slots` (dropped in `0026`), `races`                                                                                                                                       |
 | `0003_strava.sql`                       | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                                                                                                                           |
 | `0004_training.sql`                     | `activities`, `activity_laps`, `station_results`, `strength_sets`                                                                                                                                           |
 | `0005_coach_and_plan.sql`               | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                                                                                                                    |
@@ -438,6 +438,8 @@ gets a `DbTables` member.
 | `0022_shared_logs_project.sql`          | Adds `project` to the shared `public.logs` table and its indexes (see Shared logs table)                                                                                                                    |
 | `0023_rls_initplan.sql`                 | Wraps `auth.uid()` and `has_access()` in a subselect in every policy (evaluated once per statement)                                                                                                         |
 | `0024_query_indexes.sql`                | Adds `activities (user_id, started_at)`, replaces the `coach_messages` history index with one starting at `user_id`, adds `public.logs (user_id)` (build it by hand first with `create index concurrently`) |
+| `0025_weekly_goals.sql`                 | Adds the `run_type` enum, `activities.run_type` and `run_type_manual`, `classify_run_default()` (classifies existing runs) and `weekly_goals`                                                               |
+| `0026_remove_availability.sql`          | Drops `availability_slots` and the `session_kind` enum (weekly goals replace availability)                                                                                                                  |
 
 Before applying `0024`, build the shared-table index by hand, alone and outside a transaction: `create index concurrently if not exists logs_user_id_idx on public.logs (user_id) where user_id is not null;`.
 

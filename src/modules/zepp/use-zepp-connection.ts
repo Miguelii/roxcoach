@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,19 +20,22 @@ const zeppFormSchema = z.object({
     password: z.string().min(1, 'Enter your Zepp password'),
 })
 
+const SYNC_ERROR_TOAST_ID = 'zepp-sync-error'
+
 export function useZeppConnection() {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
     const query = useQuery(
         trpc.zepp.getConnectionStatus.queryOptions(undefined, {
             refetchInterval: (current) => pollWhileSyncing(current.state.data),
+            meta: { errorMessage: 'Could not load your Zepp connection.' },
         })
     )
     const zeppSync = useZeppSync({
         sync: query.data?.sync,
         onStarted: () => toast.info(SYNC_START_MESSAGE),
         onInProgress: (message) => toast.info(message),
-        onFailed: (message) => toast.error(message),
+        onFailed: (message) => toast.error(message, { id: SYNC_ERROR_TOAST_ID }),
     })
     const countQuery = useQuery(trpc.zepp.getActivityCount.queryOptions())
     const clearActivities = useClearZeppActivities()
@@ -42,7 +45,12 @@ export function useZeppConnection() {
         resolver: zodResolver(zeppFormSchema),
         defaultValues: { email: '', password: '' },
     })
-    const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    // The failure of the last stored run (a sync that ended while the page was closed) is toasted
+    // once; a fresh failure shares the id, so it is not toasted twice.
+    const syncError = zeppSync.errorMessage
+    useEffect(() => {
+        if (syncError) toast.error(syncError, { id: SYNC_ERROR_TOAST_ID })
+    }, [syncError])
     const [showForm, setShowForm] = useState(false)
     const [confirmDisconnect, setConfirmDisconnect] = useState(false)
 
@@ -50,12 +58,11 @@ export function useZeppConnection() {
         queryClient.invalidateQueries(trpc.zepp.getConnectionStatus.queryFilter())
 
     const submit = form.handleSubmit(async (values) => {
-        setErrorMessage(null)
         zeppSync.clearMessage()
         try {
             await connectMutation.mutateAsync(values)
         } catch (error) {
-            setErrorMessage(
+            toast.error(
                 messageForZeppError({ message: error instanceof Error ? error.message : '' })
             )
             form.resetField('password')
@@ -70,16 +77,14 @@ export function useZeppConnection() {
     })
 
     const sync = async () => {
-        setErrorMessage(null)
         await zeppSync.sync()
     }
 
     const disconnect = async () => {
-        setErrorMessage(null)
         try {
             await disconnectMutation.mutateAsync()
         } catch (error) {
-            setErrorMessage(
+            toast.error(
                 messageForZeppError({ message: error instanceof Error ? error.message : '' })
             )
             disconnectMutation.reset()
@@ -97,7 +102,6 @@ export function useZeppConnection() {
     return {
         query,
         form,
-        errorMessage: errorMessage ?? zeppSync.errorMessage,
         syncMessage: zeppSync.syncMessage,
         showForm,
         confirmDisconnect,
@@ -110,12 +114,8 @@ export function useZeppConnection() {
         sync,
         disconnect,
         setConfirmDisconnect,
-        clearError: () => {
-            setErrorMessage(null)
-            zeppSync.clearError()
-        },
+        clearError: zeppSync.clearError,
         openForm: () => {
-            setErrorMessage(null)
             zeppSync.clearError()
             setShowForm(true)
         },

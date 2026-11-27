@@ -29,12 +29,12 @@ export class ProfileQueryError extends Data.TaggedError('ProfileQueryError')<Ser
 export class ProfileValidationError extends Data.TaggedError('ProfileValidationError')<
     ServiceErrorFields & { field: string }
 > {}
-export class AvailabilityQueryError extends Data.TaggedError(
-    'AvailabilityQueryError'
+export class WeeklyGoalsQueryError extends Data.TaggedError(
+    'WeeklyGoalsQueryError'
 )<ServiceErrorFields> {}
-// `reason` is a stable code for the rule that failed (never free text).
-export class AvailabilityValidationError extends Data.TaggedError('AvailabilityValidationError')<
-    ServiceErrorFields & { reason: string }
+// `field` names the goal or run type rule that failed validation.
+export class WeeklyGoalsValidationError extends Data.TaggedError('WeeklyGoalsValidationError')<
+    ServiceErrorFields & { field: string }
 > {}
 
 export class RaceQueryError extends Data.TaggedError('RaceQueryError')<ServiceErrorFields> {}
@@ -59,6 +59,9 @@ export class ActivityQueryError extends Data.TaggedError(
 )<ServiceErrorFields> {}
 export class ActivityWriteError extends Data.TaggedError(
     'ActivityWriteError'
+)<ServiceErrorFields> {}
+export class ActivityNotFoundError extends Data.TaggedError(
+    'ActivityNotFoundError'
 )<ServiceErrorFields> {}
 export class UnsupportedActivityFileError extends Data.TaggedError(
     'UnsupportedActivityFileError'

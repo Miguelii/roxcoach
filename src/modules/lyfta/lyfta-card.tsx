@@ -26,20 +26,7 @@ export function LyftaCard() {
         return <Skeleton data-testid="lyfta-loading" className="h-56 max-w-xl" />
     }
 
-    if (lyfta.query.isError) {
-        return (
-            <div data-testid="lyfta-status-error" className="space-y-3">
-                <p className="text-sm text-destructive">Could not load your Lyfta connection.</p>
-                <Button
-                    variant="outline"
-                    data-testid="lyfta-status-retry"
-                    onClick={() => void lyfta.query.refetch()}
-                >
-                    Try again
-                </Button>
-            </div>
-        )
-    }
+    if (lyfta.query.data === undefined) return null
 
     const connected = lyfta.query.data.connected
     const busy =
@@ -225,19 +212,11 @@ export function LyftaCard() {
                 </p>
             ) : null}
 
-            {/* While the confirmation is open it shows the error itself. */}
-            {lyfta.errorMessage && !lyfta.confirmDisconnect ? (
-                <p data-testid="lyfta-error" role="alert" className="text-sm text-destructive">
-                    {lyfta.errorMessage}
-                </p>
-            ) : null}
-
             <ClearActivitiesDialog
                 open={lyfta.clearActivities.open}
                 onOpenChange={lyfta.clearActivities.setOpen}
                 onConfirm={() => void lyfta.clearActivities.clear()}
                 clearing={lyfta.clearActivities.clearing}
-                error={lyfta.clearActivities.error}
                 provider="Lyfta"
                 items="workouts"
                 extra="sets"
@@ -250,7 +229,6 @@ export function LyftaCard() {
                 onOpenChange={lyfta.setConfirmDisconnect}
                 onConfirm={() => void lyfta.disconnect()}
                 disconnecting={lyfta.isDisconnecting}
-                error={lyfta.errorMessage}
             />
         </section>
     )

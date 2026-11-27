@@ -19,6 +19,8 @@ export const DB_ROW = {
     lyfta_total_volume_kg_reps: null,
     perceived_effort: null,
     notes: null,
+    run_type: null,
+    run_type_manual: false,
 }
 
 export const DTO = {
@@ -40,4 +42,6 @@ export const DTO = {
     lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
+    runType: null,
+    runTypeManual: false,
 }

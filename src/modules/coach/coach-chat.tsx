@@ -68,7 +68,7 @@ export function CoachChat() {
             onNew={chat.newConversation}
             onOpen={(id) => void chat.openConversation(id)}
             onDelete={onDelete}
-            onRetry={chat.retry}
+            failedText={chat.failedText}
         />
     )
 }

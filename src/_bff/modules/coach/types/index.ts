@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
-import type { AvailabilitySlotDTO, ProfileDTO } from '@/_bff/modules/athlete/types'
+import type { WeeklyGoals } from '@/_bff/core/constants/weekly-goals.constants'
+import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import type { RaceDTO, RaceFilter } from '@/_bff/modules/races/types'
 import type {
     ActivityDTO,
@@ -42,7 +43,7 @@ export type CoachContextInput = {
     today: string
     timezone: string
     profile: ProfileDTO | null
-    availability: AvailabilitySlotDTO[]
+    goals: WeeklyGoals
     races: RaceDTO[]
     // Activities of the last 35 days.
     activities: ActivityDTO[]
@@ -62,7 +63,6 @@ export type CoachTool = {
 // The reads the tools need, as promises. Tests pass fakes; the default runs the real services.
 export type CoachToolDeps = {
     listRaces: (user: User, filter: RaceFilter) => Promise<RaceDTO[]>
-    getAvailability: (user: User) => Promise<AvailabilitySlotDTO[]>
     getActivityCalendar: (
         user: User,
         range: { from: string; to: string }

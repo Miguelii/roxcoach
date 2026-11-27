@@ -18,6 +18,7 @@ export function useDashboardMode() {
         trpc.athlete.getProfile.queryOptions(undefined, {
             // The dashboard page hydrates the profile from the server; this keeps it from refetching at once.
             staleTime: DASHBOARD_QUERY_STALE_TIME,
+            meta: { errorMessage: 'Could not load your profile.' },
         })
     )
     const save = useMutation(

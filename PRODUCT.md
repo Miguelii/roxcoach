@@ -11,7 +11,7 @@ One athlete training for Hyrox and running events, mostly checking the app on a 
 ## Product Purpose
 
 Roxcoach helps an athlete track workouts, manage races and goals, and follow a training plan
-informed by their availability and progress.
+informed by their weekly goals and progress.
 
 ## Brand Personality
 

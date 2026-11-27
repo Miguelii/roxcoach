@@ -1,4 +1,5 @@
 import type { createDBAdminClient, createDBServerClient } from '@/_bff/core/db'
+import type { RunType } from '@/_bff/core/constants/weekly-goals.constants'
 import type { HyroxStation } from '@/_bff/core/constants/hyrox.constants'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
@@ -146,6 +147,7 @@ export type NewActivityRow = {
     calories: number | null
     hr_histogram: HrHistogram
     pace_histogram: PaceHistogram
+    run_type: RunType | null
 }
 
 export type NewActivityFileRow = {
@@ -204,6 +206,8 @@ export type ActivityDTO = {
     lyftaTotalVolumeKgReps: number | null
     perceivedEffort: number | null
     notes: string | null
+    runType: RunType | null
+    runTypeManual: boolean
 }
 
 export type LapDTO = {

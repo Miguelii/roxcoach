@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
 import { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
+import { DEFAULT_RUN_TYPE_RULES } from '@/_bff/core/constants/weekly-goals.constants'
+import { ErrorCode } from '@/_bff/lib/error-codes'
+import { WeeklyGoalsQueryError } from '@/_bff/lib/errors'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import { makeFakeDb, ok } from '@/_bff/lib/fake-bd'
 import { uploadActivity } from '@/_bff/modules/training/services/upload-activity.service'
@@ -29,6 +32,25 @@ const sixteenLapTcx = () => {
     )
 }
 
+// One running lap of 5000 m in 1450 s: a 290 s/km pace, fast under the default rules.
+const runTcx = () =>
+    new TextEncoder().encode(
+        `<?xml version="1.0"?><TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"><Activities><Activity Sport="Running"><Id>2026-11-20T12:00:00Z</Id><Lap StartTime="2026-11-20T12:00:00Z"><TotalTimeSeconds>1450</TotalTimeSeconds><DistanceMeters>5000</DistanceMeters></Lap></Activity></Activities></TrainingCenterDatabase>`
+    )
+
+// A Running file of 16 laps of 1000 m in 300 s: a long run under the default rules unless the laps
+// are labelled as Hyrox stations.
+const sixteenLapRunTcx = () => {
+    const laps = Array.from(
+        { length: 16 },
+        (_, index) =>
+            `<Lap StartTime="${new Date(Date.UTC(2026, 10, 20, 12, index * 5)).toISOString()}"><TotalTimeSeconds>300</TotalTimeSeconds><DistanceMeters>1000</DistanceMeters></Lap>`
+    ).join('')
+    return new TextEncoder().encode(
+        `<?xml version="1.0"?><TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"><Activities><Activity Sport="Running"><Id>2026-11-20T12:00:00Z</Id>${laps}</Activity></Activities></TrainingCenterDatabase>`
+    )
+}
+
 type Chain = ReturnType<typeof makeFakeDb>['chains'][number]
 
 const lapsSchema = z.array(z.object({ station: z.string().nullable() }))
@@ -37,6 +59,7 @@ const activitySchema = z.object({
     user_id: z.string(),
     category: z.string(),
     local_date: z.string(),
+    run_type: z.string().nullable(),
     hr_histogram: z.object({ v: z.literal(1), bins: z.array(z.unknown()) }),
     pace_histogram: z.object({ v: z.literal(1), bins: z.array(z.unknown()) }),
 })
@@ -61,6 +84,7 @@ const setup = (queue: Parameters<typeof makeFakeDb>[0], timezone = 'Europe/Lisbo
     const storage: StorageClient = { storage: { from: () => ({ upload, remove }) } }
     const deps = {
         getTimezone: () => Effect.succeed(timezone),
+        getRunTypeRules: () => Effect.succeed(DEFAULT_RUN_TYPE_RULES),
         createClient: () => Effect.succeed({ supabase: db.supabase, storage }),
     }
     const run = (bytes: Uint8Array, isHyrox = false) =>
@@ -104,6 +128,53 @@ describe('uploadActivity', () => {
         const path = String(calls[0]?.[0])
         expect(path).toMatch(/^user-1\/[0-9a-f-]{36}\.tcx$/u)
         expect(path).not.toContain('secret-name')
+    })
+
+    it('an uploaded run gets its type from the athlete rules', async () => {
+        const { db, run } = setup(HAPPY)
+        await run(runTcx(), false)
+        expect(insertedActivity(db.chains[2])).toMatchObject({ category: 'run', run_type: 'fast' })
+    })
+
+    it('a failed goals read falls back to the default rules and still uploads', async () => {
+        const { db, deps } = setup(HAPPY)
+        const failingDeps = {
+            ...deps,
+            getRunTypeRules: () =>
+                Effect.fail(
+                    new WeeklyGoalsQueryError({
+                        cause: 'boom',
+                        error_hash: ErrorCode.ATHLETE_GOALS_SELECT_ERR,
+                    })
+                ),
+        }
+
+        const exit = await Effect.runPromiseExit(
+            uploadActivity(
+                USER,
+                { bytes: runTcx(), originalName: 'run.tcx', isHyrox: false },
+                failingDeps
+            )
+        )
+
+        expect(failureTag(exit)).toBeNull()
+        expect(insertedActivity(db.chains[2])).toMatchObject({ category: 'run', run_type: 'fast' })
+    })
+
+    it('an upload labelled Hyrox gets no run type', async () => {
+        const plain = setup(HAPPY)
+        await plain.run(sixteenLapRunTcx(), false)
+        expect(insertedActivity(plain.db.chains[2])).toMatchObject({
+            category: 'run',
+            run_type: 'long',
+        })
+
+        const hyrox = setup(HAPPY)
+        await hyrox.run(sixteenLapRunTcx(), true)
+        expect(insertedActivity(hyrox.db.chains[2])).toMatchObject({
+            category: 'hyrox',
+            run_type: null,
+        })
     })
 
     it('leaves laps unlabelled when the file is not marked as Hyrox', async () => {

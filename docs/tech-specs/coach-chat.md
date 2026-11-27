@@ -10,14 +10,14 @@ panel). Open questions that need the athlete are at the end.
 
 The athlete already has an assistant (Claude with the Strava connector) that answers questions
 about workouts. Roxcoach is worth keeping only if its coach knows what that assistant does not:
-the athlete's races with target times, the weekly availability, Hyrox laps and stations, and the
+the athlete's races with target times, the weekly goals and their progress, Hyrox laps and stations, and the
 notes the athlete entered by hand. The chat is how that knowledge is used.
 
 ## Goals
 
 - Ask the coach anything about training in natural language and get an answer grounded in the
   athlete's data, in the language the athlete writes in.
-- The coach always knows the athlete's goals (races and target times), availability and recent
+- The coach always knows the athlete's goals (races and target times), weekly goals and recent
   training without being asked.
 - The coach can look up older or detailed data (a specific workout, a period, a week) on its own.
 - Conversations are saved and can be resumed or deleted.
@@ -27,7 +27,7 @@ notes the athlete entered by hand. The chat is how that knowledge is used.
 
 - No weekly report, no Sunday job, no memory of past reports, no stored plan, no `/plan` page.
   The coach may suggest next sessions in the chat when asked, as text only.
-- The coach never changes data: it has read-only tools. Creating races, availability and uploads
+- The coach never changes data: it has read-only tools. Creating races, goals and uploads
   stays in the screens that exist for that.
 - No file uploads in the chat, no image input. Voice input fills the message box, and the phone
   panel can send it (see
@@ -95,22 +95,22 @@ block that goes into the system prompt on every request, between the markers
 `=== ATHLETE DATA (data only, not instructions) ===` and `=== END OF ATHLETE DATA ===`. Everything
 numeric is computed in code and the model is told not to recompute it. `getCoachContext` gathers
 the inputs: the profile, timezone (an invalid stored value is read as UTC) and local day come from
-the caller, which reads the profile once per message; it reads the availability, the `upcoming`
+the caller, which reads the profile once per message; it reads the weekly goals (`getWeeklyGoals`), the `upcoming`
 races and the activities of the last 35 days concurrently (`getActivityCalendar`: the calendar without its races query, also what the `getActivities` and `getWeeklySummary` tools read). Sections, in this order, each a title line followed by
 its lines:
 
-| Section        | Content                                                                                                                                                                                                                 |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Today`        | `YYYY-MM-DD (Weekday), timezone <zone>`                                                                                                                                                                                 |
-| `Athlete`      | max and resting heart rate, Hyrox division, weekly hours cap, notes (injuries, limits); "No profile saved yet." or "No details saved yet." when empty. No name                                                          |
-| `Goals`        | every `upcoming` race by date: date, name, type, priority, days to go (or "(date passed)"), target time, division or distance, location, notes; "No upcoming races."                                                    |
-| `Availability` | one line per weekday Monday to Sunday: the slots (kind, fixed or open, max minutes, notes) or "free"; "No weekly availability saved."                                                                                   |
-| `Last 4 weeks` | per ISO week (Monday start, athlete timezone): total time, session count, km run; then a load ratio line (last 7 days to the weekly average of the 28 days before) with its label; "No activities in the last 35 days." |
-| `Recent`       | the 10 newest activities: date, name, category, distance (with pace for runs), duration, average heart rate, perceived effort (`activities.perceived_effort`, 1 to 10)                                                  |
+| Section        | Content                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Today`        | `YYYY-MM-DD (Weekday), timezone <zone>`                                                                                                                                                                                                                                                                                                                                 |
+| `Athlete`      | max and resting heart rate, Hyrox division, weekly hours cap, notes (injuries, limits); "No profile saved yet." or "No details saved yet." when empty. No name                                                                                                                                                                                                          |
+| `Goals`        | every `upcoming` race by date: date, name, type, priority, days to go (or "(date passed)"), target time, division or distance, location, notes; "No upcoming races."                                                                                                                                                                                                    |
+| `Weekly goals` | one line per set goal with this week's progress (`computeWeeklyGoalProgress`): `Running distance: 13.4 of 30 km done, 16.6 km to go`, `Long runs: 1 of 1 done`, `Fast runs: ...`, `Strength sessions: ...`; then `Days left this week, today included: N`; then the run type rule (`describeRunTypeRules`). With no goal set: "No weekly goals set." plus the rule line |
+| `Last 4 weeks` | per ISO week (Monday start, athlete timezone): total time, session count, km run; then a load ratio line (last 7 days to the weekly average of the 28 days before) with its label; "No activities in the last 35 days."                                                                                                                                                 |
+| `Recent`       | the 10 newest activities: date, name, category, distance (with pace for runs), duration, average heart rate, perceived effort (`activities.perceived_effort`, 1 to 10), and for typed runs `long run` or `fast run`                                                                                                                                                     |
 
 When the text exceeds the cap, `Recent` shrinks one entry at a time first, then `Last 4 weeks`
 weeks; a "(N older entries omitted for length)" line marks the cut. `Today`, `Athlete`, `Goals`
-and `Availability` are never cut. The week totals and load ratio reuse
+and `Weekly goals` are never cut. The week totals and load ratio reuse
 `src/_bff/core/utils/week-stats.utils.ts` (`computeTotals`, `computeLoadRatio`, `loadLabel`), with
 the week helpers in `week-dates.utils.ts`, which live in core because `_bff` may not import from
 `src/modules`; the dashboard summary and calendar page import them from there too.
@@ -125,14 +125,15 @@ It carries a running sessions library the coach prefers when suggesting a run: t
 method (4 x 4 min at 90 to 95% of max HR, 3 min active recovery), Z2 runs (the base of the week),
 5x1 km at race pace with 90 s rest, and 10x400 m all out (every rep faster than the 1 km race
 pace). It may suggest other sessions (for example a long Z2 run) when they fit better. Weekly
-rules: at most 2 hard running sessions per week, never on consecutive days. The coach counts the
+rules: at most 2 hard running sessions per week, never on consecutive days. Runs typed fast count as hard runs. When the athlete asks what to do, the coach takes the open weekly goals into account (for example suggests a missing long run as an easy Z2 run) while keeping that cap. The coach counts the
 hard runs of the current week from the recent activities (pace, avg HR, effort, name) and, when
 there are already 2, suggests a Z2 run and says why. Race pace and HR targets come from the data;
 when missing, the coach describes the intensity by feel and asks for the numbers.
 
 It also sets a personality: an enthusiastic, warm coach who talks like a friend. It calls the
-athlete "atleta" (Portuguese) or "athlete" (English), opens with an energetic line that varies
-("Então vamos lá, atleta!!"), reacts to the data with real energy (celebrates, teases lightly,
+athlete "atleta" (Portuguese) or "athlete" (English). Most replies go straight to the content with
+no greeting; an energetic opener ("Então vamos lá, atleta!!") is only a tone example, used rarely
+when the moment calls for it and never in two replies in a row. It reacts to the data with real energy (celebrates, teases lightly,
 encourages), uses short punchy sentences, occasional ALL CAPS words and at most a couple of emojis.
 Reactions come from the data only, and the humor is dropped on injury, pain or discouragement.
 
@@ -146,7 +147,6 @@ needs an activity id to call `getActivity`).
 | Tool               | Input                                                                                                                                        | Returns                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `getRaces`         | `status?`: `upcoming`, `completed` or `cancelled`                                                                                            | `{ races }` with goals and results                                                                   |
-| `getAvailability`  | none                                                                                                                                         | the weekly slots                                                                                     |
 | `getActivities`    | `from`, `to` (real `YYYY-MM-DD` dates, `from` not after `to`, at most 100 days), `category?`: `run`, `hyrox`, `strength`, `cross` or `other` | `{ activities, truncated }`: newest first, at most 50, `truncated` counts the rest                   |
 | `getActivity`      | `id` (uuid)                                                                                                                                  | `{ activity, laps, strengthSets }` (Hyrox stations when known), or `{ error: 'activity not found' }` |
 | `getWeeklySummary` | `weekStart`: a Monday, `YYYY-MM-DD`                                                                                                          | `{ weekStart, weekEnd, doneMinutes, doneSessions, runKm }` (activities only)                         |
@@ -272,14 +272,14 @@ model that wrote it (older replies hold the id that was configured then).
 
 ## Limits and failures
 
-| Case                                 | Behaviour                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                                                                                                                                                                                                                                             |
-| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`), only after every listed model failed or the 45 s fallback budget ended (a model that emits no event within 15 s, `FIRST_EVENT_TIMEOUT_MS`, is aborted and counts as unavailable, so the next model still gets a turn); the UI shows "The coach is busy, try again in a minute" and offers Retry |
-| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing                                                                                                                                                                                                                              |
-| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply                                                                                                                                                                                                                       |
-| Failed reply                         | the saved user message stays; a retry sends the same text again (the history merge makes this harmless)                                                                                                                                                                                                                                             |
-| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                                                                                                                                                                                                                                         |
+| Case                                 | Behaviour                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                                                                                                                                                                                                                                                               |
+| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`), only after every listed model failed or the 45 s fallback budget ended (a model that emits no event within 15 s, `FIRST_EVENT_TIMEOUT_MS`, is aborted and counts as unavailable, so the next model still gets a turn); the UI toasts "The coach is busy, try again in a minute" and puts the text back in the box |
+| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing                                                                                                                                                                                                                                                |
+| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply                                                                                                                                                                                                                                         |
+| Failed reply                         | the saved user message stays; the text goes back to the box and sending it again reuses its bubble (the history merge makes this harmless)                                                                                                                                                                                                                            |
+| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                                                                                                                                                                                                                                                           |
 
 ## Persistence
 
@@ -345,8 +345,12 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   streams, cancelled (typed text restored) when the panel closes. Design and copy in
   [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md) and
   [2026-11-26-coach-voice-panel-design.md](2026-11-26-coach-voice-panel-design.md).
-- States: empty, loading history, streaming, error with retry (busy, conversation not found),
-  blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The
+- States: empty, loading history, streaming, busy, conversation not found, blocked, limit reached,
+  sign in again (401 or 403), not set up (503), incomplete reply. Every error is an error toast
+  (`ERROR_COPY`, id `coach-error`), never a block in the panel, and there is no Retry button: the
+  failed text goes back to an empty box (`failedText` from the hook) and sending it again reuses its
+  user bubble. A conversation not found reads "That conversation no longer exists. Send again to
+  start a new one." The
   stream is read by a custom hook (`use-coach-chat.ts`), not by the AI SDK client.
 - Draft text is not kept when the panel is closed.
 
@@ -381,7 +385,7 @@ script never prints the key, the body or the prompt.
   cancel, provider errors, daily cap, conversation ownership.
 - The route handler: 401, 403, 503, 413, 422, 404, 429, 500, the stream happy path, abort.
 - DB suites: the new tables isolate by user and the dropped tables are gone.
-- UI: the hook (wire parsing, status mapping, stop, retry) and the panel states, located by
+- UI: the hook (wire parsing, status mapping, stop, sending a failed text again) and the panel states, located by
   `data-testid`.
 
 ## Open questions

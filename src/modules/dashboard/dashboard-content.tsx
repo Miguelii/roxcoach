@@ -5,7 +5,6 @@ import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { ActivityActions } from '@/components/activity-actions'
-import { QueryError } from '@/components/query-error'
 import { DashboardControls } from '@/modules/dashboard/dashboard-controls'
 import { LOADING_DASHBOARD_MODE } from '@/modules/dashboard/constants'
 import { RunProgress } from '@/modules/dashboard/progress/run-progress'
@@ -16,6 +15,8 @@ import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
 import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip } from '@/modules/dashboard/week-strip'
 import { WeekStripLoading } from '@/modules/dashboard/week-strip-view'
+import { WeeklyGoalsCard } from '@/modules/dashboard/weekly-goals-card'
+import { WeeklyGoalsCardLoading } from '@/modules/dashboard/weekly-goals-card-view'
 
 type Props = {
     // The profile the server prefetched. The shell's mode toggle creates the profile query before
@@ -39,24 +40,17 @@ export function DashboardContent({ initialProfile, loadingMode = LOADING_DASHBOA
     const { profile } = useDashboardMode()
     const { range, setRange } = useProgressRange()
     const data = profile.data ?? initialProfile
-
-    if (!data && !profile.isPending)
-        return (
-            <QueryError
-                message="Could not load your profile."
-                onRetry={() => void profile.refetch()}
-                testId="dashboard-profile-error"
-            />
-        )
+    const failed = !data && !profile.isPending
 
     return (
         <div data-testid="dashboard-content" aria-busy={!data} className="space-y-6">
             <DashboardHeader range={range} onRangeChange={(next) => void setRange(next)} />
             {data ? (
                 <DashboardBody profile={data} range={range} />
-            ) : (
+            ) : failed ? null : (
                 <>
                     <WeekStripLoading mode={loadingMode} />
+                    <WeeklyGoalsCardLoading />
                     {loadingMode === 'run' ? <RunProgressLoading /> : <StrengthProgressLoading />}
                 </>
             )}
@@ -93,6 +87,7 @@ function DashboardBody({ profile, range }: BodyProps) {
     return (
         <>
             <WeekStrip today={today} mode={profile.dashboardMode} />
+            <WeeklyGoalsCard today={today} mode={profile.dashboardMode} />
             {profile.dashboardMode === 'run' ? (
                 <RunProgress range={range} today={today} />
             ) : (

@@ -3,7 +3,6 @@
 import { toast } from 'sonner'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTRPC } from '@/lib/trpc'
 import { DeleteProfileSection } from '@/modules/settings/delete-profile-section'
@@ -24,24 +23,16 @@ const toFormValues = (profile: ProfileDTO): ProfileFormValues => ({
 // Thin wrapper: fetches the profile and saves it. Covered through ProfileForm; it only wires trpc.
 export function ProfileTab() {
     const trpc = useTRPC()
-    const query = useQuery(trpc.athlete.getProfile.queryOptions())
+    const query = useQuery(
+        trpc.athlete.getProfile.queryOptions(undefined, {
+            meta: { errorMessage: 'Could not load your profile.' },
+        })
+    )
     const queryClient = useQueryClient()
     const update = useMutation(trpc.athlete.updateProfile.mutationOptions())
 
     if (query.isPending) return <Skeleton data-testid="profile-loading" className="h-96 max-w-xl" />
-    if (query.isError)
-        return (
-            <div data-testid="profile-error" className="space-y-3">
-                <p className="text-sm text-destructive">Could not load your profile.</p>
-                <Button
-                    variant="outline"
-                    data-testid="profile-retry"
-                    onClick={() => void query.refetch()}
-                >
-                    Try again
-                </Button>
-            </div>
-        )
+    if (query.data === undefined) return null
 
     const onSubmit = async (values: ProfileValues) => {
         try {

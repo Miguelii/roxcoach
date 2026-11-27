@@ -35,7 +35,7 @@ answering and when it changed.
 ## Non-goals and anti-goals
 
 - No switch once any text of the reply has been streamed: continuing the same answer on another model
-  would give a duplicated or incoherent reply. That case stays the existing error with retry.
+  would give a duplicated or incoherent reply. That case stays the existing busy error.
 - No switch on a blocked prompt (another model would refuse the same request).
 - No per-instance memory of which model is exhausted in v1 (see "Left out"). No quota tracking, no
   admin screen, no per-athlete model choice, no paid models.
@@ -236,7 +236,7 @@ is logged, as everywhere else in the chat.
 | Case                                              | Behavior                                                        |
 | ------------------------------------------------- | --------------------------------------------------------------- |
 | First model rate limited before any text          | The next model answers; the athlete sees nothing                |
-| Model fails after streaming text                  | Existing error with retry; no switch; partial text not saved    |
+| Model fails after streaming text                  | Existing busy error; no switch; partial text not saved          |
 | Every model failed before text                    | One error event (`rate_limited` or `unavailable`), as today     |
 | Blocked prompt                                    | Existing "cannot answer that" message, no switch                |
 | Athlete cancels during a retry                    | Everything stops, user message saved, no assistant message      |

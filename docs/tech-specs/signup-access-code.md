@@ -141,7 +141,7 @@ grant execute on function roxcoach.grant_access(uuid, text) to service_role;
 | Component         | `src/modules/auth/signup-card.tsx`, hook `use-signup-form.ts` (zod schema and `FormValues`)                                                                                                                                        |
 | Fields            | name, email, password, access code (all required), submit button                                                                                                                                                                   |
 | Submit            | `useMutation(trpc.auth.signUp.mutationOptions())`, then `queryClient.clear()`, `router.replace('/dashboard')`, `router.refresh()`, like `LoginCard`                                                                                |
-| Failure           | one inline generic message (above); the form keeps its values                                                                                                                                                                      |
+| Failure           | one generic error toast (above); the form keeps its values                                                                                                                                                                         |
 | Closed            | the page calls `notFound()` when `NEXT_SIGNUP_ACCESS_CODE` is unset; `/login` hides the link (`SignupLink`, a small request-time hole, so the login card itself is in the static shell; `returnTo` is read from the URL at submit) |
 | Navigation        | `/login` shows "Have an access code? Create an account"; `/signup` shows "Already have an account? Sign in"                                                                                                                        |
 | Already signed in | the proxy redirects `/signup` to `/dashboard`, as for `/login`                                                                                                                                                                     |
@@ -150,7 +150,7 @@ grant execute on function roxcoach.grant_access(uuid, text) to service_role;
   content. The password input has `autocomplete="new-password"` and an eye button
   (`signup-password-toggle`) that shows or hides it; the code input is always visible, in capitals,
   with `autocomplete="off"`. Test ids: `signup-card`, `signup-name`, `signup-email`, `signup-password`,
-  `signup-access-code`, `signup-submit`, `signup-error`, `signup-login-link`.
+  `signup-access-code`, `signup-submit`, `signup-login-link`.
 - The page is a Server Component that reads the env, so it must call `await connection()` before
   reading it, as the dashboard page does for cacheComponents.
 

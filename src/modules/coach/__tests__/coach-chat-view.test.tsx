@@ -1,7 +1,7 @@
 /* oxlint-disable unicorn/consistent-function-scoping -- test helpers stay next to the cases that use them */
 /* oxlint-disable max-lines -- one suite per module, one case per behavior */
 // oxlint-disable max-lines-per-function
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CoachChatView } from '@/modules/coach/coach-chat-view'
 import { COACH_SUGGESTIONS } from '@/modules/coach/suggestions'
@@ -17,6 +17,10 @@ import {
     permissionDenied,
     streamOf,
 } from '@/modules/coach/__tests__/helpers'
+
+const mocks = vi.hoisted(() => ({ toastError: vi.fn() }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const meta = { type: 'meta', conversationId: ID }
@@ -85,7 +89,7 @@ function HarnessView({
             onNew={chat.newConversation}
             onOpen={(id) => void chat.openConversation(id)}
             onDelete={onDelete}
-            onRetry={chat.retry}
+            failedText={chat.failedText}
             voiceDeps={voiceDeps}
         />
     )
@@ -95,6 +99,10 @@ const type = (value: string) =>
     fireEvent.change(screen.getByTestId('coach-input'), { target: { value } })
 
 describe('CoachChatView', () => {
+    beforeEach(() => {
+        mocks.toastError.mockClear()
+    })
+
     it('shows the launcher bar and opens the panel without focusing the input', () => {
         render(<Harness startOpen={false} />)
         expect(screen.queryByTestId('coach-panel')).not.toBeInTheDocument()
@@ -284,15 +292,17 @@ describe('CoachChatView', () => {
         type('hi')
         fireEvent.click(screen.getByTestId('coach-send'))
         await waitFor(() =>
-            expect(screen.getByTestId('coach-limit')).toHaveTextContent(
-                "You reached today's message limit"
-            )
+            expect(mocks.toastError).toHaveBeenCalledWith("You reached today's message limit", {
+                id: 'coach-error',
+            })
         )
-        expect(screen.queryByTestId('coach-retry')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('coach-limit')).toBeNull()
+        expect(screen.queryByTestId('coach-retry')).toBeNull()
+        expect(screen.getByTestId('coach-input')).toHaveValue('hi')
     })
 
     it.each(['rate_limited', 'unavailable'])(
-        '%s shows the busy message and retry resends the same text',
+        '%s toasts the busy message and hands the text back to send again',
         async (kind) => {
             const send = vi
                 .fn()
@@ -302,21 +312,24 @@ describe('CoachChatView', () => {
             type('same text')
             fireEvent.click(screen.getByTestId('coach-send'))
             await waitFor(() =>
-                expect(screen.getByTestId('coach-error-text')).toHaveTextContent(
-                    'The coach is busy, try again in a minute'
+                expect(mocks.toastError).toHaveBeenCalledWith(
+                    'The coach is busy, try again in a minute',
+                    { id: 'coach-error' }
                 )
             )
-            fireEvent.click(screen.getByTestId('coach-retry'))
+            expect(screen.queryByTestId('coach-error')).toBeNull()
+            expect(screen.getByTestId('coach-input')).toHaveValue('same text')
+            fireEvent.click(screen.getByTestId('coach-send'))
             await waitFor(() =>
                 expect(screen.getByTestId('coach-message-assistant')).toHaveTextContent('fine')
             )
             expect(send.mock.calls[1]?.[0].message).toBe('same text')
             expect(screen.getAllByTestId('coach-message-user')).toHaveLength(1)
-            expect(screen.queryByTestId('coach-error')).not.toBeInTheDocument()
+            expect(screen.getByTestId('coach-input')).toHaveValue('')
         }
     )
 
-    it('shows the blocked message without retry and the sign-in message on 401', async () => {
+    it('toasts the blocked message and keeps the text in the box', async () => {
         const send = vi
             .fn()
             .mockResolvedValueOnce(streamOf(ndjson(meta, { type: 'error', kind: 'blocked' })))
@@ -324,11 +337,13 @@ describe('CoachChatView', () => {
         type('x')
         fireEvent.click(screen.getByTestId('coach-send'))
         await waitFor(() =>
-            expect(screen.getByTestId('coach-error-text')).toHaveTextContent(
-                'The coach cannot answer that. Try rephrasing.'
+            expect(mocks.toastError).toHaveBeenCalledWith(
+                'The coach cannot answer that. Try rephrasing.',
+                { id: 'coach-error' }
             )
         )
-        expect(screen.queryByTestId('coach-retry')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('coach-retry')).toBeNull()
+        expect(screen.getByTestId('coach-input')).toHaveValue('x')
     })
 
     it('announces the finished reply once in the live region, not the deltas', async () => {
@@ -585,7 +600,7 @@ describe('CoachChatView', () => {
             )
         })
 
-        it('keeps the caption and shows the error copy when all models fail', async () => {
+        it('keeps the caption and toasts the error copy when all models fail', async () => {
             const send = vi
                 .fn()
                 .mockResolvedValueOnce(streamOf(ndjson(meta, model(M1), text('A'), done)))
@@ -596,7 +611,7 @@ describe('CoachChatView', () => {
             await sendOne()
             fireEvent.change(screen.getByTestId('coach-input'), { target: { value: 'again' } })
             fireEvent.click(screen.getByTestId('coach-send'))
-            await waitFor(() => expect(screen.getByTestId('coach-error')).toBeInTheDocument())
+            await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
             expect(screen.getByTestId('coach-model-caption')).toHaveTextContent('Gemini 3.6 Flash')
         })
 
@@ -819,9 +834,9 @@ describe('CoachChatView', () => {
             fireEvent.click(screen.getByTestId('coach-voice-send'))
             await flushVoice()
             expect(send).not.toHaveBeenCalled()
-            expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(
-                "Couldn't transcribe. Try again."
-            )
+            expect(mocks.toastError).toHaveBeenCalledWith("Couldn't transcribe. Try again.", {
+                id: 'coach-voice-error',
+            })
         })
 
         it('puts the typed text back when the panel closes while recording', async () => {
@@ -1016,33 +1031,35 @@ describe('CoachChatView', () => {
                 { tokenStatus: 502, respond: async () => Response.json({ text: '' }) },
                 "Didn't catch that. Try again.",
             ],
-        ])('shows the %s copy', async (_kind, options, copy) => {
+        ])('toasts the %s copy', async (_kind, options, copy) => {
             const voice = fakeVoiceDeps(options)
             render(<Harness voiceDeps={voice.deps} />)
             await tapMic()
             speak(voice)
             await tapMic()
             await waitFor(() =>
-                expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(copy)
+                expect(mocks.toastError).toHaveBeenCalledWith(copy, { id: 'coach-voice-error' })
             )
         })
 
-        it('keeps the error line out of the row that centers the buttons on the box', async () => {
+        it('toasts a voice error instead of drawing a line under the box', async () => {
             const voice = fakeVoiceDeps({ openError: permissionDenied() })
             render(<Harness voiceDeps={voice.deps} />)
             await tapMic()
             const row = screen.getByTestId('coach-compose-row')
             expect(row).toContainElement(screen.getByTestId('coach-input'))
             expect(row).toContainElement(screen.getByTestId('coach-send'))
-            expect(row).not.toContainElement(screen.getByTestId('coach-voice-error'))
+            expect(screen.queryByTestId('coach-voice-error')).toBeNull()
+            expect(mocks.toastError).toHaveBeenCalledTimes(1)
         })
 
-        it('shows the blocked microphone copy', async () => {
+        it('toasts the blocked microphone copy', async () => {
             const voice = fakeVoiceDeps({ openError: permissionDenied() })
             render(<Harness voiceDeps={voice.deps} />)
             await tapMic()
-            expect(screen.getByTestId('coach-voice-error')).toHaveTextContent(
-                'Allow microphone access in your browser settings'
+            expect(mocks.toastError).toHaveBeenCalledWith(
+                'Allow microphone access in your browser settings',
+                { id: 'coach-voice-error' }
             )
         })
 

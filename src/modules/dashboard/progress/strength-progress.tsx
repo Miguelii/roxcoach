@@ -2,7 +2,6 @@
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { QueryError } from '@/components/query-error'
 import { useTRPC } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import {
@@ -19,19 +18,16 @@ export function StrengthProgress({ range }: Props) {
     const query = useQuery(
         trpc.training.getStrengthProgress.queryOptions(
             { range },
-            { staleTime: DASHBOARD_QUERY_STALE_TIME, placeholderData: keepPreviousData }
+            {
+                staleTime: DASHBOARD_QUERY_STALE_TIME,
+                placeholderData: keepPreviousData,
+                meta: { errorMessage: 'Could not load your strength progress.' },
+            }
         )
     )
 
     if (query.data === undefined && query.isPending) return <StrengthProgressLoading />
-    if (query.data === undefined)
-        return (
-            <QueryError
-                message="Could not load your strength progress."
-                onRetry={() => void query.refetch()}
-                testId="strength-progress-error"
-            />
-        )
+    if (query.data === undefined) return null
 
     return <StrengthProgressView data={query.data} />
 }

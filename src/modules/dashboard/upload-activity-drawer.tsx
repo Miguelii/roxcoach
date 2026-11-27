@@ -27,24 +27,14 @@ const formatSize = (bytes: number) =>
 export function UploadActivityDrawer({ upload, onUploaded }: Props) {
     const [open, setOpen] = useState(false)
     const [dragOver, setDragOver] = useState(false)
-    const {
-        form,
-        file,
-        submit,
-        selectFile,
-        setHyrox,
-        reset,
-        inputKey,
-        status,
-        errorMessage,
-        showHyroxOption,
-    } = useUploadActivity({
-        upload,
-        onSuccess: () => {
-            setOpen(false)
-            onUploaded?.()
-        },
-    })
+    const { form, file, submit, selectFile, setHyrox, reset, inputKey, status, showHyroxOption } =
+        useUploadActivity({
+            upload,
+            onSuccess: () => {
+                setOpen(false)
+                onUploaded?.()
+            },
+        })
     const uploading = status === 'uploading'
 
     return (
@@ -203,15 +193,6 @@ export function UploadActivityDrawer({ upload, onUploaded }: Props) {
                                         </FormItem>
                                     )}
                                 />
-                            ) : null}
-                            {status === 'error' && errorMessage ? (
-                                <p
-                                    role="alert"
-                                    data-testid="upload-error"
-                                    className="text-sm text-destructive"
-                                >
-                                    {errorMessage}
-                                </p>
                             ) : null}
                         </DrawerFormLayout>
                     </form>

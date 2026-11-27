@@ -160,15 +160,15 @@ session (the proxy sends crawlers to `/login`) and `/signup` stays `noindex` (ac
 
 ## Screens
 
-| Route              | Access    | Job                                                            |
-| ------------------ | --------- | -------------------------------------------------------------- |
-| `/login`           | public    | sign in                                                        |
-| `/signup`          | public    | create an account with an access code (404 while closed)       |
-| `/dashboard`       | protected | training progress overview                                     |
-| `/calendar`        | protected | activity and race calendar, activity upload                    |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
-| `/races`           | protected | list, create, edit races and goals                             |
-| `/settings`        | protected | profile, weekly availability, Lyfta connection and manual sync |
+| Route              | Access    | Job                                                                                  |
+| ------------------ | --------- | ------------------------------------------------------------------------------------ |
+| `/login`           | public    | sign in                                                                              |
+| `/signup`          | public    | create an account with an access code (404 while closed)                             |
+| `/dashboard`       | protected | training progress overview                                                           |
+| `/calendar`        | protected | activity and race calendar, activity upload                                          |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results                                          |
+| `/races`           | protected | list, create, edit races and goals                                                   |
+| `/settings`        | protected | profile, dashboard, weekly goals and run types (`?tab=goals` opens it), integrations |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -248,7 +248,7 @@ the info toast "Syncing your activities. They will be available shortly."; while
 state is `running` the row and the button show a spinner and the row is disabled (also after a
 reload, since it comes from the polled status); when the run this tab saw `running` ends, the row
 shows the final success or error toast once. A page that loads after the run ended shows no toast,
-and the Settings cards show the last result or error inline instead. See [manual-upload.md](manual-upload.md) for upload details.
+and the Settings cards show the last result inline and toast the last error instead. See [manual-upload.md](manual-upload.md) for upload details.
 
 The calendar is fed by `training.getCalendar({ from, to })`, a single query, returning activities
 and upcoming or completed races for the visible range, never cancelled races. Items are typed as a
@@ -377,16 +377,19 @@ The one place the coach speaks. See [coach-chat.md](coach-chat.md). It is a clie
   list right before that reply. It is in-session only (not stored, absent in reopened
   conversations), is not an alert and is not announced by the live region.
 - **States**: empty, loading history (skeleton), streaming, stopped or cut off (partial text kept
-  and labelled "Incomplete reply"), error with retry ("The coach is busy, try again in a minute",
-  retry resends the same text), blocked ("The coach cannot answer that. Try rephrasing."), limit
-  ("You reached today's message limit"), sign-in again (401, 403), not set up (503).
+  and labelled "Incomplete reply"), busy ("The coach is busy, try again in a minute"), blocked ("The coach cannot answer that. Try rephrasing."), limit
+  ("You reached today's message limit"), sign-in again (401, 403), not set up (503). Every error is
+  an error toast, never a block in the panel; the failed text goes back to an empty box so the
+  athlete can send it again (sending the same text reuses its user bubble).
 
 ### Races
 
 `/races` loads the races, profile division and athlete timezone through tRPC client queries in
 `RacesView`. Their 30-second stale time lets the shared QueryClient keep data across navigation;
-cached results remain visible during background refetches. Initial loading and query errors have
-their own skeleton and retry state. Mutations in `RacesManager` invalidate `races.list` and
+cached results remain visible during background refetches. Initial loading has its own skeleton; a
+query error is toasted ("Could not load your races.") and the page renders nothing below its
+header. A server render error (`races/error.tsx`) toasts "Could not load your races. Please try
+again." and renders nothing. Mutations in `RacesManager` invalidate `races.list` and
 `training.getCalendar` without refreshing the page. `RacesList` renders:
 
 - A "New race" button (`race-new`) opening `RaceFormDrawer` (create and edit), right-side on
@@ -407,10 +410,11 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
 
 ### Settings
 
-Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
-`trpc.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+Four tabs (`SettingsTabs`: Profile, Dashboard, Goals, Integrations; default Profile, `?tab=<name>`
+opens another one): Profile and Goals use `trpc.athlete.*` through thin wrappers (`ProfileTab`,
+`GoalsTab`); Lyfta uses
 `trpc.lyfta.*` for credential management and manual workout sync. All tabs have loading and
-error states; profile and availability show toasts on save. Lyfta and Zepp connection and sync
+error states; profile and goals show toasts on save. Lyfta and Zepp connection and sync
 states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 
 - **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
@@ -422,10 +426,11 @@ states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
   profile" or "Delete everything"). Confirming deletes the account and all the athlete's data (see
   [athlete-races.md](athlete-races.md), "Delete profile"), clears the query cache and goes to
   `/login`; a failure keeps the dialog open with one fixed message.
-- **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
-  7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
-  kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to
-  H h". A rest day is exclusive; the same kind cannot be added twice on a day.
+- **Goals** (`GoalsForm`, hook `use-goals-form`): see
+  [2026-11-27-weekly-goals-design.md](2026-11-27-weekly-goals-design.md), "Settings: Goals tab".
+  Weekly goals (running km, long runs, fast runs, strength sessions; empty means no goal) and run
+  type rules (short run under km, long run over km, fast pace `m:ss`) with a live summary of the
+  rule. Save toasts "Goals saved" or "Goals saved. N runs reclassified.".
 
 ### Logs
 
@@ -450,8 +455,8 @@ divider a "Danger zone" holds `Clear activities` and `Disconnect`, each with a o
 and a destructive button of at least 44 px, apart from Sync so they are not pressed by mistake.
 `Clear activities` is disabled with zero activities, while the count is unknown and while a sync or
 another action runs. It opens the shared `ConfirmDialog` ("Clear 142 Lyfta workouts?", the 360 day
-caveat, `Clear Lyfta activities` / `Keep activities`); a failure stays in the dialog and a success
-closes it with a toast. The backend behaviour is in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
+caveat, `Clear Lyfta activities` / `Keep activities`); a failure keeps the dialog open with an error toast
+and a success closes it with a toast. The backend behaviour is in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 
 ## Components
 
@@ -470,19 +475,22 @@ Cancel plus the primary action in a fixed footer. Footer actions stack verticall
 mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
 layout.
 
-| Component   | Purpose                                                      |
-| ----------- | ------------------------------------------------------------ |
-| `calendar/` | month grid, week agenda, day panel, chips                    |
-| `activity/` | metrics row, laps table, details dialog                      |
-| `coach/`    | chat panel, history menu, message, chips                     |
-| `races/`    | race card, race form                                         |
-| `settings/` | profile form, availability editor, Lyfta connection and sync |
+| Component   | Purpose                                             |
+| ----------- | --------------------------------------------------- |
+| `calendar/` | month grid, week agenda, day panel, chips           |
+| `activity/` | metrics row, laps table, details dialog             |
+| `coach/`    | chat panel, history menu, message, chips            |
+| `races/`    | race card, race form                                |
+| `settings/` | profile form, goals form, Lyfta connection and sync |
 
 ## States every screen must handle
 
 Loading (skeletons shaped like the final content), empty (explains why and offers the next
-action, for example "No races yet. Add one so your coach knows your goal."), error (what failed, one retry
-action) and offline or stale (a muted "Updated 2 hours ago" line where sync matters).
+action, for example "No races yet. Add one so your coach knows your goal."), error (an error toast saying what
+failed, never inline text, a `role="alert"` block or a retry button; a part whose data failed renders
+nothing or keeps its last data; query load errors are toasted once by the `QueryCache` `onError` in
+`src/providers/query-client.ts` with the query's `meta.errorMessage`, or "Could not load your data.",
+and the query hash as toast id; only form field validation stays inline) and offline or stale (a muted "Updated 2 hours ago" line where sync matters).
 
 ## Copy rules
 
@@ -496,7 +504,7 @@ omitted, never as "N/A" text from the database.
 Every element tested is located by `data-testid`. Target state: end-to-end smoke tests with page
 objects in `e2e/pos/*.po.ts` (there is no `e2e` directory yet; today only unit and component tests
 exist, and the mock data is gone). Initial flows: login success and failure, the calendar renders
-activities from seeded data, create a race, save weekly availability.
+activities from seeded data, create a race, save weekly goals.
 
 ## Dialogs and drawers
 

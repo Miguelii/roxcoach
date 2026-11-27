@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { CircleIcon, Loader2Icon, MicIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatClock } from '@/_bff/core/utils/formatters.utils'
 import { Button } from '@/components/ui/button'
 import type { useVoiceRecorder, VoiceErrorKind } from '@/modules/coach/use-voice-recorder'
@@ -67,11 +69,8 @@ export function CoachVoiceButton({ voice }: Props) {
     )
 }
 
-export function CoachVoiceError({ voice }: Props) {
-    if (voice.error === null) return null
-    return (
-        <p data-testid="coach-voice-error" className="text-xs text-muted-foreground">
-            {VOICE_ERROR_COPY[voice.error]}
-        </p>
-    )
+export function useVoiceErrorToast(error: VoiceErrorKind | null) {
+    useEffect(() => {
+        if (error !== null) toast.error(VOICE_ERROR_COPY[error], { id: 'coach-voice-error' })
+    }, [error])
 }

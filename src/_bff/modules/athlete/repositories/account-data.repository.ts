@@ -65,7 +65,7 @@ export const removeAllActivityFiles = Effect.fn('removeAllActivityFiles')(functi
 /**
  * Deletes the auth user. Every Roxcoach table references `auth.users` with `on delete cascade`, so
  * this removes all the user's rows (activities and their laps, sets and file rows, races,
- * availability, coach conversations and messages, the Lyfta connection, coach usage and the
+ * goals, coach conversations and messages, the Lyfta connection, coach usage and the
  * profile) in one step, and any table added later is covered by its own foreign key.
  * @param supabase - The service-role client (the Auth admin API needs the service-role key).
  * @param userId - The signed-in user's id.

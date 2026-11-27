@@ -18,6 +18,7 @@ import type {
 import { parseHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import { parsePaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import type { HrHistogram, PaceHistogram } from '@/_bff/modules/training/types/progress'
+import { RUN_TYPES, type RunType } from '@/_bff/core/constants/weekly-goals.constants'
 import { selectColumns } from '@/_bff/core/db/columns'
 import { DbTables } from '@/_bff/core/db/tables'
 
@@ -42,6 +43,8 @@ const COLUMNS = selectColumns(DbTables.ACTIVITIES, [
     'lyfta_total_volume_kg_reps',
     'perceived_effort',
     'notes',
+    'run_type',
+    'run_type_manual',
 ])
 
 // PostgREST serializes numeric and bigint as JSON numbers, but a string is accepted too.
@@ -74,6 +77,8 @@ const activityRowSchema = z.object({
     lyfta_total_volume_kg_reps: numeric,
     perceived_effort: numeric,
     notes: z.string().nullable(),
+    run_type: z.enum(RUN_TYPES).nullable(),
+    run_type_manual: z.boolean(),
 })
 
 // Postgres errors can echo the failing row in `details` or `hint`, so only the code and the
@@ -100,6 +105,8 @@ const toDTO = (row: z.infer<typeof activityRowSchema>): ActivityDTO => ({
     lyftaTotalVolumeKgReps: row.lyfta_total_volume_kg_reps,
     perceivedEffort: row.perceived_effort,
     notes: row.notes,
+    runType: row.run_type,
+    runTypeManual: row.run_type_manual,
 })
 
 const parseError = (issues: z.core.$ZodIssue[], error_hash: ErrorCode) =>
@@ -798,4 +805,113 @@ export const selectStartedAtsBetween = Effect.fn('selectStartedAtsBetween')(func
             error_hash: ErrorCode.TRAINING_ZEPP_ACTIVITY_SELECT_ERR,
         })
     return parsed.data.map((row) => row.started_at)
+})
+
+const reclassifyRowSchema = z.object({
+    id: z.string(),
+    distance_m: numeric,
+    moving_time_s: numeric,
+    elapsed_time_s: numeric,
+    run_type: z.enum(RUN_TYPES).nullable(),
+})
+
+// The live runs of the user whose type was not set by hand, the ones a rules change reclassifies.
+export const selectRunsForReclassify = Effect.fn('selectRunsForReclassify')(function* (
+    supabase: TrainingClient,
+    userId: string
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(DbTables.ACTIVITIES)
+                .select(
+                    selectColumns(DbTables.ACTIVITIES, [
+                        'id',
+                        'distance_m',
+                        'moving_time_s',
+                        'elapsed_time_s',
+                        'run_type',
+                    ])
+                )
+                .eq('user_id', userId)
+                .eq('category', 'run')
+                .eq('run_type_manual', false)
+                .is('deleted_at', null),
+        catch: (cause) =>
+            new ActivityQueryError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_RUN_TYPE_SELECT,
+            }),
+    })
+
+    if (error) return yield* queryError(error, ErrorCode.TRAINING_RUN_TYPE_SELECT_ERR)
+
+    const parsed = z.array(reclassifyRowSchema).safeParse(data)
+    if (!parsed.success)
+        return yield* parseError(parsed.error.issues, ErrorCode.TRAINING_RUN_TYPE_SELECT_PARSE)
+
+    return parsed.data.map((row) => ({
+        id: row.id,
+        distanceM: row.distance_m,
+        movingTimeS: row.moving_time_s,
+        elapsedTimeS: row.elapsed_time_s,
+        runType: row.run_type,
+    }))
+})
+
+// PostgREST sends in() filters in the URL, so long id lists are split to keep it short.
+const RUN_TYPE_UPDATE_CHUNK = 100
+
+export const updateRunTypes = Effect.fn('updateRunTypes')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    ids: string[],
+    runType: RunType | null
+) {
+    for (let start = 0; start < ids.length; start += RUN_TYPE_UPDATE_CHUNK) {
+        const chunk = ids.slice(start, start + RUN_TYPE_UPDATE_CHUNK)
+        const { error } = yield* Effect.tryPromise({
+            try: () =>
+                supabase
+                    .from(DbTables.ACTIVITIES)
+                    .update({ run_type: runType })
+                    .eq('user_id', userId)
+                    .in('id', chunk),
+            catch: (cause) =>
+                new ActivityWriteError({
+                    cause: String(cause),
+                    error_hash: ErrorCode.TRAINING_RUN_TYPE_UPDATE,
+                }),
+        })
+
+        if (error) return yield* writeError(error, ErrorCode.TRAINING_RUN_TYPE_UPDATE_ERR)
+    }
+})
+
+// Returns false when no live run of the user has that id.
+export const setActivityRunType = Effect.fn('setActivityRunType')(function* (
+    supabase: TrainingClient,
+    userId: string,
+    activityId: string,
+    value: { runType: RunType | null; manual: boolean }
+) {
+    const { data, error } = yield* Effect.tryPromise({
+        try: () =>
+            supabase
+                .from(DbTables.ACTIVITIES)
+                .update({ run_type: value.runType, run_type_manual: value.manual })
+                .eq('id', activityId)
+                .eq('user_id', userId)
+                .eq('category', 'run')
+                .is('deleted_at', null)
+                .select(selectColumns(DbTables.ACTIVITIES, ['id'])),
+        catch: (cause) =>
+            new ActivityWriteError({
+                cause: String(cause),
+                error_hash: ErrorCode.TRAINING_RUN_TYPE_SET,
+            }),
+    })
+
+    if (error) return yield* writeError(error, ErrorCode.TRAINING_RUN_TYPE_SET_ERR)
+    return (data?.length ?? 0) > 0
 })

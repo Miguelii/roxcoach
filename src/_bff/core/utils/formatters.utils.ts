@@ -62,6 +62,14 @@ export const formatKm = (meters: number | null | undefined) => {
     return `${(meters / 1000).toFixed(1)} km`
 }
 
+/** Formats meters as a bare kilometer number with up to `digits` decimals, `10.25` or `10`. */
+export function formatKmNumber(meters: number, digits?: number): string
+export function formatKmNumber(meters: number | null | undefined, digits?: number): string | null
+export function formatKmNumber(meters: number | null | undefined, digits = 1) {
+    if (meters == null) return null
+    return String(Number((meters / 1000).toFixed(digits)))
+}
+
 /**
  * Parses `h:mm:ss`, `mm:ss` or plain minutes into seconds.
  * Returns null when the text is not a valid duration.

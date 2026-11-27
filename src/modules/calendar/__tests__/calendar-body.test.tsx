@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import { CalendarBody } from '@/modules/calendar/calendar-body'
 import { makeItem } from '@/modules/calendar/__tests__/fixtures'
 
@@ -9,8 +9,6 @@ const base = {
     today: '2026-11-19',
     items: [makeItem({ id: 'abc' })],
     isLoading: false,
-    isError: false,
-    onRetry: () => {},
     onSelectDay: () => {},
 }
 
@@ -20,15 +18,6 @@ describe('CalendarBody', () => {
 
         expect(screen.getByTestId('month-view')).toHaveAttribute('aria-busy', 'true')
         expect(screen.getByTestId('month-day-2026-11-19')).toBeInTheDocument()
-    })
-
-    it('shows an inline error with a retry button on failure', () => {
-        const onRetry = vi.fn()
-        render(<CalendarBody {...base} isError items={[]} onRetry={onRetry} />)
-
-        expect(screen.getByTestId('calendar-error')).toHaveTextContent('Could not load')
-        fireEvent.click(screen.getByTestId('calendar-retry'))
-        expect(onRetry).toHaveBeenCalledTimes(1)
     })
 
     it('renders the month view with the items', () => {

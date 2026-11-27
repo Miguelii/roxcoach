@@ -46,6 +46,10 @@ export function Calendar({ today }: Props) {
         trpc.training.getCalendar.queryOptions(visibleRange(effectiveView, cursor), {
             placeholderData: keepPreviousData,
             staleTime: DASHBOARD_QUERY_STALE_TIME,
+            meta: {
+                errorMessage:
+                    'Could not load your activities. Check your connection and try again.',
+            },
         })
     )
 
@@ -122,8 +126,6 @@ export function Calendar({ today }: Props) {
                 today={today}
                 items={items}
                 isLoading={query.isPending}
-                isError={query.isError}
-                onRetry={() => void query.refetch()}
                 onSelectDay={setSelectedDate}
             />
 

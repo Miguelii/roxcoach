@@ -1,9 +1,14 @@
 // @vitest-environment node
-/* oxlint-disable max-lines -- one suite per module, one case per behavior */
+/* oxlint-disable max-lines, max-lines-per-function -- one suite per module, one case per behavior */
 import { describe, expect, it } from 'vitest'
+import {
+    DEFAULT_RUN_TYPE_RULES,
+    DEFAULT_WEEKLY_GOALS,
+} from '@/_bff/core/constants/weekly-goals.constants'
+import { describeRunTypeRules } from '@/_bff/core/utils/weekly-goals.utils'
 import { buildCoachContext } from '@/_bff/modules/coach/helpers/build-coach-context.helper'
 import type { CoachContextInput } from '@/_bff/modules/coach/types'
-import type { AvailabilitySlotDTO, ProfileDTO } from '@/_bff/modules/athlete/types'
+import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import type { RaceDTO } from '@/_bff/modules/races/types'
 import type { ActivityDTO } from '@/_bff/modules/training/types'
 
@@ -49,12 +54,6 @@ const RACES: RaceDTO[] = [
     race({ id: 'r2', name: 'Porto 10k', distanceM: 10000, targetTimeS: 2399 }),
 ]
 
-const AVAILABILITY: AvailabilitySlotDTO[] = [
-    { weekday: 1, sessionKind: 'run', isFixed: true, maxMinutes: 60, notes: 'Club session' },
-    { weekday: 3, sessionKind: 'strength', isFixed: false, maxMinutes: null, notes: null },
-    { weekday: 6, sessionKind: 'hyrox', isFixed: false, maxMinutes: 120, notes: null },
-]
-
 const activity = (overrides: Partial<ActivityDTO>): ActivityDTO => ({
     id: 'a',
     source: 'manual',
@@ -74,6 +73,8 @@ const activity = (overrides: Partial<ActivityDTO>): ActivityDTO => ({
     lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
+    runType: null,
+    runTypeManual: false,
     ...overrides,
 })
 
@@ -128,7 +129,7 @@ const FULL: CoachContextInput = {
     today: '2026-11-20',
     timezone: 'Europe/Lisbon',
     profile: PROFILE,
-    availability: AVAILABILITY,
+    goals: DEFAULT_WEEKLY_GOALS,
     races: RACES,
     activities: ACTIVITIES,
 }
@@ -137,7 +138,7 @@ const EMPTY: CoachContextInput = {
     today: '2026-11-20',
     timezone: 'Europe/Lisbon',
     profile: null,
-    availability: [],
+    goals: DEFAULT_WEEKLY_GOALS,
     races: [],
     activities: [],
 }
@@ -148,14 +149,28 @@ const GOALS_SECTION = `Goals
 - 2026-12-06 Porto 10k (running, priority B), 16 days to go, target 39:59, 10.0 km
 - 2027-01-16 Hyrox Lisbon (hyrox, priority A), 57 days to go, target 1:10:00, Open Men, location Lisbon, notes: Main goal`
 
-const AVAILABILITY_SECTION = `Availability
-Monday: run (fixed, max 60 min, notes: Club session)
-Tuesday: free
-Wednesday: strength (open)
-Thursday: free
-Friday: free
-Saturday: hyrox (open, max 120 min)
-Sunday: free`
+const RULE_LINE = describeRunTypeRules(DEFAULT_RUN_TYPE_RULES)
+
+const WEEKLY_GOALS_SECTION = `Weekly goals
+No weekly goals set.
+${RULE_LINE}`
+
+const GOALS_WEEK: CoachContextInput = {
+    ...FULL,
+    today: '2026-11-26',
+    goals: {
+        ...DEFAULT_WEEKLY_GOALS,
+        weeklyRunDistanceM: 30000,
+        longRunsPerWeek: 1,
+        fastRunsPerWeek: 1,
+    },
+    activities: [
+        activity({ id: 'w1', localDate: '2026-11-22', distanceM: 10000, runType: 'long' }),
+        activity({ id: 'w2', localDate: '2026-11-23', distanceM: 5000, runType: 'fast' }),
+        activity({ id: 'w3', localDate: '2026-11-25', distanceM: 8400, runType: 'long' }),
+        activity({ id: 'w4', localDate: '2026-11-24', category: 'hyrox', distanceM: 8000 }),
+    ],
+}
 
 describe('buildCoachContext', () => {
     it('builds the full block for a complete athlete', () => {
@@ -170,7 +185,7 @@ Notes: Left knee sensitive
 
 ${GOALS_SECTION}
 
-${AVAILABILITY_SECTION}
+${WEEKLY_GOALS_SECTION}
 
 Last 4 weeks
 Week of 2026-11-16: 2h 05m, 2 sessions, 10.0 km run
@@ -191,7 +206,7 @@ Recent
 
     it('states plainly that there are no races', () => {
         expect(buildCoachContext({ ...FULL, races: [] })).toContain(
-            'Goals\nNo upcoming races.\n\nAvailability'
+            'Goals\nNo upcoming races.\n\nWeekly goals'
         )
     })
 
@@ -208,9 +223,37 @@ Recent
         expect(text).toMatch(/Recent\nNo activities in the last 35 days\.$/u)
     })
 
-    it('states plainly that there is no availability', () => {
-        expect(buildCoachContext({ ...FULL, availability: [] })).toContain(
-            'Availability\nNo weekly availability saved.\n\nLast 4 weeks'
+    it('renders the Weekly goals section with progress, days left and the rule', () => {
+        expect(buildCoachContext(GOALS_WEEK)).toContain(`Weekly goals
+Running distance: 13.4 of 30 km done, 16.6 km to go
+Long runs: 1 of 1 done
+Fast runs: 1 of 1 done
+Days left this week, today included: 4
+${RULE_LINE}
+
+Last 4 weeks`)
+    })
+
+    it('says No weekly goals set. when no goal is set (rule line still present)', () => {
+        expect(buildCoachContext(FULL)).toContain(`${WEEKLY_GOALS_SECTION}\n\nLast 4 weeks`)
+    })
+
+    it('has no Availability section', () => {
+        expect(buildCoachContext(FULL)).not.toContain('Availability')
+        expect(buildCoachContext(EMPTY)).not.toContain('Availability')
+    })
+
+    it('adds the run type to run lines', () => {
+        const text = buildCoachContext(GOALS_WEEK)
+
+        expect(text).toContain('- 2026-11-25 | Run | run | 8.4 km | long run')
+        expect(text).toContain('- 2026-11-23 | Run | run | 5.0 km | fast run')
+        expect(text).toMatch(/^- 2026-11-24 \| Run \| hyrox \| 8\.0 km$/mu)
+    })
+
+    it('never cuts the Weekly goals section for length', () => {
+        expect(buildCoachContext(GOALS_WEEK, 1)).toContain(
+            'Running distance: 13.4 of 30 km done, 16.6 km to go'
         )
     })
 
@@ -223,8 +266,7 @@ No profile saved yet.
 Goals
 No upcoming races.
 
-Availability
-No weekly availability saved.
+${WEEKLY_GOALS_SECTION}
 
 Last 4 weeks
 No activities in the last 35 days.
@@ -267,7 +309,7 @@ No activities in the last 35 days.`)
         const tiny = buildCoachContext(FULL, 1)
 
         expect(tiny).toContain(GOALS_SECTION)
-        expect(tiny).toContain(AVAILABILITY_SECTION)
+        expect(tiny).toContain(WEEKLY_GOALS_SECTION)
         expect(tiny).toContain(TODAY_SECTION)
         expect(tiny).toContain('Notes: Left knee sensitive')
         expect(tiny).toContain(`Last 4 weeks

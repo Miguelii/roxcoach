@@ -131,7 +131,7 @@ describe('useCoachChat failures', () => {
         expect(result.current.messages.map((m) => m.role)).toEqual(['user'])
     })
 
-    it('a 404 clears the conversation so the retry starts a new one', async () => {
+    it('a 404 clears the conversation so sending again starts a new one', async () => {
         const send = vi
             .fn()
             .mockResolvedValueOnce(streamOf(ndjson(meta, { type: 'done' })))
@@ -143,7 +143,8 @@ describe('useCoachChat failures', () => {
         act(() => result.current.sendMessage('two'))
         await waitFor(() => expect(result.current.errorKind).toBe('not-found'))
         expect(result.current.conversationId).toBeNull()
-        act(() => result.current.retry())
+        expect(result.current.failedText).toBe('two')
+        act(() => result.current.sendMessage('two'))
         await waitFor(() => expect(result.current.status).toBe('idle'))
         expect(send.mock.calls[2]?.[0]).toEqual({ conversationId: null, message: 'two' })
     })
@@ -155,7 +156,7 @@ describe('useCoachChat failures', () => {
     })
 
     it.each(['rate_limited', 'unavailable'])(
-        '%s keeps the partial text and retry resends the same text',
+        '%s keeps the partial text and sending the failed text again reuses its bubble',
         async (kind) => {
             const send = vi
                 .fn()
@@ -166,7 +167,8 @@ describe('useCoachChat failures', () => {
             await waitFor(() => expect(result.current.status).toBe('error'))
             expect(result.current.errorKind).toBe('busy')
             expect(result.current.messages[1]).toMatchObject({ content: 'par', incomplete: true })
-            act(() => result.current.retry())
+            expect(result.current.failedText).toBe('question')
+            act(() => result.current.sendMessage('question'))
             await waitFor(() => expect(result.current.status).toBe('idle'))
             expect(send.mock.calls[1]?.[0].message).toBe('question')
             expect(result.current.messages.map((m) => [m.role, m.content])).toEqual([
@@ -176,14 +178,14 @@ describe('useCoachChat failures', () => {
         }
     )
 
-    it('blocked has its own kind and no retry', async () => {
+    it('blocked has its own kind and hands the text back', async () => {
         const send = vi
             .fn()
             .mockResolvedValue(streamOf(ndjson(meta, { type: 'error', kind: 'blocked' })))
         const { result } = setup(send)
         act(() => result.current.sendMessage('hi'))
         await waitFor(() => expect(result.current.errorKind).toBe('blocked'))
-        act(() => result.current.retry())
+        expect(result.current.failedText).toBe('hi')
         expect(send).toHaveBeenCalledTimes(1)
     })
 

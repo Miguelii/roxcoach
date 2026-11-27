@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { todayIn } from '@/_bff/core/utils/date.utils'
-import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTRPC } from '@/lib/trpc'
 import { RacesManager } from '@/modules/races/races-manager'
@@ -14,6 +13,7 @@ export function RacesView() {
     const profile = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             staleTime: RACES_QUERY_STALE_TIME,
+            meta: { errorMessage: 'Could not load your profile.' },
         })
     )
     const races = useQuery(
@@ -21,29 +21,16 @@ export function RacesView() {
             {},
             {
                 staleTime: RACES_QUERY_STALE_TIME,
+                meta: { errorMessage: 'Could not load your races.' },
             }
         )
     )
 
     const missingData = profile.data === undefined || races.data === undefined
+    const failed = missingData && (profile.isError || races.isError)
 
-    if (missingData) {
-        const hasError = profile.isError || races.isError
-
-        if (hasError) {
-            return (
-                <QueryError
-                    message="Could not load your races."
-                    onRetry={() => {
-                        void Promise.all([profile.refetch(), races.refetch()])
-                    }}
-                    testId="races-page-error"
-                />
-            )
-        }
-
-        return <RacesSkeleton />
-    }
+    if (failed) return null
+    if (missingData) return <RacesSkeleton />
 
     return (
         <RacesManager

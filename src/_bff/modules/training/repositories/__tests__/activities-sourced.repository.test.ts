@@ -28,6 +28,7 @@ const ROW: NewZeppActivityRow = {
     calories: 85,
     hr_histogram: { v: 1, bins: [[150, 60, 200]] },
     pace_histogram: { v: 1, bins: [[300, 60, 200]] },
+    run_type: 'long',
 }
 
 describe('insertZeppActivity', () => {

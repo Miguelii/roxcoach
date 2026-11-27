@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { todayIn } from '@/_bff/core/utils/date.utils'
 import { ActivityActions } from '@/components/activity-actions'
-import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTRPC } from '@/lib/trpc'
 import { Calendar } from '@/modules/calendar/calendar'
@@ -17,6 +16,7 @@ export function CalendarPageContent({ initialTimezone }: Props) {
     const timezone = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             select: (profile) => profile.timezone,
+            meta: { errorMessage: 'Could not load your profile.' },
         })
     )
     // The shell's mode toggle and the Suspense fallback create the profile query before the page
@@ -36,14 +36,7 @@ export function CalendarPageContent({ initialTimezone }: Props) {
         )
     }
 
-    if (timezoneData === undefined)
-        return (
-            <QueryError
-                message="Could not load your timezone."
-                onRetry={() => void timezone.refetch()}
-                testId="calendar-timezone-error"
-            />
-        )
+    if (timezoneData === undefined) return null
 
     return (
         <div data-testid="calendar-page-content" className="space-y-6">

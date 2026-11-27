@@ -27,20 +27,7 @@ export function ZeppCard() {
         return <Skeleton data-testid="zepp-loading" className="h-56 max-w-xl" />
     }
 
-    if (zepp.query.isError) {
-        return (
-            <div data-testid="zepp-status-error" className="space-y-3">
-                <p className="text-sm text-destructive">Could not load your Zepp connection.</p>
-                <Button
-                    variant="outline"
-                    data-testid="zepp-status-retry"
-                    onClick={() => void zepp.query.refetch()}
-                >
-                    Try again
-                </Button>
-            </div>
-        )
-    }
+    if (zepp.query.data === undefined) return null
 
     const connected = zepp.query.data.connected
     const lastSyncedAt = zepp.query.data.lastSyncedAt
@@ -211,18 +198,11 @@ export function ZeppCard() {
                 </p>
             ) : null}
 
-            {zepp.errorMessage && !zepp.confirmDisconnect ? (
-                <p data-testid="zepp-error" role="alert" className="text-sm text-destructive">
-                    {zepp.errorMessage}
-                </p>
-            ) : null}
-
             <ClearActivitiesDialog
                 open={zepp.clearActivities.open}
                 onOpenChange={zepp.clearActivities.setOpen}
                 onConfirm={() => void zepp.clearActivities.clear()}
                 clearing={zepp.clearActivities.clearing}
-                error={zepp.clearActivities.error}
                 provider="Zepp"
                 items="runs"
                 extra="laps"
@@ -251,17 +231,7 @@ export function ZeppCard() {
                         {zepp.isDisconnecting ? 'Disconnecting...' : 'Disconnect Zepp'}
                     </Button>
                 }
-            >
-                {zepp.errorMessage === null ? null : (
-                    <p
-                        role="alert"
-                        data-testid="zepp-disconnect-error"
-                        className="text-sm text-destructive"
-                    >
-                        {zepp.errorMessage}
-                    </p>
-                )}
-            </ConfirmDialog>
+            />
         </section>
     )
 }

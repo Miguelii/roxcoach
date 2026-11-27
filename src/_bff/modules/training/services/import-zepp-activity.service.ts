@@ -5,6 +5,7 @@ import { DUPLICATE_WINDOW_SECONDS } from '@/_bff/core/constants/import.constants
 import { localDateIn } from '@/_bff/core/utils/date.utils'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { ZeppImportError } from '@/_bff/lib/errors'
+import { classifyRun } from '@/_bff/modules/training/helpers/classify-run.helper'
 import { buildHrHistogram } from '@/_bff/modules/training/helpers/build-hr-histogram.helper'
 import { buildPaceHistogram } from '@/_bff/modules/training/helpers/build-pace-histogram.helper'
 import {
@@ -78,7 +79,7 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
     activity: AdaptedActivity,
     context: ImportContext
 ) {
-    const { supabase, timeZone } = context
+    const { supabase, timeZone, runTypeRules } = context
     const localDate = yield* Effect.try({
         try: () => localDateIn(activity.startedAt, timeZone),
         catch: () =>
@@ -114,6 +115,7 @@ export const importZeppActivity = Effect.fn('importZeppActivity')(function* (
         calories: activity.calories,
         hr_histogram: buildHrHistogram(activity.samples),
         pace_histogram: buildPaceHistogram(activity.samples),
+        run_type: activity.category === 'run' ? classifyRun(activity, runTypeRules) : null,
     })
     if (!inserted.created || activity.laps.length === 0) return { created: inserted.created }
 

@@ -4,8 +4,14 @@ import {
     formatClock,
     formatDuration,
     formatKm,
+    formatKmNumber,
     formatPace,
 } from '@/_bff/core/utils/formatters.utils'
+import {
+    computeWeeklyGoalProgress,
+    describeRunTypeRules,
+    type WeeklyGoalProgress,
+} from '@/_bff/core/utils/weekly-goals.utils'
 import { computeLoadRatio, computeTotals, loadLabel } from '@/_bff/core/utils/week-stats.utils'
 import {
     addDays,
@@ -19,6 +25,7 @@ import type { CoachContextInput } from '@/_bff/modules/coach/types'
 import type { ActivityDTO } from '@/_bff/modules/training/types'
 
 type Section = { title: string; lines: string[] }
+type GoalProgress = WeeklyGoalProgress['longRuns']
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const WEEKS_SHOWN = 4
@@ -84,34 +91,41 @@ const goalsSection = ({ races, today }: CoachContextInput): Section => {
     return { title: 'Goals', lines }
 }
 
-const availabilitySection = ({ availability }: CoachContextInput): Section => {
-    if (availability.length === 0)
-        return { title: 'Availability', lines: ['No weekly availability saved.'] }
-
-    const lines = WEEKDAY_NAMES.map((name, index) => {
-        const slots = availability.filter((slot) => slot.weekday === index + 1)
-        if (slots.length === 0) return `${name}: free`
-
-        const text = slots.map((slot) => {
-            const details = [slot.isFixed ? 'fixed' : 'open']
-            if (slot.maxMinutes != null) details.push(`max ${slot.maxMinutes} min`)
-            if (slot.notes) details.push(`notes: ${slot.notes}`)
-
-            return `${slot.sessionKind} (${details.join(', ')})`
-        })
-
-        return `${name}: ${text.join('; ')}`
-    })
-
-    return { title: 'Availability', lines }
-}
-
 const toStatsItems = (activities: ActivityDTO[]) =>
     activities.map((activity) => ({
         type: 'activity' as const,
         date: activity.localDate,
         activity,
     }))
+
+const countLine = (label: string, progress: GoalProgress) =>
+    progress ? [`${label}: ${progress.done} of ${progress.goal} done`] : []
+
+const weeklyGoalsSection = ({ goals, activities, today }: CoachContextInput): Section => {
+    const progress = computeWeeklyGoalProgress({ goals, items: toStatsItems(activities), today })
+    const lines: string[] = []
+    const { distanceM } = progress
+    if (distanceM) {
+        const toGo =
+            distanceM.remaining > 0 ? `, ${formatKmNumber(distanceM.remaining)} km to go` : ''
+        lines.push(
+            `Running distance: ${formatKmNumber(distanceM.done)} of ${formatKmNumber(distanceM.goal)} km done${toGo}`
+        )
+    }
+    lines.push(
+        ...countLine('Long runs', progress.longRuns),
+        ...countLine('Fast runs', progress.fastRuns),
+        ...countLine('Strength sessions', progress.strengthSessions)
+    )
+
+    const rule = describeRunTypeRules(goals.runTypeRules)
+    if (lines.length === 0) return { title: 'Weekly goals', lines: ['No weekly goals set.', rule] }
+
+    return {
+        title: 'Weekly goals',
+        lines: [...lines, `Days left this week, today included: ${progress.daysLeft}`, rule],
+    }
+}
 
 const weeksSection = (input: CoachContextInput, shown: number): Section => {
     if (input.activities.length === 0) return { title: 'Last 4 weeks', lines: [NO_ACTIVITIES] }
@@ -148,6 +162,7 @@ const activityLine = (activity: ActivityDTO) => {
     if (duration) parts.push(duration)
     if (activity.avgHr != null) parts.push(`avg HR ${activity.avgHr}`)
     if (activity.perceivedEffort != null) parts.push(`effort ${activity.perceivedEffort}`)
+    if (activity.category === 'run' && activity.runType) parts.push(`${activity.runType} run`)
 
     return `- ${parts.join(' | ')}`
 }
@@ -183,7 +198,7 @@ export const buildCoachContext = (
         todaySection(input),
         athleteSection(input),
         goalsSection(input),
-        availabilitySection(input),
+        weeklyGoalsSection(input),
     ]
     const render = (weeks: number, recent: number) =>
         [...fixed, weeksSection(input, weeks), recentSection(input, recent)]

@@ -9,8 +9,6 @@ type Props = {
     onOpenChange: (open: boolean) => void
     onConfirm: () => void
     clearing: boolean
-    // Why the last attempt failed, shown here because the dialog covers the page.
-    error: string | null
     provider: 'Lyfta' | 'Zepp'
     items: 'workouts' | 'runs'
     // What goes with each activity: its sets or its laps.
@@ -28,7 +26,6 @@ export function ClearActivitiesDialog({
     onOpenChange,
     onConfirm,
     clearing,
-    error,
     provider,
     items,
     extra,
@@ -60,16 +57,6 @@ export function ClearActivitiesDialog({
                     {clearing ? 'Clearing...' : `Clear ${provider} activities`}
                 </Button>
             }
-        >
-            {error === null ? null : (
-                <p
-                    role="alert"
-                    data-testid={`${testIdPrefix}-clear-error`}
-                    className="text-sm text-destructive"
-                >
-                    {error}
-                </p>
-            )}
-        </ConfirmDialog>
+        />
     )
 }

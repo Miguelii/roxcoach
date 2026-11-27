@@ -30,6 +30,8 @@ const activity = (overrides: Partial<ActivityDTO>): ActivityDTO => ({
     lyftaTotalVolumeKgReps: null,
     perceivedEffort: null,
     notes: null,
+    runType: null,
+    runTypeManual: false,
     ...overrides,
 })
 
@@ -41,7 +43,6 @@ const item = (a: ActivityDTO): CalendarItem => ({
 
 type Calls = {
     listRaces: unknown[][]
-    getAvailability: unknown[][]
     getActivityCalendar: unknown[][]
     getActivity: unknown[][]
 }
@@ -49,17 +50,12 @@ type Calls = {
 const setup = (overrides: Partial<CoachToolDeps> = {}) => {
     const calls: Calls = {
         listRaces: [],
-        getAvailability: [],
         getActivityCalendar: [],
         getActivity: [],
     }
     const deps: CoachToolDeps = {
         listRaces: async (...args) => {
             calls.listRaces.push(args)
-            return []
-        },
-        getAvailability: async (...args) => {
-            calls.getAvailability.push(args)
             return []
         },
         getActivityCalendar: async (...args) => {
@@ -81,10 +77,9 @@ const setup = (overrides: Partial<CoachToolDeps> = {}) => {
 }
 
 describe('makeCoachTools', () => {
-    it('exposes exactly the five tools', () => {
+    it('makeCoachTools has no getAvailability tool', () => {
         expect(setup().tools.map((tool) => tool.name)).toEqual([
             'getRaces',
-            'getAvailability',
             'getActivities',
             'getActivity',
             'getWeeklySummary',
@@ -98,14 +93,6 @@ describe('makeCoachTools', () => {
         expect(calls.listRaces[0]).toEqual([USER, { status: ['upcoming'] }])
         await run('getRaces', {})
         expect(calls.listRaces[1]).toEqual([USER, {}])
-    })
-
-    it('getAvailability returns the slots', async () => {
-        const slot = { weekday: 1, sessionKind: 'run', isFixed: true, maxMinutes: 60, notes: null }
-        // SAFETY: the slot literal matches AvailabilitySlotDTO.
-        const { run } = setup({ getAvailability: async () => [slot] as never })
-
-        expect(await run('getAvailability', {})).toEqual({ slots: [slot] })
     })
 
     it('getActivities returns newest first, activities only, and filters by category', async () => {
@@ -336,7 +323,6 @@ describe('makeCoachTools', () => {
     it('ignores a userId or user_id field and uses the closed-over user', async () => {
         const { calls, run } = setup()
         await run('getRaces', { status: 'upcoming', userId: 'other', user_id: 'other' })
-        await run('getAvailability', { userId: 'other' })
         await run('getActivities', { from: '2026-11-01', to: '2026-11-05', user_id: 'other' })
         await run('getActivity', { id: ID, userId: 'other' })
         await run('getWeeklySummary', { weekStart: '2026-11-16', userId: 'other' })
@@ -356,13 +342,11 @@ describe('makeCoachTools', () => {
         }
         const { run } = setup({
             listRaces: failing,
-            getAvailability: failing,
             getActivityCalendar: failing,
             getActivity: failing,
         })
         const inputs: [string, unknown][] = [
             ['getRaces', {}],
-            ['getAvailability', {}],
             ['getActivities', { from: '2026-11-01', to: '2026-11-05' }],
             ['getActivity', { id: ID }],
             ['getWeeklySummary', { weekStart: '2026-11-16' }],

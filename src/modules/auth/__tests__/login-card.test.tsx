@@ -6,10 +6,13 @@ import { LoginCard } from '@/modules/auth/login-card'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
+    toastError: vi.fn(),
     mutateAsync: vi.fn(),
     replace: vi.fn(),
     refresh: vi.fn(),
 }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -95,9 +98,9 @@ describe('LoginCard', () => {
         fill('coach@example.com', 'secret')
         submit()
         await waitFor(() => {
-            expect(screen.getByTestId('login-error')).toHaveTextContent(GENERIC_ERROR)
+            expect(mocks.toastError).toHaveBeenLastCalledWith(GENERIC_ERROR, { id: 'login-error' })
         })
-        expect(screen.getByTestId('login-error').textContent).toBe(GENERIC_ERROR)
+        expect(screen.queryByTestId('login-error')).toBeNull()
         expect(mocks.replace).not.toHaveBeenCalled()
         expect(mocks.refresh).not.toHaveBeenCalled()
         expect(clearSpy).not.toHaveBeenCalled()
