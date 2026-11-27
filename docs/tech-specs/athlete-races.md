@@ -96,6 +96,15 @@ Read through `athlete.getWeeklyGoals` (`getWeeklyGoals`, or `getWeeklyGoalsWithC
 that already hold a client). An athlete without a row gets `DEFAULT_WEEKLY_GOALS` and no error.
 Failures (`CreateSbClientError`, `WeeklyGoalsQueryError`) map to `INTERNAL_SERVER_ERROR`.
 
+Saved through `athlete.saveWeeklyGoals` (`saveWeeklyGoals`, as the signed-in user). The zod input
+checks the field ranges and `validateWeeklyGoals` (`helpers/weekly-goals-validation.helper.ts`)
+checks them again plus `shortRunMaxM < longRunMinM`, failing with `WeeklyGoalsValidationError`
+(`field` names the field, `BAD_REQUEST`). The service reads the previous rules, upserts, and only
+when one of the three thresholds changed calls `reclassifyRuns` of `training` (runs set by hand are
+skipped there). It returns `{ goals, reclassified }`, the number of runs whose type changed. A failed
+reclassify leaves the goals saved. `CreateSbClientError`, `WeeklyGoalsQueryError`,
+`ActivityQueryError` and `ActivityWriteError` map to `INTERNAL_SERVER_ERROR`.
+
 The rules classify a run with `classifyRun` (`src/_bff/modules/training/helpers/classify-run.helper.ts`,
 twin of the SQL `roxcoach.classify_run_default`): no type below `shortRunMaxM` or without a
 positive distance and time (moving time, else elapsed time); `long` above `longRunMinM`; otherwise
@@ -191,21 +200,23 @@ Integration:
 
 Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 
-| File                                                                              | Purpose                                                                                           |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `controllers/get-profile.controller.ts`                                           | protected query                                                                                   |
-| `controllers/get-timezone.controller.ts`                                          | protected query, the timezone string (default Europe/Lisbon); the dashboard derives today from it |
-| `controllers/update-profile.controller.ts`                                        | protected mutation                                                                                |
-| `controllers/get-availability.controller.ts`                                      | protected query                                                                                   |
-| `controllers/save-availability.controller.ts`                                     | protected mutation, upsert then delete (no transaction)                                           |
-| `controllers/delete-account.controller.ts`                                        | protected mutation without input: deletes the signed-in user's data (see Delete profile)          |
-| `services/delete-account.service.ts`, `repositories/account-data.repository.ts`   | storage files, then the auth user (cascade), then local sign-out (service-role client)            |
-| `services/get-profile`, `update-profile`, `get-availability`, `save-availability` | business logic and validation, run as the signed-in user                                          |
-| `services/get-athlete-timezone.service.ts`                                        | the timezone, used by the controller and by the races services                                    |
-| `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`       | pure validation                                                                                   |
-| `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                                                       |
-| `controllers/get-weekly-goals.controller.ts`                                      | protected query `athlete.getWeeklyGoals`                                                          |
-| `services/get-weekly-goals.service.ts`, `repositories/weekly-goals.repository.ts` | goals read (defaults without a row) and upsert on `user_id`                                       |
+| File                                                                                   | Purpose                                                                                             |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `controllers/get-profile.controller.ts`                                                | protected query                                                                                     |
+| `controllers/get-timezone.controller.ts`                                               | protected query, the timezone string (default Europe/Lisbon); the dashboard derives today from it   |
+| `controllers/update-profile.controller.ts`                                             | protected mutation                                                                                  |
+| `controllers/get-availability.controller.ts`                                           | protected query                                                                                     |
+| `controllers/save-availability.controller.ts`                                          | protected mutation, upsert then delete (no transaction)                                             |
+| `controllers/delete-account.controller.ts`                                             | protected mutation without input: deletes the signed-in user's data (see Delete profile)            |
+| `services/delete-account.service.ts`, `repositories/account-data.repository.ts`        | storage files, then the auth user (cascade), then local sign-out (service-role client)              |
+| `services/get-profile`, `update-profile`, `get-availability`, `save-availability`      | business logic and validation, run as the signed-in user                                            |
+| `services/get-athlete-timezone.service.ts`                                             | the timezone, used by the controller and by the races services                                      |
+| `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`            | pure validation                                                                                     |
+| `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts`      | data access                                                                                         |
+| `controllers/get-weekly-goals.controller.ts`                                           | protected query `athlete.getWeeklyGoals`                                                            |
+| `services/get-weekly-goals.service.ts`, `repositories/weekly-goals.repository.ts`      | goals read (defaults without a row) and upsert on `user_id`                                         |
+| `controllers/save-weekly-goals.controller.ts`, `services/save-weekly-goals.service.ts` | protected mutation `athlete.saveWeeklyGoals`: validate, upsert, reclassify when a threshold changed |
+| `helpers/weekly-goals-validation.helper.ts`                                            | pure validation of the goal ranges and of `shortRunMaxM < longRunMinM`                              |
 
 Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `update`,
 `complete`, `cancel`, `restore`, `delete`):

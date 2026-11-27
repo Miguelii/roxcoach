@@ -35,6 +35,10 @@ export class AvailabilityQueryError extends Data.TaggedError(
 export class WeeklyGoalsQueryError extends Data.TaggedError(
     'WeeklyGoalsQueryError'
 )<ServiceErrorFields> {}
+// `field` names the goal or run type rule that failed validation.
+export class WeeklyGoalsValidationError extends Data.TaggedError('WeeklyGoalsValidationError')<
+    ServiceErrorFields & { field: string }
+> {}
 // `reason` is a stable code for the rule that failed (never free text).
 export class AvailabilityValidationError extends Data.TaggedError('AvailabilityValidationError')<
     ServiceErrorFields & { reason: string }

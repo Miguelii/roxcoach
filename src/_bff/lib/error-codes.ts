@@ -139,6 +139,7 @@ export enum ErrorCode {
     ATHLETE_GOALS_UPSERT = 'r9b5j1ys',
     ATHLETE_GOALS_UPSERT_ERR = 'v3f8l6pk',
     ATHLETE_GOALS_SB_CLIENT = 'y6h2d7ta',
+    ATHLETE_GOALS_INVALID = 'c5n9q3wj',
 
     RACES_SELECT = 'c4r8k2ma',
     RACES_SELECT_ERR = 'd7t3n6xb',
