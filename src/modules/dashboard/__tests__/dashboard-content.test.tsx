@@ -7,6 +7,7 @@ import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 const mocks = vi.hoisted(() => ({
     getProfileQuery: vi.fn(),
     getCalendarQuery: vi.fn(),
+    getWeeklyGoalsQuery: vi.fn(),
     getRunProgressQuery: vi.fn(),
     getStrengthProgressQuery: vi.fn(),
     mutate: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 {
                     'athlete.getProfile': mocks.getProfileQuery,
                     'training.getCalendar': mocks.getCalendarQuery,
+                    'athlete.getWeeklyGoals': mocks.getWeeklyGoalsQuery,
                     'training.getRunProgress': mocks.getRunProgressQuery,
                     'training.getStrengthProgress': mocks.getStrengthProgressQuery,
                 },
@@ -62,6 +64,11 @@ describe('DashboardContent', () => {
             refetch: vi.fn(),
         })
         mocks.getRunProgressQuery.mockReturnValue({
+            data: undefined,
+            isPending: true,
+            refetch: vi.fn(),
+        })
+        mocks.getWeeklyGoalsQuery.mockReturnValue({
             data: undefined,
             isPending: true,
             refetch: vi.fn(),

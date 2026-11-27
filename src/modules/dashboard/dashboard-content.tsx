@@ -16,6 +16,8 @@ import { useDashboardMode } from '@/modules/dashboard/use-dashboard-mode'
 import { useProgressRange } from '@/modules/dashboard/use-progress-range'
 import { WeekStrip } from '@/modules/dashboard/week-strip'
 import { WeekStripLoading } from '@/modules/dashboard/week-strip-view'
+import { WeeklyGoalsCard } from '@/modules/dashboard/weekly-goals-card'
+import { WeeklyGoalsCardLoading } from '@/modules/dashboard/weekly-goals-card-view'
 
 type Props = {
     // The profile the server prefetched. The shell's mode toggle creates the profile query before
@@ -57,6 +59,7 @@ export function DashboardContent({ initialProfile, loadingMode = LOADING_DASHBOA
             ) : (
                 <>
                     <WeekStripLoading mode={loadingMode} />
+                    <WeeklyGoalsCardLoading />
                     {loadingMode === 'run' ? <RunProgressLoading /> : <StrengthProgressLoading />}
                 </>
             )}
@@ -93,6 +96,7 @@ function DashboardBody({ profile, range }: BodyProps) {
     return (
         <>
             <WeekStrip today={today} mode={profile.dashboardMode} />
+            <WeeklyGoalsCard today={today} mode={profile.dashboardMode} />
             {profile.dashboardMode === 'run' ? (
                 <RunProgress range={range} today={today} />
             ) : (

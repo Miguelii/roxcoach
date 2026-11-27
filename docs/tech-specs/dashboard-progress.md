@@ -255,6 +255,7 @@ Progress                                          [ 3M  6M  1Y ]   [Upload] [Syn
 A clear view of ...
 
 [ week strip (unchanged, both modes) ]
+[ this week's goals (both modes) ]
 
 Running mode (the order of a training app, like Strava)
 +--------------------------------------------------------------------+
@@ -308,6 +309,12 @@ The week strip above the charts follows the mode: time and sessions count the wo
 only (runs in running mode, strength workouts in strength mode), and strength mode has no run
 distance tile. The load ratio always uses every activity.
 
+Right under it, `WeeklyGoalsCard` shows what is left of this week's goals for the mode (distance,
+long and fast runs in running mode, strength sessions in strength mode), or a link to
+`/settings?tab=goals` when the mode has no goal. It reads `athlete.getWeeklyGoals` and the same
+`training.getCalendar` query as the week strip (same key, no second request). Details in
+`docs/tech-specs/2026-11-27-weekly-goals-design.md`.
+
 ### Mode switch and range
 
 - The mode switch is the existing `Tabs` (base-ui) as a segmented control, labels "Running" and
@@ -350,6 +357,8 @@ distance tile. The load ratio always uses every activity.
       cookie (it never guesses a selected mode). The Settings tab switch has no remembered mode and
       keeps its skeleton.
     - While the 35-day calendar loads, the week strip is the same `WeekStripLoading` in the athlete's mode.
+    - While the goals or that calendar load, `WeeklyGoalsCardLoading` reserves the goals card's height;
+      an error shows the inline retry like the week strip.
     - While the running series loads, `RunProgressLoading` shows the week dots (day letters, no run or
       rest marks), the headline card (metric tabs, disabled arrows, stat labels) and the pace trend and
       zone cards with their titles. The race and goal cards wait for the data, since an athlete may
