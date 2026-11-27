@@ -37,7 +37,7 @@ function SourceRow({ source, onSync }: RowProps) {
     const unavailable = source.status === 'loading' || source.status === 'error'
     let detail = 'Not synced yet'
     if (source.status === 'loading') detail = 'Loading'
-    else if (source.status === 'error') detail = 'Could not load'
+    else if (source.status === 'error') detail = ''
     else if (source.lastSyncedAt) detail = `Last synced ${formatDateTime(source.lastSyncedAt)}`
 
     return (

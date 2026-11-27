@@ -19,6 +19,13 @@ type QueryOptions = TrpcKeyed & {
     refetchInterval?: (query: { state: { data: Status | undefined } }) => number | false
 }
 
+type StatusQuery = {
+    data: Status | undefined
+    isPending: boolean
+    isError: boolean
+    refetch: () => void
+}
+
 const IDLE: Sync = {
     status: 'idle',
     startedAt: null,
@@ -34,8 +41,9 @@ const mocks = vi.hoisted(() => {
         sync: { status: 'idle', startedAt: null, finishedAt: null, result: null, errorCode: null },
     }
     const statusOptions: QueryOptions[] = []
+    const statusQuery: StatusQuery = { data, isPending: false, isError: false, refetch: vi.fn() }
     return {
-        statusQuery: { data, isPending: false, isError: false, refetch: vi.fn() },
+        statusQuery,
         statusOptions,
         invalidateStatus: vi.fn(),
         invalidateCalendar: vi.fn(),
@@ -122,7 +130,7 @@ describe('ZeppCard', () => {
         mocks.invalidateRunProgress.mockResolvedValue(null)
     })
 
-    it('shows a loading skeleton and a retry on a status error', () => {
+    it('shows a loading skeleton, and nothing on a status error', () => {
         mocks.statusQuery.isPending = true
         const { unmount } = render(<ZeppCard />)
         expect(screen.getByTestId('zepp-loading')).toBeInTheDocument()
@@ -130,9 +138,10 @@ describe('ZeppCard', () => {
 
         mocks.statusQuery.isPending = false
         mocks.statusQuery.isError = true
-        render(<ZeppCard />)
-        fireEvent.click(screen.getByTestId('zepp-status-retry'))
-        expect(mocks.statusQuery.refetch).toHaveBeenCalledTimes(1)
+        mocks.statusQuery.data = undefined
+        const { container } = render(<ZeppCard />)
+        expect(container).toBeEmptyDOMElement()
+        expect(screen.queryByTestId('zepp-status-retry')).toBeNull()
     })
 
     it('shows the password while the eye is pressed', () => {
@@ -192,10 +201,9 @@ describe('ZeppCard', () => {
         fireEvent.submit(screen.getByTestId('zepp-form'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('zepp-error')).toHaveTextContent(
-                'Zepp did not accept this email or password.'
-            )
+            expect(mocks.error).toHaveBeenCalledWith('Zepp did not accept this email or password.')
         })
+        expect(screen.queryByTestId('zepp-error')).toBeNull()
         expect(screen.getByTestId('zepp-password')).toHaveValue('')
         expect(screen.getByTestId('zepp-email')).toHaveValue('athlete@example.com')
     })
@@ -275,13 +283,14 @@ describe('ZeppCard', () => {
         expect(screen.getByTestId('zepp-sync-spinner')).toBeInTheDocument()
     })
 
-    it('shows the last failed sync as an actionable error and offers to sign in again', () => {
+    it('toasts the last failed sync and offers to sign in again', () => {
         connected({ status: 'failed', startedAt: 't1', errorCode: ErrorCode.ZEPP_SESSION_EXPIRED })
         render(<ZeppCard />)
 
-        expect(screen.getByTestId('zepp-error')).toHaveTextContent(
-            'Your Zepp session expired. Sign in again.'
-        )
+        expect(mocks.error).toHaveBeenCalledWith('Your Zepp session expired. Sign in again.', {
+            id: 'zepp-sync-error',
+        })
+        expect(screen.queryByTestId('zepp-error')).toBeNull()
         fireEvent.click(screen.getByTestId('zepp-reconnect'))
         expect(screen.getByTestId('zepp-form')).toBeInTheDocument()
     })
@@ -293,10 +302,11 @@ describe('ZeppCard', () => {
         fireEvent.click(screen.getByTestId('zepp-sync'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('zepp-error')).toHaveTextContent(
-                'Could not start the Zepp sync. Try again.'
-            )
+            expect(mocks.error).toHaveBeenCalledWith('Could not start the Zepp sync. Try again.', {
+                id: 'zepp-sync-error',
+            })
         })
+        expect(screen.queryByTestId('zepp-error')).toBeNull()
     })
 
     it('asks before disconnecting and only disconnects after confirming', async () => {

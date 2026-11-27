@@ -6,11 +6,14 @@ import { DeleteProfileSection } from '@/modules/settings/delete-profile-section'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
 
 const mocks = vi.hoisted(() => ({
+    toastError: vi.fn(),
     mutateAsync: vi.fn(),
     isPending: false,
     replace: vi.fn(),
     refresh: vi.fn(),
 }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -107,7 +110,7 @@ describe('DeleteProfileSection', () => {
         )
     })
 
-    it('keeps the dialog open with a fixed message when the delete fails', async () => {
+    it('keeps the dialog open and toasts a fixed message when the delete fails', async () => {
         const clearSpy = vi.spyOn(queryClient, 'clear')
         mocks.mutateAsync.mockRejectedValue(new Error('ad8t4nrb'))
         render(<DeleteProfileSection />)
@@ -116,10 +119,11 @@ describe('DeleteProfileSection', () => {
         fireEvent.click(screen.getByTestId('profile-delete-confirm'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('profile-delete-error')).toHaveTextContent(
+            expect(mocks.toastError).toHaveBeenCalledWith(
                 'Could not delete your profile. Nothing was removed, try again.'
             )
         })
+        expect(screen.queryByTestId('profile-delete-error')).toBeNull()
         expect(screen.getByTestId('profile-delete-dialog')).toBeInTheDocument()
         expect(mocks.replace).not.toHaveBeenCalled()
         expect(clearSpy).not.toHaveBeenCalled()

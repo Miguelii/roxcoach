@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { UploadActivityDrawer } from '@/modules/dashboard/upload-activity-drawer'
 
+const mocks = vi.hoisted(() => ({ toastError: vi.fn() }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
+
 type Props = { upload?: (form: FormData) => Promise<Response>; onUploaded?: () => void }
 
 const BANNER =
@@ -142,7 +146,8 @@ describe('UploadActivityDrawer', () => {
         await open({ upload })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        expect(await screen.findByTestId('upload-error')).toHaveTextContent('Duplicate file')
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Duplicate file'))
+        expect(screen.queryByTestId('upload-error')).toBeNull()
         expect(screen.getByTestId('upload-file-name')).toHaveTextContent('run.fit')
     })
 
@@ -152,9 +157,8 @@ describe('UploadActivityDrawer', () => {
         await open({ upload, onUploaded })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        await screen.findByTestId('upload-error')
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Duplicate file'))
         expect(onUploaded).not.toHaveBeenCalled()
-        expect(screen.getByTestId('upload-error')).toHaveAttribute('role', 'alert')
         expect(screen.getByTestId('upload-file-input')).toHaveAttribute(
             'aria-label',
             'Activity file'
@@ -166,9 +170,10 @@ describe('UploadActivityDrawer', () => {
         await open({ upload })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        expect(await screen.findByTestId('upload-error')).toHaveTextContent(
-            'Something went wrong. Try again.'
+        await waitFor(() =>
+            expect(mocks.toastError).toHaveBeenCalledWith('Something went wrong. Try again.')
         )
+        expect(screen.queryByTestId('upload-error')).toBeNull()
     })
 
     it('closes and runs onUploaded on success, sending hyrox only when checked', async () => {
@@ -215,9 +220,10 @@ describe('UploadActivityDrawer', () => {
         await open({ upload })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        expect(await screen.findByTestId('upload-error')).toHaveTextContent(
-            'Something went wrong. Try again.'
+        await waitFor(() =>
+            expect(mocks.toastError).toHaveBeenCalledWith('Something went wrong. Try again.')
         )
+        expect(screen.queryByTestId('upload-error')).toBeNull()
     })
 
     it('starts clean after closing with an error', async () => {
@@ -225,7 +231,7 @@ describe('UploadActivityDrawer', () => {
         await open({ upload })
         await choose(fit())
         fireEvent.click(screen.getByTestId('upload-submit'))
-        await screen.findByTestId('upload-error')
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Duplicate file'))
         fireEvent.click(screen.getByTestId('upload-cancel'))
         await waitFor(() =>
             expect(screen.getByTestId('upload-activity-button')).toHaveAttribute(

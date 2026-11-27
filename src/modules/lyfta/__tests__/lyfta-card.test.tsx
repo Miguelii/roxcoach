@@ -1,7 +1,10 @@
+/* oxlint-disable max-lines -- one suite per module, one case per behavior */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { LYFTA_SYNC_IN_PROGRESS_MESSAGE } from '@/_bff/core/constants/lyfta.constants'
-import type { LyftaSyncResult } from '@/_bff/core/constants/lyfta.constants'
+import {
+    LYFTA_SYNC_IN_PROGRESS_MESSAGE,
+    type LyftaSyncResult,
+} from '@/_bff/core/constants/lyfta.constants'
 import { SYNC_START_MESSAGE, type SyncStatus } from '@/_bff/core/constants/sync.constants'
 import { ErrorCode } from '@/_bff/lib/error-codes'
 import { LyftaCard } from '@/modules/lyfta/lyfta-card'
@@ -180,10 +183,11 @@ describe('LyftaCard', () => {
         fireEvent.submit(screen.getByTestId('lyfta-key-form'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('lyfta-error')).toHaveTextContent(
-                'Lyfta did not accept this API key.'
+            expect(mocks.error).toHaveBeenCalledWith(
+                'Lyfta did not accept this API key. Check it and try again.'
             )
         })
+        expect(screen.queryByTestId('lyfta-error')).toBeNull()
         expect(screen.getByTestId('lyfta-api-key')).toHaveValue('rejected-key')
     })
 
@@ -197,15 +201,16 @@ describe('LyftaCard', () => {
             expect(mocks.invalidate).toHaveBeenCalled()
         })
         expect(screen.queryByTestId('lyfta-sync-success')).toBeNull()
-        expect(screen.queryByTestId('lyfta-error')).toBeNull()
+        expect(mocks.error).not.toHaveBeenCalled()
 
         mocks.sync.mutateAsync.mockRejectedValueOnce(new Error(ErrorCode.LYFTA_SYNC_ENQUEUE))
         fireEvent.click(screen.getByTestId('lyfta-sync'))
         await waitFor(() => {
-            expect(screen.getByTestId('lyfta-error')).toHaveTextContent(
-                'Could not start the Lyfta sync. Try again.'
-            )
+            expect(mocks.error).toHaveBeenCalledWith('Could not start the Lyfta sync. Try again.', {
+                id: 'lyfta-sync-error',
+            })
         })
+        expect(screen.queryByTestId('lyfta-error')).toBeNull()
     })
 
     it('toasts that the sync started and that a running one is already in progress', async () => {
@@ -268,13 +273,12 @@ describe('LyftaCard', () => {
         expect(screen.queryByTestId('lyfta-sync-success')).toBeNull()
     })
 
-    it('shows the last failed sync from the status', () => {
+    it('toasts the last failed sync from the status', () => {
         connected({ status: 'failed', startedAt: 't1', errorCode: ErrorCode.LYFTA_RATE_LIMIT })
         render(<LyftaCard />)
 
-        expect(screen.getByTestId('lyfta-error')).toHaveTextContent(
-            'Lyfta is rate limiting requests.'
-        )
+        expect(mocks.error.mock.calls[0]?.[0]).toContain('Lyfta is rate limiting requests.')
+        expect(screen.queryByTestId('lyfta-error')).toBeNull()
     })
 
     it('shows the spinner and blocks another sync while one runs', () => {
@@ -335,7 +339,7 @@ describe('LyftaCard', () => {
         })
     })
 
-    it('keeps the dialog open and shows the error inside it when disconnecting fails', async () => {
+    it('keeps the dialog open and toasts the error when disconnecting fails', async () => {
         connected()
         mocks.disconnect.mutateAsync.mockRejectedValue(new Error('network'))
         render(<LyftaCard />)
@@ -343,8 +347,8 @@ describe('LyftaCard', () => {
         fireEvent.click(screen.getByTestId('lyfta-disconnect'))
         fireEvent.click(await screen.findByTestId('lyfta-disconnect-confirm'))
 
-        expect(await screen.findByTestId('lyfta-disconnect-error')).toBeInTheDocument()
+        await waitFor(() => expect(mocks.error).toHaveBeenCalledTimes(1))
         expect(screen.getByTestId('lyfta-disconnect-dialog')).toBeInTheDocument()
-        expect(screen.queryByTestId('lyfta-error')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('lyfta-disconnect-error')).toBeNull()
     })
 })

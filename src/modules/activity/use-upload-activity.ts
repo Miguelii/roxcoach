@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import { toast } from 'sonner'
 import { z } from 'zod'
 
 type Status = 'idle' | 'uploading' | 'error' | 'success'
@@ -31,7 +32,6 @@ export const detectHyroxHint = (text: string) => /hyrox/iu.test(text)
 
 export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options = {}) {
     const [status, setStatus] = useState<Status>('idle')
-    const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const form = useForm<FormValues>({
         resolver: zodResolver(uploadSchema),
         mode: 'onChange',
@@ -47,7 +47,6 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
 
     const selectFile = async (next: File | undefined) => {
         setStatus('idle')
-        setErrorMessage(null)
         hyroxTouchedRef.current = false
         form.setValue('hyrox', false)
         if (!next) {
@@ -72,7 +71,6 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         form.reset()
         hyroxTouchedRef.current = false
         setStatus('idle')
-        setErrorMessage(null)
         setInputKey((key) => key + 1)
     }
 
@@ -80,7 +78,6 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         if (uploadingRef.current) return
         uploadingRef.current = true
         setStatus('uploading')
-        setErrorMessage(null)
         const body = new FormData()
         body.append('file', values.file)
         if (values.hyrox && extensionOf(values.file.name) !== 'gpx') body.append('hyrox', 'true')
@@ -95,10 +92,10 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
             const data: unknown = await response.json().catch(() => null)
             const parsed = errorBody.safeParse(data)
             const message = parsed.success ? parsed.data.error : GENERIC_ERROR
-            setErrorMessage(message)
+            toast.error(message)
             setStatus('error')
         } catch {
-            setErrorMessage(GENERIC_ERROR)
+            toast.error(GENERIC_ERROR)
             setStatus('error')
         } finally {
             uploadingRef.current = false
@@ -116,7 +113,6 @@ export function useUploadActivity({ upload = defaultUpload, onSuccess }: Options
         reset,
         inputKey,
         status,
-        errorMessage,
         showHyroxOption,
     }
 }

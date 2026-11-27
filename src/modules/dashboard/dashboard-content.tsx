@@ -5,7 +5,6 @@ import type { DashboardMode } from '@/_bff/core/constants/athlete.constants'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import { ActivityActions } from '@/components/activity-actions'
-import { QueryError } from '@/components/query-error'
 import { DashboardControls } from '@/modules/dashboard/dashboard-controls'
 import { LOADING_DASHBOARD_MODE } from '@/modules/dashboard/constants'
 import { RunProgress } from '@/modules/dashboard/progress/run-progress'
@@ -41,22 +40,14 @@ export function DashboardContent({ initialProfile, loadingMode = LOADING_DASHBOA
     const { profile } = useDashboardMode()
     const { range, setRange } = useProgressRange()
     const data = profile.data ?? initialProfile
-
-    if (!data && !profile.isPending)
-        return (
-            <QueryError
-                message="Could not load your profile."
-                onRetry={() => void profile.refetch()}
-                testId="dashboard-profile-error"
-            />
-        )
+    const failed = !data && !profile.isPending
 
     return (
         <div data-testid="dashboard-content" aria-busy={!data} className="space-y-6">
             <DashboardHeader range={range} onRangeChange={(next) => void setRange(next)} />
             {data ? (
                 <DashboardBody profile={data} range={range} />
-            ) : (
+            ) : failed ? null : (
                 <>
                     <WeekStripLoading mode={loadingMode} />
                     <WeeklyGoalsCardLoading />

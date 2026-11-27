@@ -92,6 +92,8 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [status, setStatus] = useState<ChatStatus>('idle')
     const [errorKind, setErrorKind] = useState<ChatErrorKind | null>(null)
+    // The text of the message whose reply failed, handed back to the composer to send again.
+    const [failedText, setFailedText] = useState<string | null>(null)
     const [conversationId, setConversationId] = useState<string | null>(null)
     const [modelId, setModelId] = useState<string | null>(null)
 
@@ -99,7 +101,6 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
     const generationRef = useRef(0)
     const controllerRef = useRef<AbortController | null>(null)
     const conversationRef = useRef<string | null>(null)
-    const lastTextRef = useRef<string | null>(null)
     const idRef = useRef(0)
     const optionsRef = useRef({ send, loadMessages, onReply })
     useEffect(() => {
@@ -129,7 +130,6 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         const generation = ++generationRef.current
         const controller = new AbortController()
         controllerRef.current = controller
-        lastTextRef.current = text
         const alive = () => generationRef.current === generation
 
         const assistantId = nextId()
@@ -141,6 +141,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         })
         setStatus('streaming')
         setErrorKind(null)
+        setFailedText(null)
 
         // Drops an empty bubble, marks a partial one incomplete.
         const settle = (incomplete: boolean) =>
@@ -154,6 +155,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         const fail = (kind: ChatErrorKind, incomplete: boolean) => {
             settle(incomplete)
             setErrorKind(kind)
+            setFailedText(text)
             setStatus(kind === 'limit' ? 'limit' : 'error')
         }
 
@@ -274,20 +276,14 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
     }
 
     // False when the message was not taken (empty, too long, or a reply already running), so the
-    // caller can keep the text instead of clearing it.
+    // caller can keep the text instead of clearing it. Sending the failed text again reuses its
+    // user bubble instead of adding a second one.
     const sendMessage = (text: string) => {
         const trimmed = text.trim()
         if (trimmed === '' || trimmed.length > COACH_MESSAGE_MAX_CHARS || busyRef.current)
             return false
-        void run(trimmed, false)
+        void run(trimmed, failedText !== null && trimmed === failedText)
         return true
-    }
-
-    const retry = () => {
-        const text = lastTextRef.current
-        if (text === null || status !== 'error') return
-        if (errorKind !== 'busy' && errorKind !== 'not-found') return
-        void run(text, true)
     }
 
     const stop = () => controllerRef.current?.abort()
@@ -298,7 +294,7 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         setStatus('idle')
         setErrorKind(null)
         setModelId(null)
-        lastTextRef.current = null
+        setFailedText(null)
     }
 
     const newConversation = () => {
@@ -345,6 +341,6 @@ export function useCoachChat({ send = defaultSend, loadMessages, onReply }: Opti
         stop,
         newConversation,
         openConversation,
-        retry,
+        failedText,
     }
 }

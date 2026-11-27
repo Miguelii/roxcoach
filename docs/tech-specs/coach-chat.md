@@ -272,14 +272,14 @@ model that wrote it (older replies hold the id that was configured then).
 
 ## Limits and failures
 
-| Case                                 | Behaviour                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                                                                                                                                                                                                                                             |
-| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`), only after every listed model failed or the 45 s fallback budget ended (a model that emits no event within 15 s, `FIRST_EVENT_TIMEOUT_MS`, is aborted and counts as unavailable, so the next model still gets a turn); the UI shows "The coach is busy, try again in a minute" and offers Retry |
-| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing                                                                                                                                                                                                                              |
-| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply                                                                                                                                                                                                                       |
-| Failed reply                         | the saved user message stays; a retry sends the same text again (the history merge makes this harmless)                                                                                                                                                                                                                                             |
-| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                                                                                                                                                                                                                                         |
+| Case                                 | Behaviour                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily cap                            | 429 "You reached today's message limit" before the stream; the UI shows the limit state                                                                                                                                                                                                                                                                               |
+| Provider rate limit or outage        | an `error` event (`rate_limited` or `unavailable`), only after every listed model failed or the 45 s fallback budget ended (a model that emits no event within 15 s, `FIRST_EVENT_TIMEOUT_MS`, is aborted and counts as unavailable, so the next model still gets a turn); the UI toasts "The coach is busy, try again in a minute" and puts the text back in the box |
+| Empty data (no races, no activities) | the context says so, and the coach answers accordingly (for example asks the athlete to add a race), without inventing                                                                                                                                                                                                                                                |
+| Provider blocks a reply (safety)     | a `blocked` error event; the UI shows "The coach cannot answer that. Try rephrasing."; nothing is saved as an assistant reply                                                                                                                                                                                                                                         |
+| Failed reply                         | the saved user message stays; the text goes back to the box and sending it again reuses its bubble (the history merge makes this harmless)                                                                                                                                                                                                                            |
+| Network cut mid-stream               | the partial text stays in the UI marked "Incomplete reply" and is not saved                                                                                                                                                                                                                                                                                           |
 
 ## Persistence
 
@@ -345,8 +345,12 @@ A client island, `CoachChat` (`src/modules/coach/`), mounted in the authenticate
   streams, cancelled (typed text restored) when the panel closes. Design and copy in
   [2026-11-26-coach-voice-input-design.md](2026-11-26-coach-voice-input-design.md) and
   [2026-11-26-coach-voice-panel-design.md](2026-11-26-coach-voice-panel-design.md).
-- States: empty, loading history, streaming, error with retry (busy, conversation not found),
-  blocked, limit reached, sign in again (401 or 403), not set up (503), incomplete reply. The
+- States: empty, loading history, streaming, busy, conversation not found, blocked, limit reached,
+  sign in again (401 or 403), not set up (503), incomplete reply. Every error is an error toast
+  (`ERROR_COPY`, id `coach-error`), never a block in the panel, and there is no Retry button: the
+  failed text goes back to an empty box (`failedText` from the hook) and sending it again reuses its
+  user bubble. A conversation not found reads "That conversation no longer exists. Send again to
+  start a new one." The
   stream is read by a custom hook (`use-coach-chat.ts`), not by the AI SDK client.
 - Draft text is not kept when the panel is closed.
 
@@ -381,7 +385,7 @@ script never prints the key, the body or the prompt.
   cancel, provider errors, daily cap, conversation ownership.
 - The route handler: 401, 403, 503, 413, 422, 404, 429, 500, the stream happy path, abort.
 - DB suites: the new tables isolate by user and the dropped tables are gone.
-- UI: the hook (wire parsing, status mapping, stop, retry) and the panel states, located by
+- UI: the hook (wire parsing, status mapping, stop, sending a failed text again) and the panel states, located by
   `data-testid`.
 
 ## Open questions

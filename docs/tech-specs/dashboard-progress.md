@@ -357,8 +357,14 @@ long and fast runs in running mode, strength sessions in strength mode), or a li
       cookie (it never guesses a selected mode). The Settings tab switch has no remembered mode and
       keeps its skeleton.
     - While the 35-day calendar loads, the week strip is the same `WeekStripLoading` in the athlete's mode.
-    - While the goals or that calendar load, `WeeklyGoalsCardLoading` reserves the goals card's height;
-      an error shows the inline retry like the week strip.
+      If it fails, the global query error handler toasts "Could not load this week's training." (the
+      query's `meta.errorMessage`) and the strip is not drawn (no inline error, no retry button, so it
+      takes no room). A failed profile load toasts "Could not load your profile." and the page keeps
+      only its header.
+    - While the goals or that calendar load, `WeeklyGoalsCardLoading` reserves the goals card's height.
+      If the goals fail, an error toast says "Could not load this week's goals." and the card is not
+      drawn; the calendar query is shared with the week strip, so its failure is toasted once (the
+      toast id is the query hash).
     - While the running series loads, `RunProgressLoading` shows the week dots (day letters, no run or
       rest marks), the headline card (metric tabs, disabled arrows, stat labels) and the pace trend and
       zone cards with their titles. The race and goal cards wait for the data, since an athlete may
@@ -374,7 +380,9 @@ long and fast runs in running mode, strength sessions in strength mode), or a li
 One reusable card: title, one-line takeaway, optional controls, the chart, a footnote. Charts are
 client components loaded with `next/dynamic` (`ssr: false`) with a skeleton of the same height, so
 the week strip paints first and the chart library is not in the initial bundle. Each card owns its
-own loading, error (with retry, `QueryError`) and empty state.
+own loading and empty state. A failed load is toasted by the global query error handler with the
+copy in the query's `meta.errorMessage` ("Could not load your running progress.", "Could not load
+your strength progress.") and the card is not drawn.
 
 Empty states: no runs in the range ("Upload a run to see your pace"); zones need heart rate
 settings (link to Settings); no race with a distance (the goal tile says "Add a running race to see

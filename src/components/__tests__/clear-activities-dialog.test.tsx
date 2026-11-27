@@ -13,7 +13,6 @@ const renderDialog = (overrides: Overrides = {}) => {
             onOpenChange={onOpenChange}
             onConfirm={onConfirm}
             clearing={false}
-            error={null}
             provider="Lyfta"
             items="workouts"
             extra="sets"
@@ -82,11 +81,9 @@ describe('ClearActivitiesDialog', () => {
         expect(screen.getByTestId('lyfta-clear-confirm')).toHaveTextContent('Clearing...')
     })
 
-    it('shows why the last attempt failed', () => {
-        renderDialog({ error: 'A Lyfta sync is already running' })
+    it('renders no inline error', () => {
+        renderDialog()
 
-        expect(screen.getByTestId('lyfta-clear-error')).toHaveTextContent(
-            'A Lyfta sync is already running'
-        )
+        expect(screen.queryByTestId('lyfta-clear-error')).toBeNull()
     })
 })

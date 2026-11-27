@@ -10,22 +10,15 @@ export function useClearLyftaActivities() {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
     const mutation = useMutation(trpc.lyfta.clearActivities.mutationOptions())
-    const [open, setOpenState] = useState(false)
+    const [open, setOpen] = useState(false)
     const [clearing, setClearing] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
-    const setOpen = (next: boolean) => {
-        if (!next) setError(null)
-        setOpenState(next)
-    }
 
     const clear = async () => {
         if (clearing) return
         setClearing(true)
-        setError(null)
         try {
             const { deleted } = await mutation.mutateAsync()
-            setOpenState(false)
+            setOpen(false)
             toast.success(`Cleared ${deleted} Lyfta ${deleted === 1 ? 'workout' : 'workouts'}.`)
             await Promise.all([
                 queryClient.invalidateQueries(trpc.lyfta.getActivityCount.queryFilter()),
@@ -34,12 +27,14 @@ export function useClearLyftaActivities() {
                 queryClient.invalidateQueries(trpc.training.getStrengthProgress.queryFilter()),
             ])
         } catch (cause) {
-            setError(messageForLyftaError({ message: cause instanceof Error ? cause.message : '' }))
+            toast.error(
+                messageForLyftaError({ message: cause instanceof Error ? cause.message : '' })
+            )
         } finally {
             mutation.reset()
             setClearing(false)
         }
     }
 
-    return { open, setOpen, clearing, error, clear }
+    return { open, setOpen, clearing, clear }
 }

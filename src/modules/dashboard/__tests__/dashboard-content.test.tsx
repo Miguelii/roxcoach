@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { withNuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DashboardContent } from '@/modules/dashboard/dashboard-content'
 import type { TrpcKeyed } from '@/lib/__mocks__/trpc-path'
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     getStrengthProgressQuery: vi.fn(),
     mutate: vi.fn(),
     useMutation: vi.fn(),
+    queryMeta: new Map<string, unknown>(),
 }))
 
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
@@ -19,8 +20,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
     return {
         ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-        useQuery: (options: TrpcKeyed) =>
-            routeTrpc(
+        useQuery: (options: TrpcKeyed & { meta?: unknown }) => {
+            mocks.queryMeta.set(JSON.stringify(options.queryKey?.[0]), options.meta)
+            return routeTrpc(
                 {
                     'athlete.getProfile': mocks.getProfileQuery,
                     'training.getCalendar': mocks.getCalendarQuery,
@@ -29,7 +31,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                     'training.getStrengthProgress': mocks.getStrengthProgressQuery,
                 },
                 options
-            ),
+            )
+        },
         useMutation: (options: TrpcKeyed) =>
             routeTrpc({ 'athlete.setDashboardMode': mocks.useMutation }, options),
         useQueryClient: () => ({
@@ -99,7 +102,7 @@ describe('DashboardContent', () => {
         expect(screen.queryByTestId('mode-tab-strength')).toBeNull()
     })
 
-    it('draws the page with loading cards while the profile loads and an error with retry when it fails', () => {
+    it('draws the page with loading cards while the profile loads and only the header when it fails', () => {
         mocks.getProfileQuery.mockReturnValue({
             data: undefined,
             isPending: true,
@@ -116,12 +119,19 @@ describe('DashboardContent', () => {
         expect(screen.getByTestId('run-progress-loading')).toBeInTheDocument()
         unmount()
 
-        const refetch = vi.fn()
-        mocks.getProfileQuery.mockReturnValue({ data: undefined, isPending: false, refetch })
+        mocks.getProfileQuery.mockReturnValue({
+            data: undefined,
+            isPending: false,
+            refetch: vi.fn(),
+        })
         renderContent()
-        fireEvent.click(screen.getByText('Try again'))
-        expect(screen.getByTestId('dashboard-profile-error')).toBeInTheDocument()
-        expect(refetch).toHaveBeenCalled()
+        expect(screen.getByTestId('dashboard-title')).toHaveTextContent('Progress')
+        expect(screen.queryByTestId('dashboard-profile-error')).toBeNull()
+        expect(screen.queryByTestId('week-strip')).toBeNull()
+        expect(screen.queryByTestId('run-progress-loading')).toBeNull()
+        expect(mocks.queryMeta.get(JSON.stringify(['athlete', 'getProfile']))).toEqual({
+            errorMessage: 'Could not load your profile.',
+        })
     })
 
     it('draws the strength loading layout when the remembered mode is strength', () => {

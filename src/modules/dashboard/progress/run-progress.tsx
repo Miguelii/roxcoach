@@ -2,7 +2,6 @@
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { ProgressRange } from '@/_bff/core/constants/progress.constants'
-import { QueryError } from '@/components/query-error'
 import { useTRPC } from '@/lib/trpc'
 import { DASHBOARD_QUERY_STALE_TIME } from '@/modules/dashboard/constants'
 import { RunProgressLoading, RunProgressView } from '@/modules/dashboard/progress/run-progress-view'
@@ -18,7 +17,11 @@ export function RunProgress({ range, today }: Props) {
     const query = useQuery(
         trpc.training.getRunProgress.queryOptions(
             { range },
-            { staleTime: DASHBOARD_QUERY_STALE_TIME, placeholderData: keepPreviousData }
+            {
+                staleTime: DASHBOARD_QUERY_STALE_TIME,
+                placeholderData: keepPreviousData,
+                meta: { errorMessage: 'Could not load your running progress.' },
+            }
         )
     )
 
@@ -30,14 +33,7 @@ export function RunProgress({ range, today }: Props) {
     )
 
     if (query.data === undefined && query.isPending) return <RunProgressLoading />
-    if (query.data === undefined)
-        return (
-            <QueryError
-                message="Could not load your running progress."
-                onRetry={() => void query.refetch()}
-                testId="run-progress-error"
-            />
-        )
+    if (query.data === undefined) return null
 
     return <RunProgressView data={query.data} items={calendar.data ?? []} today={today} />
 }

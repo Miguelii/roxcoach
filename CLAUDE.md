@@ -103,6 +103,13 @@ type Props = PageProps<'/dashboard/[id]'>
 type Props = LayoutProps<'/dashboard'>
 ```
 
+### Errors: ALWAYS an error toast, never inline
+
+- Every error (a query that fails to load, a mutation that fails, a sign-in or sign-up that fails, a dialog action that fails, a coach request that fails or hits its limit) is shown with `toast.error(...)` from `sonner`, never as text or a block in the layout.
+- No inline error messages, no `role="alert"` error blocks, no "Try again" / "Retry" buttons, no `text-destructive` error copy. A part of the page whose data failed to load simply renders nothing (or keeps its last data).
+- Query load errors are toasted globally, once, by the `QueryCache` `onError` in the provider (`makeQueryClient`, `src/providers/query-client.ts`), with the query hash as toast id. A query sets its copy with `meta: { errorMessage }` in its options (typed in `src/lib/query-meta.ts`); without it the toast says "Could not load your data.". Never toast a query error by hand. Mutations toast in their own handlers.
+- The only inline errors allowed are form field validation messages (`FormMessage` under the field they belong to).
+
 ### Dialogs and drawers: ALWAYS the shared components
 
 - To confirm an action (delete, cancel, disconnect, a short yes/no or a one-field prompt) use `ConfirmDialog` (`src/components/ui/confirm-dialog.tsx`). It is a popup on desktop and the `DrawerFormLayout` drawer on mobile. Pass `form` when it holds a field.

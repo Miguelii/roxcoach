@@ -83,7 +83,9 @@ describe('SyncIntegrations', () => {
         expect(screen.getByTestId('sync-source-zepp')).toHaveTextContent('Not synced yet')
         expect(screen.queryByTestId('sync-source-strava')).toBeNull()
         expect(screen.getByTestId('sync-source-garmin')).toHaveTextContent('Loading')
-        expect(screen.getByTestId('sync-source-whoop')).toHaveTextContent('Could not load')
+        expect(screen.getByTestId('sync-source-whoop')).toHaveTextContent('Whoop')
+        expect(screen.getByTestId('sync-source-whoop')).not.toHaveTextContent('Could not load')
+        expect(screen.getByTestId('sync-source-whoop')).toBeDisabled()
     })
 
     it('syncs only the chosen integration and closes the list', async () => {

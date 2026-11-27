@@ -11,7 +11,6 @@ const setup = (overrides: Partial<Parameters<typeof LyftaDisconnectDialog>[0]> =
             onOpenChange={onOpenChange}
             onConfirm={onConfirm}
             disconnecting={false}
-            error={null}
             {...overrides}
         />
     )
@@ -59,11 +58,9 @@ describe('LyftaDisconnectDialog', () => {
         expect(screen.getByTestId('lyfta-disconnect-cancel')).toBeDisabled()
     })
 
-    it('shows why the last attempt failed', () => {
-        setup({ error: 'Could not reach Lyfta.' })
+    it('renders no inline error', () => {
+        setup()
 
-        expect(screen.getByTestId('lyfta-disconnect-error')).toHaveTextContent(
-            'Could not reach Lyfta.'
-        )
+        expect(screen.queryByTestId('lyfta-disconnect-error')).toBeNull()
     })
 })

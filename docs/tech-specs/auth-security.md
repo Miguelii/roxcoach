@@ -69,16 +69,16 @@ page never reveals that the account exists in the other app.
 
 ## Login page
 
-| Item              | Spec                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| Route             | `/login` (the only public page)                                                      |
-| Fields            | email, password (react-hook-form + zod in `use-login-form.ts`)                       |
-| Submit            | `useMutation(trpc.auth.login.mutationOptions())`                                     |
-| Success           | redirect to `/dashboard`                                                             |
-| Failure           | one generic message ("Invalid email or password"), never reveal which part was wrong |
-| Already signed in | the proxy redirects `/login` to `/dashboard`                                         |
-| Sign-up           | a link to `/signup` shows only while sign-up is open                                 |
-| Logout            | app shell action calling `auth.logout` (local scope), then redirect to `/login`      |
+| Item              | Spec                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| Route             | `/login` (the only public page)                                                          |
+| Fields            | email, password (react-hook-form + zod in `use-login-form.ts`)                           |
+| Submit            | `useMutation(trpc.auth.login.mutationOptions())`                                         |
+| Success           | redirect to `/dashboard`                                                                 |
+| Failure           | one generic error toast ("Invalid email or password"), never reveal which part was wrong |
+| Already signed in | the proxy redirects `/login` to `/dashboard`                                             |
+| Sign-up           | a link to `/signup` shows only while sign-up is open                                     |
+| Logout            | app shell action calling `auth.logout` (local scope), then redirect to `/login`          |
 
 The login form follows BrewStock's form pattern and visual style (see
 [ux-design.md](ux-design.md)). There is no marketing content on the page.

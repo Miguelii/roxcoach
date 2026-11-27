@@ -42,19 +42,19 @@ const GOAL_FIELDS: FieldSpec[] = [
     },
     {
         name: 'longRunsPerWeek',
-        label: 'Long runs',
+        label: 'Long runs per week',
         testId: 'goals-long-runs',
         inputMode: 'numeric',
     },
     {
         name: 'fastRunsPerWeek',
-        label: 'Fast runs',
+        label: 'Fast runs per week',
         testId: 'goals-fast-runs',
         inputMode: 'numeric',
     },
     {
         name: 'strengthSessionsPerWeek',
-        label: 'Strength sessions',
+        label: 'Strength sessions per week',
         testId: 'goals-strength-sessions',
         inputMode: 'numeric',
     },

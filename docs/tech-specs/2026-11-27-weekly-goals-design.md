@@ -224,7 +224,7 @@ The availability editor, its hook and tests are deleted.
 `goals-tab.tsx` loads `athlete.getWeeklyGoals` and renders `goals-form.tsx` with its hook `use-goals-form.ts`
 (react-hook-form, zod schema and `FormValues` in the hook, shadcn `Form` / `FormField`). Two groups:
 
-- **Weekly goals**: Running distance (km, decimal), Long runs, Fast runs, Strength sessions. Each field can be left
+- **Weekly goals**: Running distance (km, decimal), Long runs per week, Fast runs per week, Strength sessions per week. Each field can be left
   empty; a helper line says "Leave empty for no goal."
 - **Run types**: Short run under (km), Long run over (km), Fast pace under (min:sec per km, entered as `m:ss`). A
   one-line summary under the group reads the rule back in words, for example "Runs from 3 to 6 km faster than 5:00/km
@@ -258,7 +258,7 @@ Fast runs         1 / 1                          ✓ Done
   (generated `PageProps<'/settings'>`), and `SettingsTabs` takes it as its initial tab when it is a valid value
   (and marks it as visited so its panel mounts). Any other value falls back to Profile.
 - The distance bar is a plain progress bar with the numbers next to it, so the value never depends on color alone.
-- Loading: a skeleton with the card's height. Error: the same inline error pattern as the week strip.
+- Loading: a skeleton with the card's height. Error: an error toast ("Could not load this week's goals.") and no card, never an inline error.
 - Every element carries a `data-testid` (`weekly-goals-card`, `weekly-goal-<distance|long|fast|strength>`, with
   `-value` and `-remaining` children, `weekly-goals-empty`, `weekly-goals-days-left`).
 

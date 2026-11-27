@@ -80,8 +80,10 @@ request runs both buttons are disabled; a failure keeps the dialog open and show
   ("Syncing your activities. They will be available shortly."), that one is already running and any
   failure; the result is not toasted, it shows as
   the last run's counts ("Sync complete: 2 workouts added and 1 updated.", or "More workouts to
-  sync. Press Sync workouts again to continue." when `hasMore` is true) or the error mapped from the
-  stored code, straight from the status, until the athlete starts another sync. A refused overlap
+  sync. Press Sync workouts again to continue." when `hasMore` is true), straight from the status,
+  until the athlete starts another sync. The error mapped from the stored code is toasted when the
+  card loads, with the same toast id as a fresh failure. Connect, disconnect and clear failures are
+  toasts too; nothing is shown inline except field validation. A refused overlap
   ("A Lyfta sync is already running") is not an error: the hook refreshes the status and follows the
   running sync. "Could not start the Lyfta sync. Try again." (`lyfta020`) means the task could not
   be enqueued, and "The Lyfta sync stopped before finishing. Try again." (`lyfta021`) is a run that

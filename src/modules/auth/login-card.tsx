@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
+import { toast } from 'sonner'
 import { safeReturnTo } from '@/_bff/core/helpers/safe-redirect.helper'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,15 +35,13 @@ export function LoginCard({ footer }: Props) {
     const queryClient = useQueryClient()
     const form = useLoginForm()
     const login = useMutation(trpc.auth.login.mutationOptions())
-    const [failed, setFailed] = useState(false)
 
     const onSubmit = async (values: LoginValues) => {
-        setFailed(false)
         const request: Promise<{ status: 200 }> = login.mutateAsync(values)
         try {
             await request
         } catch {
-            setFailed(true)
+            toast.error(LOGIN_ERROR_COPY, { id: 'login-error' })
             return
         }
         // Drop any data cached for a previous session before the next user lands on the app.
@@ -97,16 +96,6 @@ export function LoginCard({ footer }: Props) {
                             </FormItem>
                         )}
                     />
-
-                    {failed && (
-                        <p
-                            data-testid="login-error"
-                            role="alert"
-                            className="text-sm text-destructive"
-                        >
-                            {LOGIN_ERROR_COPY}
-                        </p>
-                    )}
 
                     <Button
                         data-testid="login-submit"

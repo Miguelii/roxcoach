@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
         isError: false,
     }
     return {
+        toastError: vi.fn(),
         statusQuery,
         countQuery,
         idle: { mutateAsync: vi.fn(), reset: vi.fn(), isPending: false },
@@ -38,7 +39,9 @@ const mocks = vi.hoisted(() => {
     }
 })
 
-vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), success: mocks.success } }))
+vi.mock('sonner', () => ({
+    toast: { info: vi.fn(), error: mocks.toastError, success: mocks.success },
+}))
 vi.mock('@/lib/trpc', () => import('@/lib/__mocks__/trpc'))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
     const { routeTrpc } = await import('@/lib/__mocks__/trpc-path')
@@ -147,7 +150,7 @@ describe('ZeppCard clear activities', () => {
         await waitFor(() => expect(mocks.success).toHaveBeenCalled())
     })
 
-    it('keeps the dialog open with the reason when clearing fails', async () => {
+    it('keeps the dialog open and toasts the reason when clearing fails', async () => {
         connected()
         mocks.clear.mutateAsync.mockRejectedValueOnce(new Error(ZEPP_SYNC_IN_PROGRESS_MESSAGE))
         render(<ZeppCard />)
@@ -156,10 +159,9 @@ describe('ZeppCard clear activities', () => {
         fireEvent.click(screen.getByTestId('zepp-clear-confirm'))
 
         await waitFor(() => {
-            expect(screen.getByTestId('zepp-clear-error')).toHaveTextContent(
-                'A Zepp sync is already running'
-            )
+            expect(mocks.toastError).toHaveBeenCalledWith('A Zepp sync is already running')
         })
+        expect(screen.queryByTestId('zepp-clear-error')).toBeNull()
         expect(screen.getByTestId('zepp-clear-dialog')).toBeInTheDocument()
         expect(mocks.success).not.toHaveBeenCalled()
     })
