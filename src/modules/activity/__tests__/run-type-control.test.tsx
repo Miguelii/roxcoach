@@ -56,4 +56,10 @@ describe('RunTypeControl', () => {
         fireEvent.click(option)
         await waitFor(() => expect(onChange).toHaveBeenCalledWith('none'))
     })
+
+    it('disables the controls while pending', () => {
+        renderControl({ manual: true, pending: true })
+        expect(screen.getByTestId('run-type-select')).toBeDisabled()
+        expect(screen.getByTestId('run-type-reset')).toBeDisabled()
+    })
 })

@@ -39,7 +39,6 @@ type Props = {
     laps: LapDTO[]
     strengthSets: StrengthSetDTO[]
     strengthComparisons?: ExerciseComparisonDTO[]
-    // Rendered for runs only: the client run type section, injected so the view stays a pure render.
     runTypeControl?: ReactNode
 }
 
