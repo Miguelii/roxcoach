@@ -70,6 +70,9 @@ describe('DeleteProfileSection', () => {
         expect(screen.getByTestId('profile-delete-description')).toHaveTextContent(
             'cannot be undone'
         )
+        expect(screen.getByTestId('profile-delete-description')).toHaveTextContent(
+            'profile, goals, races'
+        )
         expect(mocks.mutateAsync).not.toHaveBeenCalled()
     })
 

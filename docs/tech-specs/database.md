@@ -72,7 +72,7 @@ make a second user work with no migration:
    Optional links use `on delete set null (<link column>)` (PostgreSQL 15 or later), so deleting the
    parent clears only the link column and never `user_id`.
 3. **Every unique constraint and every index starts with `user_id`**, for example
-   `(user_id, weekday, session_kind)`, `(user_id, local_date)`, `(user_id, week_start)`.
+   `(user_id, local_date)`, `(user_id, week_start)`.
 4. **Deleting a user deletes everything.** `on delete cascade` from `auth.users` on every
    `user_id`.
 5. **Service-role code does not get RLS.** Jobs and the report generator use the
@@ -88,7 +88,6 @@ make a second user work with no migration:
 | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `activity_source`   | `strava`, `manual`, `lyfta`                                                                                         |
 | `activity_category` | `run`, `hyrox`, `strength`, `cross`, `other`                                                                        |
-| `session_kind`      | `hyrox`, `run`, `strength`, `cross`, `rest`                                                                         |
 | `race_type`         | `hyrox`, `running`, `other`                                                                                         |
 | `race_priority`     | `A`, `B`, `C`                                                                                                       |
 | `race_status`       | `upcoming`, `completed`, `cancelled`                                                                                |
@@ -111,25 +110,6 @@ One row per user (`user_id` is the primary key).
 | `weekly_hours_cap` | numeric null  | upper bound the coach must respect                                         |
 | `notes`            | text null     | injuries, constraints, preferences                                         |
 | `dashboard_mode`   | text not null | `run` (default) or `strength`, check constraint (`0015`); dashboard charts |
-
-### `availability_slots`
-
-The athlete's typical week. A slot says what happens or can happen on a weekday.
-
-| Column         | Type           | Notes                                                                                                    |
-| -------------- | -------------- | -------------------------------------------------------------------------------------------------------- |
-| `weekday`      | smallint       | ISO, 1 = Monday to 7 = Sunday, check 1..7                                                                |
-| `session_kind` | `session_kind` |                                                                                                          |
-| `is_fixed`     | boolean        | `true`: commitment that already exists (for example a Hyrox class). `false`: open slot the coach may use |
-| `max_minutes`  | int null       | upper bound for the session length                                                                       |
-| `notes`        | text null      |                                                                                                          |
-
-Unique on `(user_id, weekday, session_kind)`. A `rest` slot marks a day with nothing allowed.
-
-Save strategy as built: the app upserts the new set on that unique key and then deletes the user's
-rows outside it. There is no transaction: a failed delete leaves stale extra slots until the next
-save, and two concurrent saves by the same user can race the delete. Every statement filters by
-`user_id`.
 
 ### `races`
 
@@ -435,7 +415,7 @@ gets a `DbTables` member.
 | File                                    | Content                                                                                                                                                                                                     |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `0001_schema_and_enums.sql`             | schema, `schema_migrations`, grants, enums, `set_updated_at()`                                                                                                                                              |
-| `0002_athlete_and_races.sql`            | `athlete_profiles`, `availability_slots`, `races`                                                                                                                                                           |
+| `0002_athlete_and_races.sql`            | `athlete_profiles`, `availability_slots` (dropped in `0026`), `races`                                                                                                                                       |
 | `0003_strava.sql`                       | `strava_connections`, `strava_webhook_events` (dropped by `0007`)                                                                                                                                           |
 | `0004_training.sql`                     | `activities`, `activity_laps`, `station_results`, `strength_sets`                                                                                                                                           |
 | `0005_coach_and_plan.sql`               | `weekly_reports`, `planned_sessions` (dropped by `0009`)                                                                                                                                                    |
@@ -459,6 +439,7 @@ gets a `DbTables` member.
 | `0023_rls_initplan.sql`                 | Wraps `auth.uid()` and `has_access()` in a subselect in every policy (evaluated once per statement)                                                                                                         |
 | `0024_query_indexes.sql`                | Adds `activities (user_id, started_at)`, replaces the `coach_messages` history index with one starting at `user_id`, adds `public.logs (user_id)` (build it by hand first with `create index concurrently`) |
 | `0025_weekly_goals.sql`                 | Adds the `run_type` enum, `activities.run_type` and `run_type_manual`, `classify_run_default()` (classifies existing runs) and `weekly_goals`                                                               |
+| `0026_remove_availability.sql`          | Drops `availability_slots` and the `session_kind` enum (weekly goals replace availability)                                                                                                                  |
 
 Before applying `0024`, build the shared-table index by hand, alone and outside a transaction: `create index concurrently if not exists logs_user_id_idx on public.logs (user_id) where user_id is not null;`.
 

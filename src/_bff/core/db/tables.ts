@@ -3,7 +3,6 @@ export enum DbTables {
     ACTIVITY_FILES = 'activity_files',
     ACTIVITY_LAPS = 'activity_laps',
     ATHLETE_PROFILES = 'athlete_profiles',
-    AVAILABILITY_SLOTS = 'availability_slots',
     COACH_CONVERSATIONS = 'coach_conversations',
     COACH_MESSAGES = 'coach_messages',
     LYFTA_CONNECTIONS = 'lyfta_connections',

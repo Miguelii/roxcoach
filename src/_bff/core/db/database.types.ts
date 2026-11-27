@@ -256,41 +256,6 @@ export type Database = {
                     dashboard_mode?: string
                 }
             }
-            availability_slots: {
-                Row: {
-                    id: string
-                    user_id: string
-                    weekday: number
-                    session_kind: 'hyrox' | 'run' | 'strength' | 'cross' | 'rest'
-                    is_fixed: boolean
-                    max_minutes: number | null
-                    notes: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id?: string
-                    weekday: number
-                    session_kind: 'hyrox' | 'run' | 'strength' | 'cross' | 'rest'
-                    is_fixed: boolean
-                    max_minutes?: number | null
-                    notes?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    weekday?: number
-                    session_kind?: 'hyrox' | 'run' | 'strength' | 'cross' | 'rest'
-                    is_fixed?: boolean
-                    max_minutes?: number | null
-                    notes?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
             coach_conversations: {
                 Row: {
                     id: string
@@ -671,7 +636,6 @@ export type Database = {
             race_status: 'upcoming' | 'completed' | 'cancelled'
             race_type: 'hyrox' | 'running' | 'other'
             run_type: 'long' | 'fast'
-            session_kind: 'hyrox' | 'run' | 'strength' | 'cross' | 'rest'
             sync_status: 'idle' | 'running' | 'succeeded' | 'failed'
         }
     }

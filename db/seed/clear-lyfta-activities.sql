@@ -8,7 +8,7 @@
 --
 -- What it removes: the user's activities with source = 'lyfta'. Their strength sets go with them
 -- (on delete cascade). Effort or notes added by hand to those activities are lost. Activities from
--- other sources, races, profile, availability and coach conversations are not touched.
+-- other sources, races, profile, goals and coach conversations are not touched.
 -- There is no undo: the data only comes back through a new sync from Lyfta.
 with p as (
     select '<USER_ID>'::uuid as uid -- PLACEHOLDER: the only value to replace

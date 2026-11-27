@@ -56,8 +56,7 @@ workout before writing it. Do not log request headers, keys or raw workout paylo
 
 ## Settings UX
 
-Lyfta is a card of the `Integrations` tab of `/settings` (alongside Profile, Dashboard and Weekly
-availability), above the other integrations (see [zepp.md](zepp.md)). Keep all tab panels
+Lyfta is a card of the `Integrations` tab of `/settings` (alongside Profile, Dashboard and Goals), above the other integrations (see [zepp.md](zepp.md)). Keep all tab panels
 mounted, following the existing Settings tabs behavior.
 Disconnect asks first in a confirmation dialog, like deleting a race: a popup on desktop and a
 sheet from the bottom on a phone (the shared `Dialog`). "Keep connected" closes it; while the

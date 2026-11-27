@@ -49,14 +49,6 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
-        'availability_slots',
-        (graph) => ({
-            sql: `insert into roxcoach.availability_slots (user_id, weekday, session_kind, is_fixed)
-                  values ($1, 2, 'hyrox', true)`,
-            params: [graph.userId],
-        }),
-    ],
-    [
         'activity_laps',
         (graph) => ({
             sql: `insert into roxcoach.activity_laps (user_id, activity_id, lap_index) values ($1, $2, 0)`,
@@ -134,7 +126,6 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
 const GRAPH_CHILD_TABLES = [
     'athlete_profiles',
     'weekly_goals',
-    'availability_slots',
     'activity_laps',
     'station_results',
     'strength_sets',

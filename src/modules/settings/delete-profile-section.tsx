@@ -13,7 +13,7 @@ import { useTRPC } from '@/lib/trpc'
 const DELETE_ERROR_COPY = 'Could not delete your profile. Nothing was removed, try again.'
 
 // Danger zone at the end of the profile tab. Deleting removes the account and every piece of data
-// the athlete has in Roxcoach (profile, availability, races, workouts and files, coach chats, Lyfta
+// the athlete has in Roxcoach (profile, goals, races, workouts and files, coach chats, Lyfta
 // connection), so it always asks first.
 export function DeleteProfileSection() {
     const trpc = useTRPC()
@@ -52,8 +52,8 @@ export function DeleteProfileSection() {
         >
             <h2 className="text-sm font-medium text-ink">Delete profile</h2>
             <p className="text-sm text-muted-foreground">
-                Permanently deletes your account and all your data: workouts, races, availability,
-                coach conversations, uploaded files and your Lyfta connection.
+                Permanently deletes your account and all your data: workouts, races, goals, coach
+                conversations, uploaded files and your Lyfta connection.
             </p>
             <Button
                 type="button"
@@ -68,7 +68,7 @@ export function DeleteProfileSection() {
                 open={open}
                 onOpenChange={onOpenChange}
                 title="Delete your profile?"
-                description="This permanently deletes your account, profile, availability, races, workouts, uploaded files, coach conversations and your Lyfta connection. This cannot be undone."
+                description="This permanently deletes your account, profile, goals, races, workouts, uploaded files, coach conversations and your Lyfta connection. This cannot be undone."
                 descriptionTestId="profile-delete-description"
                 testId="profile-delete-dialog"
                 cancelLabel="Keep my profile"

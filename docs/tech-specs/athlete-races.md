@@ -2,7 +2,7 @@
 
 Two small modules (`athlete`, `races`) that capture the athlete's starting point and the races
 that the coach works from. The coach chat (see [coach-chat.md](coach-chat.md)) reads
-these inputs through the services of each module: `getProfile`, `getAvailability` and `listRaces`.
+these inputs through the services of each module: `getProfile`, `getWeeklyGoals` and `listRaces`.
 
 ## Athlete profile
 
@@ -36,44 +36,6 @@ never receives it. `ProfileDTO`, which the coach context reads, has no email.
 Defaults: without a saved row, `getProfile` returns an empty display name, `Europe/Lisbon`, nulls
 and mode `run` (a missing row is not an error, but `setDashboardMode` needs the row to exist). `updateProfile` validates first, writes nothing on invalid
 input and upserts the row for the signed-in user.
-
-## Weekly availability
-
-The athlete describes a typical week in Settings (Weekly availability tab). Stored as
-`availability_slots`. Validation lives in `helpers/availability-validation.helper.ts`.
-
-For each weekday (ISO, 1 = Monday to 7 = Sunday) the athlete can add slots:
-
-| Field        | Meaning                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Session kind | `hyrox`, `run`, `strength`, `cross` or `rest`                                                                        |
-| Fixed        | on: a commitment that already exists (for example a Hyrox class every Tuesday). Off: an open slot the coach may fill |
-| Max minutes  | integer 15 to 360, or null                                                                                           |
-| Notes        | at most 200 characters, or null. Accepted by the API; the editor does not expose it yet                              |
-
-Rules (all validated server-side, the first problem is returned as a reason code):
-
-- The same `(weekday, session_kind)` pair cannot appear twice.
-- A weekday has at most 4 slots.
-- The editor does not set a minutes limit yet: new slots are saved with `max_minutes` null (the API
-  accepts 15 to 360). The weekly summary adds up only slots that have a value.
-- A `rest` slot cannot be fixed and has no max minutes, and a weekday with a `rest` slot cannot
-  have other slots.
-- Fixed slots are meant to be planned as-is, with the coach adapting the load around them. Open
-  slots are where the coach places the sessions it chooses.
-
-Save strategy: `saveAvailability` validates, upserts the new set (conflict target
-`user_id,weekday,session_kind`) and only then deletes the rows outside it. There is no
-transaction. The week is therefore never empty midway: a failed upsert deletes nothing, and a
-failed delete leaves the new slots saved plus stale extra slots until the next save. Two
-concurrent saves by the same user can race the delete step. The delete removes only the signed-in
-user's rows (PostgREST has no tuple `NOT IN`, so the user's pairs are read and the stale ones are
-removed with one delete per weekday). Saving an empty week deletes every slot.
-
-Changing availability does not regenerate anything: the coach chat reads the saved week when asked.
-
-UX: a 7-column week editor with the slots as chips per day, an "Add" menu per day and a summary
-line ("N sessions per week, up to H h"). See [ux-design.md](ux-design.md).
 
 ## Weekly goals
 
@@ -208,11 +170,9 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `controllers/get-profile.controller.ts`                                                | protected query                                                                                     |
 | `controllers/get-timezone.controller.ts`                                               | protected query, the timezone string (default Europe/Lisbon); the dashboard derives today from it   |
 | `controllers/update-profile.controller.ts`                                             | protected mutation                                                                                  |
-| `controllers/get-availability.controller.ts`                                           | protected query                                                                                     |
-| `controllers/save-availability.controller.ts`                                          | protected mutation, upsert then delete (no transaction)                                             |
 | `controllers/delete-account.controller.ts`                                             | protected mutation without input: deletes the signed-in user's data (see Delete profile)            |
 | `services/delete-account.service.ts`, `repositories/account-data.repository.ts`        | storage files, then the auth user (cascade), then local sign-out (service-role client)              |
-| `services/get-profile`, `update-profile`, `get-availability`, `save-availability`      | business logic and validation, run as the signed-in user                                            |
+| `services/get-profile`, `update-profile`                                               | business logic and validation, run as the signed-in user                                            |
 | `services/get-athlete-timezone.service.ts`                                             | the timezone, used by the controller and by the races services                                      |
 | `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`            | pure validation                                                                                     |
 | `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts`      | data access                                                                                         |
@@ -251,7 +211,7 @@ the client) deletes the user's account and everything Roxcoach stores for it.
 2. The auth user is deleted with `supabase.auth.admin.deleteUser` (service-role client). Every
    Roxcoach table references `auth.users (id)` with `on delete cascade`, so all the user's rows go
    with it: activities (laps, station results, strength sets and file rows), races, weekly
-   availability, coach conversations and messages, the Lyfta connection (the encrypted API key goes
+   goals, coach conversations and messages, the Lyfta connection (the encrypted API key goes
    with it), the coach usage counter and the profile. There is no delete function to maintain: a
    table added later is covered by its own foreign key, and `db/tests/schema.test.ts` ("deleting a
    user") fails if one does not cascade.

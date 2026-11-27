@@ -27,7 +27,6 @@ const ROXCOACH_TABLES = [
     'activity_files',
     'activity_laps',
     'athlete_profiles',
-    'availability_slots',
     'coach_conversations',
     'coach_messages',
     'coach_usage',
@@ -112,6 +111,7 @@ describe('schema layout', () => {
             '0023_rls_initplan.sql',
             '0024_query_indexes.sql',
             '0025_weekly_goals.sql',
+            '0026_remove_availability.sql',
         ])
     })
 
@@ -179,8 +179,7 @@ describe('schema layout', () => {
         const userId = await createUser(testDb)
         await testDb.asUser(userId)
         const result = await testDb.db.query<{ user_id: string }>(
-            `insert into roxcoach.availability_slots (weekday, session_kind, is_fixed)
-             values (3, 'run', false) returning user_id`
+            `insert into roxcoach.weekly_goals default values returning user_id`
         )
 
         expect(result.rows[0].user_id).toBe(userId)
@@ -203,17 +202,6 @@ describe('schema layout', () => {
 })
 
 describe('unique constraints', () => {
-    it('rejects a duplicate availability slot and accepts it for another user', async () => {
-        const userId = await createUser(testDb)
-        const other = await createUser(testDb)
-        const sql = `insert into roxcoach.availability_slots (user_id, weekday, session_kind, is_fixed)
-                     values ($1, 1, 'strength', false)`
-        await testDb.db.query(sql, [userId])
-
-        await expect(testDb.db.query(sql, [userId])).rejects.toThrow(UNIQUE_ERROR)
-        await expect(testDb.db.query(sql, [other])).resolves.toBeDefined()
-    })
-
     it('accepts many manual activities for one user', async () => {
         const userId = await createUser(testDb)
         await insertActivity(testDb, userId)
@@ -547,6 +535,17 @@ describe('coach chat tables', () => {
         expect(types.rows).toEqual([])
         expect(ROXCOACH_TABLES).not.toContain('weekly_reports')
         expect(ROXCOACH_TABLES).not.toContain('planned_sessions')
+    })
+
+    it('no longer has the availability table or the session_kind type', async () => {
+        await testDb.asSuperuser()
+        const types = await testDb.db.query<{ typname: string }>(
+            `select t.typname from pg_type t join pg_namespace n on n.oid = t.typnamespace
+             where n.nspname = 'roxcoach' and t.typname = 'session_kind'`
+        )
+
+        expect(types.rows).toEqual([])
+        expect(ROXCOACH_TABLES).not.toContain('availability_slots')
     })
 })
 

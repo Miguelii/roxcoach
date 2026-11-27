@@ -2,7 +2,7 @@
 
 Roxcoach is a personal training assistant for Hyrox and running. It takes workouts from manual
 upload, manual logging and manual Lyfta sync, and has an AI coach: a chat on the dashboard
-(Google Gemini) that answers from the profile, the weekly availability, the races and the recent
+(Google Gemini) that answers from the profile, the weekly goals, the races and the recent
 activities. There is no weekly report and no stored plan.
 
 This folder is the source of truth for what gets built. One file per module. Read the module spec
@@ -16,7 +16,7 @@ before touching its code, and update it in the same change.
 | [database.md](database.md)                         | Supabase schema, enums, RLS, migrations                                                                                |
 | [auth-security.md](auth-security.md)               | Login page, Supabase session, proxy, CSP, key usage                                                                    |
 | [signup-access-code.md](signup-access-code.md)     | `/signup` page: shared access code, automatic access grant with `roxcoach.grant_access`                                |
-| [athlete-races.md](athlete-races.md)               | Starting point (profile, weekly availability) and races with goals                                                     |
+| [athlete-races.md](athlete-races.md)               | Starting point (profile, weekly goals) and races with goals                                                            |
 | [manual-logging.md](manual-logging.md)             | Station times, loads and strength sets entered by hand                                                                 |
 | [manual-upload.md](manual-upload.md)               | FIT, TCX and GPX upload from the dashboard, parsing, file storage                                                      |
 | [lyfta.md](lyfta.md)                               | Manual Lyfta workout sync, credentials, import and storage                                                             |
@@ -63,7 +63,7 @@ before touching its code, and update it in the same change.
 
 1. `architecture` and `database` (project skeleton, migrations, env)
 2. `auth-security` (login, proxy, protected layout)
-3. `athlete-races` (profile, availability, races CRUD)
+3. `athlete-races` (profile, weekly goals, races CRUD)
 4. `manual-upload` (FIT, TCX and GPX upload, storage)
 5. `ux-design` calendar and activity detail on top of real data
 6. `manual-logging`

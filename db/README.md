@@ -23,7 +23,7 @@ window. So the schema is exposed only at the end.
    `0004_training.sql`, `0005_coach_and_plan.sql`, `0006_rls.sql`, `0007_remove_strava.sql`,
    `0008_activity_files.sql`, `0009_coach_chat.sql`, `0010_lyfta.sql`,
    `0011_lyfta_progress_metrics.sql`, `0012_strength_exercise_order.sql`,
-   `0013_strength_exercise_images.sql`, `0014_coach_usage.sql`, `0015_dashboard_progress.sql`, `0016_race_readiness.sql`, `0017_grant_access_fn.sql`, through `0025_weekly_goals.sql`). Paste
+   `0013_strength_exercise_images.sql`, `0014_coach_usage.sql`, `0015_dashboard_progress.sql`, `0016_race_readiness.sql`, `0017_grant_access_fn.sql`, through `0026_remove_availability.sql`). Paste
    the whole file and run it. Each file records itself in `roxcoach.schema_migrations` as its
    last statement.
 4. Run the files as the default `postgres` role of the SQL editor. `0001` sets default privileges
@@ -72,7 +72,6 @@ Human checks, in order. Tick them off as you go; none of them is automated.
     ```sql
     select
         (select count(*) from roxcoach.athlete_profiles) as athlete_profiles,
-        (select count(*) from roxcoach.availability_slots) as availability_slots,
         (select count(*) from roxcoach.races) as races,
         (select count(*) from roxcoach.activities) as activities,
         (select count(*) from roxcoach.activity_laps) as activity_laps,

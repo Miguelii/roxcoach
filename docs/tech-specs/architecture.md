@@ -55,7 +55,7 @@ are all server-side).
 | Module     | Responsibility                                                                                     | Spec                                   |
 | ---------- | -------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | `auth`     | Login, logout, session and claims                                                                  | [auth-security.md](auth-security.md)   |
-| `athlete`  | Profile and weekly availability                                                                    | [athlete-races.md](athlete-races.md)   |
+| `athlete`  | Profile and weekly goals                                                                           | [athlete-races.md](athlete-races.md)   |
 | `races`    | Races and goals                                                                                    | [athlete-races.md](athlete-races.md)   |
 | `training` | Activities, laps, manual sessions, calendar feed, file upload (`upload-activity` service, parsers) | [manual-logging.md](manual-logging.md) |
 | `lyfta`    | Lyfta API key connection and manual workout import into `training`                                 | [lyfta.md](lyfta.md)                   |
@@ -66,12 +66,12 @@ or `processors/`, never another module's controller or repository. A type-only i
 modules is allowed for shared DTOs (`training` imports `RaceDTO` from `races/types` to build
 `RaceSummaryDTO`).
 
-As built: `athlete` has the profile and availability controllers, services, validation helpers and
-two repositories, plus `getAthleteTimezone`, which `races` calls through its service. `races` has
+As built: `athlete` has the profile and weekly goals controllers, services, validation helpers and
+repositories, plus `getAthleteTimezone`, which `races` calls through its service. `races` has
 list, create, update, complete, cancel and delete controllers, the matching services, a
 `listRacesInRange` service used by the `training` calendar feed, one repository and a validation
 helper. Rules and file lists are in [athlete-races.md](athlete-races.md). `coach` reads the other
-modules only through their services (`getProfile`, `getAvailability`, `getAthleteTimezone`,
+modules only through their services (`getProfile`, `getWeeklyGoals`, `getAthleteTimezone`,
 `listRaces`, `getCalendar`, `getActivity`); the dashboard progress queries `training.getRunProgress`
 and `training.getStrengthProgress` (pure aggregation helpers under `training/helpers`, zones in
 `core/constants/hr-zones.constants.ts`, see [dashboard-progress.md](dashboard-progress.md)); the week totals and load ratio it shares with the
