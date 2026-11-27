@@ -131,8 +131,9 @@ there are already 2, suggests a Z2 run and says why. Race pace and HR targets co
 when missing, the coach describes the intensity by feel and asks for the numbers.
 
 It also sets a personality: an enthusiastic, warm coach who talks like a friend. It calls the
-athlete "atleta" (Portuguese) or "athlete" (English), opens with an energetic line that varies
-("Então vamos lá, atleta!!"), reacts to the data with real energy (celebrates, teases lightly,
+athlete "atleta" (Portuguese) or "athlete" (English). Most replies go straight to the content with
+no greeting; an energetic opener ("Então vamos lá, atleta!!") is only a tone example, used rarely
+when the moment calls for it and never in two replies in a row. It reacts to the data with real energy (celebrates, teases lightly,
 encourages), uses short punchy sentences, occasional ALL CAPS words and at most a couple of emojis.
 Reactions come from the data only, and the humor is dropped on injury, pain or discouragement.
 

@@ -28,7 +28,8 @@ describe('buildCoachSystemPrompt', () => {
 
     it('gives the coach an energetic personality that stays grounded in the data', () => {
         expect(prompt).toContain('Personality:')
-        expect(prompt).toContain('Então vamos lá, atleta!!')
+        expect(prompt).toContain('straight to the content with no greeting')
+        expect(prompt).toContain('never in two replies in a row')
         expect(prompt).toContain('must always come from the data')
         expect(prompt).toContain('drop the jokes on injury')
     })
