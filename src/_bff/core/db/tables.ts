@@ -9,6 +9,7 @@ export enum DbTables {
     LYFTA_CONNECTIONS = 'lyfta_connections',
     RACES = 'races',
     STRENGTH_SETS = 'strength_sets',
+    WEEKLY_GOALS = 'weekly_goals',
     ZEPP_CONNECTIONS = 'zepp_connections',
 }
 

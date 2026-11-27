@@ -42,6 +42,13 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
         }),
     ],
     [
+        'weekly_goals',
+        (graph) => ({
+            sql: `insert into roxcoach.weekly_goals (user_id) values ($1)`,
+            params: [graph.userId],
+        }),
+    ],
+    [
         'availability_slots',
         (graph) => ({
             sql: `insert into roxcoach.availability_slots (user_id, weekday, session_kind, is_fixed)
@@ -126,6 +133,7 @@ const ROW_BUILDERS = new Map<string, RowBuilder>([
 // Seeded after the parents, in this order (coach_messages needs the conversation).
 const GRAPH_CHILD_TABLES = [
     'athlete_profiles',
+    'weekly_goals',
     'availability_slots',
     'activity_laps',
     'station_results',

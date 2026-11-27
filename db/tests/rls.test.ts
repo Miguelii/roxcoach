@@ -22,7 +22,7 @@ type CountRow = { count: number }
 const SERVICE_ONLY_TABLES = new Set(['lyfta_connections', 'schema_migrations', 'zepp_connections'])
 
 // Tables whose client rows are never deleted by a client: they have no DELETE policy.
-const NO_DELETE_POLICY_TABLES = new Set(['coach_usage'])
+const NO_DELETE_POLICY_TABLES = new Set(['coach_usage', 'weekly_goals'])
 
 // How PostgreSQL prints the owner check of every client policy: both calls sit in a subselect so
 // they run once per statement (an InitPlan) instead of once per row.

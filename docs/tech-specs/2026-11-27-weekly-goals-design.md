@@ -104,11 +104,12 @@ The rule is one pure function, `classifyRun({ distanceM, movingTimeS, elapsedTim
 
 ## Data model
 
-Migration `0025_weekly_goals.sql`, following the conventions of the latest migrations (one transaction, RLS policies in
+Two migrations: `0025_weekly_goals.sql` adds the goals and run types, and `0026` drops availability once nothing
+uses it (a later task). Both follow the conventions of the latest migrations (one transaction, RLS policies in
 the `(select auth.uid())` initplan form of `0023`, grants as in `0001`, ends with the `schema_migrations` insert).
 Run `pnpm db:types` in the same change. Update [database.md](database.md).
 
-### Remove availability
+### Remove availability (`0026`)
 
 - `drop table roxcoach.availability_slots;`
 - `drop type roxcoach.session_kind;` (its only other user, `planned_sessions`, was dropped in `0009`).
@@ -143,7 +144,7 @@ Add `DbTables.WEEKLY_GOALS`; remove `DbTables.AVAILABILITY_SLOTS`.
 Check: `category = 'run' or (run_type is null and run_type_manual = false)`.
 
 The migration classifies every existing, not deleted `run` with the default rules in one `update ... set run_type =
-case ... end`, the same rule as `classifyRun` written in SQL (moving time, falling back to elapsed time). Vitest cannot
+roxcoach.classify_run_default(distance_m, moving_time_s, elapsed_time_s)`, the same rule as `classifyRun` written in SQL (moving time, falling back to elapsed time). Vitest cannot
 check that the SQL and the TypeScript agree, so the migration carries a comment pointing at `classify-run.helper.ts`,
 and the `db/tests` suite gets a case per row of the rules table.
 
@@ -165,7 +166,7 @@ Replaces every availability file (controllers, services, repository, validation 
 | `controllers/get-weekly-goals.controller.ts`  | protected query `athlete.getWeeklyGoals`                                                      |
 | `controllers/save-weekly-goals.controller.ts` | protected mutation `athlete.saveWeeklyGoals`                                                  |
 
-DTO (`WeeklyGoalsDTO`): `weeklyRunDistanceM`, `longRunsPerWeek`, `fastRunsPerWeek`, `strengthSessionsPerWeek` (each
+Type (`WeeklyGoals`, in `_bff/core/constants/weekly-goals.constants.ts` so the client and `core/utils` can use it): `weeklyRunDistanceM`, `longRunsPerWeek`, `fastRunsPerWeek`, `strengthSessionsPerWeek` (each
 `number | null`) and `runTypeRules: { shortRunMaxM, longRunMinM, fastPaceSPerKm }`. Defaults and limits live in
 `src/_bff/core/constants/weekly-goals.constants.ts` (the form uses them too).
 

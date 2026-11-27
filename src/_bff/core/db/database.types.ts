@@ -33,6 +33,8 @@ export type Database = {
                     lyfta_total_volume_kg_reps: number | null
                     hr_histogram: Json | null
                     pace_histogram: Json | null
+                    run_type: 'long' | 'fast' | null
+                    run_type_manual: boolean
                 }
                 Insert: {
                     id?: string
@@ -61,6 +63,8 @@ export type Database = {
                     lyfta_total_volume_kg_reps?: number | null
                     hr_histogram?: Json | null
                     pace_histogram?: Json | null
+                    run_type?: 'long' | 'fast' | null
+                    run_type_manual?: boolean
                 }
                 Update: {
                     id?: string
@@ -89,6 +93,8 @@ export type Database = {
                     lyfta_total_volume_kg_reps?: number | null
                     hr_histogram?: Json | null
                     pace_histogram?: Json | null
+                    run_type?: 'long' | 'fast' | null
+                    run_type_manual?: boolean
                 }
             }
             activity_files: {
@@ -569,6 +575,44 @@ export type Database = {
                     lyfta_records?: Json | null
                 }
             }
+            weekly_goals: {
+                Row: {
+                    user_id: string
+                    weekly_run_distance_m: number | null
+                    long_runs_per_week: number | null
+                    fast_runs_per_week: number | null
+                    strength_sessions_per_week: number | null
+                    short_run_max_m: number
+                    long_run_min_m: number
+                    fast_pace_s_per_km: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    user_id?: string
+                    weekly_run_distance_m?: number | null
+                    long_runs_per_week?: number | null
+                    fast_runs_per_week?: number | null
+                    strength_sessions_per_week?: number | null
+                    short_run_max_m?: number
+                    long_run_min_m?: number
+                    fast_pace_s_per_km?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    user_id?: string
+                    weekly_run_distance_m?: number | null
+                    long_runs_per_week?: number | null
+                    fast_runs_per_week?: number | null
+                    strength_sessions_per_week?: number | null
+                    short_run_max_m?: number
+                    long_run_min_m?: number
+                    fast_pace_s_per_km?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
             zepp_connections: {
                 Row: {
                     user_id: string
@@ -626,6 +670,7 @@ export type Database = {
             race_priority: 'A' | 'B' | 'C'
             race_status: 'upcoming' | 'completed' | 'cancelled'
             race_type: 'hyrox' | 'running' | 'other'
+            run_type: 'long' | 'fast'
             session_kind: 'hyrox' | 'run' | 'strength' | 'cross' | 'rest'
             sync_status: 'idle' | 'running' | 'succeeded' | 'failed'
         }

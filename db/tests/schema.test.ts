@@ -36,6 +36,7 @@ const ROXCOACH_TABLES = [
     'schema_migrations',
     'station_results',
     'strength_sets',
+    'weekly_goals',
     'zepp_connections',
 ]
 
@@ -110,6 +111,7 @@ describe('schema layout', () => {
             '0022_shared_logs_project.sql',
             '0023_rls_initplan.sql',
             '0024_query_indexes.sql',
+            '0025_weekly_goals.sql',
         ])
     })
 
@@ -669,6 +671,105 @@ describe('coach usage counter', () => {
 
         expect(result.rows[0].sync_started_at).toBeNull()
     })
+})
+
+describe('weekly goals', () => {
+    const insertGoals = async (userId: string, columns = '', values = ''): Promise<void> => {
+        await testDb.asService()
+        await testDb.db.query(
+            `insert into roxcoach.weekly_goals (user_id${columns}) values ($1${values})`,
+            [userId]
+        )
+    }
+
+    it('weekly_goals: owner can read and update only their row', async () => {
+        const owner = await createUser(testDb)
+        const other = await createUser(testDb)
+        await insertGoals(owner)
+
+        await testDb.asUser(other)
+        const seen = await testDb.db.query('select user_id from roxcoach.weekly_goals')
+        const updated = await testDb.db.query(
+            'update roxcoach.weekly_goals set long_runs_per_week = 2 where user_id = $1',
+            [owner]
+        )
+        await testDb.asUser(owner)
+        const own = await testDb.db.query(
+            'update roxcoach.weekly_goals set long_runs_per_week = 2 where user_id = $1',
+            [owner]
+        )
+
+        expect(seen.rows).toHaveLength(0)
+        expect(updated.affectedRows).toBe(0)
+        expect(own.affectedRows).toBe(1)
+    })
+
+    it('weekly_goals: rejects short_run_max_m >= long_run_min_m', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(
+            insertGoals(userId, ', short_run_max_m, long_run_min_m', ', 6000, 6000')
+        ).rejects.toThrow(CHECK_ERROR)
+    })
+
+    it('weekly_goals: rejects fast_pace_s_per_km outside 120..600', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(insertGoals(userId, ', fast_pace_s_per_km', ', 119')).rejects.toThrow(
+            CHECK_ERROR
+        )
+        await expect(insertGoals(userId, ', fast_pace_s_per_km', ', 601')).rejects.toThrow(
+            CHECK_ERROR
+        )
+        await expect(insertGoals(userId, ', fast_pace_s_per_km', ', 300')).resolves.toBeUndefined()
+    })
+
+    it('weekly_goals: rejects long_runs_per_week 0 and 8', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(insertGoals(userId, ', long_runs_per_week', ', 0')).rejects.toThrow(
+            CHECK_ERROR
+        )
+        await expect(insertGoals(userId, ', long_runs_per_week', ', 8')).rejects.toThrow(
+            CHECK_ERROR
+        )
+    })
+
+    it('activities: rejects a run_type on a non run activity', async () => {
+        const userId = await createUser(testDb)
+
+        await expect(
+            testDb.db.query(
+                `insert into roxcoach.activities
+                    (user_id, source, category, name, started_at, local_date, run_type)
+                 values ($1, 'manual', 'strength', 'Lift', now(), current_date, 'long')`,
+                [userId]
+            )
+        ).rejects.toThrow(CHECK_ERROR)
+    })
+
+    it.each([
+        [5100, 1708, null, 'long'],
+        [5000, 1450, null, 'fast'],
+        [6000, 1770, null, 'fast'],
+        [6010, 1500, null, 'long'],
+        [2500, 675, null, null],
+        [3000, 870, null, 'fast'],
+        [5000, null, 1450, 'fast'],
+        [5000, null, null, null],
+        [null, 1450, null, null],
+    ])(
+        'classify_run_default(%s m, moving %s s, elapsed %s s) is %s',
+        async (distance, moving, elapsed, expected) => {
+            await testDb.asSuperuser()
+            const result = await testDb.db.query<{ run_type: string | null }>(
+                'select roxcoach.classify_run_default($1, $2, $3) as run_type',
+                [distance, moving, elapsed]
+            )
+
+            expect(result.rows[0].run_type).toBe(expected)
+        }
+    )
 })
 
 describe('shared logs table', () => {
