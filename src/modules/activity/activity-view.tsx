@@ -1,6 +1,7 @@
 /* oxlint-disable max-lines -- the activity page composes all its sections in one view */
 // oxlint-disable max-lines-per-function
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { HYROX_STATION_LABELS } from '@/_bff/core/constants/hyrox.constants'
 import {
@@ -38,6 +39,8 @@ type Props = {
     laps: LapDTO[]
     strengthSets: StrengthSetDTO[]
     strengthComparisons?: ExerciseComparisonDTO[]
+    // Rendered for runs only: the client run type section, injected so the view stays a pure render.
+    runTypeControl?: ReactNode
 }
 
 type Metric = {
@@ -70,6 +73,7 @@ export function ActivityView({
     laps,
     strengthSets,
     strengthComparisons = NO_COMPARISONS,
+    runTypeControl,
 }: Props) {
     const { Icon, tone, label } = KINDS[activity.category]
     const timeS = activityDurationS(activity)
@@ -187,6 +191,8 @@ export function ActivityView({
                     {activity.name}
                 </h1>
             </header>
+
+            {isRun && runTypeControl}
 
             {isStrengthActivity ? (
                 <StrengthSummary

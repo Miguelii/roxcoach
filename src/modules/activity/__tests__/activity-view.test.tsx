@@ -231,3 +231,31 @@ describe('ActivityView', () => {
         expect(screen.queryByTestId('metric-volume-value')).toBeNull()
     })
 })
+
+describe('ActivityView run type', () => {
+    it('renders the run type control for a run', () => {
+        render(
+            <ActivityView
+                activity={makeActivity()}
+                laps={[]}
+                strengthSets={[]}
+                runTypeControl={<div data-testid="run-type-slot" />}
+            />
+        )
+
+        expect(screen.getByTestId('run-type-slot')).toBeInTheDocument()
+    })
+
+    it('does not render the run type control for a strength activity', () => {
+        render(
+            <ActivityView
+                activity={makeActivity({ category: 'strength' })}
+                laps={[]}
+                strengthSets={[]}
+                runTypeControl={<div data-testid="run-type-slot" />}
+            />
+        )
+
+        expect(screen.queryByTestId('run-type-slot')).toBeNull()
+    })
+})

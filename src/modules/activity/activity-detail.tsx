@@ -7,6 +7,7 @@ import type {
     StrengthSetDTO,
 } from '@/_bff/modules/training/types'
 import { ActivityView } from '@/modules/activity/activity-view'
+import { RunTypeSection } from '@/modules/activity/run-type-section'
 
 type Loaded = {
     activity: ActivityDTO
@@ -37,6 +38,7 @@ export async function ActivityDetail({ params, load }: Props) {
             laps={found.laps}
             strengthSets={found.strengthSets}
             strengthComparisons={found.strengthComparisons}
+            runTypeControl={<RunTypeSection activity={found.activity} />}
         />
     )
 }
