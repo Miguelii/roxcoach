@@ -102,8 +102,11 @@ checks them again plus `shortRunMaxM < longRunMinM`, failing with `WeeklyGoalsVa
 (`field` names the field, `BAD_REQUEST`). The service reads the previous rules and, only when one
 of the three thresholds changed, calls `reclassifyRuns` of `training` (runs set by hand are skipped
 there) before the upsert. A failed reclassify leaves the stored rules unchanged, so the next save
-retries it. It returns `{ goals, reclassified }`, the number of runs whose type changed. `CreateSbClientError`, `WeeklyGoalsQueryError`,
-`ActivityQueryError` and `ActivityWriteError` map to `INTERNAL_SERVER_ERROR`.
+retries it. An upsert that fails after a successful reclassify leaves the runs on the new rules and
+the stored rules on the old ones; the next save with the same values reclassifies again and repairs
+it. It returns `{ goals, reclassified }`, the number of runs whose type changed.
+`CreateSbClientError`, `WeeklyGoalsQueryError`, `ActivityQueryError` and `ActivityWriteError` map to
+`INTERNAL_SERVER_ERROR`.
 
 The rules classify a run with `classifyRun` (`src/_bff/modules/training/helpers/classify-run.helper.ts`,
 twin of the SQL `roxcoach.classify_run_default`): no type below `shortRunMaxM` or without a
@@ -215,7 +218,7 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts`      | data access                                                                                         |
 | `controllers/get-weekly-goals.controller.ts`                                           | protected query `athlete.getWeeklyGoals`                                                            |
 | `services/get-weekly-goals.service.ts`, `repositories/weekly-goals.repository.ts`      | goals read (defaults without a row) and upsert on `user_id`                                         |
-| `controllers/save-weekly-goals.controller.ts`, `services/save-weekly-goals.service.ts` | protected mutation `athlete.saveWeeklyGoals`: validate, upsert, reclassify when a threshold changed |
+| `controllers/save-weekly-goals.controller.ts`, `services/save-weekly-goals.service.ts` | protected mutation `athlete.saveWeeklyGoals`: validate, reclassify when a threshold changed, upsert |
 | `helpers/weekly-goals-validation.helper.ts`                                            | pure validation of the goal ranges and of `shortRunMaxM < longRunMinM`                              |
 
 Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `update`,
