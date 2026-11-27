@@ -34,6 +34,11 @@ describe('buildCoachSystemPrompt', () => {
         expect(prompt).toContain('drop the jokes on injury')
     })
 
+    it('prompt counts fast runs as hard and uses the open weekly goals', () => {
+        expect(prompt.toLowerCase()).toContain('runs typed fast count as hard')
+        expect(prompt).toContain('open weekly goals')
+    })
+
     it('includes the running sessions library and the weekly hard-session cap', () => {
         expect(prompt).toContain('Running sessions library')
         expect(prompt).toContain('4x4 Norwegian method')

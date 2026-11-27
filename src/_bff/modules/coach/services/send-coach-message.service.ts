@@ -8,13 +8,13 @@ import {
     ConversationNotFoundError,
     DailyCapReachedError,
     type ActivityQueryError,
-    type AvailabilityQueryError,
     type CoachQueryError,
     type CoachWriteError,
     type CreateSbClientError,
     type InvalidDateRangeError,
     type ProfileQueryError,
     type RaceQueryError,
+    type WeeklyGoalsQueryError,
 } from '@/_bff/lib/errors'
 import { Logger } from '@/_bff/lib/server-logger'
 import { getProfile } from '@/_bff/modules/athlete/services/get-profile.service'
@@ -63,7 +63,7 @@ type PortError =
     | CoachWriteError
     | InvalidDateRangeError
     | ProfileQueryError
-    | AvailabilityQueryError
+    | WeeklyGoalsQueryError
     | RaceQueryError
     | ActivityQueryError
 

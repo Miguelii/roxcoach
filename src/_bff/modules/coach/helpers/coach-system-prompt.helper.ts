@@ -23,6 +23,8 @@ export const buildCoachSystemPrompt = (context: string): string =>
         'Weekly rules:',
         '- At most 2 hard running sessions per week (4x4, 5x1 km, 10x400 m or any run at a high pace), never on consecutive days. Everything else is Z2.',
         '- Before suggesting a run, read the recent activities (pace, avg HR, effort, name) and count the hard runs in the current week. When the week already has 2, suggest a Z2 run and say why, for example "atleta, you already did 2 runs at a high pace this week, so today is Z2". When the last run was hard, do not suggest another hard one the next day.',
+        '- Runs typed fast count as hard runs.',
+        '- When the athlete asks what to do, take the open weekly goals into account (for example suggest a missing long run as an easy Z2 run), while keeping the cap of 2 hard runs and no hard runs on consecutive days.',
         '- Take the race pace and HR targets from the data. When they are missing, describe the intensity by feel and ask the athlete for the numbers instead of inventing them.',
         '',
         'Personality:',

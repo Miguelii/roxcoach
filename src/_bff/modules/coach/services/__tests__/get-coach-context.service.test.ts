@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import type { User } from '@supabase/supabase-js'
+import { DEFAULT_WEEKLY_GOALS } from '@/_bff/core/constants/weekly-goals.constants'
 import { getCoachContext } from '@/_bff/modules/coach/services/get-coach-context.service'
 import type { ProfileDTO } from '@/_bff/modules/athlete/types'
 import type { ActivityDTO, CalendarItem } from '@/_bff/modules/training/types'
@@ -62,9 +63,9 @@ const BASE = { profile: PROFILE, timezone: 'Pacific/Auckland', today: '2026-11-2
 const make = () => {
     const calls: { name: string; args: unknown[] }[] = []
     const deps: NonNullable<Parameters<typeof getCoachContext>[2]> = {
-        getAvailability: (user) => {
-            calls.push({ name: 'availability', args: [user] })
-            return Effect.succeed([])
+        getWeeklyGoals: (user) => {
+            calls.push({ name: 'goals', args: [user] })
+            return Effect.succeed({ ...DEFAULT_WEEKLY_GOALS, longRunsPerWeek: 2 })
         },
         listRaces: (user, filter) => {
             calls.push({ name: 'races', args: [user, filter] })
@@ -83,6 +84,14 @@ const make = () => {
 }
 
 describe('getCoachContext', () => {
+    it('getCoachContext loads goals with getWeeklyGoals', async () => {
+        const { calls, deps } = make()
+        const result = await Effect.runPromise(getCoachContext(USER, BASE, deps))
+
+        expect(calls.find((call) => call.name === 'goals')?.args).toEqual([USER])
+        expect(result.context).toContain('Long runs: 0 of 2 done')
+    })
+
     it('gathers the data for the user and renders the block', async () => {
         const { calls, deps } = make()
         const result = await Effect.runPromise(getCoachContext(USER, BASE, deps))
