@@ -226,7 +226,7 @@ The availability editor, its hook and tests are deleted.
 
 - **Weekly goals**: Running distance (km, decimal), Long runs per week, Fast runs per week, Strength sessions per week. Each field can be left
   empty; a helper line says "Leave empty for no goal."
-- **Run types**: Short run under (km), Long run over (km), Fast pace under (min:sec per km, entered as `m:ss`). A
+- **Run types**: Short run under (km), Long run over (km), Fast pace under (/km, entered as `m:ss`, the placeholder). A
   one-line summary under the group reads the rule back in words, for example "Runs from 3 to 6 km faster than 5:00/km
   are fast. Longer or slower runs are long. Runs under 3 km have no type."
 

@@ -31,6 +31,7 @@ type FieldSpec = {
     label: string
     testId: string
     inputMode: 'decimal' | 'numeric' | 'text'
+    placeholder?: string
 }
 
 const GOAL_FIELDS: FieldSpec[] = [
@@ -75,9 +76,10 @@ const RUN_TYPE_FIELDS: FieldSpec[] = [
     },
     {
         name: 'fastPace',
-        label: 'Fast pace under (min:sec per km)',
+        label: 'Fast pace under (/km)',
         testId: 'goals-fast-pace',
         inputMode: 'text',
+        placeholder: 'm:ss',
     },
 ]
 
@@ -110,7 +112,7 @@ export function GoalsForm({ defaults, onSubmit }: Props) {
         }
     }
 
-    const renderField = ({ name, label, testId, inputMode }: FieldSpec) => (
+    const renderField = ({ name, label, testId, inputMode, placeholder }: FieldSpec) => (
         <FormField
             key={name}
             control={form.control}
@@ -119,7 +121,12 @@ export function GoalsForm({ defaults, onSubmit }: Props) {
                 <FormItem>
                     <FormLabel>{label}</FormLabel>
                     <FormControl>
-                        <Input data-testid={testId} inputMode={inputMode} {...field} />
+                        <Input
+                            data-testid={testId}
+                            inputMode={inputMode}
+                            placeholder={placeholder}
+                            {...field}
+                        />
                     </FormControl>
                     <FormMessage data-testid={`${testId}-error`} />
                 </FormItem>
