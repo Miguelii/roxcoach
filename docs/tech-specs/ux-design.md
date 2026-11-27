@@ -407,10 +407,11 @@ their own skeleton and retry state. Mutations in `RacesManager` invalidate `race
 
 ### Settings
 
-Three tabs (`SettingsTabs`, default Profile): Profile and Weekly availability use
-`trpc.athlete.*` through thin wrappers (`ProfileTab`, `AvailabilityTab`); Lyfta uses
+Four tabs (`SettingsTabs`: Profile, Dashboard, Goals, Integrations; default Profile, `?tab=<name>`
+opens another one): Profile and Goals use `trpc.athlete.*` through thin wrappers (`ProfileTab`,
+`GoalsTab`); Lyfta uses
 `trpc.lyfta.*` for credential management and manual workout sync. All tabs have loading and
-error states; profile and availability show toasts on save. Lyfta and Zepp connection and sync
+error states; profile and goals show toasts on save. Lyfta and Zepp connection and sync
 states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
 
 - **Profile** (`ProfileForm`, hook `use-profile-form`): name, timezone (select of common IANA zones,
@@ -422,10 +423,11 @@ states are specified in [lyfta.md](lyfta.md) and [zepp.md](zepp.md).
   profile" or "Delete everything"). Confirming deletes the account and all the athlete's data (see
   [athlete-races.md](athlete-races.md), "Delete profile"), clears the query cache and goes to
   `/login`; a failure keeps the dialog open with one fixed message.
-- **Weekly availability** (`AvailabilityEditorView`, pure state in `use-availability-editor`): a
-  7-column week (Monday to Sunday). Each day has an "Add" menu (open slot or fixed commitment per
-  kind, or rest day), chips with a remove button, and a summary line "N sessions per week, up to
-  H h". A rest day is exclusive; the same kind cannot be added twice on a day.
+- **Goals** (`GoalsForm`, hook `use-goals-form`): see
+  [2026-11-27-weekly-goals-design.md](2026-11-27-weekly-goals-design.md), "Settings: Goals tab".
+  Weekly goals (running km, long runs, fast runs, strength sessions; empty means no goal) and run
+  type rules (short run under km, long run over km, fast pace `m:ss`) with a live summary of the
+  rule. Save toasts "Goals saved" or "Goals saved. N runs reclassified.".
 
 ### Logs
 
@@ -496,7 +498,7 @@ omitted, never as "N/A" text from the database.
 Every element tested is located by `data-testid`. Target state: end-to-end smoke tests with page
 objects in `e2e/pos/*.po.ts` (there is no `e2e` directory yet; today only unit and component tests
 exist, and the mock data is gone). Initial flows: login success and failure, the calendar renders
-activities from seeded data, create a race, save weekly availability.
+activities from seeded data, create a race, save weekly goals.
 
 ## Dialogs and drawers
 
