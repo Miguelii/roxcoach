@@ -5,7 +5,7 @@ import { SettingsTabs } from '@/modules/settings/settings-tabs'
 const panels = {
     profile: <div data-testid="panel-profile" />,
     dashboard: <div data-testid="panel-dashboard" />,
-    availability: <div data-testid="panel-availability" />,
+    goals: <div data-testid="panel-goals" />,
     integrations: <div data-testid="panel-integrations" />,
 }
 
@@ -15,12 +15,12 @@ describe('SettingsTabs', () => {
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
-        expect(screen.queryByTestId('panel-availability')).toBeNull()
+        expect(screen.queryByTestId('panel-goals')).toBeNull()
         expect(screen.queryByTestId('panel-integrations')).toBeNull()
     })
 
@@ -29,7 +29,7 @@ describe('SettingsTabs', () => {
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
@@ -42,7 +42,7 @@ describe('SettingsTabs', () => {
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
@@ -53,18 +53,18 @@ describe('SettingsTabs', () => {
         })
     })
 
-    it('switches to weekly availability', async () => {
+    it('switches to the goals tab', async () => {
         render(
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
-        fireEvent.click(screen.getByTestId('settings-tab-availability'))
+        fireEvent.click(screen.getByTestId('settings-tab-goals'))
         await waitFor(() => {
-            expect(screen.getByTestId('panel-availability')).toBeVisible()
+            expect(screen.getByTestId('panel-goals')).toBeVisible()
         })
     })
 
@@ -73,7 +73,7 @@ describe('SettingsTabs', () => {
             <SettingsTabs
                 profile={panels.profile}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
@@ -82,7 +82,7 @@ describe('SettingsTabs', () => {
             expect(screen.getByTestId('panel-integrations')).toBeVisible()
         })
         expect(screen.getByTestId('panel-profile')).toBeInTheDocument()
-        expect(screen.queryByTestId('panel-availability')).toBeNull()
+        expect(screen.queryByTestId('panel-goals')).toBeNull()
     })
 
     it('keeps an unsaved edit in one panel after switching tabs and back', async () => {
@@ -90,19 +90,36 @@ describe('SettingsTabs', () => {
             <SettingsTabs
                 profile={<input data-testid="profile-input" defaultValue="" />}
                 dashboard={panels.dashboard}
-                availability={panels.availability}
+                goals={panels.goals}
                 integrations={panels.integrations}
             />
         )
         fireEvent.change(screen.getByTestId('profile-input'), { target: { value: 'draft' } })
-        fireEvent.click(screen.getByTestId('settings-tab-availability'))
+        fireEvent.click(screen.getByTestId('settings-tab-goals'))
         await waitFor(() => {
-            expect(screen.getByTestId('panel-availability')).toBeVisible()
+            expect(screen.getByTestId('panel-goals')).toBeVisible()
         })
         fireEvent.click(screen.getByTestId('settings-tab-profile'))
         await waitFor(() => {
             expect(screen.getByTestId('profile-input')).toBeVisible()
         })
         expect(screen.getByTestId('profile-input')).toHaveValue('draft')
+    })
+
+    it('opens the goals tab when initialTab is goals', () => {
+        render(<SettingsTabs {...panels} initialTab="goals" />)
+        expect(screen.getByTestId('panel-goals')).toBeVisible()
+        expect(screen.getByTestId('settings-tab-goals')).toHaveTextContent('Goals')
+    })
+
+    it('falls back to profile for an unknown tab', () => {
+        render(<SettingsTabs {...panels} initialTab="nope" />)
+        expect(screen.getByTestId('panel-profile')).toBeVisible()
+        expect(screen.queryByTestId('panel-goals')).toBeNull()
+    })
+
+    it('has no availability tab', () => {
+        render(<SettingsTabs {...panels} />)
+        expect(screen.queryByTestId('settings-tab-availability')).toBeNull()
     })
 })

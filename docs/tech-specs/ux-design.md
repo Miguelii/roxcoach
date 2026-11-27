@@ -160,15 +160,15 @@ session (the proxy sends crawlers to `/login`) and `/signup` stays `noindex` (ac
 
 ## Screens
 
-| Route              | Access    | Job                                                            |
-| ------------------ | --------- | -------------------------------------------------------------- |
-| `/login`           | public    | sign in                                                        |
-| `/signup`          | public    | create an account with an access code (404 while closed)       |
-| `/dashboard`       | protected | training progress overview                                     |
-| `/calendar`        | protected | activity and race calendar, activity upload                    |
-| `/activities/[id]` | protected | one workout: numbers, laps, station results                    |
-| `/races`           | protected | list, create, edit races and goals                             |
-| `/settings`        | protected | profile, weekly availability, Lyfta connection and manual sync |
+| Route              | Access    | Job                                                                                  |
+| ------------------ | --------- | ------------------------------------------------------------------------------------ |
+| `/login`           | public    | sign in                                                                              |
+| `/signup`          | public    | create an account with an access code (404 while closed)                             |
+| `/dashboard`       | protected | training progress overview                                                           |
+| `/calendar`        | protected | activity and race calendar, activity upload                                          |
+| `/activities/[id]` | protected | one workout: numbers, laps, station results                                          |
+| `/races`           | protected | list, create, edit races and goals                                                   |
+| `/settings`        | protected | profile, dashboard, weekly goals and run types (`?tab=goals` opens it), integrations |
 
 `/` redirects to `/dashboard` when signed in, to `/login` otherwise.
 
@@ -470,13 +470,13 @@ Cancel plus the primary action in a fixed footer. Footer actions stack verticall
 mobile and sit side by side at equal widths on desktop. Race forms and activity upload use this
 layout.
 
-| Component   | Purpose                                                      |
-| ----------- | ------------------------------------------------------------ |
-| `calendar/` | month grid, week agenda, day panel, chips                    |
-| `activity/` | metrics row, laps table, details dialog                      |
-| `coach/`    | chat panel, history menu, message, chips                     |
-| `races/`    | race card, race form                                         |
-| `settings/` | profile form, availability editor, Lyfta connection and sync |
+| Component   | Purpose                                             |
+| ----------- | --------------------------------------------------- |
+| `calendar/` | month grid, week agenda, day panel, chips           |
+| `activity/` | metrics row, laps table, details dialog             |
+| `coach/`    | chat panel, history menu, message, chips            |
+| `races/`    | race card, race form                                |
+| `settings/` | profile form, goals form, Lyfta connection and sync |
 
 ## States every screen must handle
 
