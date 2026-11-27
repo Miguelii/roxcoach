@@ -16,7 +16,7 @@ export function CalendarPageContent({ initialTimezone }: Props) {
     const timezone = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             select: (profile) => profile.timezone,
-            meta: { errorMessage: 'Could not load your timezone.' },
+            meta: { errorMessage: 'Could not load your profile.' },
         })
     )
     // The shell's mode toggle and the Suspense fallback create the profile query before the page

@@ -13,7 +13,7 @@ export function RacesView() {
     const profile = useQuery(
         trpc.athlete.getProfile.queryOptions(undefined, {
             staleTime: RACES_QUERY_STALE_TIME,
-            meta: { errorMessage: 'Could not load your races.' },
+            meta: { errorMessage: 'Could not load your profile.' },
         })
     )
     const races = useQuery(
