@@ -29,6 +29,9 @@ const goals = (overrides: Partial<WeeklyGoals>): WeeklyGoals => ({
     ...overrides,
 })
 
+const daysLeft = (today: string) =>
+    computeWeeklyGoalProgress({ goals: DEFAULT_WEEKLY_GOALS, items: [], today }).daysLeft
+
 describe('computeWeeklyGoalProgress', () => {
     it('sums run distance and counts types for this week only', () => {
         const items = [
@@ -92,9 +95,6 @@ describe('computeWeeklyGoalProgress', () => {
     })
 
     it('daysLeft is 7 on Monday, 4 on Thursday, 1 on Sunday', () => {
-        const daysLeft = (today: string) =>
-            computeWeeklyGoalProgress({ goals: DEFAULT_WEEKLY_GOALS, items: [], today }).daysLeft
-
         expect(daysLeft('2026-11-23')).toBe(7)
         expect(daysLeft('2026-11-26')).toBe(4)
         expect(daysLeft('2026-11-29')).toBe(1)
