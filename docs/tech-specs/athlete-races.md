@@ -75,6 +75,32 @@ Changing availability does not regenerate anything: the coach chat reads the sav
 UX: a 7-column week editor with the slots as chips per day, an "Add" menu per day and a summary
 line ("N sessions per week, up to H h"). See [ux-design.md](ux-design.md).
 
+## Weekly goals
+
+One optional row per athlete in `weekly_goals` (see [database.md](database.md) and the design in
+[2026-11-27-weekly-goals-design.md](2026-11-27-weekly-goals-design.md)). The type `WeeklyGoals`,
+`DEFAULT_WEEKLY_GOALS`, `DEFAULT_RUN_TYPE_RULES` and `WEEKLY_GOAL_LIMITS` live in
+`src/_bff/core/constants/weekly-goals.constants.ts` so the client can use them.
+
+| Field                         | Rules                                         |
+| ----------------------------- | --------------------------------------------- |
+| `weeklyRunDistanceM`          | optional, meters, 1000 to 500000              |
+| `longRunsPerWeek`             | optional, 1 to 7                              |
+| `fastRunsPerWeek`             | optional, 1 to 7                              |
+| `strengthSessionsPerWeek`     | optional, 1 to 14                             |
+| `runTypeRules.shortRunMaxM`   | default 3000, above 0 and below `longRunMinM` |
+| `runTypeRules.longRunMinM`    | default 6000, at most 100000                  |
+| `runTypeRules.fastPaceSPerKm` | default 300 (5:00/km), 120 to 600             |
+
+Read through `athlete.getWeeklyGoals` (`getWeeklyGoals`, or `getWeeklyGoalsWithClient` for callers
+that already hold a client). An athlete without a row gets `DEFAULT_WEEKLY_GOALS` and no error.
+Failures (`CreateSbClientError`, `WeeklyGoalsQueryError`) map to `INTERNAL_SERVER_ERROR`.
+
+The rules classify a run with `classifyRun` (`src/_bff/modules/training/helpers/classify-run.helper.ts`,
+twin of the SQL `roxcoach.classify_run_default`): no type below `shortRunMaxM` or without a
+positive distance and time (moving time, else elapsed time); `long` above `longRunMinM`; otherwise
+`fast` when the pace is under `fastPaceSPerKm`, else `long`.
+
 ## Races
 
 The athlete can add any number of races. Each has its own goal. Validation lives in
@@ -178,6 +204,8 @@ Module `athlete` (`athlete.router.ts` is the namespace `athlete`):
 | `services/get-athlete-timezone.service.ts`                                        | the timezone, used by the controller and by the races services                                    |
 | `helpers/profile-validation.helper.ts`, `availability-validation.helper.ts`       | pure validation                                                                                   |
 | `repositories/athlete-profiles.repository.ts`, `availability-slots.repository.ts` | data access                                                                                       |
+| `controllers/get-weekly-goals.controller.ts`                                      | protected query `athlete.getWeeklyGoals`                                                          |
+| `services/get-weekly-goals.service.ts`, `repositories/weekly-goals.repository.ts` | goals read (defaults without a row) and upsert on `user_id`                                       |
 
 Module `races` (`races.router.ts` is the namespace `races`: `list`, `create`, `update`,
 `complete`, `cancel`, `restore`, `delete`):

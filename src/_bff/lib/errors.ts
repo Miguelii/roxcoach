@@ -32,6 +32,9 @@ export class ProfileValidationError extends Data.TaggedError('ProfileValidationE
 export class AvailabilityQueryError extends Data.TaggedError(
     'AvailabilityQueryError'
 )<ServiceErrorFields> {}
+export class WeeklyGoalsQueryError extends Data.TaggedError(
+    'WeeklyGoalsQueryError'
+)<ServiceErrorFields> {}
 // `reason` is a stable code for the rule that failed (never free text).
 export class AvailabilityValidationError extends Data.TaggedError('AvailabilityValidationError')<
     ServiceErrorFields & { reason: string }

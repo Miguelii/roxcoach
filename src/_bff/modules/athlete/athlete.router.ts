@@ -7,6 +7,7 @@ import { SET_DASHBOARD_MODE_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/
 import { UPDATE_PROFILE_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/controllers/update-profile.controller'
 import { GET_AVAILABILITY_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/controllers/get-availability.controller'
 import { SAVE_AVAILABILITY_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/controllers/save-availability.controller'
+import { GET_WEEKLY_GOALS_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/controllers/get-weekly-goals.controller'
 import { DELETE_ACCOUNT_PROTECTED_CONTROLLER } from '@/_bff/modules/athlete/controllers/delete-account.controller'
 
 export const ATHLETE_ROUTER = router({
@@ -16,5 +17,6 @@ export const ATHLETE_ROUTER = router({
     setDashboardMode: SET_DASHBOARD_MODE_PROTECTED_CONTROLLER,
     getAvailability: GET_AVAILABILITY_PROTECTED_CONTROLLER,
     saveAvailability: SAVE_AVAILABILITY_PROTECTED_CONTROLLER,
+    getWeeklyGoals: GET_WEEKLY_GOALS_PROTECTED_CONTROLLER,
     deleteAccount: DELETE_ACCOUNT_PROTECTED_CONTROLLER,
 })
