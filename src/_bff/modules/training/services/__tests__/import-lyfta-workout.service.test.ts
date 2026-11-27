@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { Effect } from 'effect'
+import { WeeklyGoalsQueryError } from '@/_bff/lib/errors'
+import { ErrorCode } from '@/_bff/lib/error-codes'
 import { failureTag } from '@/_bff/lib/tests-utils'
 import {
     DEFAULT_WEEKLY_GOALS,
@@ -205,6 +207,26 @@ describe('importLyftaWorkouts', () => {
         expect((await make('Mars/Olympus')).timeZone).toBe('UTC')
         expect(createClient).toHaveBeenCalledTimes(2)
         expect(getTimezone).toHaveBeenCalledWith(supabase, USER)
+    })
+
+    it('createImportContext falls back to the default rules when the goals read fails', async () => {
+        const { supabase } = makeFakeDb([])
+
+        const created = await Effect.runPromise(
+            createImportContext(USER, {
+                createClient: () => supabase,
+                getTimezone: () => Effect.succeed('UTC'),
+                getGoals: () =>
+                    Effect.fail(
+                        new WeeklyGoalsQueryError({
+                            cause: 'boom',
+                            error_hash: ErrorCode.ATHLETE_GOALS_SELECT_ERR,
+                        })
+                    ),
+            })
+        )
+
+        expect(created.runTypeRules).toEqual(DEFAULT_RUN_TYPE_RULES)
     })
 
     it('createImportContext loads the run type rules once', async () => {
